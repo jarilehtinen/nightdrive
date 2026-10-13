@@ -38,6 +38,8 @@ PanelWindow {
     property string pwError: ""
     property var clipItems: []                // Clipboard: cliphist history
     property var musicAlbums: []              // Music: Deck's shelf and Curated albums [{ uri, name, artist, year, list }]
+    property var spotify: null                // Music › Search: { query, artists, albums, error } (deck search --json)
+    property var artist: ({ id: "", name: "", albums: null })   // Music › Search › an artist's albums
     property bool clipLoaded: false
     property var wallList: []                 // Settings › Background: [{ path, thumb, name, group }] (hypr/scripts/wallpaper list)
     property bool wallLoaded: false
@@ -57,7 +59,7 @@ PanelWindow {
     property string extSource: ""             // shell.qml sets this when the file exists
     readonly property var ext: extLoader.item
     readonly property bool extLevel: ext !== null && ext.levels.indexOf(level) >= 0
-    readonly property var parents: Object.assign({ shelf: "music", curated: "music", musicsearch: "music", package: "install", webapp: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "theme", baropacity: "topbar", baricons: "topbar", barhl: "topbar" }, ext ? ext.parents : {})
+    readonly property var parents: Object.assign({ shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", package: "install", webapp: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "theme", baropacity: "topbar", baricons: "topbar", barhl: "topbar" }, ext ? ext.parents : {})
     // Search found nothing: hint below ⌘⌥⏎ (icons) → send the text to Claude
     readonly property bool noHit: (level === "root" || level === "apps") && query.trim() !== "" && results.length === 0
     readonly property string footer: level === "passwords" && pwState === "ready" ? "Enter: password  ·  Shift+Enter: username  ·  Ctrl+Enter: one-time code"
@@ -75,7 +77,7 @@ PanelWindow {
     readonly property var deckLiked: deckOverride.liked !== undefined ? deckOverride.liked : (deckInfo ? deckInfo.liked : null)
     signal openMenu(string name)              // Settings: opens a Quickshell menu (wifi, bluetooth, ...)
 
-    readonly property var titles: Object.assign({ apps: "Apps", music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", musicsearch: "Music › Search", keys: "Keybindings", screenshot: "Screenshot", settings: "Settings", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
+    readonly property var titles: Object.assign({ apps: "Apps", music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", musicsearch: "Music › Search", artist: "Music › " + artist.name, keys: "Keybindings", screenshot: "Screenshot", settings: "Settings", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
                                      topbar: "Settings › Theme › Top bar", baropacity: "Theme › Top bar › Opacity", baricons: "Theme › Top bar › Icon colors", barhl: "Theme › Top bar › Highlight",
                                      install: "Install", emoji: "Emoji", package: "Install › Package", webapp: "Install › Webapp", webname: "Install › Webapp › Name", webaddr: "Install › Webapp › Address", remove: "Remove", power: "Power", passwords: "Passwords", clipboard: "Clipboard",
                                      tools: "Tools" }, ext ? ext.titles : {})
@@ -287,8 +289,22 @@ PanelWindow {
                    { kind: "nav", name: "Search Spotify", glyph: "search", target: "musicsearch", summary: "in Deck" }]
                 .map(r => ({ item: r, text: r.name }))
         } else if (level === "musicsearch") {
-            if (query.trim() === "") return hint("Type an artist, album or track")
-            return [{ kind: "decksearch", name: "Search “" + query.trim() + "”", summary: "opens in Deck", glyph: "search", value: query.trim() }]
+            // Results come from `deck search --json` a moment after typing stops; going back from an artist shows them again
+            const typed = query.trim()
+            const shown = typed !== "" ? typed : (spotify ? spotify.query : "")
+            if (shown === "") return hint("Type an artist or album")
+            const inDeck = { kind: "decksearch", name: "Open “" + shown + "” in Deck", glyph: "external-link", value: shown }
+            if (!spotify || spotify.query !== shown) return hint("Searching Spotify…")
+            if (spotify.error) return hint(spotify.error).concat([inDeck])
+            const artists = spotify.artists.slice(0, 4).map(a => ({ kind: "spotifyartist", name: a.name, glyph: "mic-vocal", id: a.id, chevron: true }))
+            const albums = spotify.albums.map(albumItem)
+            if (artists.length + albums.length === 0) return hint("Nothing found on Spotify").concat([inDeck])
+            return (artists.length ? [{ kind: "header", name: "Artists" }].concat(artists) : [])
+                .concat(albums.length ? [{ kind: "header", name: "Albums" }].concat(albums) : [], [inDeck])
+        } else if (level === "artist") {
+            if (artist.albums === null) return hint("Loading albums…")
+            if (artist.albums.length === 0) return hint("No albums found")
+            all = artist.albums.map(a => ({ item: albumItem(a), text: a.name, extra: String(a.year || "") }))
         } else if (level === "shelf" || level === "curated") {
             const albums = musicAlbums.filter(a => a.list === level)
             if (albums.length === 0) return hint(level === "shelf" ? "The shelf is empty: add albums in Deck with a"
@@ -420,6 +436,12 @@ PanelWindow {
         }
         else if (item.kind === "clip") clipPick(item, true)
         else if (item.kind === "album") { win.open = false; Quickshell.execDetached([scripts + "/deck-ctl", "play-album", item.uri]) }
+        else if (item.kind === "spotifyartist") {
+            artist = { id: item.id, name: item.name, albums: null }
+            artistProc.environment = { "ID": item.id }
+            artistProc.running = true
+            go("artist")
+        }
         else if (item.kind === "decksearch") { win.open = false; Quickshell.execDetached([scripts + "/deck-ctl", "search", item.value]) }
         else if (item.kind === "emoji") emojiPick(item, true)
         else if (live[item.kind]) {           // stays open: values can be tried one after another (theme colors recolor the launcher immediately)
@@ -589,7 +611,10 @@ PanelWindow {
         }
         return out
     }
-    onQueryChanged: if (level === "package") { armed = ""; searchDelay.restart() }
+    onQueryChanged: {
+        if (level === "package") { armed = ""; searchDelay.restart() }
+        if (level === "musicsearch" && query.trim() !== "") spotifyDelay.restart()
+    }
     Timer { id: searchDelay; interval: 300; onTriggered: win.runSearch() }
     Sh {
         id: installProc
@@ -623,6 +648,36 @@ PanelWindow {
 jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downcase), .year) | .[] | {uri, name, artist, year, list: "shelf"}),
   ($c.albums // [] | .[] | {uri, name, artist, year, list: "curated"})]\''
         onResult: text => { try { win.musicAlbums = JSON.parse(text) } catch (e) { win.musicAlbums = [] } }
+    }
+    // Music › Search: Spotify through Deck's own client (needs client_id in Deck's config.toml); one request after typing pauses
+    Timer { id: spotifyDelay; interval: 450; onTriggered: win.searchSpotify() }
+    function searchSpotify() {
+        const q = query.trim()
+        if (q.length < 2 || spotifyProc.running) return
+        spotifyProc.environment = { "Q": q }
+        spotifyProc.running = true
+    }
+    Sh {
+        id: spotifyProc
+        script: '"$HOME/.local/bin/deck" search --json "$Q"'
+        onResult: text => {
+            const q = spotifyProc.environment.Q
+            try {
+                if (spotifyProc.exitCode !== 0) throw new Error(text.trim().split("\n").pop() || "Search failed")
+                const r = JSON.parse(text)
+                win.spotify = { query: q, artists: r.artists || [], albums: r.albums || [], error: "" }
+            } catch (e) { win.spotify = { query: q, artists: [], albums: [], error: String(e.message || e).replace(/^deck: /, "") } }
+            if (win.level === "musicsearch" && win.query.trim() !== "" && win.query.trim() !== q) win.searchSpotify()   // typed on meanwhile
+        }
+    }
+    Sh {
+        id: artistProc
+        script: '"$HOME/.local/bin/deck" artist-albums --json "$ID"'
+        onResult: text => {
+            let albums = []
+            try { albums = JSON.parse(text) } catch (e) {}
+            if (win.artist.id === artistProc.environment.ID) win.artist = Object.assign({}, win.artist, { albums: albums })
+        }
     }
     // Settings › Background: wallpapers and their previews (the script creates missing previews the first time)
     Sh {
@@ -944,7 +999,7 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                     readonly property bool noIcon: modelData.kind === "key" || modelData.kind === "hint" || modelData.kind === "header"
                     readonly property bool armedNow: (modelData.kind === "action" && modelData.confirm === true && win.armed === modelData.name)
                                                     || (modelData.armKey !== undefined && win.armed === modelData.armKey)
-                    readonly property bool chevron: modelData.kind === "nav" || modelData.kind === "menu"
+                    readonly property bool chevron: modelData.kind === "nav" || modelData.kind === "menu" || modelData.chevron === true
                     width: list.width
                     height: isHeader ? win.headerHeight : win.rowHeight
                     radius: 10
