@@ -6,8 +6,15 @@
 kind=${1:?usage: status <wifi|bluetooth|volume|headphones|battery|deck|claude|system|calendar|notifications>}
 open=$(cat "${XDG_RUNTIME_DIR:-/tmp}/qs-menu" 2>/dev/null)
 
-# MacBook (Apple SMC) battery as UPower names it; other laptops: see `upower -e`
-BATTERY=/org/freedesktop/UPower/devices/battery_macsmc_battery
+# The machine's own battery as UPower names it (MacBook: battery_macsmc_battery). Found in /sys/class/power_supply,
+# skipping Bluetooth mice and keyboards (scope Device). Empty on a desktop: the module stays hidden.
+battery() {
+  local d
+  for d in /sys/class/power_supply/*; do
+    [[ $(cat "$d/type" 2>/dev/null) == Battery && $(cat "$d/scope" 2>/dev/null) != Device ]] || continue
+    local n=${d##*/}; echo "/org/freedesktop/UPower/devices/battery_${n//-/_}"; return
+  done
+}
 
 emit() {  # emit TEXT TOOLTIP [CLASS...]
   local text=$1 tip=$2; shift 2
@@ -29,7 +36,8 @@ case $kind in
       emit "" "Not connected" disconnected
     fi ;;
   bluetooth)
-    if ! bluetoothctl show 2>/dev/null | grep -q 'Powered: yes'; then emit "" "Bluetooth is off" off; exit; fi
+    # Without an adapter (a VM) bluetooth.service is stopped and bluetoothctl would wait forever
+    if ! systemctl is-active -q bluetooth || ! timeout 2 bluetoothctl show 2>/dev/null | grep -q 'Powered: yes'; then emit "" "Bluetooth is off" off; exit; fi
     conn=$(bluetoothctl devices Connected 2>/dev/null | cut -d' ' -f3-)
     if [[ -n $conn ]]; then emit "" "$conn" connected; else emit "" "Bluetooth on"; fi ;;
   volume)
@@ -46,7 +54,8 @@ case $kind in
     if [[ -z $preset || $preset == off ]]; then emit $'\ue0f4' "Headphones · EQ off" off
     else emit $'\ue0f4' "Headphones · EQ: $preset"; fi ;;
   battery)
-    info=$(upower -i "$BATTERY" 2>/dev/null)
+    dev=$(battery); [[ -z $dev ]] && { emit "" ""; exit; }
+    info=$(upower -i "$dev" 2>/dev/null)
     pct=$(grep -oP 'percentage:\s*\K[0-9]+' <<<"$info"); st=$(grep -oP 'state:\s*\K\S+' <<<"$info")
     cls=()
     if [[ $st == charging ]]; then icon=""; cls+=(charging)

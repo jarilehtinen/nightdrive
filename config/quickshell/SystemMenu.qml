@@ -64,7 +64,7 @@ Column {
         title: "CPU"
         value: m.d ? m.d.cpu + " %" : ""
         frac: m.d ? m.d.cpu / 100 : 0
-        note: m.d ? m.d.cores + " cores · avg " + m.d.freq + " MHz · load " + m.d.load.join("  ") : ""
+        note: m.d ? m.d.cores + " cores" + (m.d.freq > 0 ? " · avg " + m.d.freq + " MHz" : "") + " · load " + m.d.load.join("  ") : ""   // no cpufreq in a VM
     }
     Meter {
         visible: m.d !== null
@@ -74,10 +74,10 @@ Column {
         note: m.d && m.d.swapUsed > 0 ? "Swap " + m.mb(m.d.swapUsed) + " / " + m.mb(m.d.swapTotal) : ""
     }
 
-    Divider {}
+    Divider { visible: m.d !== null && m.d.temps.length > 0 }   // no sensors in a VM: the whole section is left out
 
     Text {
-        visible: m.d !== null
+        visible: m.d !== null && m.d.temps.length > 0
         text: "TEMPERATURES"
         color: Theme.primary
         font { family: Theme.font; pixelSize: 11; letterSpacing: 0.6 }

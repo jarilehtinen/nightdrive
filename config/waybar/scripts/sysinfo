@@ -4,9 +4,8 @@
 (state: $XDG_RUNTIME_DIR/sysinfo-<mode>.json); the first call measures over 0.3 s."""
 import glob, json, os, sys, time
 
-# MacBook-specific (Apple Silicon): the battery in /sys/class/power_supply and the temperature sensors shown in the menu,
-# as (substring of "<hwmon name> <sensor label>", title). Other machines: see /sys/class/hwmon/hwmon*/{name,temp*_label}.
-BATTERY = "/sys/class/power_supply/macsmc-battery/"
+# MacBook-specific (Apple Silicon): the temperature sensors shown in the menu, as (substring of
+# "<hwmon name> <sensor label>", title). Other machines: see /sys/class/hwmon/hwmon*/{name,temp*_label}.
 SENSORS = [("macsmc_battery", "Battery"), ("nvme", "SSD"), ("WiFi/BT", "WiFi/BT"),
            ("Charge Regulator", "Charger"), ("tas2764", "Speakers")]
 
@@ -18,6 +17,10 @@ def rd(p, default=""):
     try:
         with open(p) as f: return f.read().strip()
     except OSError: return default
+
+# The machine's own battery (MacBook: macsmc-battery), not a Bluetooth mouse's (scope Device); "" on a desktop
+BATTERY = next((d for d in sorted(glob.glob("/sys/class/power_supply/*"))
+                if rd(d + "/type") == "Battery" and rd(d + "/scope") != "Device"), "")
 
 def cpu_times():
     v = list(map(int, rd("/proc/stat").split("\n")[0].split()[1:]))
@@ -67,16 +70,17 @@ def pick(match, title):
     return (title, max(v)) if v else None
 wanted = [pick(match, title) for match, title in SENSORS]
 temps = [{"label": t, "c": round(c)} for t, c in filter(None, wanted)]
-hottest = max((t["c"] for t in temps), default=0)
+hottest = max((t["c"] for t in temps), default=None)   # None: no sensors (a VM)
 
 freqs = [int(rd(f)) for f in glob.glob("/sys/devices/system/cpu/cpu[0-9]*/cpufreq/scaling_cur_freq") if rd(f).isdigit()]
-freq = round(sum(freqs) / len(freqs) / 1000) if freqs else 0
+freq = round(sum(freqs) / len(freqs) / 1000) if freqs else 0   # 0: no cpufreq (a VM), left out of the texts
 load = rd("/proc/loadavg").split()[:3]
 
 gb = lambda b: f"{b / 2**30:.1f}"
 if mode == "bar":
     cls = "high" if cpu > 90 else ""
-    tip = f"CPU {cpu}% · {freq} MHz · load {load[0]}\\nRAM {gb(mem_used)} / {gb(mem_total)} GB\\nHottest sensor {hottest} °C"
+    tip = f"CPU {cpu}%" + (f" · {freq} MHz" if freq else "") + f" · load {load[0]}\\nRAM {gb(mem_used)} / {gb(mem_total)} GB"
+    if hottest is not None: tip += f"\\nHottest sensor {hottest} °C"
     print(f'{cpu}%\t{tip}\t{cls}')
     sys.exit()
 
@@ -90,9 +94,9 @@ for pid, (name, ticks, rss) in now["p"].items():
     a[1] += rss
 top = sorted(({"name": n, "cpu": round(v[0], 1), "rss": v[1]} for n, v in agg.items()), key=lambda x: -x["cpu"])[:6]
 
-bat = BATTERY
-watts = int(rd(bat + "power_now", "0") or 0) / 1e6
+bat = lambda f: rd(f"{BATTERY}/{f}") if BATTERY else ""
+watts = int(bat("power_now") or 0) / 1e6
 print(json.dumps({"cpu": cpu, "freq": freq, "load": load, "memUsed": mem_used, "memTotal": mem_total,
                   "swapUsed": swap_used, "swapTotal": swap_total, "temps": temps, "top": top,
-                  "batStatus": rd(bat + "status"), "batPct": rd(bat + "capacity"), "watts": round(watts, 1),
+                  "batStatus": bat("status"), "batPct": bat("capacity"), "watts": round(watts, 1),
                   "cores": os.cpu_count()}))

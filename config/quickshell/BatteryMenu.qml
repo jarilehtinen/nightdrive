@@ -5,8 +5,6 @@ import Quickshell
 // Uses the upower and brightnessctl commands.
 Column {
     id: m
-    // MacBook (Apple SMC) battery as UPower names it; other laptops: see `upower -e`
-    readonly property string battPath: "/org/freedesktop/UPower/devices/battery_macsmc_battery"
     width: parent ? parent.width : 300
     spacing: 10
 
@@ -15,7 +13,7 @@ Column {
     property string timeText: ""
     property string rate: ""
     property string health: ""
-    property real screen: 0
+    property real screen: -1         // -1 = no display backlight (a VM)
     property real keys: -1           // -1 = no keyboard backlight
     property real pendingScreen: -1
     property real pendingKeys: -1
@@ -34,14 +32,16 @@ Column {
     Timer {
         id: apply; interval: 60
         onTriggered: {
-            if (m.pendingScreen >= 0) { Quickshell.execDetached(["brightnessctl", "-n2", "set", Math.round(m.pendingScreen * 100) + "%"]); m.pendingScreen = -1 }
+            if (m.pendingScreen >= 0) { Quickshell.execDetached(["brightnessctl", "-c", "backlight", "-n2", "set", Math.round(m.pendingScreen * 100) + "%"]); m.pendingScreen = -1 }
             if (m.pendingKeys >= 0) { Quickshell.execDetached(["brightnessctl", "-d", "kbd_backlight", "set", Math.round(m.pendingKeys * 100) + "%"]); m.pendingKeys = -1 }
         }
     }
 
     Sh {
         id: battProc
-        command: ["upower", "-i", m.battPath]
+        // The machine's own battery, found like in waybar/scripts/status (MacBook: macsmc-battery; Bluetooth devices skipped)
+        script: 'for d in /sys/class/power_supply/*; do [ "$(cat "$d/type")" = Battery ] && [ "$(cat "$d/scope" 2>/dev/null)" != Device ] &&
+                 { upower -i "/org/freedesktop/UPower/devices/battery_$(basename "$d" | tr - _)"; break; }; done'
         onResult: text => {
             const g = re => { const r = text.match(re); return r ? r[1].trim() : "" }
             m.percent = parseInt(g(/percentage:\s*(\d+)/)) || 0
@@ -58,11 +58,12 @@ Column {
     }
     Sh {
         id: briProc
-        command: ["brightnessctl", "-m"]
+        // -c backlight: without a backlight brightnessctl would pick the first LED (a keyboard's Compose light)
+        command: ["brightnessctl", "-m", "-c", "backlight"]
         onResult: text => {
             if (screenSlider.pressed || m.pendingScreen >= 0) return
             const f = text.trim().split(",")
-            if (f.length >= 4) m.screen = parseInt(f[3]) / 100
+            m.screen = f.length >= 4 ? parseInt(f[3]) / 100 : -1
         }
     }
     Sh {
@@ -128,9 +129,10 @@ Column {
         Text { visible: m.health !== ""; text: "Health " + m.health; color: Theme.dim; font { family: Theme.font; pixelSize: 11 } }
     }
 
-    Divider {}
+    Divider { visible: m.screen >= 0 || m.keys >= 0 }
 
     Row {
+        visible: m.screen >= 0
         width: parent.width
         spacing: 12
         Text {
