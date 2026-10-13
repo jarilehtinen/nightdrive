@@ -4,7 +4,6 @@
   ⌘ Enter            Terminal
   ⌘ ⌥ Enter          Claude Code (with text typed in the launcher: sends it as the prompt)
   ⌘ Space            App launcher (↑↓ select, Enter open, Esc close)
-  ⌘ Ctrl Space       App launcher (Fuzzel)
   ⌘ ⇧ Enter / ⌘ ⇧ B  Browser
   ⌘ ⇧ F              Files
   ⌘ ⇧ P              1Password

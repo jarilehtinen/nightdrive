@@ -8,7 +8,6 @@
 local terminal    = "kitty --directory " .. os.getenv("HOME") .. "/Projects"
 local browser     = "firefox"
 local fileManager = "nautilus"
-local menu        = "fuzzel"
 local scripts     = os.getenv("HOME") .. "/.config/hypr/scripts"
 
 
@@ -28,7 +27,6 @@ hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd(scripts .. "/dictate start"), { lock
 hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd(scripts .. "/dictate stop"),  { locked = true, release = true })    -- release -> transcribe and type
 hl.bind("XF86Fn", hl.dsp.exec_cmd(scripts .. "/dictate fn-down"), { locked = true })                       -- Fn held (over 0.3 s) -> dictation, like F5
 hl.bind("XF86Fn", hl.dsp.exec_cmd(scripts .. "/dictate fn-up"),   { locked = true, release = true })
-hl.bind(mod .. " + CTRL + SPACE", hl.dsp.exec_cmd(menu))                              -- fallback: Fuzzel
 hl.bind(mod .. " + SHIFT + B",   hl.dsp.exec_cmd(browser))
 hl.bind(mod .. " + SHIFT + RETURN", hl.dsp.exec_cmd(browser))
 hl.bind(mod .. " + SHIFT + P",   hl.dsp.exec_cmd(scripts .. "/launch-or-focus '^(1[pP]assword|com\\.onepassword\\.OnePassword)$' 1password"))
