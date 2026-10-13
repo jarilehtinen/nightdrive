@@ -18,7 +18,7 @@ PanelWindow {
     readonly property int maxRows: 10         // how many rows are visible at once
     readonly property int cardWidth: 660
     readonly property int fontSize: 17
-    readonly property int fontWeight: Font.Light   // text weight (headers and tags in bold)
+    readonly property int fontWeight: Font.Light   // text weight (headers in bold)
     readonly property real topPosition: 0.189  // card top edge as a fraction of screen height (0 = top)
 
     property bool open: false
@@ -272,9 +272,11 @@ PanelWindow {
                 // Power actions ("shut" → Shut down)
                 statics.power.map(t => ({ item: t, text: t.name, extra: powerAliases[t.name] || "" })),
                 // Apps ("1pas" → 1Password), but none named like a root item (e.g. a webapp that would duplicate a menu of the same name)
-                appEntries(q).filter(a => !rootItems.some(r => r.name.toLowerCase() === a.text.toLowerCase())),
+                appEntries(q).filter(a => !rootItems.some(r => r.name.toLowerCase() === a.text.toLowerCase()))
+                             .map(a => Object.assign({}, a, { item: Object.assign({}, a.item, { from: "Apps" }) })),
                 // Deck's albums ("fm-84" → Atlas)
-                musicAlbums.map(a => ({ item: albumItem(a), text: a.name, extra: a.artist }))
+                // (the MUSIC tag on the right instead of the year)
+                musicAlbums.map(a => ({ item: Object.assign(albumItem(a), { summary: undefined, from: "Music" }), text: a.name, extra: a.artist }))
             ]) all = all.concat(src)
         } else if (level === "apps") {
             all = appEntries(q)
@@ -320,7 +322,7 @@ PanelWindow {
         } else if (level === "artist") {
             if (artist.albums === null) return hint("Loading albums…")
             if (artist.albums.length === 0) return hint("No albums found")
-            all = artist.albums.map(a => ({ item: albumItem(a), text: a.name, extra: String(a.year || "") }))
+            all = artist.albums.map(a => ({ item: albumItem(a, false), text: a.name, extra: String(a.year || "") }))
         } else if (level === "shelf" || level === "curated") {
             const albums = musicAlbums.filter(a => a.list === level)
             if (albums.length === 0) return hint(level === "shelf" ? "The shelf is empty: add albums in Deck with a"
@@ -722,9 +724,12 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         onLoaded: item.launcher = win
     }
     // Music: Deck's shelf (sorted by artist and year, like in Deck) and the Curated list; read on every open
-    function albumItem(a) {
-        return { kind: "album", name: a.name, summary: a.artist + (a.year ? "  ·  " + a.year : ""), glyph: "disc-3", uri: a.uri }
+    // An album row: the album's name with ARTIST below it (small, theme colour), the year on the right; an artist's own
+    // album list leaves the artist out
+    function albumItem(a, withArtist = true) {
+        return { kind: "album", name: a.name, artist: withArtist && a.artist ? a.artist : "", summary: a.year ? String(a.year) : "", glyph: "disc-3", uri: a.uri }
     }
+    function esc(t) { return String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") }
     Sh {
         id: musicProc
         script: 'd="$HOME/.config/deck"; s=$(cat "$d/shelf.json" 2>/dev/null || echo "[]"); c=$(cat "$d/curated.json" 2>/dev/null || echo "{}")
@@ -1141,10 +1146,12 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                         }
                     }
                     Text {
+                        id: nameText
+                        readonly property bool twoLines: !!row.modelData.artist   // an album: its artist on a second line
                         anchors {
                             left: row.noIcon ? parent.left : slot.right; leftMargin: 16
-                            right: trailing.left; rightMargin: row.modelData.kind === "key" ? 36 : 12   // keybindings get more room before the keys (description is elided with …)
-                            verticalCenter: parent.verticalCenter
+                            right: trailing.left; rightMargin: (row.modelData.kind === "key" ? 36 : 12) + (dot.visible ? 19 : 0)   // keybindings get more room before the keys (description is elided with …)
+                            verticalCenter: parent.verticalCenter; verticalCenterOffset: twoLines ? -7 : 0
                         }
                         elide: Text.ElideRight
                         text: row.isHeader ? row.modelData.name.toUpperCase()
@@ -1152,6 +1159,14 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                         color: row.armedNow ? Theme.primary : (row.isHeader ? Theme.primary : row.modelData.kind === "hint" ? Theme.dim : (row.current ? Theme.accent : Theme.text))
                         font { family: Theme.font; pixelSize: row.isHeader ? win.fontSize - 5 : win.fontSize; weight: row.isHeader ? Font.Bold : win.fontWeight; letterSpacing: row.isHeader ? 1.5 : 0 }
                         topPadding: row.isHeader ? 10 : 0
+                    }
+                    Text {
+                        visible: nameText.twoLines
+                        anchors { left: nameText.left; right: nameText.right; top: nameText.bottom; topMargin: -1 }
+                        elide: Text.ElideRight
+                        text: (row.modelData.artist || "").toUpperCase()
+                        color: Theme.primary
+                        font { family: Theme.font; pixelSize: win.fontSize - 6; letterSpacing: 1 }
                     }
                     Text {
                         id: trailing
@@ -1166,12 +1181,14 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                             : (row.modelData.summary !== undefined && row.modelData.summary !== "" && !row.armedNow ? row.modelData.summary
                             : (row.chevron ? Icons.g("chevron-right") : ""))
                         color: tag ? Theme.primary : (row.modelData.keys !== undefined && row.current ? Theme.accent : Theme.dim)
-                        font { family: glyphOnly ? Icons.family : Theme.font; pixelSize: glyphOnly ? win.iconSize - 6 : tag ? win.fontSize - 6 : win.fontSize - 3
-                               letterSpacing: tag ? 1.5 : 0; bold: tag }
+                        font { family: glyphOnly ? Icons.family : Theme.font; pixelSize: glyphOnly ? win.iconSize - 6 : tag ? win.fontSize - 6 : row.modelData.kind === "album" ? win.fontSize - 5 : win.fontSize - 3
+                               letterSpacing: tag ? 1 : 0 }   // tags: normal weight and spacing, the same as an album's artist
                     }
-                    Rectangle {      // green dot: the app has a window open (including one hidden to the background by ⌘W)
+                    Rectangle {      // green dot right after the name: the app has a window open (including one hidden to the background by ⌘W)
+                        id: dot
                         visible: win.appRunning(row.modelData)
-                        anchors { right: parent.right; rightMargin: 18; verticalCenter: parent.verticalCenter }
+                        x: nameText.x + Math.min(nameText.contentWidth, nameText.width) + 10
+                        anchors.verticalCenter: parent.verticalCenter
                         width: 9; height: 9; radius: 5
                         color: Theme.ok
                     }
