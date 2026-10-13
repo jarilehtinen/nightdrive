@@ -12,6 +12,8 @@ padding=10
 margin=10
 width=380
 default-timeout=5000
+# Chromium (web notifications) and nm-applet request expire_timeout=0 (never expire); ignore the app's timeout and always use default-timeout
+ignore-timeout=1
 max-history=50
 anchor=top-right
 

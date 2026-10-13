@@ -5,6 +5,7 @@ import Quickshell
 // The power actions (lock, suspend, log out, reboot, shut down) live in the launcher (⌘Space › Power).
 // Notifications: `makoctl history -j` (summary, app and body text; mako doesn't store a timestamp). "Clear" doesn't empty mako's
 // history; it stores the id of the latest notification (~/.cache/qs-notif-cleared) and everything older is hidden.
+// Mako's ids restart from 1 when mako restarts, so the file also stores mako's PID and is ignored when the PID has changed.
 Column {
     id: m
     width: parent ? parent.width : 300
@@ -27,7 +28,7 @@ Column {
     function refresh() { histProc.running = true; modeProc.running = true }
     Component.onCompleted: { clearedProc.running = true; refresh() }
 
-    Sh { id: clearedProc; command: ["cat", m.clearedFile]; onResult: t => { m.clearedId = parseInt(t) || 0 } }
+    Sh { id: clearedProc; command: ["bash", "-c", 'read -r p i < "$1" && [ "$p" = "$(pgrep -o -x mako)" ] && echo "$i"', "_", m.clearedFile]; onResult: t => { m.clearedId = parseInt(t) || 0 } }
     Sh { id: histProc; command: ["makoctl", "history", "-j"]; onResult: t => { m.items = m.parse(t) } }
     Sh { id: modeProc; command: ["makoctl", "mode"]; onResult: t => { m.dnd = t.indexOf("do-not-disturb") >= 0 } }
     Timer { id: after; interval: 300; onTriggered: m.refresh() }
@@ -96,7 +97,7 @@ Column {
         onClicked: {
             if (!enabled) return
             const top = m.items.length ? m.items[0].id : m.clearedId
-            Quickshell.execDetached(["bash", "-c", 'mkdir -p "$(dirname "$2")"; printf %s "$1" > "$2"', "_", String(top), m.clearedFile])
+            Quickshell.execDetached(["bash", "-c", 'mkdir -p "$(dirname "$2")"; printf "%s %s\\n" "$(pgrep -o -x mako)" "$1" > "$2"', "_", String(top), m.clearedFile])
             m.clearedId = top
         }
     }
