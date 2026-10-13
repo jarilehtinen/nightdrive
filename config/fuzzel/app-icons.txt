@@ -1,5 +1,6 @@
 # App = icon (file icons/<name>.svg). Usage: applied by sync-apps.
-# The icons are made from the Lucide font with gen-icons.py. Remove a line to restore the original icon.
+# The icons are Lucide icons in Fuzzel's text colour (gen-icons.py from the font, or a Lucide SVG with that stroke colour).
+# Remove a line to restore the original icon. A private overlay can add its own in app-icons.local.txt.
 com.onepassword.OnePassword.desktop = key-round
 org.mozilla.firefox.desktop         = globe
 kitty.desktop                       = square-terminal
@@ -8,3 +9,5 @@ webapp-youtube.desktop              = youtube
 deck.desktop                        = music
 org.gnome.Nautilus.desktop           = folder
 net.thunderbird.Thunderbird.desktop = mail
+com.github.wwmm.easyeffects.desktop = sliders-vertical
+org.gnome.Loupe.desktop             = image

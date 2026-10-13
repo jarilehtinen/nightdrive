@@ -7,6 +7,7 @@ import Quickshell.Widgets
 // Launcher (⌘Space). Player row above the search field while Deck is playing (Ctrl+Space = play/pause). Root level: Apps, Passwords, Clipboard, Screenshot, Keybindings, Settings, Install, Remove, Update, Power. Enter opens an item, Esc/Backspace (with an empty query) goes back,
 // at the root level Esc closes. Up/down arrows or Ctrl+N/P/J/K move the selection.
 // Apps: with an empty query, the allow-listed apps; when searching, also those hidden by sync-apps (hidden-apps.sh). See fuzzel/sync-apps, apps-allow.txt.
+// ⌃Enter adds the selected app to Apps or removes it (your choice, ~/.local/state/nightdrive/apps.json).
 // Keybindings: read from ~/.config/hypr/SHORTCUTS.md (the same file as the ⌘⇧K cheat sheet).
 PanelWindow {
     id: win
@@ -64,7 +65,10 @@ PanelWindow {
     readonly property var parents: Object.assign({ shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", package: "install", webapp: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "theme", baropacity: "topbar", baricons: "topbar", barhl: "topbar" }, ext ? ext.parents : {})
     // Search found nothing: hint below ⌘⌥⏎ (icons) → send the text to Claude
     readonly property bool noHit: (level === "root" || level === "apps") && query.trim() !== "" && results.length === 0
-    readonly property string footer: level === "passwords" && pwState === "ready" ? "Enter: password  ·  Shift+Enter: username  ·  Ctrl+Enter: one-time code"
+    // The selected row is an app: ⌃Enter adds it to Apps (shown with an empty query) or removes it from there
+    readonly property var selApp: { const c = results[list.currentIndex]; return (level === "apps" || level === "root") && c && c.kind === "app" ? c : null }
+    readonly property string footer: selApp ? "Enter: open  ·  Ctrl+Enter: " + (selApp.shown ? "remove from Apps" : "add to Apps")
+        : level === "passwords" && pwState === "ready" ? "Enter: password  ·  Shift+Enter: username  ·  Ctrl+Enter: one-time code"
         : extLevel ? ext.footer(level, query)
         : level === "clipboard" ? "Enter: paste  ·  Shift+Enter: copy only"
         : level === "shelf" || level === "curated" ? "Enter: play in Deck"
@@ -234,12 +238,19 @@ PanelWindow {
     // App rows: with an empty query only allow-listed apps; when searching, also those hidden by sync-apps
     function appEntries(q) {
         const all = apps.filter(e => !e.noDisplay).map(e => ({
-            item: { kind: "app", name: e.name, icon: e.icon, entry: e, glyph: monoGlyphs[e.name] },
+            item: { kind: "app", name: e.name, icon: e.icon, entry: e, glyph: monoGlyphs[e.name], shown: true },
             text: e.name,
             extra: (e.genericName || "") + " " + (e.keywords || []).join(" ")
         }))
-        if (q !== "") for (const h of syncHidden) all.push({ item: { kind: "app", name: h.name, icon: h.icon, path: h.path }, text: h.name, extra: h.extra })
-        return all
+        if (q !== "") for (const h of syncHidden) all.push({ item: { kind: "app", name: h.name, icon: h.icon, path: h.path, shown: false }, text: h.name, extra: h.extra })
+        // An app just moved with ⌃Enter: the two sources (DesktopEntries, hidden-apps.sh) update at different moments, so
+        // until its new place shows up the row is kept from the snapshot, and its old place is left out
+        const out = all.filter(a => { const p = pinPending[appId(a.item)]; return !p || p.shown === a.item.shown })
+        for (const id in pinPending) {
+            const p = pinPending[id]
+            if (!out.some(a => appId(a.item) === id) && (p.shown || q !== "")) out.push({ item: p, text: p.name, extra: "" })
+        }
+        return out
     }
 
     function items() {
@@ -386,7 +397,12 @@ PanelWindow {
     }
     readonly property var results: items()
 
+    // The row each level had selected when a sublevel was opened (by name: a search may have been on), so Esc returns to it
+    property var lastSel: ({})
     function go(target) {
+        const cur = results[list.currentIndex]
+        if (cur && cur.name && target !== level && (parents[target] || "root") === level)   // going down one level
+            lastSel[level] = { kind: cur.kind, name: cur.name }
         level = target; input.text = ""; query = ""; armed = ""; playerFocused = false
         hiddenProc.running = true
         if (target === "keys") keysProc.running = true     // re-read SHORTCUTS.md: changes show up immediately
@@ -443,6 +459,44 @@ PanelWindow {
         barhl: ["bar-style", "highlight", "barHl"],
         themecolor: ["theme", "color", ""]
     })
+    // ⌃Enter on an app: the choice goes to ~/.local/state/nightdrive/apps.json ({"shown": [ids], "hidden": [ids]}), then sync-apps
+    // updates the overrides (fuzzel/sync-apps) and the list follows
+    function appId(item) {
+        const id = item.entry ? item.entry.id : item.path.split("/").pop()
+        return id.endsWith(".desktop") ? id : id + ".desktop"
+    }
+    property var pinPending: ({})           // id -> the app's row in its new state, until both sources have caught up
+    function togglePin(item) {
+        keepSelection()
+        const n = Object.assign({}, pinPending)
+        n[appId(item)] = Object.assign({}, item, { shown: !item.shown })
+        pinPending = n
+        pinProc.environment = { "ID": appId(item), "TO": item.shown ? "hidden" : "shown" }
+        pinProc.running = true
+    }
+    // A pending app is done once its new place is in the sources (and its old place is gone); the timer is a fallback
+    function prunePins() {
+        let changed = false
+        const n = Object.assign({}, pinPending)
+        for (const id in n) {
+            const inApps = apps.some(e => !e.noDisplay && appId({ entry: e }) === id)
+            const inHidden = syncHidden.some(h => appId({ path: h.path }) === id)
+            if (n[id].shown ? inApps && !inHidden : inHidden && !inApps) { delete n[id]; changed = true }
+        }
+        if (changed) pinPending = n
+    }
+    onAppsChanged: prunePins()
+    onSyncHiddenChanged: prunePins()
+    Timer { id: pinSettle; interval: 5000; onTriggered: win.pinPending = ({}) }
+    Sh {
+        id: pinProc
+        // The id moves to one list and out of the other; other keys in the file are kept (room for more settings later)
+        script: 'f="$HOME/.local/state/nightdrive/apps.json"; mkdir -p "${f%/*}"; [ -s "$f" ] || echo "{}" > "$f"
+jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden = ((.hidden // []) - [$id]) | .[$to] += [$id]\' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+"$HOME/.config/fuzzel/sync-apps" >/dev/null'
+        onResult: { hiddenProc.running = true; pinSettle.restart() }   // (prunePins runs when the lists change)
+    }
+
     function activate(item) {
         if (!item) return
         if (item.kind === "nav") go(item.target)
@@ -571,9 +625,15 @@ PanelWindow {
     function keepSelection() { const i = list.currentIndex; Qt.callLater(() => { list.currentIndex = i }) }
     // Selects the first row matching pred (e.g. a setting's current value), if any
     function selectWhere(pred) { const i = results.findIndex(pred); if (i >= 0) list.currentIndex = i }
-    function back() { if (level === "root") win.open = false; else go(parents[level] || "root") }
+    function back() {
+        if (level === "root") { win.open = false; return }
+        go(parents[level] || "root")
+        const sel = lastSel[level]
+        const i = sel ? results.findIndex(r => r.kind === sel.kind && r.name === sel.name) : -1
+        if (i >= 0) list.currentIndex = i
+    }
 
-    onOpenChanged: if (open) { lastMouse = null; spotify = null; if (ext) ext.opened(); go("root"); deckProc.running = true; musicProc.running = true; bgProc.running = true; updatesProc.running = true; input.forceActiveFocus() }
+    onOpenChanged: if (open) { lastMouse = null; spotify = null; lastSel = ({}); if (ext) ext.opened(); go("root"); deckProc.running = true; musicProc.running = true; bgProc.running = true; updatesProc.running = true; input.forceActiveFocus() }
     Component.onCompleted: keysProc.running = true
 
     Timer { id: disarm; interval: 4000; onTriggered: win.armed = "" }
@@ -1007,6 +1067,7 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                             const cur = win.results[list.currentIndex]
                             if (win.level === "passwords" && cur && cur.kind === "pw" && (event.modifiers & Qt.ShiftModifier)) win.copyField(cur, "username")
                             else if (win.level === "passwords" && cur && cur.kind === "pw" && ctrl) win.copyField(cur, "otp")
+                            else if (win.selApp && ctrl) win.togglePin(cur)
                             else if (win.extLevel && cur && (event.modifiers & Qt.ShiftModifier)) win.extShift(cur)
                             else if (win.level === "clipboard" && cur && cur.kind === "clip" && (event.modifiers & Qt.ShiftModifier)) win.clipPick(cur, false)
                             else if (win.level === "emoji" && cur && cur.kind === "emoji" && (event.modifiers & Qt.ShiftModifier)) win.emojiPick(cur, false)

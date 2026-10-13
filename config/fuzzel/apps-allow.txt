@@ -1,5 +1,6 @@
 # Apps shown in the Fuzzel menu (⌘Space). Everything else is hidden.
 # One .desktop ID per line; # starts a comment. Update the menu by running: ~/.config/fuzzel/sync-apps
+# A private overlay can add its own in apps-allow.local.txt (same format, git-ignored).
 com.onepassword.OnePassword.desktop   # 1Password
 org.mozilla.firefox.desktop           # Firefox
 kitty.desktop                         # kitty
@@ -11,3 +12,5 @@ webapp-youtube.desktop                # YouTube
 deck.desktop                         # Deck (Spotify)
 org.gnome.Nautilus.desktop           # Files
 net.thunderbird.Thunderbird.desktop  # Thunderbird
+com.github.wwmm.easyeffects.desktop  # Easy Effects (headphone EQ)
+org.gnome.Loupe.desktop              # Image Viewer

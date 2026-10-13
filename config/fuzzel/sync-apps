@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Tidies the Fuzzel menu: shows only the apps in apps-allow.txt and gives them the icons from app-icons.txt.
+"""Tidies the Fuzzel menu: shows only the apps in apps-allow.txt and gives them the icons from app-icons.txt
+(plus a private overlay's apps-allow.local.txt / app-icons.local.txt), and the user's own choices from the launcher
+(⌃Enter in Apps: ~/.local/state/nightdrive/apps.json, {"shown": [ids], "hidden": [ids]}, on top of the lists).
 
 Hiding and icons are done with overrides in ~/.local/share/applications/<id>.desktop (a copy of the original), so
 system files are never touched and no apps are removed. Overrides are marked with a comment, and the script removes
@@ -7,13 +9,15 @@ them once they are no longer needed. In your own .desktop files (e.g. webapp-*) 
 value is kept in an X-Original-Icon line and restored when the line is removed from app-icons.txt.
 Run again after installing new apps or editing the lists.
 """
-import glob, os, re, subprocess, sys
+import glob, json, os, re, subprocess, sys
 
 HOME = os.path.expanduser("~")
 HERE = os.path.dirname(os.path.realpath(__file__))
 USER_DIR = HOME + "/.local/share/applications"
 SYS_DIRS = ["/usr/share/applications", "/usr/local/share/applications"]   # later one wins
 MARK = "# managed by fuzzel/sync-apps"
+HIDE_KEY = "X-Nightdrive-Hidden"   # own files (webapp-*) hidden from the launcher: NoDisplay is added and removed with this
+CHOICES = HOME + "/.local/state/nightdrive/apps.json"
 
 
 def entry_section(text):
@@ -57,8 +61,10 @@ def restore_icon(text):
 
 
 def read_list(name):
+    """key = value lines of <name>.txt and of a private overlay's <name>.local.txt (if it exists)."""
     out = {}
-    for line in open(f"{HERE}/{name}", encoding="utf-8"):
+    paths = [f"{HERE}/{name}.txt", f"{HERE}/{name}.local.txt"]
+    for line in (l for p in paths if os.path.exists(p) for l in open(p, encoding="utf-8")):
         line = line.split("#", 1)[0].strip()
         if not line: continue
         k, _, v = line.partition("=")
@@ -66,9 +72,14 @@ def read_list(name):
     return out
 
 
-allow = {l.split("#")[0].strip() for l in open(HERE + "/apps-allow.txt", encoding="utf-8") if l.split("#")[0].strip()}
+allow = set(read_list("apps-allow"))
+try: choices = json.load(open(CHOICES, encoding="utf-8"))
+except (OSError, ValueError): choices = {}
+allow |= set(choices.get("shown", []))
+unpinned = set(choices.get("hidden", []))
+allow -= unpinned
 icons = {}
-for id_, name in read_list("app-icons.txt").items():
+for id_, name in read_list("app-icons").items():
     path = f"{HERE}/icons/{name}.svg"
     if os.path.exists(path): icons[id_] = path
     else: print(f"Warning: icon not found: {path}", file=sys.stderr)
@@ -103,12 +114,18 @@ for id_, path in sorted(sysdefs.items()):
         open(target, "w", encoding="utf-8").write(MARK + "\n" + edit(text, remove=("NoDisplay",), add=("NoDisplay=true",)))
         hidden.append(name)
 
-# 2) Own files (e.g. webapp-*): Icon= line only
+# 2) Own files (e.g. webapp-*): the Icon= line, and hidden only when removed from Apps in the launcher
 for f in sorted(glob.glob(USER_DIR + "/*.desktop")):
     id_ = os.path.basename(f)
     text = read(f)
     if MARK in text: continue
     kv = entry_keys(text)
+    if id_ in unpinned and kv.get(HIDE_KEY) != "true":
+        text = edit(text, remove=("NoDisplay",), add=("NoDisplay=true", f"{HIDE_KEY}=true"))
+        open(f, "w", encoding="utf-8").write(text); kv = entry_keys(text); hidden.append(kv.get("Name", id_))
+    elif id_ not in unpinned and kv.get(HIDE_KEY) == "true":
+        text = edit(text, remove=("NoDisplay", HIDE_KEY))
+        open(f, "w", encoding="utf-8").write(text); kv = entry_keys(text)
     if id_ in icons:
         new = with_icon(text, icons[id_])
         if new != text: open(f, "w", encoding="utf-8").write(new)

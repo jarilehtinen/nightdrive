@@ -214,6 +214,7 @@ The full list is in [`config/hypr/SHORTCUTS.md`](config/hypr/SHORTCUTS.md).
   | `config/hypr/local.d/*.lua` | autostart entries, window rules, keybindings |
   | `config/hypr/background-apps.local`, `SHORTCUTS.local.md` | more background apps, your own entries in the shortcut list |
   | `config/quickshell/local/` | `<Name>Menu.qml` bar menus, and `LauncherExtension.qml` for your own launcher levels |
+  | `config/fuzzel/apps-allow.local.txt`, `app-icons.local.txt` | more apps shown in the launcher, and their monochrome icons |
   | `config/topbar/local.modules.jsonc`, `status.local`, `local.adjust.conf` | your own bar modules (at the left end of the icons), their status and icon sizes |
 
 ## How it fits together
