@@ -92,6 +92,7 @@ Column {
                 required property var modelData
                 width: parent.width
                 height: 28
+                interactive: false
                 icon: "thermometer"
                 label: modelData.label
                 detail: modelData.c + " °C"
@@ -102,6 +103,7 @@ Column {
             visible: m.d !== null && m.d.batStatus !== ""
             width: parent.width
             height: 28
+            interactive: false
             icon: "battery"
             label: "Charge"
             detail: m.d ? m.d.batPct + " % · " + m.d.batStatus.toLowerCase() + (m.d.watts > 0 ? " · " + m.d.watts + " W" : "") : ""
@@ -124,6 +126,7 @@ Column {
                 required property var modelData
                 width: parent.width
                 height: 28
+                interactive: false
                 label: modelData.name
                 detail: modelData.cpu.toFixed(1) + " %  ·  " + m.mb(modelData.rss)
                 active: modelData.cpu >= 50

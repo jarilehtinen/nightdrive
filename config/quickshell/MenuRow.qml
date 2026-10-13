@@ -13,12 +13,15 @@ Rectangle {
     function navActivate() { row.clicked() }
     property bool action: false        // action button (Open …): uppercase, smaller font
     property bool busy: false          // in progress (connecting …): animated dots instead of the detail text
+    property bool interactive: true    // false: an information row (no hover, not clickable, skipped by the keyboard, no side padding)
+    readonly property bool navEnabled: interactive
+    readonly property int pad: interactive ? 10 : 0
     signal clicked()
     signal rightClicked()
 
     height: 34
     radius: 5
-    color: area.containsMouse || navSelected ? Theme.hover : (active ? Theme.sel : "transparent")
+    color: (area.containsMouse && interactive) || navSelected ? Theme.hover : (active && interactive ? Theme.sel : "transparent")
     border { width: navSelected ? 1 : 0; color: Theme.primary }
 
     readonly property color fg: danger ? Theme.danger : (active ? Theme.accent : Theme.text)
@@ -26,7 +29,7 @@ Rectangle {
     Text {
         id: ic
         visible: row.icon !== ""
-        anchors { left: parent.left; leftMargin: 10; verticalCenter: parent.verticalCenter }
+        anchors { left: parent.left; leftMargin: row.pad; verticalCenter: parent.verticalCenter }
         width: 20
         horizontalAlignment: Text.AlignHCenter
         text: Icons.g(row.icon)
@@ -35,7 +38,7 @@ Rectangle {
     }
     Text {
         anchors {
-            left: ic.visible ? ic.right : parent.left; leftMargin: ic.visible ? 10 : 12
+            left: ic.visible ? ic.right : parent.left; leftMargin: ic.visible ? 10 : (row.interactive ? 12 : 0)
             right: trailing.left; rightMargin: 8
             verticalCenter: parent.verticalCenter
         }
@@ -46,7 +49,7 @@ Rectangle {
     }
     Row {
         id: trailing
-        anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
+        anchors { right: parent.right; rightMargin: row.pad; verticalCenter: parent.verticalCenter }
         spacing: 8
         BusyDots {
             visible: row.busy
@@ -68,6 +71,7 @@ Rectangle {
         }
     }
     MouseArea {
+        enabled: row.interactive
         cursorShape: Qt.PointingHandCursor
         id: area
         anchors.fill: parent
