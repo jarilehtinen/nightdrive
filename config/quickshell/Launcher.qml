@@ -41,7 +41,7 @@ PanelWindow {
     property var spotify: null                // Music › Search: { query, artists, albums, error } (deck search --json)
     property var artist: ({ id: "", name: "", albums: null })   // Music › Search › an artist's albums
     property bool clipLoaded: false
-    property var wallList: []                 // Settings › Background: [{ path, thumb, name, group }] (hypr/scripts/wallpaper list)
+    property var wallList: []                 // Settings › Background: [{ path, thumb, name, group, own }] (hypr/scripts/wallpaper list)
     property bool wallLoaded: false
     property string wallCurrent: ""           // current wallpaper
     property int barOpacity: -1               // Settings › Top bar opacity: current value (hypr/scripts/bar-style), -1 = not read yet
@@ -516,11 +516,10 @@ PanelWindow {
         ext.shiftActivate(item)
     }
     // ⌘⌫ in Background (bindings.lua → IPC deleteSelected): a second press moves your own image to the trash.
-    // Only images in ~/Pictures/Wallpapers; bundled ones can't be deleted.
-    readonly property string ownWallDir: Quickshell.env("HOME") + "/Pictures/Wallpapers/"
+    // Only your own images (~/Pictures/Wallpapers, `own` from hypr/scripts/wallpaper list); bundled ones can't be deleted.
     function deleteWall() {
         const item = results[list.currentIndex]
-        if (!item || item.kind !== "wall" || !item.path.startsWith(ownWallDir)) { shake.restart(); return }
+        if (!item || item.kind !== "wall" || !item.own) { shake.restart(); return }
         const key = "del:" + item.path
         if (armed !== key) { armed = key; disarm.restart(); return }
         armed = ""
@@ -687,7 +686,7 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
             const lines = text.split("\n").filter(l => l !== "")
             win.wallCurrent = lines.length ? lines[0] : ""
             win.wallList = lines.slice(1).map(l => l.split("\t")).filter(f => f.length >= 4)
-                .map(f => ({ path: f[0], thumb: f[1], name: f[2], group: f[3] }))
+                .map(f => ({ path: f[0], thumb: f[1], name: f[2], group: f[3], own: f[4] === "1" }))
             const first = !win.wallLoaded
             win.wallLoaded = true
             // On open, select the current wallpaper

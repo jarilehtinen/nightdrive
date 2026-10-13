@@ -1,5 +1,5 @@
 #!/bin/bash
-# screenshot region   → region: saved to ~/Pictures/Screenshots and the clipboard (launcher → Screenshot)
+# screenshot region   → region: saved to ~/Pictures/Screenshots (the localised Pictures folder) and the clipboard (launcher → Screenshot)
 # screenshot window   → click a window on the current workspace: saved and to the clipboard (launcher)
 # screenshot full     → whole screen: saved and to the clipboard (launcher)
 # screenshot clip     → region to the clipboard only, no file (⌘R)
@@ -25,7 +25,9 @@ case "$mode" in
            notify-send "Screenshot" "Window copied to clipboard"; exit 0 ;;
 esac
 
-file=~/Pictures/Screenshots/$(date +%Y-%m-%d_%H-%M-%S).png
+dir="$(xdg-user-dir PICTURES)/Screenshots"   # e.g. ~/Kuvat on a Finnish system
+mkdir -p "$dir"
+file=$dir/$(date +%Y-%m-%d_%H-%M-%S).png
 case "$mode" in
   region) geom=$(slurp) || exit 0;        grim -g "$geom" "$file" ;;
   window) geom=$(pick_window) || exit 0;  grim -g "$geom" "$file" ;;
