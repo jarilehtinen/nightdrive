@@ -37,6 +37,7 @@ PanelWindow {
     property string pwState: "idle"           // idle | loading | ready | error
     property string pwError: ""
     property var clipItems: []                // Clipboard: cliphist history
+    property var musicAlbums: []              // Music: Deck's shelf and Curated albums [{ uri, name, artist, year, list }]
     property bool clipLoaded: false
     property var wallList: []                 // Settings › Background: [{ path, thumb, name, group }] (hypr/scripts/wallpaper list)
     property bool wallLoaded: false
@@ -56,12 +57,13 @@ PanelWindow {
     property string extSource: ""             // shell.qml sets this when the file exists
     readonly property var ext: extLoader.item
     readonly property bool extLevel: ext !== null && ext.levels.indexOf(level) >= 0
-    readonly property var parents: Object.assign({ package: "install", webapp: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "theme", baropacity: "topbar", baricons: "topbar", barhl: "topbar" }, ext ? ext.parents : {})
+    readonly property var parents: Object.assign({ shelf: "music", curated: "music", package: "install", webapp: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "theme", baropacity: "topbar", baricons: "topbar", barhl: "topbar" }, ext ? ext.parents : {})
     // Search found nothing: hint below ⌘⌥⏎ (icons) → send the text to Claude
     readonly property bool noHit: (level === "root" || level === "apps") && query.trim() !== "" && results.length === 0
     readonly property string footer: level === "passwords" && pwState === "ready" ? "Enter: password  ·  Shift+Enter: username  ·  Ctrl+Enter: one-time code"
         : extLevel ? ext.footer(level, query)
         : level === "clipboard" ? "Enter: paste  ·  Shift+Enter: copy only"
+        : level === "shelf" || level === "curated" ? "Enter: play in Deck"
         : level === "emoji" ? "Enter: paste  ·  Shift+Enter: copy only  ·  search in English or Finnish"
         : level === "webname" && query.trim() !== "" ? "Enter: continue to the address"
         : level === "webaddr" && query.trim() !== "" ? "Enter creates the webapp" : ""
@@ -73,7 +75,7 @@ PanelWindow {
     readonly property var deckLiked: deckOverride.liked !== undefined ? deckOverride.liked : (deckInfo ? deckInfo.liked : null)
     signal openMenu(string name)              // Settings: opens a Quickshell menu (wifi, bluetooth, ...)
 
-    readonly property var titles: Object.assign({ apps: "Apps", keys: "Keybindings", screenshot: "Screenshot", settings: "Settings", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
+    readonly property var titles: Object.assign({ apps: "Apps", music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", keys: "Keybindings", screenshot: "Screenshot", settings: "Settings", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
                                      topbar: "Settings › Theme › Top bar", baropacity: "Theme › Top bar › Opacity", baricons: "Theme › Top bar › Icon colors", barhl: "Theme › Top bar › Highlight",
                                      install: "Install", emoji: "Emoji", package: "Install › Package", webapp: "Install › Webapp", webname: "Install › Webapp › Name", webaddr: "Install › Webapp › Address", remove: "Remove", power: "Power", passwords: "Passwords", clipboard: "Clipboard",
                                      tools: "Tools" }, ext ? ext.titles : {})
@@ -97,6 +99,7 @@ PanelWindow {
         { kind: "nav", name: "Clipboard", glyph: "clipboard-list", target: "clipboard" },
         { kind: "nav", name: "Emoji", glyph: "smile", target: "emoji" },
         { kind: "nav", name: "Screenshot", glyph: "camera", target: "screenshot" },
+        { kind: "nav", name: "Music", glyph: "disc-3", target: "music" },
     ].concat(ext ? ext.rootItems : [], [
         { kind: "nav", name: "Tools", glyph: "wrench", target: "tools" },
         { kind: "nav", name: "Keybindings", glyph: "keyboard", target: "keys" },
@@ -251,7 +254,9 @@ PanelWindow {
                 // Power actions ("shut" → Shut down)
                 statics.power.map(t => ({ item: t, text: t.name, extra: powerAliases[t.name] || "" })),
                 // Apps ("1pas" → 1Password), but none named like a root item (e.g. a webapp that would duplicate a menu of the same name)
-                appEntries(q).filter(a => !rootItems.some(r => r.name.toLowerCase() === a.text.toLowerCase()))
+                appEntries(q).filter(a => !rootItems.some(r => r.name.toLowerCase() === a.text.toLowerCase())),
+                // Deck's albums ("fm-84" → Atlas)
+                musicAlbums.map(a => ({ item: albumItem(a), text: a.name, extra: a.artist }))
             ]) all = all.concat(src)
         } else if (level === "apps") {
             all = appEntries(q)
@@ -275,6 +280,16 @@ PanelWindow {
             const r = ext.items(level, q)
             if (!r.all) return r          // ready-made rows (hints, etc.)
             all = r.all                   // [{ item, text, extra }], filtered by the query below
+        } else if (level === "music") {
+            const count = list => musicAlbums.filter(a => a.list === list).length
+            all = [{ kind: "nav", name: "Album Shelf", glyph: "library-big", target: "shelf", summary: String(count("shelf")) },
+                   { kind: "nav", name: "Curated", glyph: "sparkles", target: "curated", summary: String(count("curated")) }]
+                .map(r => ({ item: r, text: r.name }))
+        } else if (level === "shelf" || level === "curated") {
+            const albums = musicAlbums.filter(a => a.list === level)
+            if (albums.length === 0) return hint(level === "shelf" ? "The shelf is empty: add albums in Deck with a"
+                                                                  : "No Curated list yet: `deck curate` suggests albums based on what you play")
+            all = albums.map(a => ({ item: albumItem(a), text: a.name, extra: a.artist + " " + (a.year || "") }))
         } else if (level === "clipboard") {
             if (!clipLoaded) return [{ kind: "hint", name: "Loading clipboard history…" }]
             if (clipItems.length === 0) return [{ kind: "hint", name: "Clipboard history is empty" }]
@@ -400,6 +415,7 @@ PanelWindow {
             else if (item.entry) item.entry.execute(); else Quickshell.execDetached(["gio", "launch", item.path])
         }
         else if (item.kind === "clip") clipPick(item, true)
+        else if (item.kind === "album") { win.open = false; Quickshell.execDetached([scripts + "/deck-play", item.uri]) }
         else if (item.kind === "emoji") emojiPick(item, true)
         else if (live[item.kind]) {           // stays open: values can be tried one after another (theme colors recolor the launcher immediately)
             const [script, verb, prop] = live[item.kind]
@@ -507,7 +523,7 @@ PanelWindow {
     function selectWhere(pred) { const i = results.findIndex(pred); if (i >= 0) list.currentIndex = i }
     function back() { if (level === "root") win.open = false; else go(parents[level] || "root") }
 
-    onOpenChanged: if (open) { lastMouse = null; if (ext) ext.opened(); go("root"); deckProc.running = true; bgProc.running = true; input.forceActiveFocus() }
+    onOpenChanged: if (open) { lastMouse = null; if (ext) ext.opened(); go("root"); deckProc.running = true; musicProc.running = true; bgProc.running = true; input.forceActiveFocus() }
     Component.onCompleted: keysProc.running = true
 
     Timer { id: disarm; interval: 4000; onTriggered: win.armed = "" }
@@ -591,6 +607,17 @@ PanelWindow {
         id: extLoader
         source: win.extSource
         onLoaded: item.launcher = win
+    }
+    // Music: Deck's shelf (sorted by artist and year, like in Deck) and the Curated list; read on every open
+    function albumItem(a) {
+        return { kind: "album", name: a.name, summary: a.artist + (a.year ? "  ·  " + a.year : ""), glyph: "disc-3", uri: a.uri }
+    }
+    Sh {
+        id: musicProc
+        script: 'd="$HOME/.config/deck"; s=$(cat "$d/shelf.json" 2>/dev/null || echo "[]"); c=$(cat "$d/curated.json" 2>/dev/null || echo "{}")
+jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downcase), .year) | .[] | {uri, name, artist, year, list: "shelf"}),
+  ($c.albums // [] | .[] | {uri, name, artist, year, list: "curated"})]\''
+        onResult: text => { try { win.musicAlbums = JSON.parse(text) } catch (e) { win.musicAlbums = [] } }
     }
     // Settings › Background: wallpapers and their previews (the script creates missing previews the first time)
     Sh {

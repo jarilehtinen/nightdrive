@@ -1,0 +1,11 @@
+#!/bin/bash
+# deck-play <spotify:album:…>: plays an album from Deck's shelf or Curated list (the launcher's Music level).
+# Starts Deck first if it isn't running, and waits for its control socket.
+uri=${1:?usage: deck-play <spotify:album:…>}
+deck="$HOME/.local/bin/deck"
+sock="${XDG_RUNTIME_DIR:-/tmp}/deck/control.sock"
+if [[ ! -S $sock ]]; then
+  "$(dirname "$(readlink -f "$0")")/deck-open" &
+  for _ in $(seq 50); do [[ -S $sock ]] && break; sleep 0.2; done
+fi
+"$deck" ctl play-album "$uri" || notify-send -a Deck "Couldn't play the album" "Is Deck installed and signed in?"
