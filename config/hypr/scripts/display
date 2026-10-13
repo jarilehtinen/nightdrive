@@ -1,0 +1,31 @@
+#!/bin/bash
+# Display scale (launcher Settings › Display). Chosen scales: ~/.local/state/nightdrive/display ("<output> <scale>" per line),
+# which hyprland.lua reads on every (re)load, so a choice survives a reboot and wins over MONITOR_SCALE and local.lua.
+#   display list              one line per output: name, description, current scale, then "scale:width×height" for every scale
+#                             that divides the panel evenly (Hyprland adjusts any other value, which blurs text)
+#   display scale <out> <s>   saves the scale for that output and reloads Hyprland
+set -euo pipefail
+state="$HOME/.local/state/nightdrive/display"
+
+case ${1:-} in
+  list)
+    hyprctl -j monitors | jq -r '.[] | [.name, (.description | if . == "" then "-" else . end), .width, .height, .scale] | @tsv' |
+    while IFS=$'\t' read -r name desc w h cur; do
+      # Candidates the panel divides into whole pixels; 1.333 is 4/3, 1.667 is 5/3
+      opts=$(awk -v w="$w" -v h="$h" '
+        function whole(x) { x -= int(x + 0.5); return x > -0.01 && x < 0.01 }
+        BEGIN {
+          n = split("1 1.2 1.25 1.333333 1.5 1.6 1.666667 1.75 2 2.4 2.5 3", s, " ")
+          for (i = 1; i <= n; i++)
+            if (w / s[i] >= 800 && h / s[i] >= 600 && whole(w / s[i]) && whole(h / s[i])) printf "\t%s:%d×%d", s[i], w / s[i] + 0.5, h / s[i] + 0.5
+        }')
+      printf '%s\t%s\t%s%s\n' "$name" "$desc" "$cur" "$opts"
+    done ;;
+  scale)
+    out=${2:?output}; s=${3:?scale}
+    [[ $s =~ ^[0-9]+(\.[0-9]+)?$ ]] || { echo "bad scale: $s" >&2; exit 1; }
+    mkdir -p "${state%/*}"
+    { grep -v "^$out " "$state" 2>/dev/null || true; echo "$out $s"; } > "$state.tmp" && mv "$state.tmp" "$state"
+    hyprctl reload >/dev/null ;;
+  *) sed -n '2,6p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+esac

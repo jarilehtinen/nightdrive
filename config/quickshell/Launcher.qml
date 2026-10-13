@@ -48,6 +48,7 @@ PanelWindow {
     property string barIcons: ""              // Settings › Top bar icons: light | dark
     property int barIconOp: -1                // icon and text opacity
     property string barHl: ""                 // Settings › Theme › Top bar › Highlight: theme | white | black
+    property var displays: null               // Settings › Display: [{ name, desc, scale, opts: [{ value, size }] }] (hypr/scripts/display list)
     property var themeList: []                // Settings › Theme › Color: [{ value, name, swatch, current }] (hypr/scripts/theme list)
     readonly property bool grid: level === "background"   // wallpapers as a grid, other levels as a list
     readonly property int gridCols: 2
@@ -59,7 +60,7 @@ PanelWindow {
     property string extSource: ""             // shell.qml sets this when the file exists
     readonly property var ext: extLoader.item
     readonly property bool extLevel: ext !== null && ext.levels.indexOf(level) >= 0
-    readonly property var parents: Object.assign({ shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", package: "install", webapp: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "theme", baropacity: "topbar", baricons: "topbar", barhl: "topbar" }, ext ? ext.parents : {})
+    readonly property var parents: Object.assign({ shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", package: "install", webapp: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "theme", baropacity: "topbar", baricons: "topbar", barhl: "topbar" }, ext ? ext.parents : {})
     // Search found nothing: hint below ⌘⌥⏎ (icons) → send the text to Claude
     readonly property bool noHit: (level === "root" || level === "apps") && query.trim() !== "" && results.length === 0
     readonly property string footer: level === "passwords" && pwState === "ready" ? "Enter: password  ·  Shift+Enter: username  ·  Ctrl+Enter: one-time code"
@@ -77,7 +78,7 @@ PanelWindow {
     readonly property var deckLiked: deckOverride.liked !== undefined ? deckOverride.liked : (deckInfo ? deckInfo.liked : null)
     signal openMenu(string name)              // Settings: opens a Quickshell menu (wifi, bluetooth, ...)
 
-    readonly property var titles: Object.assign({ apps: "Apps", music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", musicsearch: "Music › Search", artist: "Music › " + artist.name, keys: "Keybindings", screenshot: "Screenshot", settings: "Settings", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
+    readonly property var titles: Object.assign({ apps: "Apps", music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", musicsearch: "Music › Search", artist: "Music › " + artist.name, keys: "Keybindings", screenshot: "Screenshot", settings: "Settings", display: "Settings › Display", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
                                      topbar: "Settings › Theme › Top bar", baropacity: "Theme › Top bar › Opacity", baricons: "Theme › Top bar › Icon colors", barhl: "Theme › Top bar › Highlight",
                                      install: "Install", emoji: "Emoji", package: "Install › Package", webapp: "Install › Webapp", webname: "Install › Webapp › Name", webaddr: "Install › Webapp › Address", remove: "Remove", power: "Power", passwords: "Passwords", clipboard: "Clipboard",
                                      tools: "Tools" }, ext ? ext.titles : {})
@@ -135,6 +136,7 @@ PanelWindow {
             { kind: "menu", name: "Bluetooth", glyph: "bluetooth", target: "bluetooth" },
             { kind: "menu", name: "Sound", glyph: "volume-2", target: "volume" },
             { kind: "menu", name: "Battery & display", glyph: "battery-medium", target: "battery" },
+            { kind: "nav", name: "Display", glyph: "monitor", target: "display" },
             { kind: "menu", name: "Tailscale", glyph: "shield-check", target: "tailscale" },
             { kind: "nav", name: "Theme", glyph: "palette", target: "theme" }
         ],
@@ -148,6 +150,7 @@ PanelWindow {
     })
 
     readonly property var settingsAliases: ({ "Wi-Fi": "wifi wlan network internet", "Sound": "audio volume output speakers", "Battery & display": "power brightness screen",
+                                              "Display": "scale scaling resolution monitor screen retina hidpi zoom size bigger smaller",
                                               "Tailscale": "vpn", "Theme": "appearance style look colors",
                                               "Color": "theme accent violet purple blue teal green amber rose graphite gray",
                                               "Background": "wallpaper desktop image picture",
@@ -325,6 +328,19 @@ PanelWindow {
             const vals = /^\d+$/.test(query.trim()) && n <= 100 ? [n] : [100, 90, 80, 70, 60, 50, 40, 30, 20, 10, 0]
             return vals.map(v => ({ kind: "baropacity", value: v, name: v + " %", glyph: v === barOpacity ? "check" : "panel-top",
                                     summary: v === barOpacity ? "current" : (v === 100 ? "opaque" : v === 0 ? "transparent" : undefined) }))
+        } else if (level === "display") {
+            // Scales the panel divides evenly, shown as the resulting desktop size ("looks like" in macOS); current one marked
+            if (displays === null) return hint("Loading…")
+            const out = []
+            for (const d of displays) {
+                if (displays.length > 1) out.push({ kind: "header", name: d.name + (d.desc !== "-" ? "  " + d.desc : "") })
+                for (const o of d.opts) {
+                    const cur = Math.abs(o.value - d.scale) < 0.01
+                    out.push({ kind: "scale", output: d.name, value: o.value, name: o.size, glyph: cur ? "check" : "monitor",
+                               summary: (cur ? "current · " : "") + "scale " + +o.value.toFixed(2) })
+                }
+            }
+            return out
         } else if (level === "theme") {
             all = themeItems().map(t => ({ item: t, text: t.name, extra: settingsAliases[t.name] || "" }))
         } else if (level === "themecolor") {
@@ -380,6 +396,7 @@ PanelWindow {
         if (target === "background") wallProc.running = true
         if (target === "topbar" || target === "baropacity" || target === "baricons" || target === "barhl") barProc.running = true
         if (target === "theme" || target === "themecolor") themeProc.running = true
+        if (target === "display") displayProc.running = true
         if (ext && ext.levels.indexOf(target) >= 0) ext.entered(target)
         if (target === "passwords") { pwState = pwItems.length ? "ready" : "loading"; pwProc.running = true }
     }
@@ -444,6 +461,11 @@ PanelWindow {
         }
         else if (item.kind === "decksearch") { win.open = false; Quickshell.execDetached([scripts + "/deck-ctl", "search", item.value]) }
         else if (item.kind === "emoji") emojiPick(item, true)
+        else if (item.kind === "scale") {     // stays open like the theme rows; Hyprland reloads with the new scale
+            keepSelection()
+            displays = displays.map(d => d.name === item.output ? Object.assign({}, d, { scale: item.value }) : d)
+            Quickshell.execDetached([scripts + "/display", "scale", item.output, String(item.value)])
+        }
         else if (live[item.kind]) {           // stays open: values can be tried one after another (theme colors recolor the launcher immediately)
             const [script, verb, prop] = live[item.kind]
             keepSelection()
@@ -701,6 +723,17 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
             win.themeList = text.split("\n").map(l => l.split("\t")).filter(f => f.length >= 3)
                 .map(f => ({ value: f[0], name: f[1], swatch: f[2], current: f[3] === "current" }))
             if (win.level === "themecolor" && win.query === "") win.selectWhere(r => r.value === (win.themeList.find(t => t.current) || {}).value)
+        }
+    }
+    // Settings › Display: outputs and their even scales; select the current one
+    Sh {
+        id: displayProc
+        script: '"$HOME/.config/hypr/scripts/display" list'
+        onResult: text => {
+            win.displays = text.split("\n").map(l => l.split("\t")).filter(f => f.length >= 4).map(f => ({
+                name: f[0], desc: f[1], scale: parseFloat(f[2]),
+                opts: f.slice(3).map(o => { const [v, size] = o.split(":"); return { value: parseFloat(v), size: size.replace("×", " × ") } }) }))
+            if (win.level === "display" && win.query === "") win.selectWhere(r => r.kind === "scale" && r.summary.startsWith("current"))
         }
     }
     // Settings › Top bar opacity / icons: current values; select the current one

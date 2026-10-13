@@ -51,7 +51,8 @@ you walk through the menus with the arrow keys.
 
 Pick from seven theme colours: Violet, Blue, Teal, Green, Amber, Rose or Graphite. The colour changes the menus, launcher,
 window borders, notifications, lock screen and top bar at once. Two synthwave wallpapers come with it, and you can add your own.
-The top bar's opacity, icon colours and highlight colour are all settings in the launcher.
+The top bar's opacity, icon colours and highlight colour are all settings in the launcher, and so is the display scale
+(Settings › Display, for each screen).
 
 ![Settings › Theme › Color with Teal selected](docs/screenshots/themes.jpg)
 
@@ -143,8 +144,8 @@ You can try the whole setup in an aarch64 **Fedora 44** VM on any Apple Silicon 
 6. To use ⌘ as Super inside the VM, set Parallels' VM settings › Hardware › Mouse & Keyboard › *Send macOS system shortcuts*
    to *Always*.
 
-`--vm` skips the notch step and writes `config/hypr/local.lua` with scale 2.0 (for *Best for Retina display*; use 1.0 for
-*Scaled*), a software cursor and the rounded-corner shader off. It must be Fedora 44, because the Hyprland COPR builds only for
+`--vm` skips the notch step and writes `config/hypr/local.lua` with scale 2.0 (for *Best for Retina display*; pick 1.0 in the
+launcher's Settings › Display for *Scaled*), a software cursor and the rounded-corner shader off. It must be Fedora 44, because the Hyprland COPR builds only for
 that release. Containers won't work, since Hyprland needs a GPU. Parallels passes the Mac's battery to the VM; without a
 display or keyboard backlight their sliders are left out.
 </details>
@@ -173,8 +174,9 @@ The full list is in [`config/hypr/SHORTCUTS.md`](config/hypr/SHORTCUTS.md).
 
 ## Make it yours
 
-- **Machine settings.** The display scale and keyboard layout (Finnish Mac) are at the top of
-  [`config/hypr/hyprland.lua`](config/hypr/hyprland.lua). These are the first things to change.
+- **Machine settings.** The keyboard layout (Finnish Mac) and the default display scale are at the top of
+  [`config/hypr/hyprland.lua`](config/hypr/hyprland.lua). These are the first things to change. A scale picked in the
+  launcher (Settings › Display) wins over the default.
 - **Per-machine overrides** go to `config/hypr/local.lua`, which git ignores.
 - **Keybindings** are all in [`config/hypr/bindings.lua`](config/hypr/bindings.lua).
 - **Web apps** are listed in [`config/webapps.txt`](config/webapps.txt). Apps that ⌘W should only hide are in

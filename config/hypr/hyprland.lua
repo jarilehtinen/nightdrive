@@ -25,6 +25,16 @@ hl.monitor({
     position = "auto",
     scale    = MONITOR_SCALE,
 })
+-- Scales chosen in the launcher (Settings › Display, hypr/scripts/display): "<output> <scale>" per line.
+-- A named output's rule wins over the "" rules above and in local.lua.
+local scales = io.open(HOME .. "/.local/state/nightdrive/display")
+if scales then
+    for line in scales:lines() do
+        local output, scale = line:match("^(%S+)%s+([%d.]+)$")
+        if output then hl.monitor({ output = output, mode = "preferred", position = "auto", scale = tonumber(scale) }) end
+    end
+    scales:close()
+end
 
 -------------------
 ---- AUTOSTART ----
