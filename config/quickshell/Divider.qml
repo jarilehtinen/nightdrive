@@ -8,5 +8,5 @@ Item {
     property int padBottom: pad
     width: parent ? parent.width : 0
     height: 1 + pad + padBottom
-    Rectangle { y: d.pad; width: parent.width; height: 1; color: Qt.darker(Theme.border, 1.4) }   // quieter than other borders
+    Rectangle { y: d.pad; width: parent.width; height: 1; color: Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.2) }   // a faint line of the theme colour
 }

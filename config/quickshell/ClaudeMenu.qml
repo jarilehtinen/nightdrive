@@ -91,7 +91,7 @@ Column {
         }
     }
 
-    Divider { padBottom: 0 }
+    Divider { padBottom: 6 }
     MenuRow {
         width: parent.width
         icon: "external-link"

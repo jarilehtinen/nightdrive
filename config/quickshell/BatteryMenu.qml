@@ -1,8 +1,8 @@
 import QtQuick
 import Quickshell
 
-// Battery and display: charging state, time remaining, power draw and battery health, plus brightness levels.
-// Uses the upower and brightnessctl commands.
+// Battery and display: charging state and time remaining (upower), the battery's details (topbar/scripts/sysinfo battery:
+// power draw, temperature, health = capacity left of the original, cycles, voltage, age) and brightness levels (brightnessctl).
 Column {
     id: m
     width: parent ? parent.width : 300
@@ -11,8 +11,7 @@ Column {
     property int percent: 0
     property string state: ""
     property string timeText: ""
-    property string rate: ""
-    property string health: ""
+    property var bat: null           // sysinfo battery
     property real screen: -1         // -1 = no display backlight (a VM)
     property real keys: -1           // -1 = no keyboard backlight
     property real pendingScreen: -1
@@ -25,7 +24,7 @@ Column {
         const h = Math.floor(min / 60)
         return h > 0 ? h + " h " + (min % 60) + " min" : min + " min"
     }
-    function refresh() { battProc.running = true; briProc.running = true; kbdProc.running = true }
+    function refresh() { battProc.running = true; detailProc.running = true; briProc.running = true; kbdProc.running = true }
     Component.onCompleted: refresh()
     Timer { interval: 3000; repeat: true; running: true; onTriggered: m.refresh() }
 
@@ -50,11 +49,12 @@ Column {
             const ttf = text.match(/time to full:\s*([\d.,]+)\s*(\w+)/)
             m.timeText = m.state === "discharging" && tte ? m.fmt(tte[1].replace(",", "."), tte[2])
                        : m.state === "charging" && ttf ? m.fmt(ttf[1].replace(",", "."), ttf[2]) : ""
-            const rate = g(/energy-rate:\s*([\d.,]+)/)
-            m.rate = rate ? parseFloat(rate.replace(",", ".")).toFixed(1) + " W" : ""
-            const cap = g(/capacity:\s*([\d.,]+)/)
-            m.health = cap ? Math.round(parseFloat(cap.replace(",", "."))) + " %" : ""
         }
+    }
+    Sh {
+        id: detailProc
+        command: ["bash", "-c", "~/.config/topbar/scripts/sysinfo battery"]
+        onResult: text => { try { m.bat = JSON.parse(text) } catch (e) { m.bat = null } }
     }
     Sh {
         id: briProc
@@ -78,8 +78,8 @@ Column {
 
     MenuHeader { width: parent.width; title: "Battery & display" }
 
-    // Battery icon + ASCII battery: [█████████░░░░░░░░░░░] 47 %
-    readonly property int cells: 20
+    // ASCII battery: [█████████░░░░░░░░░░░] 47 % (the bar's colour shows charging / low; no icon, it would say the same)
+    readonly property int cells: 26   // fills the menu width next to the percentage
     readonly property color battColor: m.state === "charging" ? Theme.accent : (m.percent <= 10 ? Theme.danger : (m.percent <= 20 ? Theme.warning : Theme.primary))
     readonly property string battBar: {
         const n = Math.max(0, Math.min(cells, Math.round(m.percent / 100 * cells)))
@@ -88,17 +88,9 @@ Column {
 
     Column {
         width: parent.width
-        spacing: 4
+        spacing: 7   // the bar and the status line below it
         Row {
             spacing: 12
-            Text {
-                anchors.verticalCenter: parent.verticalCenter
-                text: Icons.g(m.state === "charging" ? "battery-charging"
-                            : m.percent >= 75 ? "battery-full" : m.percent >= 40 ? "battery-medium"
-                            : m.percent >= 15 ? "battery-low" : "battery-warning")
-                color: m.state === "charging" ? Theme.accent : (m.percent <= 10 ? Theme.danger : (m.percent <= 20 ? Theme.warning : Theme.accent))
-                font { family: Icons.family; pixelSize: 26 }
-            }
             Text {
                 anchors.verticalCenter: parent.verticalCenter
                 text: m.battBar
@@ -110,7 +102,7 @@ Column {
                 anchors.verticalCenter: parent.verticalCenter
                 text: m.percent + " %"
                 color: Theme.text
-                font { family: Theme.font; pixelSize: 18; bold: true }
+                font { family: Theme.font; pixelSize: 15; bold: true }
             }
         }
         Text {
@@ -122,11 +114,38 @@ Column {
         }
     }
 
-    Row {
-        visible: m.rate !== "" || m.health !== ""
-        spacing: 16
-        Text { visible: m.rate !== ""; text: "Power " + m.rate; color: Theme.dim; font { family: Theme.font; pixelSize: 11 } }
-        Text { visible: m.health !== ""; text: "Health " + m.health; color: Theme.dim; font { family: Theme.font; pixelSize: 11 } }
+    Divider { visible: m.bat !== null }
+    Text {
+        visible: m.bat !== null
+        text: "DETAILS"
+        color: Theme.primary
+        font { family: Theme.font; pixelSize: 11; letterSpacing: 0.6 }
+    }
+    Column {
+        visible: m.bat !== null
+        width: parent.width
+        spacing: 2
+        Repeater {
+            model: !m.bat ? [] : [
+                { icon: "zap", label: "Power", detail: m.bat.watts > 0 ? m.bat.watts + " W" : "" },
+                { icon: "thermometer", label: "Temperature", detail: m.bat.temp !== null ? m.bat.temp + " °C" : "", danger: m.bat.temp >= 45 },
+                { icon: "heart-pulse", label: "Health",
+                  detail: m.bat.health !== null ? m.bat.health + " % · " + m.bat.fullWh + " / " + m.bat.designWh + " Wh" : "" },
+                { icon: "repeat", label: "Cycles", detail: m.bat.cycles !== null ? String(m.bat.cycles) : "" },
+                { icon: "activity", label: "Voltage", detail: m.bat.volts !== null ? m.bat.volts.toFixed(2) + " V" : "" },
+                { icon: "calendar", label: "Manufactured", detail: m.bat.made }
+            ].filter(r => r.detail !== "")
+            delegate: MenuRow {
+                required property var modelData
+                width: parent.width
+                height: 28
+                interactive: false
+                icon: modelData.icon
+                label: modelData.label
+                detail: modelData.detail
+                danger: !!modelData.danger
+            }
+        }
     }
 
     Divider { visible: m.screen >= 0 || m.keys >= 0 }

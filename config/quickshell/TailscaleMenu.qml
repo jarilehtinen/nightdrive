@@ -73,7 +73,7 @@ Column {
         width: parent.width
         height: visible ? 34 : 0
         icon: "laptop-minimal-check"   // this machine, connected
-        active: true
+        tinted: true
         label: m.selfName        // this machine
         detail: m.copied === m.selfIp ? "copied" : m.selfIp
         onClicked: m.copy(m.selfIp)
@@ -119,5 +119,14 @@ Column {
         text: m.message
         color: Theme.danger
         font { family: Theme.font; pixelSize: 12 }
+    }
+
+    Divider { padBottom: 6 }
+    MenuRow {
+        width: parent.width
+        icon: "external-link"
+        action: true
+        label: "Admin console"
+        onClicked: { Quickshell.execDetached(["xdg-open", "https://login.tailscale.com/admin/machines"]); m.close() }
     }
 }

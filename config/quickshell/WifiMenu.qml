@@ -50,9 +50,14 @@ Column {
         }
     }
 
-    // Live throughput: read the wifi interface's byte counters every second
+    // Live throughput: read the wifi interface's byte counters every second (only while the menu is open)
     property real rxRate: 0
     property real txRate: 0
+    // Shown values roll towards the measured ones over the second until the next reading (no jumps)
+    property real rxShown: rxRate
+    property real txShown: txRate
+    Behavior on rxShown { NumberAnimation { duration: 950; easing.type: Easing.OutCubic } }
+    Behavior on txShown { NumberAnimation { duration: 950; easing.type: Easing.OutCubic } }
     property real lastRx: -1
     property real lastTx: -1
     property real lastT: 0
@@ -172,39 +177,48 @@ Column {
             if (!m.wifiOn) m.nets = []
         }
     }
+    Divider { pad: 2 }
 
-    // Connected network at the top, with throughput and public IP below it
+    // Connected network at the top (an information row), throughput and public IP below it, then Disconnect
     MenuRow {
         visible: m.wifiOn && m.activeNet !== null
         width: parent.width
         icon: m.sigIcon(m.activeNet ? m.activeNet.signal : 0)
         label: m.activeSsid
-        active: true
-        busy: m.connecting === m.activeSsid
-        checkIcon: "check"
-        onClicked: m.activate(m.activeNet)
+        interactive: false
+        iconFilled: true   // connected (as in macOS: no highlighted row)
     }
     Row {
         visible: m.wifiOn && m.activeNet !== null
-        leftPadding: 10
+        leftPadding: 33   // under the network's name (circle inset 3 + icon 20 + gap 10)
         spacing: 18
         Row {
             spacing: 6
             Text { text: Icons.g("arrow-down"); color: Theme.accent; font { family: Icons.family; pixelSize: 13 } anchors.verticalCenter: parent.verticalCenter }
-            Text { text: m.fmtRate(m.rxRate); color: Theme.text; font { family: Theme.font; pixelSize: 12 } }
+            Text { text: m.fmtRate(m.rxShown); color: Theme.text; font { family: Theme.font; pixelSize: 12 } }
         }
         Row {
             spacing: 6
             Text { text: Icons.g("arrow-up"); color: Theme.accent; font { family: Icons.family; pixelSize: 13 } anchors.verticalCenter: parent.verticalCenter }
-            Text { text: m.fmtRate(m.txRate); color: Theme.text; font { family: Theme.font; pixelSize: 12 } }
+            Text { text: m.fmtRate(m.txShown); color: Theme.text; font { family: Theme.font; pixelSize: 12 } }
         }
     }
     Row {
         visible: m.wifiOn && m.activeNet !== null
-        leftPadding: 10
+        leftPadding: 33   // under the network's name (circle inset 3 + icon 20 + gap 10)
         spacing: 6
         Text { text: Icons.g("globe"); color: Theme.accent; font { family: Icons.family; pixelSize: 13 } anchors.verticalCenter: parent.verticalCenter }
         Text { text: m.publicIp !== "" ? m.publicIp : (m.ipFailed ? "public IP unavailable" : "…"); color: m.publicIp !== "" ? Theme.text : Theme.dim; font { family: Theme.font; pixelSize: 12 } }
+    }
+    Item { visible: m.wifiOn && m.activeNet !== null; width: 1; height: 6 }   // extra space between the statistics and Disconnect
+    MenuRow {
+        visible: m.wifiOn && m.activeNet !== null
+        width: parent.width
+        icon: "unplug"
+        action: true
+        label: "Disconnect"
+        busy: m.connecting === m.activeSsid
+        onClicked: m.activate(m.activeNet)
     }
 
     Text {
@@ -247,6 +261,7 @@ Column {
                     busy: m.connecting === item.modelData.ssid
                     detail: item.modelData.known && !item.modelData.active ? "saved" : ""
                     checkIcon: item.modelData.active ? "check" : (item.modelData.secure ? "lock" : "")
+                    checkIconSize: 13
                     onClicked: m.activate(item.modelData)
                 }
 
@@ -297,7 +312,7 @@ Column {
         font { family: Theme.font; pixelSize: 12 }
     }
 
-    Divider {}
+    Divider { padBottom: 6 }
     MenuRow {
         width: parent.width
         icon: "settings"

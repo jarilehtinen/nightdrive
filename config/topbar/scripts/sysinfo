@@ -1,12 +1,13 @@
 #!/usr/bin/python3 -I
 """System meters. `sysinfo bar` -> TEXT<TAB>TOOLTIP<TAB>CLASS (for the top bar's status script),
-`sysinfo menu` -> JSON for Quickshell's SystemMenu. CPU load is measured since the previous call
-(state: $XDG_RUNTIME_DIR/sysinfo-<mode>.json); the first call measures over 0.3 s."""
+`sysinfo menu` -> JSON for Quickshell's SystemMenu, `sysinfo battery` -> JSON for BatteryMenu's details (null on a desktop).
+CPU load is measured since the previous call (state: $XDG_RUNTIME_DIR/sysinfo-<mode>.json); the first call measures over 0.3 s."""
 import glob, json, os, sys, time
 
 # MacBook-specific (Apple Silicon): the temperature sensors shown in the menu, as (substring of
 # "<hwmon name> <sensor label>", title). Other machines: see /sys/class/hwmon/hwmon*/{name,temp*_label}.
-SENSORS = [("macsmc_battery", "Battery"), ("nvme", "SSD"), ("WiFi/BT", "WiFi/BT"),
+# The battery's own temperature is in the battery menu (from power_supply), not here.
+SENSORS = [("nvme", "SSD"), ("WiFi/BT", "WiFi/BT"),
            ("Charge Regulator", "Charger"), ("tas2764", "Speakers")]
 
 mode = sys.argv[1] if len(sys.argv) > 1 else "menu"
@@ -36,6 +37,26 @@ def procs():
             out[int(d[6:])] = (name, int(f[11]) + int(f[12]), int(f[21]) * os.sysconf("SC_PAGE_SIZE"))
         except (OSError, ValueError): pass
     return out
+
+bat = lambda f: rd(f"{BATTERY}/{f}") if BATTERY else ""
+num = lambda f: int(bat(f)) if bat(f).lstrip("-").isdigit() else None
+def battery():
+    if not BATTERY: return None
+    full, design = num("energy_full"), num("energy_full_design")   # µWh
+    made = (num("manufacture_year"), num("manufacture_month"))
+    return {
+        "pct": num("capacity"), "status": bat("status"),
+        "watts": round(abs(num("power_now") or 0) / 1e6, 1),            # negative while discharging
+        "temp": round(num("temp") / 10, 1) if num("temp") is not None else None,   # tenths of a °C
+        "health": round(100 * full / design) if full and design else None,
+        "fullWh": round(full / 1e6, 1) if full else None, "designWh": round(design / 1e6, 1) if design else None,
+        "cycles": num("cycle_count"),
+        "volts": round(num("voltage_now") / 1e6, 2) if num("voltage_now") else None,
+        "made": f"{made[1]:02d}/{made[0]}" if all(made) else "",
+    }
+if mode == "battery":
+    print(json.dumps(battery()))
+    sys.exit()
 
 def snap():
     return {"t": time.time(), "cpu": cpu_times(), "p": {str(k): v for k, v in procs().items()} if mode == "menu" else {}}
@@ -94,9 +115,6 @@ for pid, (name, ticks, rss) in now["p"].items():
     a[1] += rss
 top = sorted(({"name": n, "cpu": round(v[0], 1), "rss": v[1]} for n, v in agg.items()), key=lambda x: -x["cpu"])[:6]
 
-bat = lambda f: rd(f"{BATTERY}/{f}") if BATTERY else ""
-watts = int(bat("power_now") or 0) / 1e6
 print(json.dumps({"cpu": cpu, "freq": freq, "load": load, "memUsed": mem_used, "memTotal": mem_total,
                   "swapUsed": swap_used, "swapTotal": swap_total, "temps": temps, "top": top,
-                  "batStatus": bat("status"), "batPct": bat("capacity"), "watts": round(watts, 1),
                   "cores": os.cpu_count()}))

@@ -99,15 +99,6 @@ Column {
                 danger: modelData.c >= 70
             }
         }
-        MenuRow {
-            visible: m.d !== null && m.d.batStatus !== ""
-            width: parent.width
-            height: 28
-            interactive: false
-            icon: "battery"
-            label: "Charge"
-            detail: m.d ? m.d.batPct + " % · " + m.d.batStatus.toLowerCase() + (m.d.watts > 0 ? " · " + m.d.watts + " W" : "") : ""
-        }
     }
 
     Divider {}

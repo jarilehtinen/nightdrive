@@ -7,7 +7,10 @@ Rectangle {
     property string label: ""
     property string detail: ""
     property string checkIcon: ""
+    property int checkIconSize: 16
     property bool active: false
+    property bool tinted: false        // a light highlight (the action buttons' faint theme colour), e.g. this machine in Tailscale
+    property bool iconFilled: false    // the icon in a filled circle of the theme colour (e.g. the connected Wi-Fi network, as in macOS)
     property bool danger: false
     property bool navSelected: false   // selected during keyboard navigation (⌘⇧Space)
     function navActivate() { row.clicked() }
@@ -15,34 +18,45 @@ Rectangle {
     property bool busy: false          // in progress (connecting …): animated dots instead of the detail text
     property bool interactive: true    // false: an information row (no hover, not clickable, skipped by the keyboard, no side padding)
     readonly property bool navEnabled: interactive
-    readonly property int pad: interactive ? 10 : 0
+    property bool padded: interactive  // side padding like a clickable row (an information row among clickable ones)
+    readonly property int pad: padded ? 10 : 0
     signal clicked()
     signal rightClicked()
 
     height: 34
     radius: 5
-    color: (area.containsMouse && interactive) || navSelected ? Theme.hover : (active && interactive ? Theme.sel : "transparent")
+    // Action buttons (Open …, Disconnect) get a faint wash of the theme colour so they read as buttons
+    color: (area.containsMouse && interactive) || navSelected ? Theme.hover
+         : active && interactive ? Theme.sel
+         : action || tinted ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.07) : "transparent"
     border { width: navSelected ? 1 : 0; color: Theme.primary }
 
     readonly property color fg: danger ? Theme.danger : (active ? Theme.accent : Theme.text)
 
+    Rectangle {
+        visible: row.iconFilled && ic.visible
+        anchors.centerIn: ic
+        width: 26; height: 26; radius: 13
+        color: Theme.primary
+    }
     Text {
         id: ic
         visible: row.icon !== ""
-        anchors { left: parent.left; leftMargin: row.pad; verticalCenter: parent.verticalCenter }
+        // A filled circle (26 px) is wider than the icon (20 px): without side padding it starts at the left edge
+        anchors { left: parent.left; leftMargin: row.pad + (row.iconFilled && !row.padded ? 3 : 0); verticalCenter: parent.verticalCenter }
         width: 20
         horizontalAlignment: Text.AlignHCenter
         text: Icons.g(row.icon)
-        color: row.active || row.danger ? row.fg : Theme.dim
-        font { family: Icons.family; pixelSize: 16 }
+        color: row.iconFilled ? Theme.bg : (row.active || row.danger ? row.fg : Theme.dim)
+        font { family: Icons.family; pixelSize: row.iconFilled ? 17 : 16 }
     }
     Text {
         anchors {
-            left: ic.visible ? ic.right : parent.left; leftMargin: ic.visible ? 10 : (row.interactive ? 12 : 0)
+            left: ic.visible ? ic.right : parent.left; leftMargin: ic.visible ? 10 : (row.padded ? 12 : 0)
             right: trailing.left; rightMargin: 8
             verticalCenter: parent.verticalCenter
             // An action's uppercase text has no descenders, so centring by line height leaves it high next to the icon
-            verticalCenterOffset: row.action ? 2 : 0
+            verticalCenterOffset: row.action ? 1 : 0
         }
         elide: Text.ElideRight
         text: row.action ? row.label.toUpperCase() : row.label
@@ -69,7 +83,7 @@ Rectangle {
             anchors.verticalCenter: parent.verticalCenter
             text: Icons.g(row.checkIcon)
             color: row.active ? Theme.accent : Theme.dim
-            font { family: Icons.family; pixelSize: 16 }
+            font { family: Icons.family; pixelSize: row.checkIconSize }
         }
     }
     MouseArea {

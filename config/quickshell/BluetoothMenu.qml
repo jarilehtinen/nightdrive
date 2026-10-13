@@ -142,7 +142,7 @@ Column {
         font { family: Theme.font; pixelSize: 12 }
     }
 
-    Divider {}
+    Divider { padBottom: 6 }
     MenuRow {
         visible: m.powered
         width: parent.width
