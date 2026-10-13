@@ -7,9 +7,9 @@ src=$HOME/Projects/lab/deck
 
 command -v cargo >/dev/null 2>&1 || sudo dnf install -y rust cargo gcc openssl-devel alsa-lib-devel
 [[ -d $src/.git ]] || git clone https://github.com/jarilehtinen/deck "$src"
-# Linux support (MPRIS, state file, `deck ctl`) lives on the linux-mpris branch (on GitHub, not yet in main)
-{ git -C "$src" fetch -q origin linux-mpris && git -C "$src" checkout -q linux-mpris; } 2>/dev/null \
-  || echo "Warning: Deck's linux-mpris branch not found, building the default branch (no top bar / launcher integration)" >&2
+# Build the latest main (Linux support: MPRIS, state file, `deck ctl` and the launcher's JSON commands)
+{ git -C "$src" checkout -q main && git -C "$src" pull -q --ff-only; } 2>/dev/null \
+  || echo "Warning: couldn't update Deck's source in $src, building it as it is" >&2
 cargo install --locked --path "$src" --root "$HOME/.local"      # --locked: librespot does not build with the latest dependencies
 
 mkdir -p "$HOME/.local/share/applications"
