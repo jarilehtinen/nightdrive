@@ -33,14 +33,16 @@ hl.on("hyprland.start", function ()
     -- graphical-session.target for xdg-desktop-portal (config/systemd/user); restart: fresh environment after a re-login
     hl.exec_cmd("systemctl --user restart nightdrive-session.target")
     -- Theme colours (~/.cache/nightdrive, hypr/scripts/theme) first: Quickshell, mako and Waybar read them on startup.
-    -- waybar-run logs output and restarts Waybar if it crashes.
-    hl.exec_cmd("sh -c '\"$HOME/.config/hypr/scripts/theme\" apply; qs & mako & exec \"$HOME/.config/hypr/scripts/waybar-run\"'")
+    -- mako runs as its systemd unit: graphical-session.target and D-Bus activation start that unit too, so a plain
+    -- `mako &` raced it and left mako.service failed. waybar-run logs output and restarts Waybar if it crashes.
+    hl.exec_cmd("sh -c '\"$HOME/.config/hypr/scripts/theme\" apply; qs & systemctl --user restart mako & exec \"$HOME/.config/hypr/scripts/waybar-run\"'")
     hl.exec_cmd("1password", { workspace = "special:bg silent" })   -- 1Password straight to the background without flashing (⌘P brings it up)
     hl.exec_cmd(HOME .. "/.config/hypr/scripts/wallpaper restore")   -- swaybg with the remembered wallpaper (change: launcher › Settings › Background)
     hl.exec_cmd("env PATH=" .. HOME .. "/.local/bin:" .. os.getenv("PATH") .. " " .. HOME .. "/.local/bin/voxtype-onnx daemon")   -- speech to text (F5), Parakeet
     hl.exec_cmd("hypridle")
     hl.exec_cmd("easyeffects --service-mode -w")   -- headphone EQ in the background (presets: config/easyeffects, picked from the headphone icon in the top bar)
-    hl.exec_cmd("systemctl --user start hyprpolkitagent")
+    -- reset-failed: the previous session's agent crash-loops after logout (Restart=on-failure) and hits the start limit
+    hl.exec_cmd("sh -c 'systemctl --user reset-failed hyprpolkitagent; systemctl --user restart hyprpolkitagent'")
     hl.exec_cmd("nm-applet --indicator")
     hl.exec_cmd("blueman-applet")
     hl.exec_cmd("wl-paste --type text --watch cliphist store")
