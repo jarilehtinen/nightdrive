@@ -550,7 +550,7 @@ PanelWindow {
     function selectWhere(pred) { const i = results.findIndex(pred); if (i >= 0) list.currentIndex = i }
     function back() { if (level === "root") win.open = false; else go(parents[level] || "root") }
 
-    onOpenChanged: if (open) { lastMouse = null; if (ext) ext.opened(); go("root"); deckProc.running = true; musicProc.running = true; bgProc.running = true; input.forceActiveFocus() }
+    onOpenChanged: if (open) { lastMouse = null; spotify = null; if (ext) ext.opened(); go("root"); deckProc.running = true; musicProc.running = true; bgProc.running = true; input.forceActiveFocus() }
     Component.onCompleted: keysProc.running = true
 
     Timer { id: disarm; interval: 4000; onTriggered: win.armed = "" }
