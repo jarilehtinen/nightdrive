@@ -62,7 +62,7 @@ The top bar's opacity, icon colours and highlight colour are all settings in the
 - **Screensavers**: a synthwave sunset and a falling-characters rain, both drawn in the terminal.
 - **Background apps**: ⌘W only hides chat apps and the music player, so they keep running. Their shortcut brings them straight back.
 - **Web apps**: turn any site into an app window from the launcher (Install › Webapp).
-- **Login screen** (optional): a password-only greeter that matches the theme.
+- **Login screen**: a password-only greeter that matches the theme (`--no-greeter` keeps the distribution's own).
 
 ![Screensavers: synthwave sunset and rain](docs/screenshots/screensavers.jpg)
 
@@ -98,18 +98,20 @@ The top bar's opacity, icon colours and highlight colour are all settings in the
 On a fresh Fedora Asahi Remix 44 with a network connection:
 
 ```sh
+sudo dnf install -y git   # not in a fresh install
 git clone https://github.com/jarilehtinen/nightdrive.git ~/dotfiles
 cd ~/dotfiles
-./install.sh              # packages, fonts, 1Password, the notch setting, config links, Deck, GTK tweaks, web apps
+./install.sh              # system update, packages, fonts, 1Password, the notch setting, config links, Deck, login screen…
 ```
 
-Then **reboot** and pick **Hyprland** as the session at the login screen. KDE stays installed as a fallback.
+Then **reboot**. The Nightdrive login screen (greetd + Quickshell) starts Hyprland; KDE stays installed as a fallback. If the
+login screen fails, press Ctrl+Alt+F3, log in and run `config/greeter/switch.sh off`.
 
-| Option | What it adds |
+| Option | What it changes |
 |---|---|
-| `--greeter` | Replaces the login screen with the Nightdrive greeter (greetd + Quickshell). If it fails, press Ctrl+Alt+F3 and run `config/greeter/switch.sh off` |
+| `--no-greeter` | Keeps the KDE login screen; pick **Hyprland** there (not *Hyprland (uwsm-managed)*) |
 | `--debloat` | Removes the default KDE apps |
-| `--no-kde` | Removes Plasma completely (implies `--greeter`; experimental) |
+| `--no-kde` | Removes Plasma completely (experimental) |
 | `--vm` | For trying Nightdrive in a Fedora 44 VM instead of an Asahi Mac (see below) |
 
 A few things stay manual:
@@ -117,6 +119,7 @@ A few things stay manual:
 - In 1Password › Settings › Developer, turn on *SSH agent* and *Integrate with 1Password CLI*. The launcher's Passwords level
   needs the CLI integration.
 - Sign in to Spotify in Deck.
+- Open Firefox and Thunderbird once and run `./link.sh` again: it themes their profiles, which don't exist before the first start.
 - Optionally, set up dictation ([docs/dictation.md](docs/dictation.md)).
 
 `./link.sh` on its own just (re)links the config files and is safe to run again. The repo can live anywhere; `~/dotfiles` is
@@ -125,16 +128,24 @@ only a convention.
 <details>
 <summary><b>Trying it in a virtual machine (experimental)</b></summary>
 
-You can try most of the setup in an aarch64 **Fedora 44** VM on any Apple Silicon Mac, in Parallels Desktop or UTM with GPU
-acceleration:
+You can try the whole setup in an aarch64 **Fedora 44** VM on any Apple Silicon Mac. Tested in Parallels Desktop 27:
 
-1. Create a Fedora 44 VM with 4 GB of RAM or more and 3D acceleration on.
-2. Inside it: `git clone https://github.com/jarilehtinen/nightdrive.git ~/dotfiles && cd ~/dotfiles && ./install.sh --vm`
-3. Log out and pick **Hyprland** at the login screen.
+1. Download the **Fedora 44 KDE Plasma Desktop** live ISO for **aarch64** from [fedoraproject.org/kde](https://fedoraproject.org/kde/download)
+   (the KDE edition, like Asahi Remix; Parallels' own Fedora download may be another release).
+2. In Parallels: File › New › *Install from an image file*, tick *Customize settings before installation*, give it 8 GB of RAM
+   (Deck's Rust build needs it) and under Graphics pick **Best for Retina display**. 3D acceleration (VirGL) is on by default
+   for Linux on ARM; Parallels Tools aren't needed.
+3. Install Fedora to the disk with an administrator user, reboot and check `sudo dmesg | grep virgl` shows `+virgl`.
+4. Optional: to work in the Mac's Terminal (copy and paste) instead of the VM window, run
+   `sudo dnf install -y openssh-server && sudo systemctl enable --now sshd` and `ssh` to the address `ip -4 -br a` prints.
+5. Install as above, with `./install.sh --vm`, and reboot.
+6. To use ⌘ as Super inside the VM, set Parallels' VM settings › Hardware › Mouse & Keyboard › *Send macOS system shortcuts*
+   to *Always*.
 
-`--vm` skips the notch step and writes `config/hypr/local.lua` with scale 1.0, a software cursor and the rounded-corner shader off.
-It must be Fedora 44, because the Hyprland COPR builds only for that release. Containers won't work, since Hyprland needs a GPU.
-The battery and keyboard backlight controls stay empty in a VM.
+`--vm` skips the notch step and writes `config/hypr/local.lua` with scale 2.0 (for *Best for Retina display*; use 1.0 for
+*Scaled*), a software cursor and the rounded-corner shader off. It must be Fedora 44, because the Hyprland COPR builds only for
+that release. Containers won't work, since Hyprland needs a GPU. Parallels passes the Mac's battery to the VM; without a
+display or keyboard backlight their sliders are left out.
 </details>
 
 ## Keys
