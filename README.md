@@ -230,6 +230,7 @@ The full list is in [`config/hypr/SHORTCUTS.md`](config/hypr/SHORTCUTS.md).
 
 ## Good to know
 
+- **Known issues** that have a workaround but no fix in Nightdrive yet are in [docs/known-issues.md](docs/known-issues.md).
 - **Hyprland isn't in Fedora's aarch64 repositories.** The installer takes the `hypr*` packages from the COPR `arcaneon/arcos`
   and limits that repository to them.
 - **Asahi specifics.** The notch area needs the `appledrm.show_notch=1` kernel argument, which the installer sets. The 16 KiB memory

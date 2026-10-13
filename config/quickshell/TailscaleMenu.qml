@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell
 
-// Tailscale: on/off, own address and the machines on the network (click copies the IP address).
+// Tailscale: on/off, this machine and the other machines on the network, online and offline (click copies the IP address).
 // On/off requires running this once: sudo tailscale set --operator=$USER
 Column {
     id: m
@@ -10,12 +10,11 @@ Column {
 
     property bool running: LastState.tailscale
     onRunningChanged: LastState.tailscale = running
-    property string tailnet: ""
     property string selfIp: ""
+    property string selfName: ""
     property var peers: []           // [{ host, ip, online, os }]
     property string message: ""
     property string copied: ""
-    property bool showOffline: false
     signal close()
 
     function refresh() { statusProc.running = true }
@@ -40,8 +39,8 @@ Column {
             let j
             try { j = JSON.parse(text) } catch (e) { m.running = false; m.peers = []; return }
             m.running = j.BackendState === "Running"
-            m.tailnet = (j.CurrentTailnet || {}).Name || ""
             m.selfIp = ((j.Self || {}).TailscaleIPs || [""])[0]
+            m.selfName = (j.Self || {}).HostName || ""
             const arr = []
             for (const k in (j.Peer || {})) {
                 const p = j.Peer[k]
@@ -73,9 +72,9 @@ Column {
         visible: m.running && m.selfIp !== ""
         width: parent.width
         height: visible ? 34 : 0
-        icon: "shield-check"
+        icon: "laptop-minimal-check"   // this machine, connected
         active: true
-        label: m.tailnet
+        label: m.selfName        // this machine
         detail: m.copied === m.selfIp ? "copied" : m.selfIp
         onClicked: m.copy(m.selfIp)
     }
@@ -86,33 +85,31 @@ Column {
         font { family: Theme.font; pixelSize: 12 }
     }
 
-    Column {
-        visible: m.running
-        width: parent.width
-        spacing: 2
-        Repeater {
-            model: m.running ? m.peers.filter(p => p.online || m.showOffline) : []
-            delegate: MenuRow {
-                required property var modelData
-                width: parent.width
-                icon: /mac|ios/i.test(modelData.os) ? "laptop" : /android/i.test(modelData.os) ? "smartphone" : "server"
-                label: modelData.host
-                active: false
-                detail: m.copied === modelData.ip ? "copied" : (modelData.online ? modelData.ip : "offline")
-                opacity: modelData.online ? 1 : 0.5
-                onClicked: m.copy(modelData.ip)
+    // The other machines: online ones first, then offline ones (dimmed) under their own title
+    Repeater {
+        model: m.running ? [{ title: "Online", online: true }, { title: "Offline", online: false }] : []
+        delegate: Column {
+            id: sec
+            required property var modelData
+            readonly property var list: m.peers.filter(p => p.online === modelData.online)
+            visible: list.length > 0
+            width: m.width
+            spacing: 2
+            MenuSection { title: sec.modelData.title; bottomPadding: 4 }
+            Repeater {
+                model: sec.list
+                delegate: MenuRow {
+                    required property var modelData
+                    width: sec.width
+                    icon: /mac|ios/i.test(modelData.os) ? "laptop" : /android/i.test(modelData.os) ? "smartphone" : "server"
+                    label: modelData.host
+                    active: false
+                    detail: m.copied === modelData.ip ? "copied" : modelData.ip
+                    opacity: modelData.online ? 1 : 0.5
+                    onClicked: m.copy(modelData.ip)
+                }
             }
         }
-    }
-
-    MenuRow {
-        readonly property int offlineCount: m.peers.filter(p => !p.online).length
-        visible: m.running && offlineCount > 0
-        width: parent.width
-        height: visible ? 34 : 0
-        icon: m.showOffline ? "chevron-up" : "chevron-right"
-        label: m.showOffline ? "Hide offline machines" : "Offline machines: " + offlineCount
-        onClicked: m.showOffline = !m.showOffline
     }
 
     Text {

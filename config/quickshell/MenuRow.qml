@@ -41,6 +41,8 @@ Rectangle {
             left: ic.visible ? ic.right : parent.left; leftMargin: ic.visible ? 10 : (row.interactive ? 12 : 0)
             right: trailing.left; rightMargin: 8
             verticalCenter: parent.verticalCenter
+            // An action's uppercase text has no descenders, so centring by line height leaves it high next to the icon
+            verticalCenterOffset: row.action ? 2 : 0
         }
         elide: Text.ElideRight
         text: row.action ? row.label.toUpperCase() : row.label

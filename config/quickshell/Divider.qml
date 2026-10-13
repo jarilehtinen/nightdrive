@@ -1,10 +1,12 @@
 import QtQuick
 
-// Separator line in menus. pad = extra margin above and below the line (the Column's spacing is added on top).
+// Separator line in menus. pad = extra margin above and below the line (the Column's spacing is added on top);
+// padBottom sets the margin below separately.
 Item {
     id: d
     property int pad: 11
+    property int padBottom: pad
     width: parent ? parent.width : 0
-    height: 1 + 2 * pad
-    Rectangle { y: d.pad; width: parent.width; height: 1; color: Theme.border }
+    height: 1 + pad + padBottom
+    Rectangle { y: d.pad; width: parent.width; height: 1; color: Qt.darker(Theme.border, 1.4) }   // quieter than other borders
 }

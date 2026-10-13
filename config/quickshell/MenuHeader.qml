@@ -1,9 +1,10 @@
 import QtQuick
 
-// Title and an optional on/off toggle on the right edge.
+// Title, an optional subtitle on the right (smaller, dimmed: e.g. the Claude plan) and an optional on/off toggle on the right edge.
 Item {
     id: h
     property string title: ""
+    property string subtitle: ""
     property bool showToggle: false
     property bool checked: false
     signal toggled()
@@ -13,10 +14,18 @@ Item {
 
     height: 26
     Text {
+        id: titleText
         anchors { left: parent.left; verticalCenter: parent.verticalCenter }
         text: h.title.toUpperCase()
         color: Theme.primary
         font { family: Theme.font; pixelSize: 12; weight: Font.Medium; letterSpacing: 0.6 }
+    }
+    Text {
+        visible: h.subtitle !== ""
+        anchors { right: parent.right; rightMargin: h.showToggle ? 44 : 0; baseline: titleText.baseline }
+        text: h.subtitle.toUpperCase()
+        color: Theme.dim
+        font { family: Theme.font; pixelSize: 10; letterSpacing: 0.6 }
     }
     Rectangle {
         visible: h.showToggle

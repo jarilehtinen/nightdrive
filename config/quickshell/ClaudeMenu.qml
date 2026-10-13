@@ -42,7 +42,7 @@ Column {
         return "resets " + Qt.formatDateTime(t, "ddd HH:mm")
     }
 
-    MenuHeader { width: parent.width; title: "Claude usage" + (m.usage && m.usage.plan ? "  ·  " + m.usage.plan : "") }
+    MenuHeader { width: parent.width; title: "Claude usage"; subtitle: m.usage && m.usage.plan ? m.usage.plan : "" }
 
     Text {
         visible: m.loaded && (!m.usage || !m.usage.windows || m.usage.windows.length === 0 || !!m.usage.error)
@@ -91,7 +91,7 @@ Column {
         }
     }
 
-    Divider {}
+    Divider { padBottom: 0 }
     MenuRow {
         width: parent.width
         icon: "external-link"
