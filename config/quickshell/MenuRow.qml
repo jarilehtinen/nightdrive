@@ -71,7 +71,7 @@ Rectangle {
         }
     }
     MouseArea {
-        enabled: row.interactive
+        visible: row.interactive   // not just disabled: a disabled MouseArea still sets the hand cursor
         cursorShape: Qt.PointingHandCursor
         id: area
         anchors.fill: parent
