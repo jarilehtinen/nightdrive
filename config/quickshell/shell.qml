@@ -1,5 +1,6 @@
 // Quickshell – the top bar (Bar.qml, data in TopBar.qml / ~/.config/topbar) and its menus.
-// Clicking a bar module opens its menu below it; a shortcut opens one with  qs ipc call menu toggle <name>  (at the right edge).
+// Clicking a bar module opens its menu below it; a shortcut opens one with  qs ipc call menu toggle <name>  (below its icon too,
+// or at the right edge if it has none).
 // `qs ipc call bar refresh` updates every bar module now (after a change a module's status would only see later).
 // Menus live in <Name>Menu.qml files; shared parts: Theme, Icons, Sh, MenuRow, MenuHeader, Slider.
 import QtQuick
@@ -101,7 +102,7 @@ ShellRoot {
         function toggleAt(name: string, x: int): void { root.clickMenu(name, x, null) }
         // toggle: opened by a shortcut (e.g. ⌘Esc -> power). Opens in keyboard mode so Esc closes and arrows/Enter work.
         function toggle(name: string): void {
-            root.anchorX = -1
+            root.anchorX = bar.xOf(name)      // below its bar icon; -1 (no icon in the bar) = the right edge
             root.menuScreen = null
             const opening = root.current !== name
             root.viaSubmap = opening
@@ -145,7 +146,7 @@ ShellRoot {
 
     Launcher {
         extSource: root.localLauncher ? "local/LauncherExtension.qml" : ""
-        onOpenMenu: name => { root.anchorX = -1; root.current = name }
+        onOpenMenu: name => { root.menuScreen = null; root.anchorX = bar.xOf(name); root.current = name }   // below its bar icon (-1 = none: right edge)
     }
 
     PanelWindow {
