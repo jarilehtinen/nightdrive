@@ -3,13 +3,12 @@
 __pycache__/
 *.pyc
 config/hypr/local.lua
-config/waybar/bar.css
 
 # Personal additions from a private overlay (linked in by the overlay's own link.sh; see README)
 config/hypr/local.d/
 config/hypr/background-apps.local
 config/hypr/SHORTCUTS.local.md
 config/quickshell/local
-config/waybar/local.jsonc
-config/waybar/local.css
-config/waybar/status.local
+config/topbar/local.modules.jsonc
+config/topbar/local.adjust.conf
+config/topbar/status.local

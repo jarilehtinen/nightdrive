@@ -4,20 +4,21 @@
 #                              packages, dnf upgrade, reload the desktop (launcher › Update runs this)
 #   nightdrive update check    fetch only: how many new commits are waiting. Notifies once per new count, the notification's
 #                              Update button runs the update in a terminal (nightdrive-update-check.timer, every 6 h)
+#   nightdrive topbar adjust     top bar icon and text sizes / positions a pixel at a time, live (config/topbar/adjust.conf)
 #   nightdrive theme|display|wallpaper|bar-style …   the desktop's own scripts (hypr/scripts), e.g. `nightdrive theme color teal`
 # update never pulls over local changes: a repo with uncommitted work or its own commits is skipped with a note.
 set -uo pipefail
 repo=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)
 scripts="$repo/config/hypr/scripts"
 cache="$HOME/.cache/nightdrive"
-usage() { echo "Usage:"; sed -n '3,7p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { echo "Usage:"; sed -n '3,8p' "$0" | sed 's/^# \{0,1\}//'; }
 
 # Repos to update: Nightdrive, the repos the git-ignored local slots link into (a private overlay), Deck's source
 repos() {
   echo "$repo"
   local f
   for f in "$repo"/config/hypr/local.d/* "$repo"/config/hypr/*.local* "$repo"/config/quickshell/local \
-           "$repo"/config/waybar/local.* "$repo"/config/waybar/status.local; do
+           "$repo"/config/topbar/local.* "$repo"/config/topbar/status.local; do
     [[ -L $f ]] && git -C "$(dirname "$(readlink -f "$f")")" rev-parse --show-toplevel 2>/dev/null
   done | sort -u
   [[ -d ${DECK_SRC:-$HOME/.local/src/deck}/.git ]] && readlink -f "${DECK_SRC:-$HOME/.local/src/deck}"
@@ -78,7 +79,7 @@ update() {
     echo "==> Reloading the desktop"
     hyprctl reload >/dev/null
     "$repo/config/hypr/scripts/theme" apply >/dev/null 2>&1
-    pkill -x waybar; setsid -f "$HOME/.config/hypr/scripts/waybar-run" >/dev/null 2>&1
+    pkill -x waybar || true   # the old top bar (before Quickshell drew it); Quickshell reloads its own files
   fi
 
   mkdir -p "$cache"; echo 0 > "$cache/updates"; echo 0 > "$cache/updates-notified"
@@ -88,6 +89,7 @@ update() {
 
 case ${1:-} in
   update) if [[ ${2:-} == check ]]; then check; else update; fi ;;
+  topbar) [[ ${2:-} == adjust ]] || { usage >&2; exit 1; }; exec "$repo/config/topbar/scripts/adjust" "${@:3}" ;;
   theme|display|wallpaper|bar-style) exec "$scripts/$1" "${@:2}" ;;
   ""|help|-h|--help) usage ;;
   *) usage >&2; exit 1 ;;

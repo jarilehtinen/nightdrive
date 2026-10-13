@@ -72,7 +72,7 @@ The top bar's opacity, icon colours and highlight colour are all settings in the
 | | App | How it fits in |
 |---|---|---|
 | Window manager | [Hyprland](https://hypr.land) | Lua config, Mac-style keybindings, rounded screen corners |
-| Bar, menus, launcher | [Waybar](https://github.com/Alexays/Waybar) + [Quickshell](https://quickshell.org) | one themed shell for the bar menus, launcher, OSD and shelf |
+| Bar, menus, launcher | [Quickshell](https://quickshell.org) | one themed shell for the top bar, its menus, launcher, OSD and shelf |
 | Terminal | [kitty](https://sw.kovidgoyal.net/kitty/) | ⌘Enter; Mac copy and paste |
 | Browser | Firefox | tabs below the address bar, themed UI |
 | Mail | Thunderbird | themed, with a minimal toolbar ([details](docs/thunderbird.md)) |
@@ -148,6 +148,7 @@ The same `nightdrive` command reaches the settings from a terminal (`nightdrive`
 | `nightdrive wallpaper set <image>` | Changes the wallpaper; `nightdrive wallpaper current` prints it |
 | `nightdrive display list` | Each screen's even scales; `nightdrive display scale eDP-1 2` sets one |
 | `nightdrive bar-style opacity 80` | Top bar opacity; also `icons`, `icon-opacity` and `highlight` |
+| `nightdrive topbar adjust` | Top bar icon sizes and positions, a pixel at a time, live |
 
 <details>
 <summary><b>Trying it in a virtual machine (experimental)</b></summary>
@@ -213,12 +214,14 @@ The full list is in [`config/hypr/SHORTCUTS.md`](config/hypr/SHORTCUTS.md).
   | `config/hypr/local.d/*.lua` | autostart entries, window rules, keybindings |
   | `config/hypr/background-apps.local`, `SHORTCUTS.local.md` | more background apps, your own entries in the shortcut list |
   | `config/quickshell/local/` | `<Name>Menu.qml` bar menus, and `LauncherExtension.qml` for your own launcher levels |
-  | `config/waybar/local.jsonc`, `local.css`, `status.local` | your own bar icons (the `group/local` module), their style and status |
+  | `config/topbar/local.modules.jsonc`, `status.local`, `local.adjust.conf` | your own bar modules (at the left end of the icons), their status and icon sizes |
 
 ## How it fits together
 
-- **Waybar** draws the bar. Clicking an icon asks **Quickshell** to open `<Name>Menu.qml` under the cursor. Quickshell tells
-  Waybar which menu is open, so the icon lights up.
+- **Quickshell** draws the top bar and its menus. The modules are listed in `config/topbar/modules.jsonc`. Each one gets its
+  state from `config/topbar/scripts/status <name>` (an icon name, a text and a class), and a click opens `<Name>Menu.qml`
+  under it. Icons are SVGs: Lucide by name, or `pack:name` from any [Iconify](https://icon-sets.iconify.design) set (fetched
+  once). Sizes and positions are in `config/topbar/adjust.conf`.
 - The menus use ordinary command-line tools such as `wpctl`, `nmcli`, `bluetoothctl`, `upower`, `tailscale`, `cliphist` and `dnf`.
   There are no daemons of their own.
 - The theme script (`config/hypr/scripts/theme`) derives every shade from one colour. It writes a small file for Quickshell,
@@ -236,12 +239,11 @@ The full list is in [`config/hypr/SHORTCUTS.md`](config/hypr/SHORTCUTS.md).
 
 ## Credits
 
-Inspired by [Omarchy](https://omarchy.org). Built on [Hyprland](https://hypr.land), [Quickshell](https://quickshell.org) and
-[Waybar](https://github.com/Alexays/Waybar), on top of the [Asahi Linux](https://asahilinux.org) team's work. The colours start
+Inspired by [Omarchy](https://omarchy.org). Built on [Hyprland](https://hypr.land) and [Quickshell](https://quickshell.org), on top of the [Asahi Linux](https://asahilinux.org) team's work. The colours start
 from the [Tokyo Night](https://github.com/enkia/tokyo-night-vscode-theme) palette, and the icons are [Lucide](https://lucide.dev) (ISC).
 The wallpapers were made with ChatGPT image generation for now. I'd much rather ship wallpapers by real artists, so if you make
 synthwave art (or know someone who does) and would like it included, please get in touch. The Tailscale logo in the bar is Tailscale's trademark.
 
 ## License
 
-[MIT](LICENSE). The bundled Lucide icon font is ISC-licensed.
+[MIT](LICENSE). The bundled Lucide icon font and icons are ISC-licensed.

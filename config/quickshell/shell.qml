@@ -1,6 +1,6 @@
-// Quickshell – menus for the top bar icons.
-// Waybar opens a menu with:  qs ipc call menu toggleAt <volume|headphones|wifi|bluetooth|battery|tailscale|power|claude|calendar|system|…> <x>
-// (x = cursor position; without x:  qs ipc call menu toggle <name>  opens the menu at the right edge)
+// Quickshell – the top bar (Bar.qml, data in TopBar.qml / ~/.config/topbar) and its menus.
+// Clicking a bar module opens its menu below it; a shortcut opens one with  qs ipc call menu toggle <name>  (at the right edge).
+// `qs ipc call bar refresh` updates every bar module now (after a change a module's status would only see later).
 // Menus live in <Name>Menu.qml files; shared parts: Theme, Icons, Sh, MenuRow, MenuHeader, Slider.
 import QtQuick
 import Quickshell
@@ -12,31 +12,27 @@ ShellRoot {
     property string current: ""
     property real anchorX: -1          // icon's horizontal coordinate (logical px); -1 = right edge
 
-    // --- Keyboard navigation (⌘⇧Space): ←/→ switch menu, ↑/↓ select a row, Enter activates, Esc closes ---
-    // top bar order from the left (keep in the same order as modules-right in waybar/config.jsonc); the headphones icon
-    // is only shown while Bluetooth headphones are connected
-    property bool headphones: false
-    readonly property var orderStart: localMenus.concat(["deck", "claude", "system", "tailscale", "bluetooth", "wifi", "volume"])
-    readonly property var orderEnd: ["battery", "calendar", "notifications"]
-    readonly property var order: orderStart.concat(headphones ? ["headphones"] : [], orderEnd)
+    // --- Keyboard navigation (⌘⇧Space): ←/→ switch menu (in the bar's order), ↑/↓ select a row, Enter activates, Esc closes ---
     property bool navMode: false
-    // Personal additions from a private overlay (local/, not in the repo): <Name>Menu.qml files become menus at the left end
-    // of the bar's icon group (the overlay adds the bar icons itself), LauncherExtension.qml extends the launcher.
+    // Menus: <Name>Menu.qml here, and a private overlay's in local/ (not in the repo; its bar modules come from
+    // ~/.config/topbar/local.modules.jsonc). local/LauncherExtension.qml extends the launcher.
+    property var menus: []
     property var localMenus: []
     property bool localLauncher: false
     Sh {
-        command: ["ls", Quickshell.shellDir + "/local"]
+        command: ["bash", "-c", 'cd "$1" && ls; echo --; ls local 2>/dev/null', "_", Quickshell.shellDir]
         running: true
         onResult: text => {
-            const files = text.split("\n")
-            root.localMenus = files.filter(f => /^[A-Z]\w*Menu\.qml$/.test(f)).map(f => f.charAt(0).toLowerCase() + f.slice(1, -8))
-            root.localLauncher = files.indexOf("LauncherExtension.qml") >= 0
+            const parts = text.split("--\n")
+            const names = t => (t || "").split("\n").filter(f => /^[A-Z]\w*Menu\.qml$/.test(f)).map(f => f.charAt(0).toLowerCase() + f.slice(1, -8))
+            root.localMenus = names(parts[1])
+            root.menus = names(parts[0]).concat(root.localMenus)
+            root.localLauncher = (parts[1] || "").split("\n").indexOf("LauncherExtension.qml") >= 0
         }
     }
+    property var menuScreen: null      // the screen whose bar was clicked (null = the default screen)
     property bool viaSubmap: false     // opened by click/shortcut: ←/→/↑/↓/Enter/Esc come from a Hyprland submap (hypr/bindings.lua: qsmenu), no keyboard focus
     property var navItem: null         // selected row / toggle
-    property var xs: ({})              // last clicked positions of the icons (the menu opens below the icon); saved to a file
-    readonly property string xsFile: Quickshell.env("HOME") + "/.cache/qs-menu-x.json"
 
     function submap(name) { Quickshell.execDetached(["hyprctl", "dispatch", 'hl.dsp.submap("' + name + '")']) }
     Component.onCompleted: submap("reset")      // safety net: in case the previous session was left in the submap
@@ -45,44 +41,22 @@ ShellRoot {
         navItem = null
         if (current === "") { navMode = false; viaSubmap = false }
         submap(current !== "" && viaSubmap ? "qsmenu" : "reset")
-        // Waybar highlights the open menu's icon (class "open" in the status script): state to a file + refresh signal
-        Quickshell.execDetached(["bash", "-c", 'printf %s "$1" > "${XDG_RUNTIME_DIR:-/tmp}/qs-menu"; pkill -RTMIN+8 waybar', "_", current])
-    }
-    function rememberX(name, x) {
-        if (Math.round(xs[name] || -1) === Math.round(x)) return
-        const n = Object.assign({}, xs); n[name] = x; xs = n
-        Quickshell.execDetached(["bash", "-c", 'mkdir -p "$(dirname "$2")"; printf %s "$1" > "$2"', "_", JSON.stringify(n), xsFile])
     }
     function openNav(i) {
+        const order = bar.navOrder()
         const n = order.length
+        if (n === 0) return
         const name = order[((i % n) + n) % n]
-        anchorX = xs[name] !== undefined ? xs[name] : -1
+        menuScreen = null
+        anchorX = bar.xOf(name)
         current = name
     }
-    property int navStart: 0
-    property bool navOpenAfterMeasure: true   // false = only measure and store the icon positions
     function navToggle() {
         if (navMode) { current = ""; return }
         viaSubmap = false
         navMode = true
-        navStart = Math.max(0, order.indexOf(current))
-        navOpenAfterMeasure = true
-        // Measure the icon positions from a screenshot of the bar, so the menu opens at the same spot as when clicking the icon
-        if (!posProc.running) posProc.running = true
+        openNav(Math.max(0, bar.navOrder().indexOf(current)))
         keyItem.forceActiveFocus()
-    }
-    Sh {
-        id: posProc
-        // First line: whether the headphones icon is in the bar (affects the icon count), second: the positions
-        script: 'hp=0; pactl list short sinks | grep -q bluez_output && hp=1; echo $hp
-n=(' + root.orderStart.join(" ") + '); ((hp)) && n+=(headphones); n+=(' + root.orderEnd.join(" ") + ')
-"$HOME/.config/waybar/scripts/icon-positions" "${n[@]}"'
-        onResult: text => {
-            root.headphones = text.charAt(0) === "1"
-            text = text.slice(2)
-            try { root.xs = Object.assign({}, root.xs, JSON.parse(text)) } catch (e) {}
-            if (root.navMode && root.navOpenAfterMeasure) { root.openNav(root.navStart); keyItem.forceActiveFocus() }
-        }
     }
     function navRows() {
         const out = []
@@ -108,8 +82,8 @@ n=(' + root.orderStart.join(" ") + '); ((hp)) && n+=(headphones); n+=(' + root.o
     }
     function navAct(a) {     // a: left | right | up | down | enter
         if (!navMode) return false
-        if (a === "left")       openNav(order.indexOf(current) - 1)
-        else if (a === "right") openNav(order.indexOf(current) + 1)
+        if (a === "left")       openNav(bar.navOrder().indexOf(current) - 1)
+        else if (a === "right") openNav(bar.navOrder().indexOf(current) + 1)
         else if (a === "up")    navMove(-1)
         else if (a === "down")  navMove(1)
         else if (a === "enter") { if (navItem) navItem.navActivate() }
@@ -121,31 +95,14 @@ n=(' + root.orderStart.join(" ") + '); ((hp)) && n+=(headphones); n+=(' + root.o
         const a = { [Qt.Key_Left]: "left", [Qt.Key_Right]: "right", [Qt.Key_Up]: "up", [Qt.Key_Down]: "down", [Qt.Key_Return]: "enter", [Qt.Key_Enter]: "enter", [Qt.Key_Escape]: "esc" }[event.key]
         if (a && navAct(a)) event.accepted = true
     }
-    Sh {
-        command: ["cat", root.xsFile]
-        running: true
-        onResult: text => { try { root.xs = JSON.parse(text) } catch (e) {} }
-    }
-
     IpcHandler {
         target: "menu"
-        // toggleAt: x = cursor position at click time (= the icon's position), the menu opens below the icon
-        // A menu opened by clicking also enters keyboard mode (Esc closes, arrows/Enter work as with ⌘⇧Space)
-        function toggleAt(name: string, x: int): void {
-            root.rememberX(name, x); root.anchorX = x
-            const opening = root.current !== name
-            // The Wifi menu has a password field that needs real keyboard focus: no arrow-key navigation
-            root.viaSubmap = opening && name !== "wifi"
-            root.navMode = root.viaSubmap
-            root.current = opening ? name : ""
-            if (root.navMode) {
-                // Icon positions for ←/→ navigation (measurement only, doesn't reopen the menu)
-                if (Object.keys(root.xs).length < root.order.length && !posProc.running) { root.navOpenAfterMeasure = false; posProc.running = true }
-            }
-        }
+        // toggleAt: x = the icon's centre, the menu opens below it (the bar calls clickMenu directly)
+        function toggleAt(name: string, x: int): void { root.clickMenu(name, x, null) }
         // toggle: opened by a shortcut (e.g. ⌘Esc -> power). Opens in keyboard mode so Esc closes and arrows/Enter work.
         function toggle(name: string): void {
             root.anchorX = -1
+            root.menuScreen = null
             const opening = root.current !== name
             root.viaSubmap = opening
             root.navMode = opening
@@ -154,6 +111,30 @@ n=(' + root.orderStart.join(" ") + '); ((hp)) && n+=(headphones); n+=(' + root.o
         function close(): void { root.current = "" }
         function nav(): void { root.navToggle() }
         function navkey(a: string): string { root.navAct(a); return root.current + " | " + (root.navItem ? (root.navItem.label || root.navItem.title || "?") : "-") }   // testing / scripts
+    }
+
+    IpcHandler {
+        target: "bar"
+        function refresh(): void { TopBar.refresh("") }
+        function refreshModule(name: string): void { TopBar.refresh(name) }
+    }
+
+    // A click on a bar module. The menu also enters keyboard mode (Esc closes, arrows/Enter work as with ⌘⇧Space).
+    function clickMenu(name, x, screen) {
+        anchorX = x
+        menuScreen = screen
+        const opening = current !== name
+        // The Wifi menu has a password field that needs real keyboard focus: no arrow-key navigation
+        viaSubmap = opening && name !== "wifi"
+        navMode = viaSubmap
+        current = opening ? name : ""
+    }
+
+    Bar {
+        id: bar
+        current: root.current
+        menus: root.menus
+        onMenuClicked: (name, x, screen) => root.clickMenu(name, x, screen)
     }
 
     Osd {}
@@ -169,6 +150,7 @@ n=(' + root.orderStart.join(" ") + '); ((hp)) && n+=(headphones); n+=(' + root.o
 
     PanelWindow {
         visible: root.current !== ""
+        screen: root.menuScreen || Quickshell.screens[0]
         anchors { top: true; bottom: true; left: true; right: true }
         margins { top: Theme.barHeight }   // the top bar stays clickable
         color: "transparent"

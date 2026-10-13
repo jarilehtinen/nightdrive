@@ -1,0 +1,22 @@
+#!/bin/bash
+# Prints a top bar icon's SVG. Usage: icon <ref>
+#   ref = name        Lucide icon (https://lucide.dev/icons), or an own SVG icons/<name>.svg
+#   ref = pack:name   any Iconify icon set (https://icon-sets.iconify.design), e.g. mdi:wifi, tabler:battery
+# Looked up in: ~/.config/topbar/local-icons (a private overlay), ~/.config/topbar/icons (the repo),
+# ~/.local/share/topbar/icons (downloaded). A missing icon is downloaded from Iconify into the last one.
+# Draw the icon in currentColor: the bar replaces it with the icon colour (fixed colours stay as they are).
+set -uo pipefail
+ref=${1:?usage: icon <name | pack:name>}
+[[ $ref =~ ^([a-z0-9-]+:)?[a-z0-9-]+$ ]] || { echo "bad icon name: $ref" >&2; exit 2; }
+if [[ $ref == *:* ]]; then pack=${ref%%:*}; name=${ref#*:}; else pack=lucide; name=$ref; fi
+dl="$HOME/.local/share/topbar/icons"
+for root in "$HOME/.config/topbar/local-icons" "$HOME/.config/topbar/icons" "$dl"; do
+  [[ $ref != *:* && -f $root/$name.svg ]] && exec cat "$root/$name.svg"
+  [[ -f $root/$pack/$name.svg ]] && exec cat "$root/$pack/$name.svg"
+done
+mkdir -p "$dl/$pack"
+tmp=$(mktemp)
+if curl -fsSL --max-time 10 "https://api.iconify.design/$pack/$name.svg" -o "$tmp" && grep -q '<svg' "$tmp"; then
+  mv "$tmp" "$dl/$pack/$name.svg"; exec cat "$dl/$pack/$name.svg"
+fi
+rm -f "$tmp"; echo "icon not found: $ref" >&2; exit 1

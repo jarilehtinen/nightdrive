@@ -1,5 +1,5 @@
 #!/usr/bin/python3 -I
-"""System meters. `sysinfo bar` -> TEXT<TAB>TOOLTIP<TAB>CLASS (for waybar's status script),
+"""System meters. `sysinfo bar` -> TEXT<TAB>TOOLTIP<TAB>CLASS (for the top bar's status script),
 `sysinfo menu` -> JSON for Quickshell's SystemMenu. CPU load is measured since the previous call
 (state: $XDG_RUNTIME_DIR/sysinfo-<mode>.json); the first call measures over 0.3 s."""
 import glob, json, os, sys, time

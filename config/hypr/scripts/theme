@@ -95,9 +95,7 @@ def apply():
 def reload():
     run = lambda *c: subprocess.run(c, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     run("makoctl", "reload")
-    run(f"{HOME}/.config/hypr/scripts/bar-style", "apply")       # top bar highlights and Tailscale icons
-    run("pkill", "-SIGUSR2", "-x", "waybar")
-    run("pkill", "-RTMIN+8", "-x", "waybar")
+    run(f"{HOME}/.config/hypr/scripts/bar-style", "apply")       # top bar colours (the bar watches the file)
 
 
 args = sys.argv[1:]

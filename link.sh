@@ -13,9 +13,11 @@ link() {
   echo "linked      $dst -> $src"
 }
 
-for d in hypr waybar mako fuzzel kitty quickshell screensaver; do
+for d in hypr topbar mako fuzzel kitty quickshell screensaver; do
   link "$repo/config/$d" "$HOME/.config/$d"
 done
+# The top bar used to be Waybar (config/waybar): drop its old link
+[[ -L $HOME/.config/waybar && ! -e $HOME/.config/waybar ]] && rm "$HOME/.config/waybar" && echo "removed     $HOME/.config/waybar (old link)"
 link "$repo/config/gtk-4.0/gtk.css" "$HOME/.config/gtk-4.0/gtk.css"   # Tokyo Night colours for libadwaita apps (Nautilus)
 link "$repo/config/gtk-3.0/gtk.css" "$HOME/.config/gtk-3.0/gtk.css"
 link "$repo/config/fontconfig/conf.d/10-nerd-font-symbols.conf" "$HOME/.config/fontconfig/conf.d/10-nerd-font-symbols.conf"

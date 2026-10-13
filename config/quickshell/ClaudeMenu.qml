@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell
 
-// Claude usage: 5-hour session, week and per-model week (waybar/scripts/claude-usage, Claude Code's own sign-in).
+// Claude usage: 5-hour session, week and per-model week (topbar/scripts/claude-usage, Claude Code's own sign-in).
 Column {
     id: m
     width: parent ? parent.width : 300
@@ -17,7 +17,7 @@ Column {
 
     Sh {
         id: proc
-        command: [Quickshell.env("HOME") + "/.config/waybar/scripts/claude-usage"]
+        command: [Quickshell.env("HOME") + "/.config/topbar/scripts/claude-usage"]
         onResult: text => {
             try { m.usage = JSON.parse(text) } catch (e) { m.usage = null }
             m.loaded = true

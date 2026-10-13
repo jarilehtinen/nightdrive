@@ -29,5 +29,5 @@ Singleton {
     readonly property color ok:      "#9ece6a"
     readonly property color launcherBg: "#f71a1b26"               // kitty background (#1a1b26) at 97 % opacity
     readonly property string font:   "JetBrains Mono"
-    readonly property int barHeight: 37                           // = height in waybar/config.jsonc
+    readonly property int barHeight: 37                           // the top bar (Bar.qml)
 }

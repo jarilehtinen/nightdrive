@@ -42,10 +42,10 @@ end
 hl.on("hyprland.start", function ()
     -- graphical-session.target for xdg-desktop-portal (config/systemd/user); restart: fresh environment after a re-login
     hl.exec_cmd("systemctl --user restart nightdrive-session.target")
-    -- Theme colours (~/.cache/nightdrive, hypr/scripts/theme) first: Quickshell, mako and Waybar read them on startup.
-    -- mako runs as its systemd unit: graphical-session.target and D-Bus activation start that unit too, so a plain
-    -- `mako &` raced it and left mako.service failed. waybar-run logs output and restarts Waybar if it crashes.
-    hl.exec_cmd("sh -c '\"$HOME/.config/hypr/scripts/theme\" apply; qs & systemctl --user restart mako & exec \"$HOME/.config/hypr/scripts/waybar-run\"'")
+    -- Theme colours (~/.cache/nightdrive, hypr/scripts/theme) first: Quickshell (the top bar and its menus) and mako read
+    -- them on startup. mako runs as its systemd unit: graphical-session.target and D-Bus activation start that unit too,
+    -- so a plain `mako &` raced it and left mako.service failed.
+    hl.exec_cmd("sh -c '\"$HOME/.config/hypr/scripts/theme\" apply; qs & exec systemctl --user restart mako'")
     hl.exec_cmd("1password", { workspace = "special:bg silent" })   -- 1Password straight to the background without flashing (⌘P brings it up)
     hl.exec_cmd(HOME .. "/.config/hypr/scripts/wallpaper restore")   -- swaybg with the remembered wallpaper (change: launcher › Settings › Background)
     hl.exec_cmd("env PATH=" .. HOME .. "/.local/bin:" .. os.getenv("PATH") .. " " .. HOME .. "/.local/bin/voxtype-onnx daemon")   -- speech to text (F5), Parakeet
@@ -57,8 +57,6 @@ hl.on("hyprland.start", function ()
     hl.exec_cmd("blueman-applet")
     hl.exec_cmd("wl-paste --type text --watch cliphist store")
     hl.exec_cmd("wl-paste --type image --watch cliphist store")
-    -- Safety net: on two boots Waybar didn't start (the first exec got lost?). If it isn't running after 1.5 s, start it.
-    hl.exec_cmd("sh -c 'sleep 1.5; pgrep -x waybar >/dev/null || exec " .. HOME .. "/.config/hypr/scripts/waybar-run'")
 end)
 
 -------------------------------

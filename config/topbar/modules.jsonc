@@ -1,0 +1,28 @@
+// The top bar's right-hand modules, left to right. Quickshell draws the bar (quickshell/Bar.qml) and reloads this on save.
+// A private overlay adds its own modules at the left end in local.modules.jsonc (same format).
+//
+//   name      the module's name: `scripts/status <name>` gives its state, quickshell/<Name>Menu.qml (if it exists) opens
+//             on a click, adjust.conf has its icon size / position (`nightdrive topbar adjust`)
+//   interval  seconds between status updates (default 5); `qs ipc call bar refresh` updates every module at once
+//   status    optional: another command printing the state (default ~/.config/topbar/scripts/status <name>)
+//   menu      optional: the menu to open on a left click, if not <Name>Menu.qml ("" = none)
+//   right, middle  optional: shell commands for a right / middle click (the module updates right after)
+//
+// A status command prints one line of JSON:  {"icon": "wifi", "text": "95%", "class": "off"}
+//   icon   a Lucide name (lucide.dev/icons), or pack:name from any Iconify set (mdi:wifi, tabler:cpu…); see scripts/icon
+//   text   optional text after the icon (always the same font and size: the `text` row in adjust.conf)
+//   class  optional: off (dimmed), warning (orange), critical (red), active (highlighted background), stale (faded)
+// No icon and no text hides the module.
+[
+  { "name": "deck",          "interval": 2,  "right": "~/.config/hypr/scripts/deck-open" },
+  { "name": "claude",        "interval": 60, "middle": "xdg-open https://claude.ai/settings/usage" },
+  { "name": "system",        "interval": 3 },
+  { "name": "tailscale",     "interval": 5,  "right": "~/.config/topbar/scripts/tailscale toggle" },
+  { "name": "bluetooth",     "interval": 5,  "right": "blueman-manager" },
+  { "name": "wifi",          "interval": 5,  "right": "kitty --class floating-tui -e nmtui" },
+  { "name": "volume",        "interval": 2,  "right": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle", "middle": "pavucontrol" },
+  { "name": "headphones",    "interval": 3,  "right": "~/.config/topbar/scripts/eq toggle", "middle": "easyeffects" },
+  { "name": "battery",       "interval": 10 },
+  { "name": "calendar",      "interval": 5 },
+  { "name": "notifications", "interval": 60 }
+]

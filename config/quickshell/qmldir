@@ -12,3 +12,7 @@ Divider 1.0 Divider.qml
 Shelf 1.0 Shelf.qml
 OutputList 1.0 OutputList.qml
 singleton LastState 1.0 LastState.qml
+singleton TopBar 1.0 TopBar.qml
+Bar 1.0 Bar.qml
+BarModule 1.0 BarModule.qml
+BarText 1.0 BarText.qml

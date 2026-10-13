@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell
 
-// Machine meters: CPU, memory, temperatures and the heaviest processes (data: waybar/scripts/sysinfo menu).
+// Machine meters: CPU, memory, temperatures and the heaviest processes (data: topbar/scripts/sysinfo menu).
 Column {
     id: m
     width: parent ? parent.width : 300
@@ -19,7 +19,7 @@ Column {
 
     Sh {
         id: proc
-        command: ["bash", "-c", "~/.config/waybar/scripts/sysinfo menu"]
+        command: ["bash", "-c", "~/.config/topbar/scripts/sysinfo menu"]
         onResult: text => { try { m.d = JSON.parse(text) } catch (e) {} }
     }
 

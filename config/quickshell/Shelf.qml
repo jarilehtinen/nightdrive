@@ -52,10 +52,10 @@ Scope {
         anchors { top: true }
         // The trigger covers the middle of the top bar: hovering or dragging over it opens the shelf, and dropping works on the bar already
         implicitWidth: shelf.open ? Math.max(360, card.width) : 360
-        implicitHeight: Theme.barHeight   // full top bar height (Waybar's middle section is empty, so no button gets covered)
+        implicitHeight: Theme.barHeight   // full top bar height (the bar.s middle section is empty, so no button gets covered)
         color: "transparent"
         exclusionMode: ExclusionMode.Ignore
-        WlrLayershell.layer: WlrLayer.Overlay   // Overlay: Waybar (layer Top) must not cover the trigger, even if it starts or reloads later
+        WlrLayershell.layer: WlrLayer.Overlay   // Overlay: the bar (layer Top) must not cover the trigger
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
         // Mouse at the top edge (lingering briefly) opens the shelf

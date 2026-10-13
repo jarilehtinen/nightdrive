@@ -39,7 +39,7 @@ Column {
 
     Sh {
         id: battProc
-        // The machine's own battery, found like in waybar/scripts/status (MacBook: macsmc-battery; Bluetooth devices skipped)
+        // The machine's own battery, found like in topbar/scripts/status (MacBook: macsmc-battery; Bluetooth devices skipped)
         script: 'for d in /sys/class/power_supply/*; do [ "$(cat "$d/type")" = Battery ] && [ "$(cat "$d/scope" 2>/dev/null)" != Device ] &&
                  { upower -i "/org/freedesktop/UPower/devices/battery_$(basename "$d" | tr - _)"; break; }; done'
         onResult: text => {

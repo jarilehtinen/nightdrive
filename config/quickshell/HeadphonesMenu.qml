@@ -2,13 +2,13 @@ import QtQuick
 import Quickshell
 
 // Headphones (shown in the bar only while Bluetooth headphones are connected): select as output and pick the EasyEffects EQ preset.
-// Info and changes: ~/.config/waybar/scripts/eq (info / set / toggle). The preset is saved as the headphones' autoload profile.
+// Info and changes: ~/.config/topbar/scripts/eq (info / set / toggle). The preset is saved as the headphones' autoload profile.
 Column {
     id: m
     width: parent ? parent.width : 300
     spacing: 8
 
-    readonly property string eq: Quickshell.env("HOME") + "/.config/waybar/scripts/eq"
+    readonly property string eq: Quickshell.env("HOME") + "/.config/topbar/scripts/eq"
     readonly property var presetInfo: ({
         "Neutral": { icon: "audio-lines", detail: "AutoEq" },
         "Bass":    { icon: "speaker",       detail: "more bass" },
@@ -33,7 +33,7 @@ Column {
     }
     Sh {
         id: setProc
-        onResult: () => { m.refresh(); Quickshell.execDetached(["pkill", "-RTMIN+8", "waybar"]) }
+        onResult: () => { m.refresh(); TopBar.refresh("headphones") }
     }
 
     MenuHeader { width: parent.width; title: "Headphones" }
