@@ -29,6 +29,10 @@ link "$repo/config/wireplumber/wireplumber.conf.d/51-bt-no-headset-autoswitch.co
 
 link "$repo/config/alsa/asoundrc" "$HOME/.config/alsa/asoundrc"   # macbook_mic alias for dictation (voxtype)
 
+# Session target: brings up graphical-session.target, which xdg-desktop-portal needs (started by hyprland.lua)
+link "$repo/config/systemd/user/nightdrive-session.target" "$HOME/.config/systemd/user/nightdrive-session.target"
+systemctl --user daemon-reload 2>/dev/null || true
+
 link "$repo/wallpapers" "$HOME/.local/share/wallpapers"   # wallpapers (chosen via: launcher › Settings › Background, hypr/scripts/wallpaper)
 
 # Bash: simple prompt (Fedora's ~/.bashrc sources ~/.bashrc.d/*)

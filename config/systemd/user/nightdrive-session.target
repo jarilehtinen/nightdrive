@@ -1,0 +1,8 @@
+# Started by hyprland.lua at login. A plain `start-hyprland` session (unlike uwsm) never reaches graphical-session.target,
+# and xdg-desktop-portal requires it: without this, apps get no dark-mode signal, portal file choosers or screen sharing.
+# graphical-session.target can't be started by hand, so this target pulls it in (BindsTo).
+[Unit]
+Description=Nightdrive (Hyprland) session
+BindsTo=graphical-session.target
+Wants=graphical-session-pre.target
+After=graphical-session-pre.target

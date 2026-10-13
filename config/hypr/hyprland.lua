@@ -30,6 +30,8 @@ hl.monitor({
 ---- AUTOSTART ----
 -------------------
 hl.on("hyprland.start", function ()
+    -- graphical-session.target for xdg-desktop-portal (config/systemd/user); restart: fresh environment after a re-login
+    hl.exec_cmd("systemctl --user restart nightdrive-session.target")
     -- Theme colours (~/.cache/nightdrive, hypr/scripts/theme) first: Quickshell, mako and Waybar read them on startup.
     -- waybar-run logs output and restarts Waybar if it crashes.
     hl.exec_cmd("sh -c '\"$HOME/.config/hypr/scripts/theme\" apply; qs & mako & exec \"$HOME/.config/hypr/scripts/waybar-run\"'")
