@@ -1,0 +1,11 @@
+# Every 6 hours, the first time 10 minutes after login. Turn off: systemctl --user disable --now nightdrive-update-check.timer
+[Unit]
+Description=Check for Nightdrive updates every 6 hours
+
+[Timer]
+OnStartupSec=10min
+OnUnitActiveSec=6h
+Persistent=true
+
+[Install]
+WantedBy=timers.target

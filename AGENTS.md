@@ -27,3 +27,4 @@ Test over IPC (`qs ipc show`, e.g. `qs ipc call launcher openLevel settings`) an
 - *Launcher level:* in `Launcher.qml`, add an item to `rootItems`/`statics`, entries in `titles` and `parents`, rows in
   `items()`, and actions in `activate()`.
 - *Keybinding:* `hypr/bindings.lua`, and the same entry in `hypr/SHORTCUTS.md` (the launcher reads that file).
+- *Command:* a subcommand in the case at the bottom of `bin/nightdrive` (link.sh links it to `~/.local/bin`).

@@ -48,6 +48,7 @@ PanelWindow {
     property string barIcons: ""              // Settings › Top bar icons: light | dark
     property int barIconOp: -1                // icon and text opacity
     property string barHl: ""                 // Settings › Theme › Top bar › Highlight: theme | white | black
+    property int updates: 0                   // Update: new Nightdrive commits waiting (nightdrive update check, every 6 h)
     property var displays: null               // Settings › Display: [{ name, desc, scale, opts: [{ value, size }] }] (hypr/scripts/display list)
     property var themeList: []                // Settings › Theme › Color: [{ value, name, swatch, current }] (hypr/scripts/theme list)
     readonly property bool grid: level === "background"   // wallpapers as a grid, other levels as a list
@@ -109,7 +110,8 @@ PanelWindow {
         { kind: "nav", name: "Settings", glyph: "settings", target: "settings" },
         { kind: "nav", name: "Install", glyph: "package-plus", target: "install" },
         { kind: "nav", name: "Remove", glyph: "package-minus", target: "remove" },
-        { kind: "action", name: "Update", glyph: "refresh-cw", confirm: true, cmd: term("sudo dnf upgrade --refresh") },
+        { kind: "action", name: "Update", glyph: "refresh-cw", confirm: true, cmd: term('"$HOME/.local/bin/nightdrive" update'),
+          summary: updates > 0 ? updates + " new" : undefined },
         { kind: "nav", name: "Power", glyph: "power", target: "power" }
     ])
 
@@ -571,7 +573,7 @@ PanelWindow {
     function selectWhere(pred) { const i = results.findIndex(pred); if (i >= 0) list.currentIndex = i }
     function back() { if (level === "root") win.open = false; else go(parents[level] || "root") }
 
-    onOpenChanged: if (open) { lastMouse = null; spotify = null; if (ext) ext.opened(); go("root"); deckProc.running = true; musicProc.running = true; bgProc.running = true; input.forceActiveFocus() }
+    onOpenChanged: if (open) { lastMouse = null; spotify = null; if (ext) ext.opened(); go("root"); deckProc.running = true; musicProc.running = true; bgProc.running = true; updatesProc.running = true; input.forceActiveFocus() }
     Component.onCompleted: keysProc.running = true
 
     Timer { id: disarm; interval: 4000; onTriggered: win.armed = "" }
@@ -724,6 +726,11 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                 .map(f => ({ value: f[0], name: f[1], swatch: f[2], current: f[3] === "current" }))
             if (win.level === "themecolor" && win.query === "") win.selectWhere(r => r.value === (win.themeList.find(t => t.current) || {}).value)
         }
+    }
+    Sh {
+        id: updatesProc
+        script: 'cat "$HOME/.cache/nightdrive/updates" 2>/dev/null'
+        onResult: text => { win.updates = parseInt(text, 10) || 0 }
     }
     // Settings › Display: outputs and their even scales; select the current one
     Sh {

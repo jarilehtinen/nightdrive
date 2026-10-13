@@ -31,7 +31,14 @@ link "$repo/config/alsa/asoundrc" "$HOME/.config/alsa/asoundrc"   # macbook_mic 
 
 # Session target: brings up graphical-session.target, which xdg-desktop-portal needs (started by hyprland.lua)
 link "$repo/config/systemd/user/nightdrive-session.target" "$HOME/.config/systemd/user/nightdrive-session.target"
+# Update check: every 6 h a fetch, and a notification when new commits are waiting (nightdrive update check)
+for u in nightdrive-update-check.service nightdrive-update-check.timer; do link "$repo/config/systemd/user/$u" "$HOME/.config/systemd/user/$u"; done
 systemctl --user daemon-reload 2>/dev/null || true
+systemctl --user enable --now nightdrive-update-check.timer 2>/dev/null || true
+
+# The nightdrive command (bin/nightdrive)
+mkdir -p "$HOME/.local/bin"
+for f in "$repo"/bin/*; do link "$f" "$HOME/.local/bin/$(basename "$f")"; done
 
 link "$repo/wallpapers" "$HOME/.local/share/wallpapers"   # wallpapers (chosen via: launcher › Settings › Background, hypr/scripts/wallpaper)
 

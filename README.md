@@ -33,9 +33,9 @@ Nightdrive puts all of that together into one opinionated desktop, made for **Fe
 ### A launcher for everything
 
 **⌘Space** opens the launcher. It holds apps, 1Password items (copy a password, username or one-time code), clipboard history,
-an emoji picker, screenshots, a colour picker, every keybinding, settings, `dnf` install / remove / update, and power actions.
-Search from the top level finds all of these. While music plays, a player row sits above the list. Type a question and press
-⌘⌥Enter to send it straight to Claude Code.
+an emoji picker, screenshots, a colour picker, every keybinding, settings, `dnf` install / remove, one-click updates, and
+power actions. Search from the top level finds all of these. While music plays, a player row sits above the list. Type a
+question and press ⌘⌥Enter to send it straight to Claude Code.
 
 ![The launcher](docs/screenshots/launcher.jpg)
 
@@ -127,6 +127,28 @@ A few things stay manual:
 `./link.sh` on its own just (re)links the config files and is safe to run again. The repo can live anywhere; `~/dotfiles` is
 only a convention.
 
+### Updating
+
+Nightdrive checks for new changes every six hours and shows a notification with an **Update** button when there are some.
+You can also update any time from the launcher (**Update**) or a terminal:
+
+```sh
+nightdrive update   # pulls Nightdrive (and Deck), relinks, installs new packages, updates the system, reloads the desktop
+```
+
+It never overwrites your own edits: a repo with uncommitted changes is skipped with a note.
+
+The same `nightdrive` command reaches the settings from a terminal (`nightdrive` alone lists everything):
+
+| Command | What it does |
+|---|---|
+| `nightdrive update` | Updates Nightdrive and the system (above) |
+| `nightdrive update check` | Only looks for new changes (what the six-hourly check runs) |
+| `nightdrive theme color teal` | Theme colour: violet, blue, teal, green, amber, rose or graphite |
+| `nightdrive wallpaper set <image>` | Changes the wallpaper; `nightdrive wallpaper current` prints it |
+| `nightdrive display list` | Each screen's even scales; `nightdrive display scale eDP-1 2` sets one |
+| `nightdrive bar-style opacity 80` | Top bar opacity; also `icons`, `icon-opacity` and `highlight` |
+
 <details>
 <summary><b>Trying it in a virtual machine (experimental)</b></summary>
 
@@ -145,9 +167,9 @@ You can try the whole setup in an aarch64 **Fedora 44** VM on any Apple Silicon 
    to *Always*.
 
 `--vm` skips the notch step and writes `config/hypr/local.lua` with scale 2.0 (for *Best for Retina display*; pick 1.0 in the
-launcher's Settings › Display for *Scaled*), a software cursor and the rounded-corner shader off. It must be Fedora 44, because the Hyprland COPR builds only for
-that release. Containers won't work, since Hyprland needs a GPU. Parallels passes the Mac's battery to the VM; without a
-display or keyboard backlight their sliders are left out.
+launcher's Settings › Display for *Scaled*), a software cursor and the rounded-corner shader off. It must be Fedora 44,
+because the Hyprland COPR builds only for that release. Containers won't work, since Hyprland needs a GPU. Parallels passes
+the Mac's battery to the VM; without a display or keyboard backlight their sliders are left out.
 </details>
 
 ## Keys
