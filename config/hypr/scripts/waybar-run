@@ -1,0 +1,13 @@
+#!/bin/bash
+# Starts Waybar and logs its output ($XDG_RUNTIME_DIR/waybar.log). If Waybar crashes (e.g. during startup),
+# it is restarted (at most 5 times). A normal exit (pkill waybar = SIGTERM, rc 143) does not restart it.
+log="${XDG_RUNTIME_DIR:-/tmp}/waybar.log"
+"$HOME/.config/hypr/scripts/bar-style" apply   # bar.css (bar colours and opacity) and Tailscale icons before Waybar reads the style
+[[ -e $HOME/.config/waybar/local.css ]] || : > "$HOME/.config/waybar/local.css"   # style.css imports it; a missing file would stop Waybar
+for _ in 1 2 3 4 5; do
+  waybar >>"$log" 2>&1
+  rc=$?
+  echo "$(date '+%F %T') waybar exited rc=$rc" >>"$log"
+  [[ $rc -eq 0 || $rc -eq 143 ]] && break
+  sleep 2
+done

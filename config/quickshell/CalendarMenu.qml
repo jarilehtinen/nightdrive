@@ -1,0 +1,134 @@
+import QtQuick
+
+// Calendar: month view (Monday first, week numbers). Opens by clicking the date.
+// ‹ › browse months, clicking the title returns to the current month.
+Column {
+    id: m
+    width: parent ? parent.width : 300
+    spacing: 8
+
+    readonly property date today: new Date()
+    property int year: today.getFullYear()
+    property int month: today.getMonth()      // 0-11
+    signal close()
+
+    readonly property var monthNames: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+    readonly property var dayNames: ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
+    readonly property int cell: 34
+    readonly property int weekCol: 28
+
+    // 42 cells (6 weeks): { d, inMonth, isToday, week }
+    readonly property var cells: {
+        const first = new Date(year, month, 1)
+        const offset = (first.getDay() + 6) % 7
+        const out = []
+        for (let i = 0; i < 42; i++) {
+            const dt = new Date(year, month, 1 - offset + i)
+            out.push({
+                d: dt.getDate(),
+                inMonth: dt.getMonth() === month,
+                isToday: dt.getFullYear() === today.getFullYear() && dt.getMonth() === today.getMonth() && dt.getDate() === today.getDate(),
+                week: i % 7 === 0 ? isoWeek(dt) : 0
+            })
+        }
+        return out
+    }
+    function isoWeek(dt) {                      // the week's Thursday determines the week number
+        const t = new Date(Date.UTC(dt.getFullYear(), dt.getMonth(), dt.getDate()))
+        t.setUTCDate(t.getUTCDate() + 4 - (t.getUTCDay() || 7))
+        return Math.ceil(((t - Date.UTC(t.getUTCFullYear(), 0, 1)) / 86400000 + 1) / 7)
+    }
+    function shift(n) {
+        const d = new Date(year, month + n, 1)
+        year = d.getFullYear(); month = d.getMonth()
+    }
+    function reset() { year = today.getFullYear(); month = today.getMonth() }
+
+    // Title and month arrows
+    Item {
+        width: parent.width
+        height: 30
+        Text {
+            id: prev
+            anchors { left: parent.left; verticalCenter: parent.verticalCenter }
+            width: 30; horizontalAlignment: Text.AlignHCenter
+            text: Icons.g("chevron-left")
+            color: prevArea.containsMouse ? Theme.accent : Theme.text
+            font { family: Icons.family; pixelSize: 18 }
+            MouseArea { cursorShape: Qt.PointingHandCursor; id: prevArea; anchors { fill: parent; margins: -4 } hoverEnabled: true; onClicked: m.shift(-1) }
+        }
+        Text {
+            anchors.centerIn: parent
+            text: m.monthNames[m.month] + " " + m.year
+            color: titleArea.containsMouse ? Theme.accent : Theme.text
+            font { family: Theme.font; pixelSize: 14; bold: true }
+            MouseArea { cursorShape: Qt.PointingHandCursor; id: titleArea; anchors { fill: parent; margins: -4 } hoverEnabled: true; onClicked: m.reset() }
+        }
+        Text {
+            anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+            width: 30; horizontalAlignment: Text.AlignHCenter
+            text: Icons.g("chevron-right")
+            color: nextArea.containsMouse ? Theme.accent : Theme.text
+            font { family: Icons.family; pixelSize: 18 }
+            MouseArea { cursorShape: Qt.PointingHandCursor; id: nextArea; anchors { fill: parent; margins: -4 } hoverEnabled: true; onClicked: m.shift(1) }
+        }
+    }
+
+    // Weekdays
+    Row {
+        x: (m.width - (m.weekCol + 7 * m.cell)) / 2
+        Item { width: m.weekCol; height: 22 }
+        Repeater {
+            model: m.dayNames
+            delegate: Text {
+                required property string modelData
+                width: m.cell; height: 22
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+                text: modelData
+                color: Theme.dim
+                font { family: Theme.font; pixelSize: 11 }
+            }
+        }
+    }
+
+    // Days: week number + 7 days
+    Grid {
+        x: (m.width - (m.weekCol + 7 * m.cell)) / 2
+        columns: 8
+        Repeater {
+            model: 48
+            delegate: Item {
+                required property int index
+                readonly property bool isWeek: index % 8 === 0
+                readonly property var c: isWeek ? null : m.cells[Math.floor(index / 8) * 7 + (index % 8) - 1]
+                width: isWeek ? m.weekCol : m.cell
+                height: m.cell
+
+                Text {                          // week number
+                    visible: parent.isWeek
+                    anchors.centerIn: parent
+                    text: parent.isWeek ? m.cells[Math.floor(index / 8) * 7].week : ""
+                    color: Theme.dim
+                    font { family: Theme.font; pixelSize: 10 }
+                }
+                Rectangle {                     // day; today highlighted
+                    visible: !parent.isWeek
+                    anchors.centerIn: parent
+                    width: 30; height: 30; radius: 8
+                    color: parent.c && parent.c.isToday ? Theme.sel : "transparent"
+                    border.width: parent.c && parent.c.isToday ? 1 : 0
+                    border.color: Theme.primary
+                    Text {
+                        anchors.centerIn: parent
+                        text: parent.parent.c ? parent.parent.c.d : ""
+                        color: !parent.parent.c ? Theme.text
+                             : parent.parent.c.isToday ? Theme.accent
+                             : parent.parent.c.inMonth ? Theme.text : Theme.dim
+                        font { family: Theme.font; pixelSize: 13; bold: parent.parent.c ? parent.parent.c.isToday : false }
+                    }
+                }
+            }
+        }
+    }
+}

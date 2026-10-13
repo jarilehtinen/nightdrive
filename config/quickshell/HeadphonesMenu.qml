@@ -1,0 +1,92 @@
+import QtQuick
+import Quickshell
+
+// Headphones (shown in the bar only while Bluetooth headphones are connected): select as output and pick the EasyEffects EQ preset.
+// Info and changes: ~/.config/waybar/scripts/eq (info / set / toggle). The preset is saved as the headphones' autoload profile.
+Column {
+    id: m
+    width: parent ? parent.width : 300
+    spacing: 8
+
+    readonly property string eq: Quickshell.env("HOME") + "/.config/waybar/scripts/eq"
+    readonly property var presetInfo: ({
+        "Neutral": { icon: "audio-lines", detail: "AutoEq" },
+        "Bass":    { icon: "speaker",       detail: "more bass" },
+        "Voice":   { icon: "speech",      detail: "podcasts, calls" }
+    })
+    property var info: ({})
+    readonly property bool eqOn: !!info.preset && info.preset !== "off"
+    signal close()
+
+    function refresh() { infoProc.running = true }
+    function run(args) {
+        setProc.command = [m.eq].concat(args)
+        setProc.running = true
+    }
+    Component.onCompleted: refresh()
+    Timer { interval: 2000; repeat: true; running: true; onTriggered: m.refresh() }
+
+    Sh {
+        id: infoProc
+        command: [m.eq, "info"]
+        onResult: text => { try { m.info = JSON.parse(text) } catch (e) {} }
+    }
+    Sh {
+        id: setProc
+        onResult: () => { m.refresh(); Quickshell.execDetached(["pkill", "-RTMIN+8", "waybar"]) }
+    }
+
+    MenuHeader { width: parent.width; title: "Headphones" }
+
+    MenuRow {
+        width: parent.width
+        icon: "headphones"
+        label: m.info.name || "Not connected"
+        detail: [m.info.battery ? m.info.battery + "%" : "", m.info.codec || ""].filter(s => s).join(" · ")
+        active: !!m.info.default
+        checkIcon: m.info.default ? "check" : ""
+        onClicked: if (m.info.sink) { Quickshell.execDetached(["pactl", "set-default-sink", m.info.sink]); m.refresh() }
+    }
+
+    Divider {}
+    MenuHeader { width: parent.width; title: "Equalizer"; showToggle: true; checked: m.eqOn; onToggled: m.run(["toggle"]) }
+
+    Column {
+        width: parent.width
+        spacing: 2
+        Repeater {
+            // known presets first in this order, others (made in EasyEffects) after them
+            model: (m.info.presets || []).slice().sort((a, b) => {
+                const k = Object.keys(m.presetInfo), ia = k.indexOf(a), ib = k.indexOf(b)
+                return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b)
+            })
+            delegate: MenuRow {
+                required property string modelData
+                width: parent.width
+                icon: (m.presetInfo[modelData] || { icon: "sliders-horizontal" }).icon
+                label: modelData
+                detail: (m.presetInfo[modelData] || { detail: "" }).detail
+                active: m.info.preset === modelData
+                checkIcon: active ? "check" : ""
+                onClicked: m.run(["set", active ? "Off" : modelData])   // clicking the selected one turns the EQ off
+            }
+        }
+    }
+    Text {
+        visible: !!m.info.sink && !m.info.default
+        width: parent.width
+        wrapMode: Text.Wrap
+        text: "Sound is playing from another output. The EQ takes effect when the headphones are selected."
+        color: Theme.dim
+        font { family: Theme.font; pixelSize: 11 }
+    }
+
+    Divider {}
+    MenuRow {
+        width: parent.width
+        icon: "sliders-horizontal"
+        action: true
+        label: "EasyEffects…"
+        onClicked: { Quickshell.execDetached(["easyeffects"]); m.close() }
+    }
+}

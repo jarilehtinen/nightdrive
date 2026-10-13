@@ -1,0 +1,6 @@
+# Web apps: Name|URL (install.sh runs hypr/scripts/webapp-add for each; a Chromium app window with its own profile)
+# Shortcuts are in config/hypr/bindings.lua (⌘⇧S/W/Y).
+Slack|https://app.slack.com/client
+Teams|https://teams.microsoft.com
+WhatsApp|https://web.whatsapp.com
+YouTube|https://www.youtube.com

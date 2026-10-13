@@ -1,0 +1,25 @@
+#!/bin/bash
+# launch-or-focus <class-regex> <command...>
+# If a window (matching class) is already open, focus it (switching workspace if needed); otherwise launch the program.
+# This way a second press of the shortcut doesn't open a duplicate.
+# A window hidden in the background (special:bg: ⌘W on background apps, or a window rule that opens it straight in the background) is brought to the current workspace.
+pattern=$1; shift
+find_win() { hyprctl -j clients | jq -r --arg re "$pattern" '[.[] | select(.class | test($re))] | first | "\(.address // "") \(.workspace.name // "")"'; }
+show() {  # $1 = address, $2 = workspace
+  if [[ $2 == special:bg ]]; then
+    hyprctl dispatch "hl.dsp.window.move({ workspace = $(hyprctl -j activeworkspace | jq .id), window = \"address:$1\" })" >/dev/null
+  fi
+  hyprctl dispatch "hl.dsp.focus({ window = \"address:$1\" })" >/dev/null
+}
+read -r addr wsname < <(find_win)
+if [[ -n $addr ]]; then
+  show "$addr" "$wsname"
+  exit 0
+fi
+# Not open: launch and wait for the window (it may open straight in the background), then bring it up
+setsid "$@" >/dev/null 2>&1 &
+for _ in $(seq 80); do
+  sleep 0.25
+  read -r addr wsname < <(find_win)
+  if [[ -n $addr ]]; then show "$addr" "$wsname"; exit 0; fi
+done

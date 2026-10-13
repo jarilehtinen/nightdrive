@@ -1,0 +1,93 @@
+#!/bin/bash
+# Top bar appearance (launcher Settings › Top bar opacity / Top bar icons). Values: ~/.local/state/bar-{opacity,icons}.
+#   bar-style opacity [0-100]     prints / sets the background opacity (default 100)
+#   bar-style icons [light|dark]  prints / sets the icon and text colour (default light = white)
+#   bar-style highlight [theme|white|black]  prints / sets the highlight colour (active workspace, Deck playing, Claude waiting;
+#                          default theme = theme colour, Settings › Theme › Color / hypr/scripts/theme)
+#   bar-style icon-opacity [0-100] prints / sets the icon and text opacity (default 85; dimmed states are relative to this)
+#   bar-style apply               writes Waybar's bar.css, the Tailscale icons and the shader copy (waybar-run runs it before Waybar)
+# bar.css: background colour + named colours (@fg, @dim, @off, @hl_bg, @hl_fg, @act_bg, @ws_bg) used by style.css.
+# In the shader copy (~/.cache/hypr/corners-<value>.frag) the top corners under the bar are as transparent as the bar.
+set -euo pipefail
+st="$HOME/.local/state"
+cfg="$HOME/.config"
+icons="$HOME/.cache/waybar/icons"
+
+opacity() { local v; v=$(cat "$st/bar-opacity" 2>/dev/null || true); [[ $v =~ ^[0-9]+$ && $v -le 100 ]] && echo "$v" || echo 100; }
+iconop()  { local v; v=$(cat "$st/bar-icon-opacity" 2>/dev/null || true); [[ $v =~ ^[0-9]+$ && $v -le 100 ]] && echo "$v" || echo 85; }
+highlight() { local v; v=$(cat "$st/bar-highlight" 2>/dev/null || true); [[ $v == white || $v == black ]] && echo "$v" || echo theme; }
+# Theme colour: a role from theme.json (hypr/scripts/theme), defaulting to the original violet
+tc() { jq -r --arg k "$1" '.[$k] // empty' "$HOME/.cache/nightdrive/theme.json" 2>/dev/null | grep . || echo "$2"; }
+scheme()  { local v; v=$(cat "$st/bar-icons" 2>/dev/null || true); [[ $v == dark ]] && echo dark || echo light; }
+
+apply() {
+  local v a c ia da oa hlbga hlfg
+  v=$(opacity); a=$(awk -v v="$v" 'BEGIN { printf "%.2f", v / 100 }')
+  ia=$(awk -v v="$(iconop)" 'BEGIN { printf "%.2f", v / 100 }')     # icons and text
+  da=$(awk -v v="$ia" 'BEGIN { printf "%.2f", v * 0.65 }')          # empty workspaces
+  oa=$(awk -v v="$ia" 'BEGIN { printf "%.2f", v * 0.4 }')           # off / no data
+  if [[ $(scheme) == dark ]]; then c="#000000"; else c="#ffffff"; fi
+  # ws = active workspace highlight, act = active state (Deck playing, Claude waiting); icons stay in the fg colour.
+  # Theme colour with white icons (violet) = the original #35253d against black.
+  case $(highlight) in
+    white) ws="alpha(#ffffff, 0.25)"; act="alpha(#ffffff, 0.18)" ;;
+    black) ws="alpha(#000000, 0.30)"; act="alpha(#000000, 0.22)" ;;
+    *) if [[ $c == "#000000" ]]; then ws="alpha($(tc deep "#5c247b"), 0.30)"; act="alpha($(tc deep "#5c247b"), 0.25)"
+       else ws="alpha($(tc soft "#b17bcb"), 0.30)"; act="alpha($(tc primary "#c071eb"), 0.25)"; fi ;;
+  esac
+  # Open menu highlight = active workspace highlight (also used in the Tailscale image, hence colour and opacity separately)
+  [[ $ws =~ alpha\((#[0-9a-f]+),\ ([0-9.]+)\) ]]; hlbg=${BASH_REMATCH[1]}; hlbga=${BASH_REMATCH[2]}
+  hlfg=$c                                                            # workspace and open menu: icon at full opacity
+  cat > "$cfg/waybar/bar.css" <<CSS
+/* written by bar-style (not in the repo) */
+@define-color fg alpha($c, $ia);
+@define-color dim alpha($c, $da);
+@define-color off alpha($c, $oa);
+@define-color hl_bg alpha($hlbg, $hlbga);
+@define-color hl_fg $hlfg;
+@define-color act_bg $act;
+@define-color ws_bg $ws;
+window#waybar { background: rgba(0, 0, 0, $a); }
+CSS
+  # Tailscale icons from templates (FG = icon, HLFG = icon while the menu is open, HLBG = menu highlight)
+  mkdir -p "$icons"
+  for t in "$cfg"/waybar/icons/*.svg; do
+    sed -e "s/\"HLFG\"/\"$hlfg\"/g; s/\"HLBG\"/\"$hlbg\" fill-opacity=\"$hlbga\"/g; s/\"FG\"/\"$c\" fill-opacity=\"$ia\"/g" "$t" > "$icons/$(basename "$t")"
+  done
+  if (( v < 100 )); then
+    mkdir -p "$HOME/.cache/hypr"
+    sed -E "s/^const float BAR = [0-9.]+;/const float BAR = $a;/" "$cfg/hypr/shaders/rounded-corners.frag" > "$HOME/.cache/hypr/corners-$v.frag"
+  fi
+}
+
+case ${1:-} in
+  apply) apply ;;
+  opacity)
+    [[ -z ${2:-} ]] && { opacity; exit 0; }
+    [[ $2 =~ ^[0-9]+$ && $2 -le 100 ]] || { echo "0–100" >&2; exit 2; }
+    mkdir -p "$st"; echo "$2" > "$st/bar-opacity"
+    apply
+    pkill -SIGUSR2 -x waybar || true
+    hyprctl reload >/dev/null ;;          # reloads the shader (hyprland.lua picks the copy)
+  icons)
+    [[ -z ${2:-} ]] && { scheme; exit 0; }
+    [[ $2 == light || $2 == dark ]] || { echo "light|dark" >&2; exit 2; }
+    mkdir -p "$st"; echo "$2" > "$st/bar-icons"
+    apply
+    pkill -SIGUSR2 -x waybar || true
+    pkill -RTMIN+8 -x waybar || true ;;   # Tailscale image updates immediately (signal 8)
+  highlight)
+    [[ -z ${2:-} ]] && { highlight; exit 0; }
+    [[ $2 == theme || $2 == white || $2 == black ]] || { echo "theme|white|black" >&2; exit 2; }
+    mkdir -p "$st"; echo "$2" > "$st/bar-highlight"
+    apply
+    pkill -SIGUSR2 -x waybar || true ;;
+  icon-opacity)
+    [[ -z ${2:-} ]] && { iconop; exit 0; }
+    [[ $2 =~ ^[0-9]+$ && $2 -le 100 ]] || { echo "0–100" >&2; exit 2; }
+    mkdir -p "$st"; echo "$2" > "$st/bar-icon-opacity"
+    apply
+    pkill -SIGUSR2 -x waybar || true
+    pkill -RTMIN+8 -x waybar || true ;;
+  *) sed -n '2,7p' "$0" >&2; exit 2 ;;
+esac

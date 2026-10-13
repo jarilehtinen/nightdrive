@@ -1,0 +1,24 @@
+font=JetBrains Mono 10
+background-color=#0b0b0d
+text-color=#aea3b5
+border-color=#c071eb
+# Title in bold, body a step smaller (size in 1/1024 pt: 9216 = 9 pt)
+format=<b>%s</b>\n<span size="9216">%b</span>
+# Theme colour (Settings › Theme › Color): hypr/scripts/theme writes text-color, border-color and the format with a coloured title, overriding the ones above
+include=~/.cache/nightdrive/mako.conf
+border-size=2
+border-radius=4
+padding=10
+margin=10
+width=380
+default-timeout=5000
+max-history=50
+anchor=top-right
+
+[urgency=critical]
+border-color=#f7768e
+default-timeout=0
+
+# Do not disturb (F6 / XF86DoNotDisturb, scripts/dnd): notifications hidden but kept in history (makoctl history)
+[mode=do-not-disturb]
+invisible=1

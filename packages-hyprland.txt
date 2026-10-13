@@ -1,0 +1,6 @@
+# From the COPR repo arcaneon/arcos (the only aarch64 build for Fedora 44)
+hyprland
+hyprlock
+hypridle
+hyprpolkitagent
+xdg-desktop-portal-hyprland

@@ -1,0 +1,18 @@
+#!/bin/bash
+# ⌘W: closes the active window, except background apps (hypr/background-apps): those are hidden to special:bg and keep running.
+# A hidden window comes back with its shortcut (launch-or-focus brings it to the current workspace).
+# Deck keeps playing in the background (playback runs in the same process as the window); `q` in Deck really quits it.
+d=$HOME/.config/hypr
+keep=$(cat "$d/background-apps" "$d/background-apps.local" 2>/dev/null | grep -vE '^\s*(#|$)' | sed 's/^[^=]*= *//' | paste -sd'|')
+
+read -r class addr ws < <(hyprctl -j activewindow | jq -r '"\(.class // "") \(.address // "") \(.workspace.name // "")"')
+if [[ -n $addr && -n $keep && $class =~ ($keep) ]]; then
+  if [[ $ws == special:bg ]]; then
+    # The window is on the background workspace, which has become visible (the app asked for focus): hide the whole workspace
+    hyprctl dispatch 'hl.dsp.workspace.toggle_special("bg")' >/dev/null
+  else
+    hyprctl dispatch "hl.dsp.window.move({ workspace = \"special:bg\", follow = false, window = \"address:$addr\" })" >/dev/null
+  fi
+else
+  hyprctl dispatch "hl.dsp.window.close()" >/dev/null
+fi

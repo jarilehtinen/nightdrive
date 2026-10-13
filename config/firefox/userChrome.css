@@ -1,0 +1,178 @@
+/* Tabs below the address bar.
+   To restore the default: remove this file (symlink) from the profile's chrome folder and restart Firefox. */
+#navigator-toolbox { display: flex !important; flex-direction: column !important; }
+#titlebar { display: contents !important; }      /* dissolves the container so its children can be reordered */
+#toolbar-menubar { order: 0 !important; }
+#nav-bar { order: 1 !important; }                /* address bar on top */
+#PersonalToolbar { order: 2 !important; }        /* bookmarks toolbar */
+#TabsToolbar { order: 3 !important; }            /* tabs below */
+
+/* ===== Jokela Night (Tokyo Night colours) ===== */
+:root {
+  --jn-bg: #1a1b26;  --jn-bg-dark: #16161e;  --jn-bg-hl: #292e42;  --jn-bg-hl2: #3b4261;
+  --jn-fg: #c0caf5;  --jn-fg-dim: #787c99;   --jn-border: #292e42;  --jn-accent: #7aa2f7;
+
+  --toolbar-bgcolor: var(--jn-bg) !important;                 /* nav-bar, bookmarks, selected tab */
+  --toolbar-background-color: var(--jn-bg) !important;        /* newer name for the same variable */
+  --toolbar-color: var(--jn-fg) !important;
+  --lwt-accent-color: var(--jn-bg) !important;                /* tab strip background */
+  --lwt-text-color: var(--jn-fg) !important;
+  --lwt-tab-line-color: var(--jn-accent) !important;
+  --tab-selected-bgcolor: #2a2e45 !important;
+  --tab-selected-textcolor: var(--jn-fg) !important;
+  --toolbar-field-background-color: var(--jn-bg-dark) !important;   /* address bar */
+  --toolbar-field-color: var(--jn-fg) !important;
+  --toolbar-field-border-color: var(--jn-border) !important;
+  --toolbar-field-focus-background-color: var(--jn-bg-dark) !important;
+  --toolbar-field-focus-color: var(--jn-fg) !important;
+  --toolbar-field-focus-border-color: var(--jn-accent) !important;
+  --urlbar-box-bgcolor: var(--jn-bg-hl) !important;
+  --urlbar-box-hover-bgcolor: var(--jn-bg-hl2) !important;
+  --urlbar-box-text-color: var(--jn-fg) !important;
+  --toolbarbutton-hover-background: var(--jn-bg-hl) !important;
+  --toolbarbutton-active-background: var(--jn-bg-hl2) !important;
+  --toolbarbutton-icon-fill: var(--jn-fg) !important;
+  --focus-outline-color: var(--jn-accent) !important;
+  --chrome-content-separator-color: var(--jn-border) !important;
+  --arrowpanel-background: #1f2335 !important;                /* menus and panels */
+  --arrowpanel-color: var(--jn-fg) !important;
+  --arrowpanel-border-color: var(--jn-border) !important;
+  --panel-background: #1f2335 !important;
+  --panel-color: var(--jn-fg) !important;
+  --panel-border-color: var(--jn-border) !important;
+  --autocomplete-popup-background: #1f2335 !important;
+  --autocomplete-popup-color: var(--jn-fg) !important;
+  --autocomplete-popup-highlight-background: var(--jn-bg-hl2) !important;
+  --autocomplete-popup-highlight-color: var(--jn-fg) !important;
+  --sidebar-background-color: var(--jn-bg-dark) !important;
+  --sidebar-text-color: var(--jn-fg) !important;
+  --button-primary-bgcolor: var(--jn-accent) !important;
+  --button-primary-color: var(--jn-bg) !important;
+}
+#navigator-toolbox { background: var(--jn-bg) !important; border-bottom-color: var(--jn-border) !important; }
+#nav-bar, #PersonalToolbar { background: var(--jn-bg) !important; }
+#TabsToolbar { background: var(--jn-bg) !important; padding-left: 5px !important; }
+.tab-background[selected] { background: #2a2e45 !important; }
+.tab-background:not([selected]):hover { background: #1f2335 !important; }
+.tabbrowser-tab[selected] .tab-label { color: var(--jn-fg) !important; }
+.tabbrowser-tab:not([selected]) .tab-label { color: #8a90b5 !important; }
+#urlbar-background { background: var(--jn-bg-dark) !important; border-color: var(--jn-border) !important; }
+#urlbar[focused="true"] > #urlbar-background { border-color: var(--jn-accent) !important; box-shadow: none !important; }
+.urlbarView-row[selected] { background: var(--jn-bg-hl2) !important; }
+
+/* Rounded rectangles instead of pills (tabs, address bar) */
+:root { --tab-border-radius: 8px !important; --urlbar-margin-inline: 0px; --urlbar-background-border-radius: 8px !important; }
+.tab-background { border-radius: 8px !important; }
+#urlbar, #urlbar-background, #searchbar, #urlbar-input-container { --urlbar-border-radius: 8px; --urlbar-background-border-radius: 8px; border-radius: 8px !important; }
+#urlbar-searchmode-switcher, .urlbar-page-action, #identity-box, #tracking-protection-icon-container { border-radius: 6px !important; }
+
+/* Address bar suggestions: light text on a dark background */
+:root {
+  --urlbarView-highlight-background: var(--jn-bg-hl2) !important;
+  --urlbarView-highlight-color: var(--jn-fg) !important;
+  --urlbarView-hover-background: var(--jn-bg-hl) !important;
+  --urlbarView-separator-color: var(--jn-border) !important;
+  --urlbarView-results-padding: 4px !important;
+}
+#urlbar-background[open], #urlbar[open] > #urlbar-background { background: #1f2335 !important; }
+.urlbarView, .urlbarView-body-outer, .urlbarView-body-inner { background: transparent !important; color: var(--jn-fg) !important; }
+.urlbarView-row { border-radius: 6px !important; color: var(--jn-fg) !important; }
+.urlbarView-row:hover:not([selected]) { background: var(--jn-bg-hl) !important; }
+.urlbarView-title, .urlbarView-url, .urlbarView-action, .urlbarView-title-separator,
+.urlbarView-no-wrap, .urlbarView-secondary, .urlbarView-row-inner { color: var(--jn-fg) !important; }
+.urlbarView-url { color: var(--jn-accent) !important; }
+.urlbarView-action, .urlbarView-title-separator, .urlbarView-secondary { color: var(--jn-fg-dim) !important; }
+.urlbarView-row[selected] .urlbarView-title, .urlbarView-row[selected] .urlbarView-action,
+.urlbarView-row[selected] .urlbarView-url, .urlbarView-row[selected] .urlbarView-secondary { color: var(--jn-fg) !important; }
+.search-one-offs, .search-panel-one-offs-container { background: transparent !important; color: var(--jn-fg) !important; }
+
+/* Hidden: the "Search with" button in the address bar and the "List all tabs" button */
+.searchmode-switcher, #urlbar-searchmode-switcher, #searchmode-switcher, #alltabs-button { display: none !important; }
+
+/* Fonts: JetBrains Mono Light (Thin was too thin) */
+:root, menupopup, panel, tooltip, #urlbar-input, .urlbarView { font-family: "JetBrains Mono Light", "JetBrains Mono", monospace !important; font-weight: normal !important; }
+
+/* No underlines between the bars */
+#navigator-toolbox, #nav-bar, #TabsToolbar, #PersonalToolbar { border: none !important; box-shadow: none !important; }
+:root { --chrome-content-separator-color: transparent !important; }
+#navigator-toolbox::after { display: none !important; }
+
+/* Smaller font in the address bar and tabs */
+#urlbar-input, .urlbarView-row, .urlbarView-title, .urlbarView-url, .urlbarView-action, .tab-label { font-size: 12px !important; }
+
+/* Address bar left padding */
+#urlbar-input-container { padding-inline-start: 8px !important; }
+
+/* The address bar background is the class .urlbar-background (not an id): no border, rounded rectangle */
+.urlbar-background, #urlbar[focused="true"] > .urlbar-background, #urlbar[open] > .urlbar-background {
+  border: none !important; outline: none !important; box-shadow: none !important; border-radius: 8px !important;
+}
+
+/* Content area background (blank page / while loading): Jokela Night violet */
+#browser, #tabbrowser-tabbox, #tabbrowser-tabpanels, .browserSidebarContainer, .browserContainer, .browserStack,
+browser[type="content"] { background-color: #1f2033 !important; }
+
+/* Menus and panels (Application menu etc.): dark violet. Firefox 157 uses the names --panel-*-color, and they must be set on the panel/menupopup elements */
+panel, menupopup, .panel-subview-body, #appMenu-protonMainView {
+  --panel-background-color: #171824 !important;
+  --panel-text-color: var(--jn-fg) !important;
+  --panel-border-color: #292e42 !important;
+  --panel-separator-color: #292e42 !important;
+  --menu-text-color: var(--jn-fg) !important;
+  --menuitem-hover-bg: #292e42 !important;
+  --menuitem-active-bg: #3b4261 !important;
+  --menuitem-text-hover-fg: var(--jn-fg) !important;
+  --menuitem-text-active-fg: var(--jn-fg) !important;
+  --arrowpanel-background: #171824 !important;
+  --arrowpanel-color: var(--jn-fg) !important;
+  --arrowpanel-border-color: #292e42 !important;
+}
+
+/* Application menu: smaller font */
+#appMenu-protonMainView, #appMenu-protonMainView *, .panel-subview-body, .panel-subview-body *, panel menuitem, menupopup menuitem, menupopup menu { font-size: 12px !important; }
+
+/* Address bar suggestion list: same background as the Application menu */
+.urlbarView, .urlbarView-background, .urlbarView-body-outer, .urlbarView-body-inner {
+  background-color: #101018 !important;
+}
+#urlbar[open] > .urlbar-background { border-radius: 8px 8px 0 0 !important; }
+.urlbarView-background { border: none !important; box-shadow: none !important; }
+
+/* Focused address bar: slightly darker than the base colour */
+#urlbar[focused] > .urlbar-background, #urlbar[open] > .urlbar-background,
+#urlbar:focus-within > .urlbar-background { background-color: #101018 !important; }
+
+/* No focus ring in the address bar */
+#urlbar, #urlbar[focused], #urlbar:focus-within, #urlbar-input, #urlbar-input:focus, #urlbar-input:focus-visible,
+#urlbar[focused] > .urlbar-background, #urlbar:focus-within > .urlbar-background, .urlbar-input-container {
+  outline: none !important; outline-color: transparent !important; box-shadow: none !important;
+}
+#urlbar[focused] > .urlbar-background, #urlbar:focus-within > .urlbar-background, #urlbar[open] > .urlbar-background {
+  border: none !important; --focus-outline-color: transparent !important; --focus-outline: none !important;
+}
+
+/* Toolbar buttons (profile, Application menu, ...) hover/active: the same dark as the focused address bar */
+:root, toolbarbutton, #fxa-toolbar-menu-button, #PanelUI-menu-button {
+  --toolbarbutton-background-color-hover: #101018 !important;
+  --toolbarbutton-background-color-active: #0c0c12 !important;
+  --toolbarbutton-background-color-selected: #101018 !important;
+  --toolbarbutton-outline-color-hover: transparent !important;
+  --toolbarbutton-outline-color-active: transparent !important;
+  --toolbarbutton-hover-background: #101018 !important;
+  --toolbarbutton-active-background: #0c0c12 !important;
+}
+
+/* Tab close button: hover darker than the tab */
+.tab-close-button:hover, .tab-close-button:hover:active { background-color: #20233a !important; outline: none !important; }
+.tabbrowser-tab:not([selected]) .tab-close-button:hover, .tabbrowser-tab:not([selected]) .tab-close-button:hover:active { background-color: #15161f !important; }
+.tabbrowser-tab { --tab-close-button-background-color-hover: #20233a !important; --tab-close-button-background-color-active: #1b1d30 !important; --tab-close-button-border-color-hover: transparent !important; }
+
+/* New tab button: round -> rounded rectangle */
+#tabs-newtab-button, #new-tab-button, #vertical-tabs-newtab-button { --toolbarbutton-border-radius: 6px; border-radius: 6px !important; }
+#tabs-newtab-button > .toolbarbutton-icon, #new-tab-button > .toolbarbutton-icon, #vertical-tabs-newtab-button > .toolbarbutton-icon { border-radius: 6px !important; }
+
+/* Toolbar buttons (nav-bar): rounded rectangles instead of circles */
+:root { --toolbarbutton-border-radius: 6px !important; }
+#nav-bar toolbarbutton, #nav-bar .toolbarbutton-1, #nav-bar #fxa-toolbar-menu-button, #nav-bar #PanelUI-menu-button,
+#nav-bar #sidebar-button, #nav-bar #back-button, #nav-bar #forward-button, #nav-bar #reload-button, #nav-bar #stop-button,
+#nav-bar .toolbarbutton-icon, #nav-bar .toolbarbutton-badge-stack, #nav-bar .toolbarbutton-animatable-box { border-radius: 6px !important; }

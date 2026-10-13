@@ -1,0 +1,8 @@
+# Asahi: the Apple MTP keyboard may not be detected as internal, so libinput's disable-while-typing (palm rejection
+# while typing) doesn't pair it with the internal touchpad. This marks the keyboard as internal.
+# Install (from the repo root):  sudo install -Dm644 config/system/libinput-apple-mtp.quirks /etc/libinput/local-overrides.quirks
+# Takes effect after logging out and back in (Hyprland reads the quirks at startup).
+[Apple MTP keyboard]
+MatchName=Apple MTP keyboard
+AttrKeyboardIntegration=internal
+

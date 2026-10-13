@@ -1,0 +1,35 @@
+#!/bin/bash
+# screenshot region   → region: saved to ~/Pictures/Screenshots and the clipboard (launcher → Screenshot)
+# screenshot window   → click a window on the current workspace: saved and to the clipboard (launcher)
+# screenshot full     → whole screen: saved and to the clipboard (launcher)
+# screenshot clip     → region to the clipboard only, no file (⌘R)
+# screenshot winclip  → window to the clipboard only, no file (⌘⇧R)
+mode=${1:-full}
+
+# A selection is already running (slurp open): a second press cancels it instead of starting a new capture
+if [[ $mode != full ]] && pgrep -x slurp >/dev/null; then pkill -x slurp; exit 0; fi
+
+# Pick a window by clicking: the current workspace's window bounds go to slurp (-r: only these boxes are selectable)
+pick_window() {
+  local ws
+  ws=$(hyprctl -j activeworkspace | jq .id)
+  hyprctl -j clients | jq -r --argjson ws "$ws" \
+    '.[] | select(.workspace.id == $ws and .mapped and (.hidden | not)) | "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"' \
+    | slurp -r
+}
+
+case "$mode" in
+  clip)    geom=$(slurp) || exit 0;        grim -g "$geom" - | wl-copy --type image/png
+           notify-send "Screenshot" "Region copied to clipboard"; exit 0 ;;
+  winclip) geom=$(pick_window) || exit 0;  grim -g "$geom" - | wl-copy --type image/png
+           notify-send "Screenshot" "Window copied to clipboard"; exit 0 ;;
+esac
+
+file=~/Pictures/Screenshots/$(date +%Y-%m-%d_%H-%M-%S).png
+case "$mode" in
+  region) geom=$(slurp) || exit 0;        grim -g "$geom" "$file" ;;
+  window) geom=$(pick_window) || exit 0;  grim -g "$geom" "$file" ;;
+  *)      grim "$file" ;;
+esac
+wl-copy < "$file"
+notify-send -i "$file" "Screenshot" "Saved and copied to clipboard"

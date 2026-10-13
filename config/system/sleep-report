@@ -1,0 +1,23 @@
+#!/usr/bin/env python3
+"""Summary of battery drain during sleep: /var/log/nightdrive-sleep.log (the hook logs pre/post lines).
+Columns: duration, drain %/h and average power (W), plus whether the radios were cut off."""
+import sys, time
+log = sys.argv[1] if len(sys.argv) > 1 else "/var/log/nightdrive-sleep.log"
+rows = []
+for line in open(log):
+    f = line.split()
+    if len(f) >= 6: rows.append(f)
+pre = None
+print(f"{'started':<17} {'duration':>8} {'drain':>11} {'avg power':>10}  radios")
+for f in rows:
+    ts, ev, energy, full, status, radios = int(f[0]), f[1], int(f[3]), int(f[4]), f[5], f[6] if len(f) > 6 else ""
+    if ev == "pre":
+        pre = (ts, energy, full)
+    elif ev == "post" and pre:
+        dt = ts - pre[0]
+        if dt < 60: continue
+        de = pre[1] - energy                   # µWh
+        pct_h = de / pre[2] * 100 / (dt / 3600)
+        watts = de / 1e6 / (dt / 3600)
+        print(f"{time.strftime('%d.%m. %H:%M', time.localtime(pre[0])):<17} {dt/3600:>6.1f} h {pct_h:>7.1f} %/h {watts:>8.2f} W  {radios}")
+        pre = None

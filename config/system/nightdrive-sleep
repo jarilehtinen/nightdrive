@@ -1,0 +1,33 @@
+#!/bin/sh
+# systemd-sleep hook (install: sudo install -m 0755 nightdrive-sleep /usr/lib/systemd/system-sleep/nightdrive-sleep).
+# Asahi only has s2idle: the machine draws ~3 W while asleep (~4–5 %/h). The hook
+#  - turns Wi-Fi and Bluetooth off before sleep and, if they were on, back on at wake-up (NetworkManager and BlueZ restore the
+#    connections themselves),
+#  - logs the battery energy before and after sleep so the effect can be measured: config/system/sleep-report.
+# To disable the radio cut-off: put NIGHTDRIVE_RADIOS=0 in /etc/nightdrive-sleep.conf.
+LOG=${NIGHTDRIVE_SLEEP_LOG:-/var/log/nightdrive-sleep.log}
+WAS_ON=/run/nightdrive-sleep.radios   # radios that were on before sleep
+BAT=${NIGHTDRIVE_BATTERY:-/sys/class/power_supply/macsmc-battery}
+RADIOS=1
+[ -r /etc/nightdrive-sleep.conf ] && . /etc/nightdrive-sleep.conf
+[ -n "$NIGHTDRIVE_RADIOS" ] && RADIOS=$NIGHTDRIVE_RADIOS
+
+log() { echo "$(date +%s) $1 $2 $(cat "$BAT/energy_now" 2>/dev/null) $(cat "$BAT/energy_full" 2>/dev/null) $(cat "$BAT/status" 2>/dev/null) radios=$RADIOS" >> "$LOG"; }
+
+case "$1" in
+  pre)
+    log pre "$2"
+    if [ "$RADIOS" = 1 ] && [ -z "$NIGHTDRIVE_DRYRUN" ]; then
+      rfkill -n -o TYPE,SOFT | awk '$2 == "unblocked" && ($1 == "wlan" || $1 == "bluetooth") { print $1 }' | sort -u > "$WAS_ON"
+      for t in $(cat "$WAS_ON"); do rfkill block "$t"; done
+    fi
+    ;;
+  post)
+    if [ -s "$WAS_ON" ]; then
+      for t in $(cat "$WAS_ON"); do rfkill unblock "$t"; done
+      rm -f "$WAS_ON"
+    fi
+    log post "$2"
+    ;;
+esac
+exit 0

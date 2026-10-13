@@ -1,0 +1,128 @@
+#!/usr/bin/env python3
+"""Tidies the Fuzzel menu: shows only the apps in apps-allow.txt and gives them the icons from app-icons.txt.
+
+Hiding and icons are done with overrides in ~/.local/share/applications/<id>.desktop (a copy of the original), so
+system files are never touched and no apps are removed. Overrides are marked with a comment, and the script removes
+them once they are no longer needed. In your own .desktop files (e.g. webapp-*) only the Icon= line is changed; the original
+value is kept in an X-Original-Icon line and restored when the line is removed from app-icons.txt.
+Run again after installing new apps or editing the lists.
+"""
+import glob, os, re, subprocess, sys
+
+HOME = os.path.expanduser("~")
+HERE = os.path.dirname(os.path.realpath(__file__))
+USER_DIR = HOME + "/.local/share/applications"
+SYS_DIRS = ["/usr/share/applications", "/usr/local/share/applications"]   # later one wins
+MARK = "# managed by fuzzel/sync-apps"
+
+
+def entry_section(text):
+    """(head, section, tail): the [Desktop Entry] section body and the text around it."""
+    m = re.search(r"^\[Desktop Entry\][ \t]*$", text, re.M)
+    if not m: return None
+    nxt = re.search(r"^\[.+\][ \t]*$", text[m.end():], re.M)
+    end = m.end() + nxt.start() if nxt else len(text)
+    return text[:m.end()], text[m.end():end], text[end:]
+
+
+def entry_keys(text):
+    keys = {}
+    sec = entry_section(text)
+    if sec:
+        for line in sec[1].splitlines():
+            if "=" in line and not line.startswith("#"):
+                k, v = line.split("=", 1)
+                keys.setdefault(k, v)
+    return keys
+
+
+def edit(text, remove=(), add=()):
+    """Removes the keys and adds the lines at the start of the [Desktop Entry] section."""
+    head, body, tail = entry_section(text)
+    for k in remove:
+        body = re.sub(rf"^{re.escape(k)}=.*\n?", "", body, flags=re.M)
+    return head + "".join("\n" + a for a in add) + body + tail
+
+
+def with_icon(text, path):
+    kv = entry_keys(text)
+    orig = kv.get("X-Original-Icon", kv.get("Icon", ""))
+    return edit(text, remove=("Icon", "X-Original-Icon"), add=(f"Icon={path}", f"X-Original-Icon={orig}"))
+
+
+def restore_icon(text):
+    kv = entry_keys(text)
+    if "X-Original-Icon" not in kv: return text
+    return edit(text, remove=("Icon", "X-Original-Icon"), add=(f"Icon={kv['X-Original-Icon']}",))
+
+
+def read_list(name):
+    out = {}
+    for line in open(f"{HERE}/{name}", encoding="utf-8"):
+        line = line.split("#", 1)[0].strip()
+        if not line: continue
+        k, _, v = line.partition("=")
+        out[k.strip()] = v.strip()
+    return out
+
+
+allow = {l.split("#")[0].strip() for l in open(HERE + "/apps-allow.txt", encoding="utf-8") if l.split("#")[0].strip()}
+icons = {}
+for id_, name in read_list("app-icons.txt").items():
+    path = f"{HERE}/icons/{name}.svg"
+    if os.path.exists(path): icons[id_] = path
+    else: print(f"Warning: icon not found: {path}", file=sys.stderr)
+
+sysdefs = {}
+for d in SYS_DIRS:
+    for f in glob.glob(d + "/*.desktop"):
+        sysdefs[os.path.basename(f)] = f
+
+os.makedirs(USER_DIR, exist_ok=True)
+read = lambda p: open(p, encoding="utf-8", errors="replace").read()
+hidden, shown, iconed, restored = [], [], [], []
+
+# 1) System apps: hide or change the icon with an override
+for id_, path in sorted(sysdefs.items()):
+    text = read(path)
+    kv = entry_keys(text)
+    if kv.get("Type") != "Application": continue
+    if kv.get("NoDisplay", "").lower() == "true" or kv.get("Hidden", "").lower() == "true": continue
+    target = USER_DIR + "/" + id_
+    ours = os.path.exists(target) and MARK in read(target)
+    if os.path.exists(target) and not ours: continue          # the user's own file wins, handled in step 2
+    name = kv.get("Name", id_)
+    if id_ in allow:
+        shown.append(name)
+        if id_ in icons:
+            open(target, "w", encoding="utf-8").write(MARK + "\n" + with_icon(text, icons[id_]))
+            iconed.append(name)
+        elif ours:
+            os.remove(target); restored.append(name)
+    else:
+        open(target, "w", encoding="utf-8").write(MARK + "\n" + edit(text, remove=("NoDisplay",), add=("NoDisplay=true",)))
+        hidden.append(name)
+
+# 2) Own files (e.g. webapp-*): Icon= line only
+for f in sorted(glob.glob(USER_DIR + "/*.desktop")):
+    id_ = os.path.basename(f)
+    text = read(f)
+    if MARK in text: continue
+    kv = entry_keys(text)
+    if id_ in icons:
+        new = with_icon(text, icons[id_])
+        if new != text: open(f, "w", encoding="utf-8").write(new)
+        iconed.append(kv.get("Name", id_))
+    elif "X-Original-Icon" in kv:
+        open(f, "w", encoding="utf-8").write(restore_icon(text)); restored.append(kv.get("Name", id_))
+
+# 3) Remove stale overrides (app removed from the system)
+for f in glob.glob(USER_DIR + "/*.desktop"):
+    if os.path.basename(f) not in sysdefs and MARK in read(f):
+        os.remove(f)
+
+subprocess.run(["update-desktop-database", USER_DIR], stderr=subprocess.DEVNULL)
+print(f"Hidden: {len(hidden)}   Custom icon: {len(iconed)}   Visible (system): {len(shown)}   Restored: {len(restored)}")
+if "-v" in sys.argv:
+    print("Hidden:", ", ".join(sorted(hidden)))
+    print("Icons changed:", ", ".join(sorted(iconed)))

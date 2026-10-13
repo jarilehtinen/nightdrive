@@ -1,0 +1,227 @@
+@import url("nightdrive-icons.css");   /* Lucide icons with this machine's paths, written by link.sh */
+/* UI fonts (same family as in kitty):
+   body text Regular, secondary (dates, sender, buttons, status bar) Light. */
+* { font-family: "JetBrains Mono", monospace !important; }
+
+/* Secondary: lighter */
+.sender, .date, .thread-replies, .sort-header-details,
+.header-buttons-container, .recipient-multi-line, #expandedtoBox, #dateLabel,
+#statusbar-container, #status-bar, .quick-filter-bar, #quickFilterBarContainer,
+#folderTree .unread-count, #folderTree .total-count, .tab-label,
+menupopup, menuitem, menu {
+  font-family: "JetBrains Mono Light", "JetBrains Mono", monospace !important;
+}
+
+/* Important: sender heading and subject bolder */
+.subject, #expandedsubjectBox, #expandedsubjectBox *, #folderTree .name {
+  font-family: "JetBrains Mono", monospace !important;
+}
+li.unread .subject, .card-layout.unread .subject, .unread .subject {
+  font-family: "JetBrains Mono Medium", "JetBrains Mono", monospace !important;
+}
+
+/* Hide the folder tree header bar (Get Messages, New Message, "…") */
+#folderPaneHeaderBar { display: none !important; }
+
+/* ===== Tokyo Night colours ===== */
+:root, #folderTree, #threadTree, [is="tree-view-table-body"], #messagepane, body {
+  --layout-background-0: #1a1b26 !important;   /* main background */
+  --layout-background-1: #16161e !important;   /* sidebar, toolbars */
+  --layout-background-2: #1f2335 !important;
+  --layout-background-3: #292e42 !important;
+  --layout-background-4: #414868 !important;
+  --layout-border-0: #292e42 !important;
+  --layout-border-1: #292e42 !important;
+  --layout-border-2: #414868 !important;
+  --layout-color-0: #c0caf5 !important;
+  --layout-color-1: #a9b1d6 !important;
+  --layout-color-2: #787c99 !important;
+  --layout-color-3: #565f89 !important;
+  --selected-item-color: #7aa2f7 !important;
+  --button-primary-background-color: #7aa2f7 !important;
+  --button-primary-hover-background-color: #8db4ff !important;
+  --button-primary-active-background-color: #6a92e7 !important;
+  --button-primary-border-color: #7aa2f7 !important;
+  --button-primary-text-color: #1a1b26 !important;
+  --tree-pane-background: #1a1b26 !important;
+  --tree-view-bg: #1a1b26 !important;
+
+  /* Folder list */
+  --listbox-hover: #1f2335 !important;
+  --listbox-selected-bg: #292e42 !important;
+  --listbox-focused-selected-bg: #3b4261 !important;
+  --listbox-selected-color: #c0caf5 !important;
+  --listbox-focused-selected-color: #c0caf5 !important;
+
+  /* Message cards: no borders, lighter selection */
+  --tree-card-background: #1a1b26 !important;
+  --tree-card-border: transparent !important;
+  --tree-card-border-hover: transparent !important;
+  --tree-card-border-focus: transparent !important;
+  --tree-card-border-selected: transparent !important;
+  --tree-card-border-selected-unfocused: transparent !important;
+  --tree-card-background-current: #1f2335 !important;                 /* hover / arrow-key selection */
+  --tree-card-background-selected: #2f3549 !important;
+  --tree-card-background-selected-current: #3b4261 !important;        /* selected message */
+  --tree-card-background-current-unfocused: #1f2335 !important;
+  --tree-card-background-selected-unfocused: #2a2f45 !important;
+  --tree-card-background-selected-current-unfocused: #343a55 !important;
+  --tree-focus-outline: transparent !important;
+}
+
+/* Belt and braces: no card borders or outlines in any state */
+#threadTree .card-layout, #threadTree .card-layout .card-container {
+  border-color: transparent !important;
+  outline-color: transparent !important;
+}
+
+/* Top bar and tabs */
+:root {
+  --toolbar-background-color: #1a1b26 !important;       /* selected tab = content background */
+  --toolbar-color: #c0caf5 !important;
+  --tabs-toolbar-background-color: #16161e !important;  /* tab strip */
+  --tabs-toolbar-box-shadow: none !important;
+  --tabline-color: #7aa2f7 !important;                  /* selected tab line */
+  --chrome-content-separator-color: #292e42 !important;
+}
+
+/* Topmost toolbar (hamburger menu, search field) */
+#navigation-toolbox, #titlebar, #unifiedToolbarContainer, unified-toolbar, #toolbar-menubar,
+#spacesToolbar, #tabmail-tabs, #tabs-toolbar {
+  background-color: #16161e !important;
+  background-image: none !important;
+}
+
+/* ===== Jokela Night: decluttering ===== */
+
+/* Top bar: thin divider below, evenly spaced action buttons */
+unified-toolbar, #unifiedToolbarContainer {
+  border-bottom: 1px solid #292e42 !important;
+}
+unified-toolbar li[item-id] .unified-toolbar-button {
+  color: #a9b1d6 !important;
+  border-color: transparent !important;
+  background-color: transparent !important;
+}
+unified-toolbar li[item-id] .unified-toolbar-button:not([disabled]):hover {
+  color: #c0caf5 !important;
+  background-color: #292e42 !important;
+}
+unified-toolbar li[item-id] .unified-toolbar-button[disabled] { opacity: 0.35 !important; }
+/* Grouping: reply/forward | archive/spam/delete */
+unified-toolbar li[item-id="archive"] { margin-inline-start: 14px !important; }
+
+/* Message list: senders in violet, read messages dimmer */
+#threadTree .card-container .sender { color: #9d7cd8 !important; }
+#threadTree .card-layout[data-properties~="unread"] .card-container .sender { color: #bb9af7 !important; }
+#threadTree .card-container .subject { color: #a9b1d6 !important; }
+#threadTree .card-layout[data-properties~="unread"] .card-container .subject { color: #c0caf5 !important; }
+#threadTree .card-container .date { color: #565f89 !important; opacity: 1 !important; }
+/* Unread dot blue instead of green, same for the "new" star */
+#threadTree .card-layout[data-properties~="unread"] {
+  --read-status-fill: #7aa2f7 !important;
+  --read-status-stroke: #7aa2f7 !important;
+}
+#threadTree .card-layout[data-properties~="new"],
+#threadTree[rows="thread-card"] .card-layout[data-properties~="unread"][data-properties~="new"] {
+  --read-status-icon: var(--icon-dot) !important;      /* "new" star -> plain dot */
+  --read-status-fill: #7aa2f7 !important;
+  --read-status-stroke: #7aa2f7 !important;
+  --new-subject-color: #c0caf5 !important;
+}
+/* 8 px of space at the message list edges */
+#threadTree[rows="thread-card"] { padding-inline: 8px !important; }
+/* No star; the ⋮ menu shows only on hover */
+#threadTree .tree-button-flag, #threadTree .flaggedcol-column { display: none !important; }
+#threadTree .card-layout:not(:hover, .selected) .tree-button-more { visibility: hidden !important; }
+#threadTree .attachment-icon { opacity: 0.5 !important; }
+
+/* ===== Message header ===== */
+#messageHeader {
+  padding: 12px 20px 10px !important;
+  border-bottom: 1px solid #292e42 !important;
+  background-color: #1a1b26 !important;
+}
+/* Action buttons and the star live in the top bar → remove from the header */
+#header-view-toolbox, #starMessageButton { display: none !important; }
+/* No address book icons after names */
+.recipient-address-book-button { display: none !important; }
+
+/* Sender: name in violet, address dimmed below */
+#expandedfromBox .recipient-multi-line-name,
+#expandedfromBox .recipient-single-line { color: #bb9af7 !important; font-weight: 500 !important; }
+#expandedfromBox .recipient-multi-line-address { color: #565f89 !important; font-size: 0.9em !important; }
+.recipient-avatar {
+  background-color: #292e42 !important;
+  color: #bb9af7 !important;
+  border: none !important;
+}
+
+/* To / Reply-To / Cc / date: secondary */
+#expandedtoRow, #expandedccRow, #expandedbccRow, #expandedreply-toRow,
+#dateLabel, #dateLabelSubject {
+  font-size: 1rem !important;
+}
+#expandedtoRow *, #expandedccRow *, #expandedbccRow *, #expandedreply-toRow *,
+#dateLabel, #dateLabelSubject {
+  color: #787c99 !important;
+}
+/* Compact: minimal row gap and recipient padding */
+#messageHeader { row-gap: 0 !important; --message-header-field-offset: 1px !important; }
+.message-header-row { margin-block: 0 !important; }
+#expandedfromRow { margin-bottom: 6px !important; }
+:is(#expandedtoRow, #expandedccRow, #expandedbccRow, #expandedreply-toRow) .header-recipient {
+  padding-block: 0 !important;
+}
+
+/* Subject: a clear heading on its own line */
+#headerSubjectSecurityContainer { margin-top: 8px !important; }
+#expandedsubjectBox, #expandedsubjectBox * {
+  color: #c0caf5 !important;
+  font-size: 1.25rem !important;
+  line-height: 1.35 !important;
+}
+
+/* Dark mode toggle: subtle, fully visible only on hover */
+#darkReaderToggle { opacity: 0.35 !important; transition: opacity 150ms; }
+#darkReaderToggle:hover { opacity: 1 !important; }
+
+/* Attachment bar in the same shade */
+#attachmentView, #attachmentBar {
+  background-color: #16161e !important;
+  border-top: 1px solid #292e42 !important;
+}
+
+/* Remove the top-left Spaces button; replaced by our own folder pane button (folderpane-toggle add-on) */
+#spacesPinnedButton { display: none !important; }
+
+/* ===== Lucide icons (lucide-static 0.460.0, chrome/icons/lucide) ===== */
+/* (the variables themselves: nightdrive-icons.css, imported at the top) */
+/* Lucide is stroke-only: no translucent fill */
+#folderTree .icon { fill: none !important; }
+/* Folder pane button flush to the left edge (window drag space is useless in Hyprland) */
+#unifiedToolbarContent { padding-inline-start: 3px !important; }
+
+/* Folder tree unread count on a violet background */
+#folderTree, #folderPane, :root {
+  --folderpane-unread-count-background: #9d7cd8 !important;
+  --folderpane-unread-new-count-background: #bb9af7 !important;
+  --folderpane-unread-count-text: #1a1b26 !important;
+}
+#folderTree .unread-count { font-weight: 600 !important; }
+
+/* Message area background (no message selected / behind the message): blue, not grey */
+#messagepane, #messageBrowser, #multimessage, #messagePaneBox, #messagePane { background-color: #1a1b26 !important; }
+
+/* "To protect your privacy..." bar (remoteContent): medium violet instead of yellow */
+notification-message[value="remoteContent"] {
+  --message-bar-background-color: #4b3f7a !important;
+  --message-bar-background-color-warning: #4b3f7a !important;
+  --message-bar-text-color: #ece8ff !important;
+  --message-bar-icon-color: #bb9af7 !important;
+  --message-bar-border-color: #5d4f94 !important;
+  --background-color-warning: #4b3f7a !important;
+  --text-color-warning: #ece8ff !important;
+  background-color: #4b3f7a !important;
+  color: #ece8ff !important;
+}

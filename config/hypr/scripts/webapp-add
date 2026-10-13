@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# Usage: webapp-add "Name" https://address [icon-file-or-name]
+# Creates a .desktop file that opens the page as a standalone Chromium app window.
+set -euo pipefail
+
+name="${1:-}"; url="${2:-}"; icon="${3:-}"
+if [[ -z $name || -z $url ]]; then
+  echo "Usage: webapp-add \"Name\" https://address [icon]" >&2; exit 1
+fi
+
+[[ $url =~ ^[a-z]+:// ]] || url="https://$url"
+
+slug=$(echo "$name" | tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9-')
+apps="$HOME/.local/share/applications"
+icons="$HOME/.local/share/icons/webapps"
+mkdir -p "$apps" "$icons"
+
+# Icon: the given file, otherwise the site's favicon
+if [[ -n $icon && -f $icon ]]; then
+  cp "$icon" "$icons/$slug.png"; icon="$icons/$slug.png"
+elif [[ -n $icon ]]; then
+  :  # icon theme name, used as is
+else
+  host=$(echo "$url" | sed -E 's|^[a-z]+://([^/]+).*|\1|')
+  if curl -sfL -o "$icons/$slug.png" "https://www.google.com/s2/favicons?domain=$host&sz=128"; then
+    icon="$icons/$slug.png"
+  else
+    icon="chromium-browser"
+  fi
+fi
+
+# Chromium on Wayland ignores --class: an app window's class is chrome-<host>_<path with / as _>-Default
+# (https://app.slack.com/client -> chrome-app.slack.com__client-Default). StartupWMClass must match it.
+hostpath=$(echo "$url" | sed -E 's|^[a-z]+://||; s|[?#].*||')
+[[ $hostpath == */* ]] || hostpath+=/
+wmclass="chrome-${hostpath%%/*}_$(echo "/${hostpath#*/}" | tr / _)-Default"
+
+cat > "$apps/webapp-$slug.desktop" <<DESK
+[Desktop Entry]
+Type=Application
+Name=$name
+Exec=chromium-browser --disable-spell-checking --app=$url --user-data-dir=$HOME/.local/share/webapps/$slug
+Icon=$icon
+StartupWMClass=$wmclass
+Categories=Network;
+DESK
+
+update-desktop-database "$apps" 2>/dev/null || true
+echo "Added: $name ($apps/webapp-$slug.desktop)"

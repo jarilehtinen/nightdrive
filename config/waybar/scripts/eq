@@ -1,0 +1,45 @@
+#!/bin/bash
+# Headphone EQ (EasyEffects). Presets: config/easyeffects/output/*.json in the repo, linked into ~/.local/share/easyeffects/output (Off = no effects).
+# The chosen preset is saved as the headphones' autoload profile, so EasyEffects always loads it when the headphones
+# connect, and the fallback preset Off for other devices (speakers).
+# Usage: eq current | list | info | set <preset> | toggle   (info = JSON for the Quickshell headphones menu)
+dir=~/.local/share/easyeffects
+last=~/.local/state/eq-last          # last preset that was on (toggle restores it)
+
+sink_name() { pactl list short sinks 2>/dev/null | awk '$2 ~ /^bluez_output/ {print $2; exit}'; }
+autoload_file() {   # EasyEffects: autoload/output/<node.name>:<active port description>.json
+  local route
+  route=$(pactl -f json list sinks 2>/dev/null | jq -r --arg s "$1" '.[] | select(.name == $s) | .active_port as $a | .ports[] | select(.name == $a) | .description')
+  echo "$dir/autoload/output/$1:${route//\//_}.json"
+}
+
+case ${1:-current} in
+  current)
+    s=$(sink_name); [[ -n $s ]] || exit 1
+    p=$(jq -r '."preset-name" // empty' "$(autoload_file "$s")" 2>/dev/null)
+    [[ -z $p || $p == Off ]] && echo off || echo "$p" ;;
+  list)
+    for f in "$dir"/output/*.json; do n=$(basename "$f" .json); [[ $n != Off ]] && echo "$n"; done ;;
+  info)
+    s=$(sink_name); [[ -n $s ]] || { echo '{}'; exit; }
+    mac=$(sed -E 's/^bluez_output\.([0-9A-F_]+).*/\1/; s/_/:/g' <<<"$s")
+    bat=$(bluetoothctl info "$mac" 2>/dev/null | grep -oP 'Battery Percentage:.*\(\K[0-9]+')
+    pactl -f json list sinks | jq -c --arg s "$s" --arg def "$(pactl get-default-sink)" --arg bat "$bat" \
+      --arg cur "$("$0" current)" --arg presets "$("$0" list)" \
+      '.[] | select(.name == $s) | {sink: $s, name: .description, default: ($s == $def), battery: $bat,
+        codec: (.properties["api.bluez5.codec"] // "" | ascii_upcase), preset: $cur, presets: ($presets | split("\n") | map(select(. != "")))}' ;;
+  set)
+    p=${2:?preset}; s=$(sink_name); [[ -n $s ]] || exit 1
+    f=$(autoload_file "$s"); mkdir -p "$(dirname "$f")"
+    desc=$(pactl -f json list sinks | jq -r --arg s "$s" '.[] | select(.name == $s) | .description')
+    jq -n --arg d "$s" --arg desc "$desc" --arg r "$(basename "$f" .json | cut -d: -f2-)" --arg p "$p" \
+      '{device:$d, "device-description":$desc, "device-profile":$r, "preset-name":$p}' > "$f"
+    [[ $p != Off ]] && { mkdir -p "$(dirname "$last")"; echo "$p" > "$last"; }
+    pgrep -x easyeffects >/dev/null || { easyeffects --service-mode -w >/dev/null 2>&1 & sleep 1; }
+    easyeffects -b 2 >/dev/null 2>&1   # just in case: turn global bypass off
+    # Load immediately only if the headphones are the default device now; otherwise autoload handles it on switching to them
+    [[ $(pactl get-default-sink) == "$s" ]] && easyeffects -l "$p" >/dev/null 2>&1
+    true ;;
+  toggle)
+    if [[ $("$0" current) == off ]]; then "$0" set "$(cat "$last" 2>/dev/null || echo Neutral)"; else "$0" set Off; fi ;;
+esac

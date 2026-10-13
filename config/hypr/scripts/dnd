@@ -1,0 +1,8 @@
+#!/bin/bash
+# Do not disturb toggle (F6): mako's do-not-disturb mode hides notifications (they stay in the history: makoctl history).
+if makoctl mode | grep -qx do-not-disturb; then
+  makoctl mode -r do-not-disturb >/dev/null; state=false
+else
+  makoctl mode -a do-not-disturb >/dev/null; state=true
+fi
+qs ipc call osd dnd "$state"

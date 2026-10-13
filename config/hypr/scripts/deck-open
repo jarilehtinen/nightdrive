@@ -1,0 +1,3 @@
+#!/bin/bash
+# Brings Deck (Spotify in the terminal, install-deck.sh) to the front, or starts it in its own kitty window.
+exec "$(dirname "$(readlink -f "$0")")/launch-or-focus" '^deck$' kitty --class deck -e "$HOME/.local/bin/deck"

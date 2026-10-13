@@ -1,0 +1,16 @@
+#!/bin/bash
+# focus-app <app name> [desktop-entry]
+# Clicking a row in the notification centre: focuses the app's window (class matches the name or desktop entry as a whole word, e.g. firefox -> org.mozilla.firefox; case-insensitive);
+# if there is no window, launches the app from its desktop entry (if given).
+app=${1:-}; entry=${2:-}
+[[ -z $app ]] && exit 0
+esc() { printf '%s' "$1" | sed -e 's/[][\.^$*+?(){}|]/\\&/g'; }
+pat="(?i)(^|[._-])($(esc "$app")"
+[[ -n $entry ]] && pat+="|$(esc "$entry")"
+pat+=")([._-]|\$)"
+addr=$(hyprctl -j clients | jq -r --arg re "$pat" '[.[] | select((.class | test($re)) or (.initialClass | test($re)))] | first | .address // empty')
+if [[ -n $addr ]]; then
+  exec ~/.config/hypr/scripts/launch-or-focus "$pat" true
+elif [[ -n $entry ]]; then
+  gtk-launch "$entry" >/dev/null 2>&1 &
+fi

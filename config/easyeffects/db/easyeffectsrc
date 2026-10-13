@@ -1,0 +1,8 @@
+[EffectsPipelines]
+processAllInputs=false
+
+[Window]
+outputAutoloadingUsesFallback=true
+outputAutoloadingFallbackPreset=Off
+showTrayIcon=false
+enableServiceMode=true

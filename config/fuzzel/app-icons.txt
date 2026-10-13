@@ -1,0 +1,10 @@
+# App = icon (file icons/<name>.svg). Usage: applied by sync-apps.
+# The icons are made from the Lucide font with gen-icons.py. Remove a line to restore the original icon.
+com.onepassword.OnePassword.desktop = key-round
+org.mozilla.firefox.desktop         = globe
+kitty.desktop                       = square-terminal
+webapp-whatsapp.desktop             = message-circle
+webapp-youtube.desktop              = youtube
+deck.desktop                        = music
+org.gnome.Nautilus.desktop           = folder
+net.thunderbird.Thunderbird.desktop = mail

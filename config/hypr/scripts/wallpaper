@@ -1,0 +1,71 @@
+#!/bin/bash
+# Wallpapers: the repo's wallpapers/ (linked as ~/.local/share/wallpapers) and own images in ~/Pictures/Wallpapers. The choice is remembered as a link at ~/.local/state/wallpaper/current.
+#   wallpaper restore      starts swaybg with the remembered image (Hyprland autostart); default nightdrive.jpg
+#   wallpaper set <image>  changes the wallpaper and remembers the choice
+#   wallpaper list         "path<TAB>preview<TAB>name<TAB>group" for the launcher's Settings › Background; creates missing previews
+#   wallpaper add          picks images with a file chooser, copies them to ~/Pictures/Wallpapers and sets the last one as wallpaper
+#   wallpaper remove <image> moves an own image (~/Pictures/Wallpapers) to the trash; if it was the wallpaper, falls back to the default
+#   wallpaper current      prints the current image path
+set -euo pipefail
+dir=$(readlink -f "$HOME/.local/share/wallpapers")   # real path, so comparing with the current image (readlink -f) matches
+own="$HOME/Pictures/Wallpapers"
+state="$HOME/.local/state/wallpaper"
+thumbs="$HOME/.cache/wallpaper-thumbs"
+default="$dir/nightdrive.jpg"
+
+current() {
+  local f
+  f=$(readlink -f "$state/current" 2>/dev/null || true)
+  [[ -n $f && -f $f ]] && echo "$f" || echo "$default"
+}
+
+show() {
+  pkill -x swaybg || true
+  setsid -f swaybg -c '#1a1b26' -m fill -i "$1" >/dev/null 2>&1
+}
+
+case ${1:-} in
+  restore) show "$(current)" ;;
+  current) current ;;
+  set)
+    f=$(readlink -f "${2:?usage: wallpaper set <file>}")
+    [[ -f $f ]] || { echo "not found: $f" >&2; exit 1; }
+    mkdir -p "$state"
+    ln -sfn "$f" "$state/current"
+    show "$f" ;;
+  add)
+    files=$(zenity --file-selection --multiple --separator=$'\n' --title="Add backgrounds" \
+      --filename="$HOME/Downloads/" --file-filter="Images | *.jpg *.jpeg *.png *.webp *.JPG *.JPEG *.PNG *.WEBP") || exit 0
+    mkdir -p "$own"
+    last=""
+    while IFS= read -r f; do
+      [[ -f $f ]] || continue
+      dst="$own/$(basename "$f")"
+      [[ $(readlink -f "$f") == $(readlink -f "$dst") ]] || cp -n "$f" "$dst"
+      last=$dst
+    done <<<"$files"
+    [[ -n $last ]] && "$0" set "$last"
+    qs ipc call launcher openLevel background >/dev/null 2>&1 || true ;;
+  remove)
+    f=$(readlink -f "${2:?usage: wallpaper remove <file>}")
+    [[ $f == "$(readlink -f "$own")"/* && -f $f ]] || { echo "not an own wallpaper: $f" >&2; exit 1; }
+    was=$(current)
+    gio trash "$f"
+    [[ $was == "$f" ]] && { rm -f "$state/current"; show "$default"; }
+    exit 0 ;;
+  list)
+    mkdir -p "$thumbs"
+    # Own images first (newest first), then the bundled ones
+    { [[ -d $own ]] && find "$own" -type f -printf '%T@\t%p\n' | sort -rn | cut -f2-; find -L "$dir" -type f | sort; } |
+      grep -iE '\.(jpe?g|png|webp)$' |
+      while read -r f; do
+        # Preview cropped to the screen's aspect (3:2, like swaybg's fill); file name from a hash of the path
+        t="$thumbs/$(printf %s "$f" | md5sum | cut -c1-16).jpg"
+        [[ -s $t && $t -nt $f ]] || magick "$f" -thumbnail '600x390^' -gravity center -extent 600x390 -quality 85 "$t"
+        rel=${f#"$dir"/}; rel=${rel#"$own"/}
+        group=$([[ $rel == */* ]] && basename "$(dirname "$rel")" || echo "")
+        name=$(basename "${f%.*}" | sed -E 's/^[0-9]+-//; s/-/ /g')
+        printf '%s\t%s\t%s\t%s\n' "$f" "$t" "$name" "$group"
+      done ;;
+  *) sed -n '2,8p' "$0" >&2; exit 2 ;;
+esac

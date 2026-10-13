@@ -1,0 +1,19 @@
+#!/bin/bash
+# brightness <screen|kbd> <up|down>: adjusts brightness in even steps (screen 5 %, keyboard backlight 10 %) and shows an OSD toast.
+# Lower limit 0 % (the screen may go black). The current value is rounded to the nearest percent before stepping.
+dev=$1 dir=$2
+args=()
+min=0
+step=5                                   # screen: 5 % step
+if [[ $dev == kbd ]]; then args=(-d kbd_backlight); step=10; fi   # backlight: 10 %
+IFS=, read -r _ _ cur _ max < <(brightnessctl "${args[@]}" -m)
+new=$(awk -v c="$cur" -v m="$max" -v d="$dir" -v lo="$min" -v s="$step" 'BEGIN {
+  p = int(c * 100 / m + 0.5)
+  if (d == "up") n = (int(p / s) + 1) * s
+  else n = (p % s == 0) ? p - s : int(p / s) * s
+  if (n > 100) n = 100
+  if (n < lo) n = lo
+  print n
+}')
+brightnessctl "${args[@]}" set "${new}%" >/dev/null
+qs ipc call osd "$([[ $dev == kbd ]] && echo kbd || echo brightness)"

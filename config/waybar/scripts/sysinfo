@@ -1,0 +1,98 @@
+#!/usr/bin/python3 -I
+"""System meters. `sysinfo bar` -> TEXT<TAB>TOOLTIP<TAB>CLASS (for waybar's status script),
+`sysinfo menu` -> JSON for Quickshell's SystemMenu. CPU load is measured since the previous call
+(state: $XDG_RUNTIME_DIR/sysinfo-<mode>.json); the first call measures over 0.3 s."""
+import glob, json, os, sys, time
+
+# MacBook-specific (Apple Silicon): the battery in /sys/class/power_supply and the temperature sensors shown in the menu,
+# as (substring of "<hwmon name> <sensor label>", title). Other machines: see /sys/class/hwmon/hwmon*/{name,temp*_label}.
+BATTERY = "/sys/class/power_supply/macsmc-battery/"
+SENSORS = [("macsmc_battery", "Battery"), ("nvme", "SSD"), ("WiFi/BT", "WiFi/BT"),
+           ("Charge Regulator", "Charger"), ("tas2764", "Speakers")]
+
+mode = sys.argv[1] if len(sys.argv) > 1 else "menu"
+state_path = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), f"sysinfo-{mode}.json")
+HZ = os.sysconf("SC_CLK_TCK")
+
+def rd(p, default=""):
+    try:
+        with open(p) as f: return f.read().strip()
+    except OSError: return default
+
+def cpu_times():
+    v = list(map(int, rd("/proc/stat").split("\n")[0].split()[1:]))
+    return sum(v), v[3] + v[4]            # total, idle+iowait
+
+def procs():
+    out = {}
+    for d in glob.glob("/proc/[0-9]*"):
+        try:
+            s = open(d + "/stat").read()
+            name = s[s.index("(") + 1:s.rindex(")")]
+            f = s[s.rindex(")") + 2:].split()
+            out[int(d[6:])] = (name, int(f[11]) + int(f[12]), int(f[21]) * os.sysconf("SC_PAGE_SIZE"))
+        except (OSError, ValueError): pass
+    return out
+
+def snap():
+    return {"t": time.time(), "cpu": cpu_times(), "p": {str(k): v for k, v in procs().items()} if mode == "menu" else {}}
+
+prev = None
+try: prev = json.load(open(state_path))
+except (OSError, ValueError): pass
+if prev is None:
+    prev = snap(); time.sleep(0.3)
+now = snap()
+try: json.dump(now, open(state_path, "w"))
+except OSError: pass
+
+dt = max(0.05, now["t"] - prev["t"])
+dtot, didle = now["cpu"][0] - prev["cpu"][0], now["cpu"][1] - prev["cpu"][1]
+cpu = round(100 * (dtot - didle) / dtot) if dtot > 0 else 0
+
+mi = {l.split(":")[0]: int(l.split()[1]) for l in rd("/proc/meminfo").splitlines()}   # kB
+mem_total, mem_used = mi["MemTotal"] * 1024, (mi["MemTotal"] - mi["MemAvailable"]) * 1024
+swap_total, swap_used = mi["SwapTotal"] * 1024, (mi["SwapTotal"] - mi["SwapFree"]) * 1024
+
+temps = []
+for h in sorted(glob.glob("/sys/class/hwmon/hwmon*")):
+    name = rd(h + "/name")
+    for t in sorted(glob.glob(h + "/temp*_input")):
+        try: c = int(rd(t)) / 1000
+        except ValueError: continue
+        label = rd(t.replace("_input", "_label")) or name
+        temps.append((name, label, c))
+def pick(match, title):
+    v = [c for n, l, c in temps if match in (n + " " + l)]
+    return (title, max(v)) if v else None
+wanted = [pick(match, title) for match, title in SENSORS]
+temps = [{"label": t, "c": round(c)} for t, c in filter(None, wanted)]
+hottest = max((t["c"] for t in temps), default=0)
+
+freqs = [int(rd(f)) for f in glob.glob("/sys/devices/system/cpu/cpu[0-9]*/cpufreq/scaling_cur_freq") if rd(f).isdigit()]
+freq = round(sum(freqs) / len(freqs) / 1000) if freqs else 0
+load = rd("/proc/loadavg").split()[:3]
+
+gb = lambda b: f"{b / 2**30:.1f}"
+if mode == "bar":
+    cls = "high" if cpu > 90 else ""
+    tip = f"CPU {cpu}% · {freq} MHz · load {load[0]}\\nRAM {gb(mem_used)} / {gb(mem_total)} GB\\nHottest sensor {hottest} °C"
+    print(f'{cpu}%\t{tip}\t{cls}')
+    sys.exit()
+
+# processes grouped by name (process%: share of one core; chromium etc. are summed)
+agg = {}
+for pid, (name, ticks, rss) in now["p"].items():
+    old = prev["p"].get(pid)
+    if not old or old[0] != name: continue
+    a = agg.setdefault(name, [0.0, 0])
+    a[0] += 100 * (ticks - old[1]) / HZ / dt
+    a[1] += rss
+top = sorted(({"name": n, "cpu": round(v[0], 1), "rss": v[1]} for n, v in agg.items()), key=lambda x: -x["cpu"])[:6]
+
+bat = BATTERY
+watts = int(rd(bat + "power_now", "0") or 0) / 1e6
+print(json.dumps({"cpu": cpu, "freq": freq, "load": load, "memUsed": mem_used, "memTotal": mem_total,
+                  "swapUsed": swap_used, "swapTotal": swap_total, "temps": temps, "top": top,
+                  "batStatus": rd(bat + "status"), "batPct": rd(bat + "capacity"), "watts": round(watts, 1),
+                  "cores": os.cpu_count()}))

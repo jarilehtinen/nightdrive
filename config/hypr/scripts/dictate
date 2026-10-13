@@ -1,0 +1,24 @@
+#!/bin/bash
+# dictate <start|stop>: F5 (speech to text). If the mic is muted, don't start recording; show a "MIC MUTED" toast instead.
+# dictate <fn-down|fn-up>: Fn held. Starts only after 0.3 s so that Fn combos (Fn+arrows, Fn+Backspace …) don't trigger dictation.
+vt="$HOME/.local/bin/voxtype-onnx"
+run=${XDG_RUNTIME_DIR:-/tmp}
+case $1 in
+  fn-down)
+    touch "$run/dictate-fn"
+    ( sleep 0.3; [[ -e $run/dictate-fn ]] && { touch "$run/dictate-fn-active"; "$0" start; } ) & ;;
+  fn-up)
+    rm -f "$run/dictate-fn"
+    [[ -e $run/dictate-fn-active ]] && { rm -f "$run/dictate-fn-active"; "$0" stop; } ;;
+  start)
+    if wpctl get-volume @DEFAULT_AUDIO_SOURCE@ 2>/dev/null | grep -q MUTED; then
+      qs ipc call osd micblocked
+      touch "$run/dictate-blocked"
+    else
+      rm -f "$run/dictate-blocked"
+      "$vt" record start >/dev/null 2>&1
+    fi ;;
+  stop)
+    # If the start was blocked, there is nothing to stop
+    if [[ -e $run/dictate-blocked ]]; then rm -f "$run/dictate-blocked"; else "$vt" record stop >/dev/null 2>&1; fi ;;
+esac

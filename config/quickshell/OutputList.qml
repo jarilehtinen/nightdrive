@@ -1,0 +1,68 @@
+import QtQuick
+import Quickshell
+
+// List of audio devices (PipeWire): kind "sink" = outputs (default), "source" = microphones. The selected device gets a check mark, a click changes the default device.
+// Used in the Sound and Music menus. Refreshes every second, but only while `active` is true.
+// Uses pw-dump like VolumeMenu (Quickshell's Pipewire module doesn't work with Pipewire 1.6).
+Column {
+    id: o
+    width: parent ? parent.width : 300
+    spacing: 2
+
+    property bool active: true
+    property string kind: "sink"      // "sink" | "source"
+    readonly property string mediaClass: kind === "source" ? "Audio/Source" : "Audio/Sink"
+    readonly property string defaultKey: kind === "source" ? "default.audio.source" : "default.audio.sink"
+    property var sinkList: []
+
+    function refresh() { dumpProc.running = true }
+    onActiveChanged: if (active) refresh()
+    Component.onCompleted: refresh()
+
+    Timer { interval: 1000; repeat: true; running: o.active; onTriggered: o.refresh() }
+    Timer { id: soon; interval: 150; onTriggered: o.refresh() }
+
+    Sh {
+        id: dumpProc
+        command: ["pw-dump"]
+        onResult: text => {
+            let objs
+            try { objs = JSON.parse(text) } catch (e) { return }
+            let defName = ""
+            for (const ob of objs) {
+                if (ob.type !== "PipeWire:Interface:Metadata") continue
+                for (const e of (ob.metadata || []))
+                    if (e.key === o.defaultKey && e.value) defName = e.value.name
+            }
+            const sinks = []
+            for (const ob of objs) {
+                if (ob.type !== "PipeWire:Interface:Node") continue
+                const p = (ob.info || {}).props || {}
+                if (p["media.class"] !== o.mediaClass) continue
+                if (/^easyeffects_/.test(p["node.name"])) continue   // EasyEffects' virtual device, not a real output
+                sinks.push({ id: ob.id, name: p["node.description"] || p["node.name"], current: p["node.name"] === defName,
+                             bt: /^bluez_/.test(p["node.name"]) })
+            }
+            // The machine's own devices first (MacBook Pro …, then Built-in …), the rest alphabetically
+            const rank = n => /^MacBook Pro/i.test(n) ? 0 : /^Built-in/i.test(n) ? 1 : 2
+            sinks.sort((a, b) => rank(a.name) - rank(b.name) || a.name.localeCompare(b.name))
+            o.sinkList = sinks
+        }
+    }
+
+    Repeater {
+        model: o.sinkList
+        delegate: MenuRow {
+            required property var modelData
+            width: o.width
+            active: modelData.current
+            checkIcon: modelData.current ? "check" : ""
+            label: modelData.name
+            icon: o.kind === "source" ? (modelData.bt || /head|buds|airpods/i.test(modelData.name) ? "headphones" : "mic")
+                : modelData.bt || /head|buds|airpods/i.test(modelData.name) ? "headphones"
+                : /macbook|built-in|laptop/i.test(modelData.name) ? "laptop"
+                : /tv|display|monitor/i.test(modelData.name) ? "tv" : "speaker"
+            onClicked: { Quickshell.execDetached(["wpctl", "set-default", String(modelData.id)]); soon.start() }
+        }
+    }
+}

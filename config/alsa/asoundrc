@@ -1,0 +1,7 @@
+# Dictation (voxtype, F5) always uses the MacBook mic regardless of the selected default mic:
+# voxtype only takes an ALSA device name, so this PipeWire PCM routes it straight to the Asahi mic filter.
+pcm.macbook_mic {
+    type pipewire
+    capture_node "effect_output.j414-mic"
+    hint { show on description "MacBook microphone (always)" }
+}

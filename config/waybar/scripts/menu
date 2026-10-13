@@ -1,0 +1,4 @@
+#!/bin/bash
+# Top bar icon click: toggles Quickshell menu <name> (shell.qml, <Name>Menu.qml) under the mouse cursor.
+# Usage: menu <name>   (e.g. menu wifi)
+exec qs ipc call menu toggleAt "$1" "$(hyprctl -j cursorpos | jq '.x|floor')"

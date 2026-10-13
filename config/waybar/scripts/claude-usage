@@ -1,0 +1,36 @@
+#!/bin/bash
+# Claude plan usage (5 h session, week, per-model week) straight from Anthropic, using Claude Code's own sign-in.
+# Prints {plan, windows: [{key, percent, resetsAt, model}], fetchedAt, error} and caches it for two minutes,
+# so the bar and the Claude menu can both call this freely.
+# The token is only read: Claude Code refreshes it whenever it runs. If it has expired, the last data is shown with an error.
+set -uo pipefail
+creds="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.credentials.json"
+dir="${XDG_RUNTIME_DIR:-/tmp}/nightdrive"
+cache="$dir/claude-usage.json"
+mkdir -p "$dir"
+
+fresh() { [[ -s $cache ]] && (( $(date +%s) - $(stat -c %Y "$cache") < 120 )); }
+fail() {   # keep the last good numbers, attach the reason
+  local old='{}'; [[ -s $cache ]] && old=$(<"$cache")
+  jq -c --arg e "$1" '. + {error: $e}' <<<"$old" | tee "$cache.tmp"; mv "$cache.tmp" "$cache"; exit 0
+}
+
+exec 9>"$dir/claude-usage.lock"
+flock 9
+fresh && { cat "$cache"; exit 0; }
+
+[[ -s $creds ]] || fail "Not signed in to Claude Code"
+read -r token expires plan < <(jq -r '.claudeAiOauth | [.accessToken // "", (.expiresAt // 0), (.subscriptionType // "")] | @tsv' "$creds")
+[[ -n $token ]] || fail "Not signed in to Claude Code"
+(( expires / 1000 > $(date +%s) )) || fail "Sign-in expired: run claude once to refresh it"
+
+r=$(curl -sf --max-time 15 https://api.anthropic.com/api/oauth/usage \
+  -H "Authorization: Bearer $token" -H "anthropic-beta: oauth-2025-04-20" -H "User-Agent: nightdrive") || fail "Usage request failed"
+jq -c --arg plan "$plan" '{
+  plan: $plan,
+  windows: [.limits[]? | {
+    key: ({session: "session", weekly_all: "weekly"}[.kind] // "model"),
+    percent: .percent, resetsAt: .resets_at, model: .scope.model.display_name? }],
+  fetchedAt: (now | todate) }' <<<"$r" > "$cache.tmp" || fail "Unexpected usage response"
+mv "$cache.tmp" "$cache"
+cat "$cache"

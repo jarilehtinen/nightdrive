@@ -1,0 +1,13 @@
+singleton Icons 1.0 Icons.qml
+singleton Theme 1.0 Theme.qml
+Sh 1.0 Sh.qml
+MenuRow 1.0 MenuRow.qml
+MenuHeader 1.0 MenuHeader.qml
+Slider 1.0 Slider.qml
+Launcher 1.0 Launcher.qml
+Osd 1.0 Osd.qml
+Picker 1.0 Picker.qml
+Divider 1.0 Divider.qml
+Shelf 1.0 Shelf.qml
+OutputList 1.0 OutputList.qml
+singleton LastState 1.0 LastState.qml

@@ -1,0 +1,14 @@
+#!/bin/bash
+# Launches the Nightdrive screensaver in a fullscreen kitty.
+# Usage: start [saver|rain]  (picked at random without an argument)
+pgrep -f '[n]ightdrive-(saver|rain)' >/dev/null && exit 0
+dir=$(dirname "$(readlink -f "$0")")
+case ${1:-} in
+  saver|rain) name=$1 ;;
+  *) name=$(shuf -n1 -e saver rain) ;;
+esac
+case $name in rain) size=18 ;; *) size=9 ;; esac   # rain: bigger glyphs
+exec kitty --class "nightdrive-$name" --start-as=fullscreen \
+  -o window_padding_width=0 -o background=#09021e -o font_size=$size -o confirm_os_window_close=0 \
+  -o mouse_hide_wait=0 \
+  python3 -I "$dir/nightdrive-$name"
