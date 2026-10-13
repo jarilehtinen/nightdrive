@@ -57,7 +57,7 @@ PanelWindow {
     property string extSource: ""             // shell.qml sets this when the file exists
     readonly property var ext: extLoader.item
     readonly property bool extLevel: ext !== null && ext.levels.indexOf(level) >= 0
-    readonly property var parents: Object.assign({ shelf: "music", curated: "music", package: "install", webapp: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "theme", baropacity: "topbar", baricons: "topbar", barhl: "topbar" }, ext ? ext.parents : {})
+    readonly property var parents: Object.assign({ shelf: "music", curated: "music", musicsearch: "music", package: "install", webapp: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "theme", baropacity: "topbar", baricons: "topbar", barhl: "topbar" }, ext ? ext.parents : {})
     // Search found nothing: hint below ⌘⌥⏎ (icons) → send the text to Claude
     readonly property bool noHit: (level === "root" || level === "apps") && query.trim() !== "" && results.length === 0
     readonly property string footer: level === "passwords" && pwState === "ready" ? "Enter: password  ·  Shift+Enter: username  ·  Ctrl+Enter: one-time code"
@@ -75,7 +75,7 @@ PanelWindow {
     readonly property var deckLiked: deckOverride.liked !== undefined ? deckOverride.liked : (deckInfo ? deckInfo.liked : null)
     signal openMenu(string name)              // Settings: opens a Quickshell menu (wifi, bluetooth, ...)
 
-    readonly property var titles: Object.assign({ apps: "Apps", music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", keys: "Keybindings", screenshot: "Screenshot", settings: "Settings", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
+    readonly property var titles: Object.assign({ apps: "Apps", music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", musicsearch: "Music › Search", keys: "Keybindings", screenshot: "Screenshot", settings: "Settings", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
                                      topbar: "Settings › Theme › Top bar", baropacity: "Theme › Top bar › Opacity", baricons: "Theme › Top bar › Icon colors", barhl: "Theme › Top bar › Highlight",
                                      install: "Install", emoji: "Emoji", package: "Install › Package", webapp: "Install › Webapp", webname: "Install › Webapp › Name", webaddr: "Install › Webapp › Address", remove: "Remove", power: "Power", passwords: "Passwords", clipboard: "Clipboard",
                                      tools: "Tools" }, ext ? ext.titles : {})
@@ -283,8 +283,12 @@ PanelWindow {
         } else if (level === "music") {
             const count = list => musicAlbums.filter(a => a.list === list).length
             all = [{ kind: "nav", name: "Album Shelf", glyph: "library-big", target: "shelf", summary: String(count("shelf")) },
-                   { kind: "nav", name: "Curated", glyph: "sparkles", target: "curated", summary: String(count("curated")) }]
+                   { kind: "nav", name: "Curated", glyph: "sparkles", target: "curated", summary: String(count("curated")) },
+                   { kind: "nav", name: "Search Spotify", glyph: "search", target: "musicsearch", summary: "in Deck" }]
                 .map(r => ({ item: r, text: r.name }))
+        } else if (level === "musicsearch") {
+            if (query.trim() === "") return hint("Type an artist, album or track")
+            return [{ kind: "decksearch", name: "Search “" + query.trim() + "”", summary: "opens in Deck", glyph: "search", value: query.trim() }]
         } else if (level === "shelf" || level === "curated") {
             const albums = musicAlbums.filter(a => a.list === level)
             if (albums.length === 0) return hint(level === "shelf" ? "The shelf is empty: add albums in Deck with a"
@@ -415,7 +419,8 @@ PanelWindow {
             else if (item.entry) item.entry.execute(); else Quickshell.execDetached(["gio", "launch", item.path])
         }
         else if (item.kind === "clip") clipPick(item, true)
-        else if (item.kind === "album") { win.open = false; Quickshell.execDetached([scripts + "/deck-play", item.uri]) }
+        else if (item.kind === "album") { win.open = false; Quickshell.execDetached([scripts + "/deck-ctl", "play-album", item.uri]) }
+        else if (item.kind === "decksearch") { win.open = false; Quickshell.execDetached([scripts + "/deck-ctl", "search", item.value]) }
         else if (item.kind === "emoji") emojiPick(item, true)
         else if (live[item.kind]) {           // stays open: values can be tried one after another (theme colors recolor the launcher immediately)
             const [script, verb, prop] = live[item.kind]

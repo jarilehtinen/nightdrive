@@ -1,0 +1,14 @@
+#!/bin/bash
+# deck-ctl play-album <spotify:album:…> | search <query>: the launcher's Music level talks to Deck through this.
+# Starts Deck first if it isn't running (and waits for its control socket); a search also brings Deck's window up.
+cmd=${1:?usage: deck-ctl play-album <uri> | search <query>}; shift
+deck="$HOME/.local/bin/deck"
+here=$(dirname "$(readlink -f "$0")")
+sock="${XDG_RUNTIME_DIR:-/tmp}/deck/control.sock"
+if [[ ! -S $sock ]]; then
+  "$here/deck-open" &
+  for _ in $(seq 50); do [[ -S $sock ]] && break; sleep 0.2; done
+elif [[ $cmd == search ]]; then
+  "$here/deck-open"
+fi
+"$deck" ctl "$cmd" "$@" || notify-send -a Deck "Deck didn't respond" "Is Deck installed and signed in?"
