@@ -13,6 +13,7 @@ Column {
     property bool scanning: false
     property string busy: ""
     property string message: ""
+    property string messageMac: ""   // the device the error is about: it clears once that device is connected
     signal close()
 
     function refresh() { powerProc.running = true; listProc.running = true }
@@ -23,7 +24,7 @@ Column {
     }
     function activate(d) {
         if (m.busy !== "") return
-        m.busy = d.mac; m.message = ""
+        m.busy = d.mac; m.message = ""; m.messageMac = d.mac
         actProc.environment = { "MAC": d.mac, "MODE": d.connected ? "disconnect" : (d.paired ? "connect" : "pair") }
         actProc.running = true
     }
@@ -61,6 +62,8 @@ Column {
             }
             arr.sort((a, b) => (b.connected - a.connected) || (b.paired - a.paired) || a.name.localeCompare(b.name))
             m.devices = arr
+            // e.g. connecting failed while the headphones were off, and they connected by themselves once switched on
+            if (m.message !== "" && arr.some(d => d.mac === m.messageMac && d.connected)) m.message = ""
         }
     }
     Sh {
