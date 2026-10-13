@@ -125,8 +125,8 @@ Column {
                 label: modelData.name
                 active: modelData.connected
                 checkIcon: modelData.connected ? "check" : ""
-                detail: m.busy === modelData.mac ? "…"
-                      : modelData.battery !== "" ? modelData.battery + " %"
+                busy: m.busy === modelData.mac
+                detail: modelData.battery !== "" ? modelData.battery + " %"
                       : (!modelData.paired ? "not paired" : "")
                 onClicked: m.activate(modelData)
             }

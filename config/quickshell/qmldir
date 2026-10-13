@@ -2,6 +2,7 @@ singleton Icons 1.0 Icons.qml
 singleton Theme 1.0 Theme.qml
 Sh 1.0 Sh.qml
 MenuRow 1.0 MenuRow.qml
+BusyDots 1.0 BusyDots.qml
 MenuHeader 1.0 MenuHeader.qml
 Slider 1.0 Slider.qml
 Launcher 1.0 Launcher.qml

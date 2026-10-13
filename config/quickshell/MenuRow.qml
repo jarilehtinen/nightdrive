@@ -12,6 +12,7 @@ Rectangle {
     property bool navSelected: false   // selected during keyboard navigation (⌘⇧Space)
     function navActivate() { row.clicked() }
     property bool action: false        // action button (Open …): uppercase, smaller font
+    property bool busy: false          // in progress (connecting …): animated dots instead of the detail text
     signal clicked()
     signal rightClicked()
 
@@ -47,8 +48,12 @@ Rectangle {
         id: trailing
         anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
         spacing: 8
+        BusyDots {
+            visible: row.busy
+            anchors.verticalCenter: parent.verticalCenter
+        }
         Text {
-            visible: row.detail !== ""
+            visible: row.detail !== "" && !row.busy
             anchors.verticalCenter: parent.verticalCenter
             text: row.detail
             color: Theme.dim

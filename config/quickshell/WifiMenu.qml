@@ -180,7 +180,7 @@ Column {
         icon: m.sigIcon(m.activeNet ? m.activeNet.signal : 0)
         label: m.activeSsid
         active: true
-        detail: m.connecting === m.activeSsid ? "…" : ""
+        busy: m.connecting === m.activeSsid
         checkIcon: "check"
         onClicked: m.activate(m.activeNet)
     }
@@ -244,7 +244,8 @@ Column {
                     icon: m.sigIcon(item.modelData.signal)
                     label: item.modelData.ssid
                     active: item.modelData.active
-                    detail: m.connecting === item.modelData.ssid ? "…" : (item.modelData.known && !item.modelData.active ? "saved" : "")
+                    busy: m.connecting === item.modelData.ssid
+                    detail: item.modelData.known && !item.modelData.active ? "saved" : ""
                     checkIcon: item.modelData.active ? "check" : (item.modelData.secure ? "lock" : "")
                     onClicked: m.activate(item.modelData)
                 }
