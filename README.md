@@ -101,7 +101,8 @@ On a fresh Fedora Asahi Remix 44 with a network connection:
 sudo dnf install -y git   # not in a fresh install
 git clone https://github.com/jarilehtinen/nightdrive.git ~/dotfiles
 cd ~/dotfiles
-./install.sh              # system update, packages, fonts, 1Password, the notch setting, config links, Deck, login screen…
+./install.sh              # system update, packages, fonts, 1Password, the notch setting, config links, Deck, login screen,
+                          # and removes the KDE apps and services Nightdrive doesn't use (packages-remove.txt)
 ```
 
 Then **reboot**. The Nightdrive login screen (greetd + Quickshell) starts Hyprland; KDE stays installed as a fallback. If the
@@ -110,7 +111,7 @@ login screen fails, press Ctrl+Alt+F3, log in and run `config/greeter/switch.sh 
 | Option | What it changes |
 |---|---|
 | `--no-greeter` | Keeps the KDE login screen; pick **Hyprland** there (not *Hyprland (uwsm-managed)*) |
-| `--debloat` | Removes the default KDE apps |
+| `--keep-apps` | Keeps the KDE apps, printing, network shares, accessibility tools and other packages listed in `packages-remove.txt` (comment a line out to keep just that one) |
 | `--no-kde` | Removes Plasma completely (experimental) |
 | `--vm` | For trying Nightdrive in a Fedora 44 VM instead of an Asahi Mac (see below) |
 

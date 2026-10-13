@@ -35,3 +35,13 @@ google-noto-color-emoji-fonts
 xdg-desktop-portal-gtk
 vulkan-tools
 tuned-ppd
+# Used by the scripts (wallpaper previews, the file picker) but only pulled in by KDE: listed (install.sh marks them
+# user-installed) so the removals keep them
+ImageMagick
+zenity
+# Kept explicitly for the same reason: ImageMagick's PDF/PostScript helpers, fallback fonts (fontconfig/conf.d), dnf's config
+ghostscript
+poppler-utils
+liberation-mono-fonts
+open-sans-fonts
+dnf-data

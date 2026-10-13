@@ -1,0 +1,19 @@
+# Removed on the MacBook only (not with --vm or --keep-apps): useless on Apple Silicon, but other hardware may need them.
+
+# Firmware for other Wi-Fi chips (Apple Silicon has Broadcom, brcmfmac)
+atheros-firmware
+mt7xxx-firmware
+realtek-firmware
+tiwilink-firmware
+libertas-firmware
+nxpwireless-firmware
+iwlegacy-firmware
+b43-fwcutter
+b43-openfwwf
+
+# Guest tools for virtual machines
+hyperv-daemons
+open-vm-tools-desktop
+qemu-guest-agent
+spice-vdagent
+spice-webdavd

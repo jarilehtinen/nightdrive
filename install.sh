@@ -3,21 +3,22 @@
 #   ./install.sh               updates the system, installs packages, fonts, 1Password, the notch setting, links the configs
 #                              and installs the Nightdrive login screen (greetd, password only), active from the next boot
 #   ./install.sh --no-greeter  keeps the distribution's own login screen (pick "Hyprland" there)
-#   ./install.sh --debloat     also removes unneeded KDE apps (packages-remove.txt)
+#   ./install.sh --keep-apps   keeps the KDE apps and system services that are otherwise removed (packages-remove*.txt)
 #   ./install.sh --no-kde      removes Plasma entirely (needs the greeter); experimental, see config/greeter/
 #   ./install.sh --vm          for trying it on a non-Asahi machine (e.g. a Fedora 44 VM): skips the notch setting
 # Run as a regular user; sudo asks for the password when needed.
 set -euo pipefail
 repo=$(cd "$(dirname "$0")" && pwd)
-debloat=0; vm=0; greeter=1; nokde=0
+debloat=1; vm=0; greeter=1; nokde=0
 for arg in "$@"; do
   case $arg in
-    --debloat) debloat=1 ;;
+    --debloat) ;;              # the default now; still accepted
+    --keep-apps) debloat=0 ;;
     --vm) vm=1 ;;
     --greeter) ;;              # the default now; still accepted
     --no-greeter) greeter=0 ;;
     --no-kde) nokde=1 ;;
-    *) echo "unknown option: $arg (available: --no-greeter, --debloat, --no-kde, --vm)" >&2; exit 2 ;;
+    *) echo "unknown option: $arg (available: --no-greeter, --keep-apps, --no-kde, --vm)" >&2; exit 2 ;;
   esac
 done
 (( nokde && !greeter )) && { echo "--no-kde removes the KDE login screen, so it can't be combined with --no-greeter" >&2; exit 2; }
@@ -37,6 +38,8 @@ sudo dnf install -y $(pkgs "$repo/packages-hyprland.txt")
 
 echo "==> Fedora packages"
 sudo dnf install -y $(pkgs "$repo/packages.txt")
+# install leaves a package that KDE already pulled in marked as a dependency, and the removals below would take it along
+sudo dnf mark user $(pkgs "$repo/packages.txt") >/dev/null
 
 if (( vm )); then
   echo "==> Skipping the notch setting (--vm)"
@@ -130,17 +133,26 @@ if (( greeter )); then
   "$repo/config/greeter/switch.sh" on
 fi
 
+if (( debloat )); then
+  echo "==> Removing unneeded apps and services (packages-remove.txt; keep them with --keep-apps)"
+  # Packages that aren't installed are skipped. dnf also removes what only they needed, so packages.txt lists the
+  # few things the scripts use that would otherwise go with them (ImageMagick, zenity).
+  sudo dnf remove -y $(pkgs "$repo/packages-remove.txt") 'libreoffice-*'
+  if (( !vm )); then
+    echo "==> Removing other hardware's firmware and VM guest tools (packages-remove-asahi.txt)"
+    sudo dnf remove -y $(pkgs "$repo/packages-remove-asahi.txt")
+  fi
+fi
+
 if (( nokde )); then
   echo "==> Removing Plasma (experimental). Keeping the cursor theme, GTK fonts and power profiles."
   sudo dnf mark user breeze-cursor-theme google-noto-sans-fonts google-noto-sans-mono-fonts google-noto-serif-fonts tuned tuned-ppd vulkan-tools xdg-user-dirs
   sudo rm -f /etc/dnf/protected.d/plasma-desktop.conf
   # dnf shows a summary and asks for confirmation; fedora-asahi-remix-release-kde-desktop stays (it provides system-release)
-  sudo dnf remove plasma-desktop plasma-workspace kwin kscreen kscreenlocker powerdevil plasma-login-manager kcm-plasmalogin kde-settings-plasmalogin polkit-kde kf6-kwallet pam-kwallet ksshaskpass plasma-nm plasma-pa plasma-systemsettings bluedevil
-fi
-
-if (( debloat )); then
-  echo "==> Removing unneeded apps"
-  sudo dnf remove -y $(pkgs "$repo/packages-remove.txt") 'libreoffice-*'
+  sudo dnf remove plasma-desktop plasma-workspace kwin kwin-common kscreen kscreenlocker powerdevil plasma-login-manager kcm-plasmalogin \
+    kde-settings-plasmalogin kde-settings-plasma polkit-kde kf6-kwallet pam-kwallet ksshaskpass signon-kwallet-extension plasma-nm plasma-pa \
+    plasma-systemsettings bluedevil kde-gtk-config plasma-integration plasma-lookandfeel-fedora \
+    plasma-workspace-wallpapers kde-inotify-survey kde-settings-pulseaudio phonon-qt6-backend-vlc pinentry-qt xwaylandvideobridge
 fi
 
 echo
