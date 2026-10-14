@@ -13,6 +13,8 @@ Test over IPC (`qs ipc show`, e.g. `qs ipc call launcher openLevel settings`) an
   (The top bar uses icon names instead: `config/topbar/scripts/icon`.)
 - `pkill -f foo` matches its own shell: use `'[f]oo'`.
 - Hyprland's config is Lua: `hyprctl dispatch 'hl.dsp.…'`.
+- Quickshell's reload on save keeps the old version of a component in its own file (e.g. `TouchScroll.qml`, listed in
+  `qmldir`): restart it to test a change there (`qs kill; setsid -f qs`).
 
 **Conventions**
 - English comments that explain *why*.
