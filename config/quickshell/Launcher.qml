@@ -45,6 +45,10 @@ PanelWindow {
     property var wallList: []                 // Settings › Background: [{ path, thumb, name, group, own }] (hypr/scripts/wallpaper list)
     property bool wallLoaded: false
     property string wallCurrent: ""           // current wallpaper
+    property int idleSaver: -1                // Settings › Screensaver: minutes until the screensaver / screen off, 0 = never,
+    property int idleOff: -1                  // -1 = not read yet (hypr/scripts/idle)
+    property string idleStyle: ""             // which screensaver: random | saver | rain
+    readonly property var saverStyles: [["random", "Random", "shuffle"], ["saver", "Synthwave", "sunset"], ["rain", "Rain", "cloud-rain"]]
     property int barOpacity: -1               // Settings › Top bar opacity: current value (hypr/scripts/bar-style), -1 = not read yet
     property string barIcons: ""              // Settings › Top bar icons: light | dark
     property int barIconOp: -1                // icon and text opacity
@@ -62,7 +66,7 @@ PanelWindow {
     property string extSource: ""             // shell.qml sets this when the file exists
     readonly property var ext: extLoader.item
     readonly property bool extLevel: ext !== null && ext.levels.indexOf(level) >= 0
-    readonly property var parents: Object.assign({ shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", package: "install", flatpak: "install", webapp: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "theme", startup: "settings", baropacity: "topbar", baricons: "topbar", barhl: "topbar" }, ext ? ext.parents : {})
+    readonly property var parents: Object.assign({ shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", package: "install", flatpak: "install", webapp: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "theme", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", baropacity: "topbar", baricons: "topbar", barhl: "topbar" }, ext ? ext.parents : {})
     // Search found nothing: hint below ⌘⌥⏎ (icons) → send the text to Claude
     readonly property bool noHit: (level === "root" || level === "apps") && query.trim() !== "" && results.length === 0
     // The selected row is an app: ⌃Enter adds it to Apps (shown with an empty query) or removes it from there
@@ -85,7 +89,7 @@ PanelWindow {
     readonly property var deckLiked: deckOverride.liked !== undefined ? deckOverride.liked : (deckInfo ? deckInfo.liked : null)
     signal openMenu(string name)              // Settings: opens a Quickshell menu (wifi, bluetooth, ...)
 
-    readonly property var titles: Object.assign({ apps: "Apps", music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", musicsearch: "Music › Search", artist: "Music › " + artist.name, keys: "Keybindings", screenshot: "Screenshot", settings: "Settings", display: "Settings › Display", startup: "Settings › Startup", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
+    readonly property var titles: Object.assign({ apps: "Apps", music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", musicsearch: "Music › Search", artist: "Music › " + artist.name, keys: "Keybindings", screenshot: "Screenshot", settings: "Settings", display: "Settings › Display", startup: "Settings › Startup", screensaver: "Settings › Screensaver", saverafter: "Screensaver › Start after", screenoff: "Screensaver › Screen off after", saverstyle: "Screensaver › Style", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
                                      topbar: "Settings › Theme › Top bar", baropacity: "Theme › Top bar › Opacity", baricons: "Theme › Top bar › Icon colors", barhl: "Theme › Top bar › Highlight",
                                      install: "Install", emoji: "Emoji", package: "Install › Package", flatpak: "Install › Flatpak", webapp: "Install › Webapp", webname: "Install › Webapp › Name", webaddr: "Install › Webapp › Address", remove: "Remove", power: "Power", passwords: "Passwords", clipboard: "Clipboard",
                                      tools: "Tools" }, ext ? ext.titles : {})
@@ -146,6 +150,7 @@ PanelWindow {
             { kind: "menu", name: "Sound", glyph: "volume-2", target: "volume" },
             { kind: "menu", name: "Battery & display", glyph: "battery-medium", target: "battery" },
             { kind: "nav", name: "Display", glyph: "monitor", target: "display" },
+            { kind: "nav", name: "Screensaver", glyph: "monitor-pause", target: "screensaver" },
             { kind: "nav", name: "Startup", glyph: "rocket", target: "startup" },
             { kind: "menu", name: "Tailscale", glyph: "shield-check", target: "tailscale" },
             { kind: "nav", name: "Theme", glyph: "palette", target: "theme" }
@@ -175,6 +180,16 @@ PanelWindow {
             { kind: "nav", name: "Color", glyph: "palette", target: "themecolor", summary: cur ? cur.name.toLowerCase() : undefined },
             { kind: "nav", name: "Background", glyph: "wallpaper", target: "background" },
             { kind: "nav", name: "Top bar", glyph: "panel-top", target: "topbar" }
+        ]
+    }
+    // Settings › Screensaver: the two idle times with their current values, and a preview
+    function minutes(m) { return m < 0 ? undefined : m === 0 ? "never" : m + " min" }
+    function screensaverItems() {
+        return [
+            { kind: "nav", name: "Style", glyph: "sparkles", target: "saverstyle", summary: (saverStyles.find(t => t[0] === idleStyle) || [])[1] },
+            { kind: "nav", name: "Start after", glyph: "timer", target: "saverafter", summary: minutes(idleSaver) },
+            { kind: "nav", name: "Screen off after", glyph: "monitor-off", target: "screenoff", summary: minutes(idleOff) },
+            { kind: "action", name: "Preview", glyph: "monitor-play", cmd: ["bash", "-c", "sleep 0.4; \"$HOME/.config/screensaver/start\""] }
         ]
     }
     // Settings › Theme › Top bar: sub-items with their current values
@@ -367,6 +382,16 @@ PanelWindow {
             if (themeList.length === 0) return [{ kind: "hint", name: "Loading…" }]
             all = themeList.map(t => ({ item: { kind: "themecolor", value: t.value, name: t.name, swatch: t.swatch,
                                                summary: t.current ? "current" : (t.value === "violet" ? "default" : undefined) }, text: t.name }))
+        } else if (level === "screensaver") {
+            all = screensaverItems().map(t => ({ item: t, text: t.name }))
+        } else if (level === "saverstyle") {
+            return saverStyles.map(t => ({ kind: "idlestyle", value: t[0], name: t[1], glyph: t[0] === idleStyle ? "check" : t[2],
+                                           summary: t[0] === idleStyle ? "current" : (t[0] === "random" ? "default" : undefined) }))
+        } else if (level === "saverafter" || level === "screenoff") {
+            const cur = level === "saverafter" ? idleSaver : idleOff
+            const vals = level === "saverafter" ? [2, 5, 10, 15, 20, 30, 60, 0] : [5, 10, 15, 20, 30, 45, 60, 0]
+            return vals.map(v => ({ kind: level === "saverafter" ? "idlesaver" : "idleoff", value: v, name: minutes(v),
+                                    glyph: v === cur ? "check" : (level === "saverafter" ? "timer" : "monitor-off"), summary: v === cur ? "current" : undefined }))
         } else if (level === "topbar") {
             all = topbarItems().map(t => ({ item: t, text: t.name, extra: settingsAliases[t.name] || "" }))
         } else if (level === "barhl") {
@@ -428,6 +453,7 @@ PanelWindow {
         if (target === "topbar" || target === "baropacity" || target === "baricons" || target === "barhl") barProc.running = true
         if (target === "theme" || target === "themecolor") themeProc.running = true
         if (target === "display") displayProc.running = true
+        if (target === "screensaver" || target === "saverafter" || target === "screenoff" || target === "saverstyle") idleProc.running = true
         if (ext && ext.levels.indexOf(target) >= 0) ext.entered(target)
         if (target === "passwords") { pwState = pwItems.length ? "ready" : "loading"; pwProc.running = true }
     }
@@ -468,6 +494,9 @@ PanelWindow {
     // Settings rows applied live: kind → [script, verb, property that holds the current value ("" = themecolor, which marks themeList)]
     readonly property var live: ({
         baropacity: ["bar-style", "opacity", "barOpacity"],
+        idlesaver: ["idle", "saver", "idleSaver"],
+        idleoff: ["idle", "off", "idleOff"],
+        idlestyle: ["idle", "style", "idleStyle"],
         baricons: ["bar-style", "icons", "barIcons"],
         bariconop: ["bar-style", "icon-opacity", "barIconOp"],
         barhl: ["bar-style", "highlight", "barHl"],
@@ -854,6 +883,20 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                 name: f[0], desc: f[1], scale: parseFloat(f[2]),
                 opts: f.slice(3).map(o => { const [v, size] = o.split(":"); return { value: parseFloat(v), size: size.replace("×", " × ") } }) }))
             if (win.level === "display" && win.query === "") win.selectWhere(r => r.kind === "scale" && r.summary.startsWith("current"))
+        }
+    }
+    // Settings › Screensaver: current idle times; select the current one
+    Sh {
+        id: idleProc
+        script: 's="$HOME/.config/hypr/scripts/idle"; "$s" saver; "$s" off; "$s" style'
+        onResult: text => {
+            const f = text.trim().split("\n")
+            win.idleSaver = parseInt(f[0], 10)
+            win.idleOff = parseInt(f[1], 10)
+            win.idleStyle = f[2] || ""
+            if (win.level === "saverstyle" && win.query === "") win.selectWhere(r => r.value === win.idleStyle)
+            if ((win.level === "saverafter" || win.level === "screenoff") && win.query === "")
+                win.selectWhere(r => r.value === (win.level === "saverafter" ? win.idleSaver : win.idleOff))
         }
     }
     // Settings › Top bar opacity / icons: current values; select the current one

@@ -91,7 +91,7 @@ The top bar's opacity, icon colours and highlight colour are all settings in the
 | Markdown | [Apostrophe](https://apps.gnome.org/Apostrophe/) (Flatpak) | `.md` files open in it, themed editor |
 | Messaging | [Telegram Desktop](https://desktop.telegram.org) (Flatpak) | native Wayland app |
 | Web apps | Chromium app windows | WhatsApp, Slack, Teams and YouTube by default; add your own |
-| Lock and idle | hyprlock, hypridle | screensaver after 10 min, lock after 30 min |
+| Lock and idle | hyprlock, hypridle | screensaver after 10 min, lock after 30 min (screensaver and screen-off times: Settings › Screensaver) |
 | Optional | VS Code, Jottacloud | `install-vscode.sh`, `install-jotta.sh` |
 
 ## Requirements

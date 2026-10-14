@@ -1,10 +1,11 @@
 #!/bin/bash
 # Launches the Nightdrive screensaver in a fullscreen kitty.
-# Usage: start [saver|rain]  (picked at random without an argument)
+# Usage: start [saver|rain]  (without an argument: the choice in launcher › Settings › Screensaver › Style, random by default)
 pgrep -f '[n]ightdrive-(saver|rain)' >/dev/null && exit 0
 dir=$(dirname "$(readlink -f "$0")")
-case ${1:-} in
-  saver|rain) name=$1 ;;
+choice=${1:-$(awk '$1 == "style" { print $2 }' ~/.local/state/nightdrive/idle 2>/dev/null)}
+case $choice in
+  saver|rain) name=$choice ;;
   *) name=$(shuf -n1 -e saver rain) ;;
 esac
 case $name in rain) size=18 ;; *) size=9 ;; esac   # rain: bigger glyphs

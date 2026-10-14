@@ -1,0 +1,84 @@
+#!/usr/bin/python3 -I
+"""Idle times (launcher Settings › Screensaver). Choice: ~/.local/state/nightdrive/idle, minutes, 0 = never.
+
+  idle saver [MIN]   prints / sets when the screensaver starts
+  idle off [MIN]     prints / sets when the screen turns off
+  idle style [NAME]  prints / sets which screensaver runs: random, saver (synthwave) or rain (screensaver/start reads it)
+  idle start         writes the config and runs hypridle (Hyprland autostart runs this instead of plain hypridle)
+
+hypr/hypridle.conf is the template: the listener that starts the screensaver and the one that turns the screen off get
+these times (a listener set to never is left out), the rest stay as they are. The result goes to
+~/.cache/nightdrive/hypridle.conf, and a change restarts hypridle with it.
+"""
+import os, re, subprocess, sys
+
+HOME = os.environ["HOME"]
+STATE = f"{HOME}/.local/state/nightdrive/idle"
+TEMPLATE = f"{HOME}/.config/hypr/hypridle.conf"
+OUT = f"{HOME}/.cache/nightdrive/hypridle.conf"
+DEFAULTS = {"saver": 10, "off": 30, "style": "random"}
+STYLES = ("random", "saver", "rain")
+# Which template listener each setting drives, by its on-timeout command
+MATCH = {"saver": "screensaver/start", "off": "dpms"}
+# The screen turns off this many seconds after the minute, so at the lock time (30 min) the lock screen shows first
+OFF_DELAY = 30
+
+
+def load():
+    vals = dict(DEFAULTS)
+    try:
+        for line in open(STATE):
+            k, _, v = line.partition(" ")
+            v = v.strip()
+            if k == "style" and v in STYLES: vals[k] = v
+            elif k in vals and v.isdigit(): vals[k] = int(v)
+    except FileNotFoundError:
+        pass
+    return vals
+
+
+def write_config(vals):
+    text = open(TEMPLATE).read()
+    def listener(m):
+        block = m.group(0)
+        for key, cmd in MATCH.items():
+            if cmd in block:
+                if vals[key] == 0: return ""
+                secs = vals[key] * 60 + (OFF_DELAY if key == "off" else 0)
+                return re.sub(r"timeout\s*=\s*\d+", f"timeout = {secs}", block, count=1)
+        return block
+    os.makedirs(os.path.dirname(OUT), exist_ok=True)
+    with open(OUT + ".tmp", "w") as f:
+        f.write("# written by hypr/scripts/idle from hypr/hypridle.conf\n" + re.sub(r"listener\s*\{.*?\n\}\n?", listener, text, flags=re.S))
+    os.replace(OUT + ".tmp", OUT)
+
+
+def start():
+    write_config(load())
+    os.execvp("hypridle", ["hypridle", "-c", OUT])
+
+
+args = sys.argv[1:]
+if args[:1] == ["start"]:
+    start()
+elif args[:1] and args[0] in DEFAULTS:
+    vals = load()
+    if len(args) == 1:
+        print(vals[args[0]])
+    elif args[0] == "style" and args[1] in STYLES:
+        vals["style"] = args[1]
+        os.makedirs(os.path.dirname(STATE), exist_ok=True)
+        with open(STATE, "w") as f:
+            f.write("".join(f"{k} {v}\n" for k, v in vals.items()))
+    elif args[0] != "style" and args[1].isdigit():
+        vals[args[0]] = int(args[1])
+        os.makedirs(os.path.dirname(STATE), exist_ok=True)
+        with open(STATE, "w") as f:
+            f.write("".join(f"{k} {v}\n" for k, v in vals.items()))
+        # A new hypridle with the new times, started through Hyprland so it has the session's environment
+        subprocess.run(["pkill", "-x", "hypridle"])
+        subprocess.run(["hyprctl", "dispatch", f'hl.dsp.exec_cmd("{HOME}/.config/hypr/scripts/idle start")'], stdout=subprocess.DEVNULL)
+    else:
+        sys.exit("usage: idle saver|off [minutes], idle style [random|saver|rain]")
+else:
+    sys.exit(__doc__)
