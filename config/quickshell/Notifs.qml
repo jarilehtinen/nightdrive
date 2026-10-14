@@ -21,6 +21,10 @@ Singleton {
     property var history: []                  // [{ uid, app, summary, body, icon, image, entry, time }], newest first
     property alias dnd: persist.dnd
     property double now: Date.now()           // for "2 min ago": updated every 30 s
+    // The notification menu is open (NotificationsMenu.qml): the popups go (the menu lists them) and new ones skip the
+    // popup, they show up in the menu's list
+    property bool menuOpen: false
+    onMenuOpenChanged: if (menuOpen) dismissAll()
 
     // Survive Quickshell's reload on save (a restart still starts empty, as mako did). The history goes over as JSON
     // text: a JS array can't move to the reloaded config's engine ("JSValue can't be reassigned"), it came back undefined.
@@ -112,7 +116,7 @@ Singleton {
                 critical: n.urgency === NotificationUrgency.Critical
             }
             s.history = [row].concat(s.history.filter(h => h.uid !== row.uid)).slice(0, s.maxHistory)
-            if (s.dnd) { n.expire(); return }
+            if (s.dnd || s.menuOpen) { n.expire(); return }
             n.tracked = true
             if (!old) n.closed.connect(() => s.remove(row.uid))
             s.popups = [{ uid: row.uid, n: n, entry: row }].concat(s.popups.filter(p => p.uid !== row.uid))
