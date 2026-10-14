@@ -111,6 +111,8 @@ for id_, path in sorted(sysdefs.items()):
         elif ours:
             os.remove(target); restored.append(name)
     else:
+        # Hidden apps still show up when searching in the launcher, so they get their icon too
+        if id_ in icons: text = with_icon(text, icons[id_]); iconed.append(name)
         open(target, "w", encoding="utf-8").write(MARK + "\n" + edit(text, remove=("NoDisplay",), add=("NoDisplay=true",)))
         hidden.append(name)
 

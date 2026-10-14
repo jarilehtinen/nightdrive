@@ -12,4 +12,5 @@ deck.desktop                        = music
 org.gnome.Nautilus.desktop           = folder
 net.thunderbird.Thunderbird.desktop = mail
 com.github.wwmm.easyeffects.desktop = sliders-vertical
+org.pulseaudio.pavucontrol.desktop  = volume-2
 org.gnome.Loupe.desktop             = image
