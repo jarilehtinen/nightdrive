@@ -274,7 +274,11 @@ PanelWindow {
         let i = list.currentIndex + dir
         while (i >= 0 && i < results.length && results[i].kind === "header") i += dir
         if (i < 0 && dir < 0) { playerFocused = true; return }       // up from the top of the list: player row
-        if (i >= 0 && i < results.length) list.currentIndex = i
+        if (i >= 0 && i < results.length) {
+            list.currentIndex = i
+            // Up onto a section's first row: its header comes into view too (the list only scrolls to the row itself)
+            if (dir < 0 && i > 0 && results[i - 1].kind === "header") Qt.callLater(() => list.positionViewAtIndex(i - 1, ListView.Contain))
+        }
     }
     readonly property int headerHeight: 40
     function listHeight() {
