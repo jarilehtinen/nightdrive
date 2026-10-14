@@ -95,6 +95,11 @@ fi
 echo "==> Configs (links into ~/.config, fonts)"
 "$repo/link.sh"
 
+echo "==> ble.sh (bash: history suggestions while typing, syntax colours; config/bash/00-blesh.sh loads it)"
+blesh_src=$HOME/.local/src/ble.sh
+[[ -d $blesh_src/.git ]] || git clone -q --recursive --depth 1 --shallow-submodules https://github.com/akinomyoga/ble.sh.git "$blesh_src"
+make -C "$blesh_src" -s install PREFIX="$HOME/.local"
+
 echo "==> Deck (Spotify player: fetched from GitHub and compiled, takes a few minutes; dependencies are installed)"
 "$repo/install-deck.sh"
 

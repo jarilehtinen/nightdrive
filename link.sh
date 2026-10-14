@@ -49,7 +49,7 @@ for f in "$repo"/bin/*; do link "$f" "$HOME/.local/bin/$(basename "$f")"; done
 
 link "$repo/wallpapers" "$HOME/.local/share/wallpapers"   # wallpapers (chosen via: launcher › Settings › Background, hypr/scripts/wallpaper)
 
-# Bash: simple prompt (Fedora's ~/.bashrc sources ~/.bashrc.d/*)
+# Bash: prompt, history, ble.sh (Fedora's ~/.bashrc sources ~/.bashrc.d/*)
 mkdir -p "$HOME/.bashrc.d"
 for f in "$repo"/config/bash/*.sh; do link "$f" "$HOME/.bashrc.d/$(basename "$f")"; done
 
