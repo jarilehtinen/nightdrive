@@ -91,8 +91,8 @@ Column {
             }
         }
     }
-    // The headphones' listening mode (noise cancelling, transparency …) can't be read over Bluetooth: picking it here tells the EQ which measurement
-    // to use (only for headphones measured in several modes, see config/easyeffects/headphones.example.tsv)
+    // The headphones' listening mode: Sony headphones switch to it and report it (hypr/scripts/sony-anc); for others it only
+    // tells the EQ which measurement to use (headphones measured in several modes, see config/easyeffects/headphones.example.tsv)
     Divider { visible: m.ancModes.length > 1 }
     MenuHeader { visible: m.ancModes.length > 1; width: parent.width; title: "Listening mode" }
     Column {
@@ -111,6 +111,14 @@ Column {
                 onClicked: if (!active) m.run(["anc", modelData])
             }
         }
+    }
+    Text {   // headphones that can't tell their mode (sony-anc handles Sony's: the list then follows the headphones)
+        visible: m.ancModes.length > 1 && !m.info.ancControlled
+        width: parent.width
+        wrapMode: Text.Wrap
+        text: "Pick the mode set on the headphones: the EQ follows it."
+        color: Theme.dim
+        font { family: Theme.font; pixelSize: 11 }
     }
     Text {
         visible: !!m.info.sink && !m.info.default
