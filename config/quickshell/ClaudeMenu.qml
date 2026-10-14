@@ -69,7 +69,7 @@ Column {
                 }
                 Text {
                     anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-                    text: modelData.percent + " %"
+                    text: modelData.percent + "%"
                     color: modelData.percent > 95 ? Theme.danger : (modelData.percent > 90 ? Theme.warning : Theme.text)
                     font { family: Theme.font; pixelSize: 13; bold: true }
                 }

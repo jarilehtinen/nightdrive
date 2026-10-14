@@ -100,7 +100,7 @@ Column {
             Text {
                 id: pct
                 anchors.verticalCenter: parent.verticalCenter
-                text: m.percent + " %"
+                text: m.percent + "%"
                 color: Theme.text
                 font { family: Theme.font; pixelSize: 15; bold: true }
             }
@@ -130,7 +130,7 @@ Column {
                 { icon: "zap", label: "Power", detail: m.bat.watts > 0 ? m.bat.watts + " W" : "" },
                 { icon: "thermometer", label: "Temperature", detail: m.bat.temp !== null ? m.bat.temp + " °C" : "", danger: m.bat.temp >= 45 },
                 { icon: "heart-pulse", label: "Health",
-                  detail: m.bat.health !== null ? m.bat.health + " % · " + m.bat.fullWh + " / " + m.bat.designWh + " Wh" : "" },
+                  detail: m.bat.health !== null ? m.bat.health + "% · " + m.bat.fullWh + " / " + m.bat.designWh + " Wh" : "" },
                 { icon: "repeat", label: "Cycles", detail: m.bat.cycles !== null ? String(m.bat.cycles) : "" },
                 { icon: "activity", label: "Voltage", detail: m.bat.volts !== null ? m.bat.volts.toFixed(2) + " V" : "" },
                 { icon: "calendar", label: "Manufactured", detail: m.bat.made }

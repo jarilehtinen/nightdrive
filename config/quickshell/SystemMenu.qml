@@ -62,7 +62,7 @@ Column {
     Meter {
         visible: m.d !== null
         title: "CPU"
-        value: m.d ? m.d.cpu + " %" : ""
+        value: m.d ? m.d.cpu + "%" : ""
         frac: m.d ? m.d.cpu / 100 : 0
         note: m.d ? m.d.cores + " cores" + (m.d.freq > 0 ? " · avg " + m.d.freq + " MHz" : "") + " · load " + m.d.load.join("  ") : ""   // no cpufreq in a VM
     }
@@ -119,7 +119,7 @@ Column {
                 height: 28
                 interactive: false
                 label: modelData.name
-                detail: modelData.cpu.toFixed(1) + " %  ·  " + m.mb(modelData.rss)
+                detail: modelData.cpu.toFixed(1) + "%  ·  " + m.mb(modelData.rss)
                 active: modelData.cpu >= 50
             }
         }

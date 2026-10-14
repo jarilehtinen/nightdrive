@@ -176,9 +176,9 @@ PanelWindow {
     // Settings › Theme › Top bar: sub-items with their current values
     function topbarItems() {
         return [
-            { kind: "nav", name: "Opacity", glyph: "panel-top", target: "baropacity", summary: barOpacity >= 0 ? barOpacity + " %" : undefined },
+            { kind: "nav", name: "Opacity", glyph: "panel-top", target: "baropacity", summary: barOpacity >= 0 ? barOpacity + "%" : undefined },
             { kind: "nav", name: "Icon colors", glyph: "contrast", target: "baricons",
-              summary: barIcons !== "" ? (barIcons === "dark" ? "black" : "white") + " " + barIconOp + " %" : undefined },
+              summary: barIcons !== "" ? (barIcons === "dark" ? "black" : "white") + " " + barIconOp + "%" : undefined },
             { kind: "nav", name: "Highlight", glyph: "highlighter", target: "barhl",
               summary: barHl === "theme" ? "theme color" : (barHl || undefined) }
         ]
@@ -341,7 +341,7 @@ PanelWindow {
             // Number in the query → exactly that value; otherwise 100–0 in steps of ten. Current one marked.
             const n = parseInt(query.trim(), 10)
             const vals = /^\d+$/.test(query.trim()) && n <= 100 ? [n] : [100, 90, 80, 70, 60, 50, 40, 30, 20, 10, 0]
-            return vals.map(v => ({ kind: "baropacity", value: v, name: v + " %", glyph: v === barOpacity ? "check" : "panel-top",
+            return vals.map(v => ({ kind: "baropacity", value: v, name: v + "%", glyph: v === barOpacity ? "check" : "panel-top",
                                     summary: v === barOpacity ? "current" : (v === 100 ? "opaque" : v === 0 ? "transparent" : undefined) }))
         } else if (level === "display") {
             // Scales the panel divides evenly, shown as the resulting desktop size ("looks like" in macOS); current one marked
@@ -374,7 +374,7 @@ PanelWindow {
                     { kind: "baricons", value: "light", name: "White", glyph: barIcons === "light" ? "check" : "sun", summary: barIcons === "light" ? "current" : undefined },
                     { kind: "baricons", value: "dark", name: "Black", glyph: barIcons === "dark" ? "check" : "moon", summary: barIcons === "dark" ? "current" : undefined },
                     { kind: "header", name: "Opacity" }]
-                .concat(ops.map(v => ({ kind: "bariconop", value: v, name: v + " %", glyph: v === barIconOp ? "check" : "contrast",
+                .concat(ops.map(v => ({ kind: "bariconop", value: v, name: v + "%", glyph: v === barIconOp ? "check" : "contrast",
                                         summary: v === barIconOp ? "current" : undefined })))
         } else if (level === "passwords") {
             if (pwState === "loading" && pwItems.length === 0) return [{ kind: "hint", name: "Waiting for 1Password… (unlock it if prompted; Esc closes this menu)" }]

@@ -127,7 +127,7 @@ Column {
                 checkIcon: modelData.connected ? "check" : ""
                 hoverCheckIcon: modelData.connected ? "unplug" : ""   // a click disconnects
                 busy: m.busy === modelData.mac
-                detail: modelData.battery !== "" ? modelData.battery + " %"
+                detail: modelData.battery !== "" ? modelData.battery + "%"
                       : (!modelData.paired ? "not paired" : "")
                 onClicked: m.activate(modelData)
             }
