@@ -9,7 +9,9 @@
 //   right, middle  optional: shell commands for a right / middle click (the module updates right after)
 //
 // A status command prints one line of JSON:  {"icon": "wifi", "text": "95%", "class": "off"}
-//   icon   a Lucide name (lucide.dev/icons), or pack:name from any Iconify set (mdi:wifi, tabler:cpu…); see scripts/icon
+//   icon   a Lucide name (lucide.dev/icons), or pack:name from any Iconify set (mdi:wifi, tabler:cpu…); see scripts/icon.
+//          Several separated by | are an animation (wifi-zero|wifi-low|wifi-high|wifi); gauge@<0-100> is a gauge whose
+//          needle points at the value
 //   text   optional text after the icon (always the same font and size: the `text` row in adjust.conf)
 //   class  optional: off (dimmed), warning (orange), critical (red), active (highlighted background), stale (faded)
 // No icon and no text hides the module.

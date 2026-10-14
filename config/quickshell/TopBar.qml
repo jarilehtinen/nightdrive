@@ -120,6 +120,8 @@ Singleton {
     function svg(ref) {
         if (!ref) return ""
         if (svgs[ref] !== undefined) return svgs[ref]
+        const g = ref.match(/^gauge@(\d+)$/)
+        if (g) return gauge(Math.min(100, parseInt(g[1])))
         if (!loading[ref]) {
             loading[ref] = true
             iconProc.createObject(tb, { ref: ref }).running = true
@@ -140,6 +142,15 @@ Singleton {
                 }
             }
         }
+    }
+    // gauge@<percent>: Lucide's gauge with its needle pointing at the percentage (the Claude module's usage). The dial is
+    // the arc around (12, 14) from lower left (0 %, 210°) over the top to lower right (100 %, -30°).
+    function gauge(p) {
+        const a = (210 - 2.4 * p) * Math.PI / 180, len = 5.66
+        const x = (12 + len * Math.cos(a)).toFixed(2), y = (14 - len * Math.sin(a)).toFixed(2)
+        return '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+             + 'stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14 L' + x + ' ' + y + '"/>'
+             + '<path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>'
     }
     // An SVG drawn in one colour: currentColor -> the colour (opaque; the caller applies its alpha as opacity)
     function iconUrl(ref, color) {

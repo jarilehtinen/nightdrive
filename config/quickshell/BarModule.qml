@@ -14,6 +14,13 @@ Item {
     readonly property string name: def.name
     readonly property var st: TopBar.states[name] || null
     readonly property string icon: st && st.icon ? st.icon : ""
+    // Several icons separated by | are an animation (wifi while connecting): one frame after another, and the module
+    // asks for its state every second meanwhile, so the animation ends soon after
+    readonly property var frames: icon.split("|")
+    property int frame: 0
+    readonly property string shownIcon: frames[frame % frames.length]
+    Timer { running: mod.frames.length > 1; interval: 350; repeat: true; onTriggered: mod.frame++ }
+    Timer { running: mod.frames.length > 1; interval: 1000; repeat: true; onTriggered: TopBar.refresh(mod.name) }
     readonly property string label: st && st.text ? st.text : ""
     readonly property string cls: st && st.class ? st.class : ""
     readonly property bool active: cls === "active"
@@ -49,7 +56,7 @@ Item {
             x: mod.snap(mod.label ? mod.pad : (mod.width - width) / 2)
             y: mod.snap((mod.height - height) / 2 + mod.isz.y)
             sourceSize: Qt.size(Math.ceil(width * mod.dpr), Math.ceil(height * mod.dpr))
-            source: TopBar.iconUrl(mod.icon, mod.fg)
+            source: TopBar.iconUrl(mod.shownIcon, mod.fg)
             opacity: mod.fg.a
             smooth: true
             cache: false

@@ -22,6 +22,8 @@ case $kind in
   wifi)
     if [[ $(nmcli radio wifi 2>/dev/null) != enabled ]]; then emit wifi-off "" off; exit; fi
     if nmcli -t -f ACTIVE device wifi list --rescan no 2>/dev/null | grep -q '^yes'; then emit wifi ""
+    # Connecting (also after waking up): the arcs fill up one by one (BarModule.qml animates icons separated by |)
+    elif nmcli -t -f TYPE,STATE device 2>/dev/null | grep -q '^wifi:connecting'; then emit "wifi-zero|wifi-low|wifi-high|wifi" ""
     elif nmcli -t -f TYPE,STATE device 2>/dev/null | grep -q '^ethernet:connected'; then emit cable ""
     else emit wifi-off "" off; fi ;;
   bluetooth)
@@ -59,9 +61,10 @@ case $kind in
     u=$(~/.config/topbar/scripts/claude-usage)
     sess=$(jq -r '(.windows // [] | map(select(.key == "session")) | first // {}).percent // -1' <<<"$u")
     if (( sess < 0 )); then emit gauge "" off; exit; fi
+    # gauge@N: the needle points at the usage (TopBar.qml draws it)
     # The colour follows the 5 h window only, not the week
     if (( sess > 95 )); then cls=critical; elif (( sess > 90 )); then cls=warning; else cls=; fi
-    emit gauge "$sess%" "$cls" ;;
+    emit "gauge@$sess" "$sess%" "$cls" ;;
   system)
     IFS=$'\t' read -r _ _ cls < <(~/.config/topbar/scripts/sysinfo bar)
     [[ $cls == high ]] && cls=critical
