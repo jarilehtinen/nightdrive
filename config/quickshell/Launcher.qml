@@ -62,7 +62,7 @@ PanelWindow {
     property string extSource: ""             // shell.qml sets this when the file exists
     readonly property var ext: extLoader.item
     readonly property bool extLevel: ext !== null && ext.levels.indexOf(level) >= 0
-    readonly property var parents: Object.assign({ shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", package: "install", webapp: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "theme", baropacity: "topbar", baricons: "topbar", barhl: "topbar" }, ext ? ext.parents : {})
+    readonly property var parents: Object.assign({ shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", package: "install", flatpak: "install", webapp: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "theme", baropacity: "topbar", baricons: "topbar", barhl: "topbar" }, ext ? ext.parents : {})
     // Search found nothing: hint below ⌘⌥⏎ (icons) → send the text to Claude
     readonly property bool noHit: (level === "root" || level === "apps") && query.trim() !== "" && results.length === 0
     // The selected row is an app: ⌃Enter adds it to Apps (shown with an empty query) or removes it from there
@@ -85,7 +85,7 @@ PanelWindow {
 
     readonly property var titles: Object.assign({ apps: "Apps", music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", musicsearch: "Music › Search", artist: "Music › " + artist.name, keys: "Keybindings", screenshot: "Screenshot", settings: "Settings", display: "Settings › Display", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
                                      topbar: "Settings › Theme › Top bar", baropacity: "Theme › Top bar › Opacity", baricons: "Theme › Top bar › Icon colors", barhl: "Theme › Top bar › Highlight",
-                                     install: "Install", emoji: "Emoji", package: "Install › Package", webapp: "Install › Webapp", webname: "Install › Webapp › Name", webaddr: "Install › Webapp › Address", remove: "Remove", power: "Power", passwords: "Passwords", clipboard: "Clipboard",
+                                     install: "Install", emoji: "Emoji", package: "Install › Package", flatpak: "Install › Flatpak", webapp: "Install › Webapp", webname: "Install › Webapp › Name", webaddr: "Install › Webapp › Address", remove: "Remove", power: "Power", passwords: "Passwords", clipboard: "Clipboard",
                                      tools: "Tools" }, ext ? ext.titles : {})
 
     // Reference at startup: the app list only loads on first reference
@@ -131,6 +131,7 @@ PanelWindow {
         ],
         install: [
             { kind: "nav", name: "Package", glyph: "package-plus", target: "package", summary: "dnf" },
+            { kind: "nav", name: "Flatpak", glyph: "store", target: "flatpak", summary: "apps from Flathub" },
             { kind: "nav", name: "Webapp", glyph: "app-window", target: "webapp", summary: "website as an app" }
         ],
         webapp: [
@@ -283,9 +284,10 @@ PanelWindow {
             if (q === "") all.sort((a, b) => a.text.localeCompare(b.text))
         } else if (level === "keys") {
             all = keyList.map(k => ({ item: { kind: "key", name: k.name, keys: k.keys, section: k.section }, text: k.name, extra: k.keys + " " + k.section }))
-        } else if (level === "package") {
-            if (q.replace(/[^a-z0-9._+\-]/g, "").length < 2) return [{ kind: "hint", name: "Type at least 2 characters to search packages" }]
-            if (installResults.length === 0) return [{ kind: "hint", name: installProc.running ? "Searching…" : "No packages found" }]
+        } else if (level === "package" || level === "flatpak") {
+            const what = level === "flatpak" ? "apps" : "packages"
+            if (q.replace(/[^a-z0-9._+\-]/g, "").length < 2) return [{ kind: "hint", name: "Type at least 2 characters to search " + what }]
+            if (installResults.length === 0) return [{ kind: "hint", name: installProc.running || flatpakProc.running ? "Searching…" : "No " + what + " found" }]
             return installResults
         } else if (level === "emoji") {
             if (!emojiLoaded) return [{ kind: "hint", name: "Loading emoji…" }]
@@ -678,14 +680,15 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         }
     }
 
-    // Install: dnf search while typing (300 ms delay), max 30 results
+    // Install: dnf or Flathub search while typing (300 ms delay), max 30 results
     function sanitized() { return query.trim().toLowerCase().replace(/[^a-z0-9._+\-]/g, "") }
     function runSearch() {
         const q = sanitized()
         installQ = q
         if (q.length < 2) { installResults = []; return }
-        installProc.environment = { "Q": q }
-        installProc.running = true
+        const proc = level === "flatpak" ? flatpakProc : installProc
+        proc.environment = { "Q": q }
+        proc.running = true
     }
     // dnf repoquery output ("name|summary" per line) → [{ name, summary }]
     function parsePackages(text) {
@@ -697,7 +700,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         return out
     }
     onQueryChanged: {
-        if (level === "package") { armed = ""; searchDelay.restart() }
+        if (level === "package" || level === "flatpak") { armed = ""; searchDelay.restart() }
         if (level === "musicsearch" && query.trim() !== "") spotifyDelay.restart()
     }
     Timer { id: searchDelay; interval: 300; onTriggered: win.runSearch() }
@@ -705,6 +708,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         id: installProc
         script: 'dnf repoquery --available -q --latest-limit=1 --queryformat "%{name}|%{summary}\\n" "*$Q*" 2>/dev/null | head -80'
         onResult: text => {
+            if (win.level !== "package") return   // left the level while searching
             const seen = {}, out = []
             for (const p of win.parsePackages(text)) {
                 if (seen[p.name]) continue
@@ -716,6 +720,25 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
             out.sort((a, b) => (b.name.startsWith(q) - a.name.startsWith(q)) || a.name.length - b.name.length || a.name.localeCompare(b.name))
             win.installResults = out.slice(0, 30)
             if (win.level === "package" && win.sanitized() !== win.installQ) win.runSearch()   // the query went stale meanwhile
+        }
+    }
+    // Flathub has runtimes and extensions too; only apps are installable on their own, and their ids don't look like these
+    Sh {
+        id: flatpakProc
+        script: 'flatpak search --columns=application,name,description,remotes "$Q" 2>/dev/null | grep -P "\\tflathub" | grep -vE "^\\S*\\.(Platform|Sdk|BaseApp|Extension|Plugin|Plugins|Codecs|GL|Gtk3theme)(\\.|\\s)" | head -80'
+        onResult: text => {
+            if (win.level !== "flatpak") return
+            const out = []
+            for (const line of text.split("\n")) {
+                const [id, name, desc] = line.split("\t")
+                if (!name) continue
+                out.push({ kind: "action", name: name, summary: desc + "  ·  " + id, glyph: "store",
+                           cmd: win.term('flatpak install --user flathub "$1"', id) })
+            }
+            const q = win.installQ
+            out.sort((a, b) => (b.name.toLowerCase().startsWith(q) - a.name.toLowerCase().startsWith(q)))
+            win.installResults = out.slice(0, 30)
+            if (win.sanitized() !== win.installQ) win.runSearch()
         }
     }
     Loader {
@@ -882,13 +905,17 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
             win.emojiLoaded = true
         }
     }
-    // Remove: packages the user installed
+    // Remove: packages the user installed, then the user's Flatpak apps (after a "--flatpak--" line, tab-separated)
     Sh {
         id: removeProc
-        script: 'dnf repoquery --userinstalled -q --queryformat "%{name}|%{summary}\\n" 2>/dev/null | sort -u'
+        script: 'dnf repoquery --userinstalled -q --queryformat "%{name}|%{summary}\\n" 2>/dev/null | sort -u; echo --flatpak--; flatpak list --app --user --columns=application,name,description 2>/dev/null'
         onResult: text => {
-            win.removeList = win.parsePackages(text).map(p => ({ kind: "action", name: p.name, summary: p.summary, glyph: "package-minus", confirm: true,
-                                                                  cmd: win.term('sudo dnf remove "$1"', p.name) }))
+            const [dnf, fp] = text.split("--flatpak--\n")
+            const apps = (fp || "").split("\n").map(l => l.split("\t")).filter(f => f[1])
+            win.removeList = win.parsePackages(dnf).map(p => ({ kind: "action", name: p.name, summary: p.summary, glyph: "package-minus", confirm: true,
+                                                                 cmd: win.term('sudo dnf remove "$1"', p.name) }))
+                .concat(apps.map(([id, name, desc]) => ({ kind: "action", name: name, summary: (desc || "") + "  ·  Flatpak", glyph: "package-minus", confirm: true,
+                                                            cmd: win.term('flatpak uninstall --user "$1"', id) })))
             win.removeLoaded = true
         }
     }
