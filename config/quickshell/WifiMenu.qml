@@ -173,7 +173,8 @@ Column {
         checked: m.wifiOn
         onToggled: {
             m.wifiOn = !m.wifiOn
-            Quickshell.execDetached(["nmcli", "radio", "wifi", m.wifiOn ? "on" : "off"])
+            // The bar's wifi icon updates as soon as nmcli is done, not on its next 5 s poll
+            TopBar.run("nmcli radio wifi " + (m.wifiOn ? "on" : "off"), "wifi")
             if (!m.wifiOn) m.nets = []
         }
     }
