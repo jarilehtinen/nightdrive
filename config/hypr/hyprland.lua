@@ -161,10 +161,10 @@ hl.window_rule({
     match = { class = ".*" },
     suppress_event = "maximize",
 })
--- Slower scrolling for webapps (Chromium app windows): the touchpad scroll_factor (0.4) is global, this multiplies it for these only
+-- Slower scrolling for Chromium (browser + webapps) so it matches Firefox: the touchpad scroll_factor (0.4) is global, this multiplies it for these only
 hl.window_rule({
-    name  = "webapp-scroll",
-    match = { class = "^chrome-.*-Default$" },   -- Chromium app windows (webapps)
+    name  = "chromium-scroll",
+    match = { class = "^(chromium|chromium-browser|chrome-.*-Default)$" },   -- Chromium browser and app windows (webapps)
     scroll_touchpad = 0.7,
     scroll_mouse    = 0.7,
 })
