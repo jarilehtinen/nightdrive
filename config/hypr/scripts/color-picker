@@ -3,7 +3,7 @@
 # click copies the colour (#rrggbb) to the clipboard, Esc cancels.
 f=${XDG_RUNTIME_DIR:-/tmp}/color-picker.png
 # Hide the cursor while capturing (otherwise the software cursor ends up in the image and skews the colour)
-hyprctl keyword cursor:invisible true >/dev/null 2>&1; sleep 0.15
+hyprctl eval 'hl.config({ cursor = { invisible = true } })' >/dev/null 2>&1; sleep 0.15
 grim "$f"; rc=$?
-hyprctl keyword cursor:invisible false >/dev/null 2>&1
+hyprctl eval 'hl.config({ cursor = { invisible = false } })' >/dev/null 2>&1
 [ $rc -eq 0 ] && qs ipc call picker open "$f"
