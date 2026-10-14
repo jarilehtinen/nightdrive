@@ -3,8 +3,8 @@ import Quickshell
 import Quickshell.Wayland
 
 // Notification popups (top right, below the bar; data in Notifs.qml, the card in NotificationCard.qml). Click = open (the
-// app's default action or its window), right click or × = dismiss, the mouse over a card keeps it. Hyprland blurs what's
-// behind the cards (layer rule in hyprland.lua, namespace nightdrive-notifications).
+// app's default action or its window), right click, × or a two-finger swipe right = dismiss, the mouse over a card keeps it.
+// Hyprland blurs what's behind the cards (layer rule in hyprland.lua, namespace nightdrive-notifications).
 PanelWindow {
     id: win
 
@@ -14,10 +14,13 @@ PanelWindow {
     readonly property real bgOpacity: 0.85
 
     visible: Notifs.popups.length > 0
-    anchors { top: true; right: true }
-    margins { top: gap; right: gap }
+    // The full height, not the cards': the surface doesn't change size when one goes, so the cards sliding up into
+    // its place aren't cut off by a window that already shrank (a flicker). Clicks pass through outside the cards (mask);
+    // Hyprland's blur skips the transparent part (ignore_alpha).
+    anchors { top: true; right: true; bottom: true }
+    margins { top: gap; right: gap; bottom: gap }
     implicitWidth: cardWidth
-    implicitHeight: Math.max(1, cards.implicitHeight)
+    mask: Region { item: cards }
     color: "transparent"
     exclusionMode: ExclusionMode.Normal        // below the bar, like mako was
     WlrLayershell.layer: WlrLayer.Top
@@ -28,8 +31,11 @@ PanelWindow {
         id: cards
         width: win.cardWidth
         spacing: win.gap
+        // The cards below a removed one slide up into its place
+        move: Transition { NumberAnimation { property: "y"; duration: 200; easing.type: Easing.OutCubic } }
         Repeater {
-            model: Notifs.popups
+            // ScriptModel keeps the other cards when one goes (a plain array would make them all again and slide them in anew)
+            model: ScriptModel { values: Notifs.popups }
             NotificationCard {
                 id: card
                 required property var modelData
@@ -41,20 +47,27 @@ PanelWindow {
                 onDismissed: if (n) n.dismiss()
 
                 // Slides in from the right
-                opacity: 0
-                transform: Translate { id: slide; x: 40 }
+                appear: 0
+                enterX: 40
                 Component.onCompleted: enter.start()
                 ParallelAnimation {
                     id: enter
-                    NumberAnimation { target: card; property: "opacity"; to: 1; duration: 160; easing.type: Easing.OutCubic }
-                    NumberAnimation { target: slide; property: "x"; to: 0; duration: 200; easing.type: Easing.OutCubic }
+                    NumberAnimation { target: card; property: "appear"; to: 1; duration: 160; easing.type: Easing.OutCubic }
+                    NumberAnimation { target: card; property: "enterX"; to: 0; duration: 200; easing.type: Easing.OutCubic }
                 }
 
-                // Goes after Notifs.timeout; the mouse over the card restarts the wait, critical ones stay
+                // Goes after Notifs.timeout, sliding out the way it came; the mouse over the card restarts the wait,
+                // critical ones stay
                 Timer {
-                    running: !card.row.critical && !card.hovered
+                    running: !card.row.critical && !card.hovered && !leave.running
                     interval: Notifs.timeout
-                    onTriggered: if (card.n) card.n.expire()
+                    onTriggered: { enter.stop(); leave.start() }
+                }
+                ParallelAnimation {
+                    id: leave
+                    NumberAnimation { target: card; property: "appear"; to: 0; duration: 180; easing.type: Easing.InCubic }
+                    NumberAnimation { target: card; property: "enterX"; to: 40; duration: 180; easing.type: Easing.InCubic }
+                    onFinished: if (card.n) card.n.expire()
                 }
             }
         }

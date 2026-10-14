@@ -18,13 +18,90 @@ Rectangle {
     readonly property var actions: n ? n.actions.filter(a => a.identifier !== "default") : []
     readonly property bool hovered: hover.hovered
     signal activated()                         // click: open
-    signal dismissed()                         // × or right click
+    signal dismissed()                         // ×, right click or a two-finger swipe to the right
+
+    // The popups slide the card in with these (NotificationPopups.qml); the swipe adds its own offset and fade
+    property real enterX: 0
+    property real appear: 1
+    property real swipeX: 0
+    readonly property real swipeFade: Math.max(0, Math.min(1, swipeX / width))
 
     width: 300
     height: body.implicitHeight + 28
     radius: 4                                  // the same as the windows' corners (decoration.rounding in hyprland.lua)
+    opacity: appear * (1 - swipeFade)
+    transform: Translate { x: card.enterX + card.swipeX }
 
     HoverHandler { id: hover }
+
+    // Two-finger swipe to the right dismisses: the card follows the fingers and goes as soon as it's past swipeDistance
+    // of its width, carrying on at the swipe's speed. A fast swipe that lifts earlier goes too, else it springs back.
+    // Left doesn't move it.
+    // Vertical scrolling isn't taken (orientation), so the notification menu's list still scrolls over the cards.
+    WheelHandler {
+        id: swipe
+
+        // --- Tunables ---
+        property real touchScale: 2            // the same as TouchScroll.qml (Hyprland's scroll_factor 0.4)
+        property real swipeDistance: 0.17      // of the card's width
+        property real flickSpeed: 900          // px/s to the right on release
+        property real direction: -1            // natural_scroll = false: fingers to the right give a negative delta
+        property real minOutSpeed: 400         // px/s: the slowest start when it goes
+        property real outAccel: 6000           // px/s²: then it speeds up
+
+        property var samples: []               // [time ms, dx] of the last 100 ms
+        property double lastT: 0
+        target: null
+        acceptedDevices: PointerDevice.TouchPad
+        orientation: Qt.Horizontal
+
+        // The swipe's speed (px/s) at its last event; fingers that stopped before lifting give 0
+        function speedNow() {
+            if (samples.length === 0 || Date.now() - lastT > 60) return 0
+            const span = Math.max(lastT - samples[0][0], 16)
+            return samples.reduce((a, s) => a + s[1], 0) / span * 1000
+        }
+        function release() {
+            const v = speedNow()
+            samples = []
+            if (v > flickSpeed && card.swipeX > 0) leave(v)
+            else back.start()
+        }
+        function leave(v) {
+            idle.stop()
+            samples = []
+            out.speed = Math.max(v, minOutSpeed)
+            out.start()
+        }
+
+        onWheel: e => {
+            if (out.running) return
+            if (e.phase === Qt.ScrollEnd) { idle.stop(); release(); return }
+            const raw = e.pixelDelta.x !== 0 ? e.pixelDelta.x * touchScale : e.angleDelta.x / 120 * 52
+            const dx = raw * direction
+            if (dx === 0) return
+            back.stop()
+            card.swipeX = Math.max(0, card.swipeX + dx)
+            const now = Date.now()
+            samples = samples.filter(s => now - s[0] <= 100).concat([[now, dx]])
+            lastT = now
+            if (card.swipeX > card.width * swipeDistance) { leave(speedNow()); return }
+            idle.restart()                     // in case no ScrollEnd arrives: a pause counts as a release
+        }
+    }
+    Timer { id: idle; interval: 100; onTriggered: swipe.release() }
+    // Leaves at the swipe's own speed, so the card doesn't hitch when the fingers lift
+    FrameAnimation {
+        id: out
+        property real speed: 0
+        onTriggered: {
+            const dt = Math.min(frameTime, 0.05)
+            speed += swipe.outAccel * dt
+            card.swipeX += speed * dt
+            if (card.swipeX >= card.width + 20) { stop(); card.dismissed() }
+        }
+    }
+    NumberAnimation { id: back; target: card; property: "swipeX"; to: 0; duration: 220; easing.type: Easing.OutBack }
     MouseArea {
         id: area
         anchors.fill: parent

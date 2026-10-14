@@ -4,19 +4,21 @@ import Quickshell
 // Hamburger menu: notifications (Notifs.qml's history + do-not-disturb toggle), ⌘Esc / F3.
 // A bare menu (shell.qml draws no card around it): a bar with the title and the controls, then each notification as its
 // own card, the same as the popups (NotificationCard.qml) and in the same place, so one is easy to find again.
-// Click = open the app, × or right click = remove it, Clear = remove all.
+// Click = open the app, ×, right click or a two-finger swipe right = remove it, Clear = remove all.
 // The power actions (lock, suspend, log out, reboot, shut down) live in the launcher (⌘Space › Power).
 Column {
     id: m
 
     // --- Tunables ---
-    readonly property int maxListHeight: 620   // then the list scrolls
+    readonly property int maxCards: 6          // shown whole, then the list scrolls (no sliver of the next one)
     readonly property real bgOpacity: 0.85     // the same as the popups (NotificationPopups.qml)
 
     readonly property bool bare: true
     readonly property int preferredWidth: 300   // the popups' width
     width: parent ? parent.width : 300
     spacing: 10                                 // the popups' gap
+
+    property real lastShownBottom: -1           // the bottom of card number maxCards (set by that card)
 
     signal close()
 
@@ -71,24 +73,31 @@ Column {
         id: flick
         visible: Notifs.history.length > 0
         width: parent.width
-        height: Math.min(cards.implicitHeight, m.maxListHeight)
+        height: Notifs.history.length > m.maxCards && m.lastShownBottom > 0 ? m.lastShownBottom : cards.implicitHeight
         contentHeight: cards.implicitHeight
         clip: true
         boundsBehavior: Flickable.StopAtBounds
+        flickableDirection: Flickable.VerticalFlick   // a sideways swipe is the card's (swipe to dismiss)
         TouchScroll { view: flick; step: 60 }
         Column {
             id: cards
             width: flick.width
             spacing: 10
+            // The cards below a removed one slide up into its place
+            move: Transition { NumberAnimation { property: "y"; duration: 200; easing.type: Easing.OutCubic } }
             Repeater {
-                model: Notifs.history
+                // ScriptModel keeps the other cards when one goes (a plain array would make them all again)
+                model: ScriptModel { values: Notifs.history }
                 NotificationCard {
+                    id: card
                     required property var modelData
+                    required property int index
                     row: modelData
                     width: cards.width
                     color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, m.bgOpacity)
                     onActivated: { Notifs.openApp(modelData); m.close() }
                     onDismissed: Notifs.forget(modelData.uid)
+                    Binding { when: card.index === m.maxCards - 1; target: m; property: "lastShownBottom"; value: card.y + card.height }
                 }
             }
         }
