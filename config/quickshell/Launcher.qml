@@ -1188,29 +1188,7 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                 currentIndex: 0
                 highlightMoveDuration: 0
                 boundsBehavior: Flickable.StopAtBounds
-                // Touchpad: Hyprland's scroll_factor (0.4) makes Qt's own scrolling slow and it stops dead when the fingers
-                // lift. Move by the finger's distance (× touchScale) and glide on with the last speed, like GTK and Firefox.
-                WheelHandler {
-                    target: null
-                    acceptedDevices: PointerDevice.TouchPad
-                    readonly property real touchScale: 2
-                    property real speed: 0      // px/s, smoothed
-                    property double lastT: 0
-                    onWheel: e => {
-                        if (e.phase === Qt.ScrollEnd) {
-                            if (Math.abs(speed) > 150) list.flick(0, speed)
-                            speed = 0
-                            return
-                        }
-                        list.cancelFlick()
-                        const dy = e.pixelDelta.y !== 0 ? e.pixelDelta.y * touchScale : e.angleDelta.y / 120 * win.rowHeight
-                        const max = Math.max(list.originY, list.originY + list.contentHeight - list.height)
-                        list.contentY = Math.max(list.originY, Math.min(max, list.contentY - dy))
-                        const now = Date.now(), dt = now - lastT
-                        lastT = now
-                        speed = dt > 0 && dt < 100 ? 0.6 * speed + 0.4 * dy / dt * 1000 : 0
-                    }
-                }
+                TouchScroll { view: list; step: win.rowHeight }
                 delegate: Rectangle {
                     id: row
                     required property var modelData
@@ -1334,6 +1312,7 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                 highlightMoveDuration: 0
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
+                TouchScroll { view: wallGrid; step: wallGrid.cellHeight }
                 delegate: Item {
                     id: cell
                     required property var modelData
