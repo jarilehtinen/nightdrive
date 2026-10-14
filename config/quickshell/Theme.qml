@@ -30,4 +30,5 @@ Singleton {
     readonly property color launcherBg: "#f71a1b26"               // kitty background (#1a1b26) at 97 % opacity
     readonly property string font:   "JetBrains Mono"
     readonly property int barHeight: 37                           // the top bar (Bar.qml)
+    readonly property int notchWidth: 190                         // about the MacBook's notch (14", scale 2), centred on the top edge
 }

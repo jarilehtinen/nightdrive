@@ -34,9 +34,8 @@ Scope {
     }
     function isImage(url) { return ["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg"].indexOf(ext(url)) >= 0 }
 
-    property bool dragOpen: false      // opened by a drag (not the mouse): the trigger then covers the whole bar
     onBusyChanged: if (!busy && open) closeTimer.restart()
-    onOpenChanged: { if (open) { if (!busy) closeTimer.restart() } else { dragOpen = false } }
+    onOpenChanged: if (open && !busy) closeTimer.restart()
     Timer { id: hoverOpen; interval: 250; onTriggered: if (triggerHover.hovered) shelf.open = true }
     // Short delay: moving the cursor from the top edge to the shelf doesn't close it
     Timer { id: closeTimer; interval: 120; onTriggered: if (!shelf.busy) shelf.open = false }
@@ -50,9 +49,10 @@ Scope {
     // Invisible trigger at the top edge (center): a drag arriving here opens the shelf.
     PanelWindow {
         anchors { top: true }
-        // The trigger covers the middle of the top bar: hovering or dragging over it opens the shelf, and dropping works on the bar already
-        implicitWidth: shelf.open ? Math.max(360, card.width) : 360
-        implicitHeight: Theme.barHeight   // full top bar height (the bar.s middle section is empty, so no button gets covered)
+        // The trigger is the notch: hovering or dragging over it opens the shelf, and dropping works there already.
+        // No wider: the bar's icons on either side must stay clickable.
+        implicitWidth: Theme.notchWidth
+        implicitHeight: Theme.barHeight
         color: "transparent"
         exclusionMode: ExclusionMode.Ignore
         WlrLayershell.layer: WlrLayer.Overlay   // Overlay: the bar (layer Top) must not cover the trigger
@@ -65,7 +65,7 @@ Scope {
             id: trigger
             anchors.fill: parent
             keys: ["text/uri-list"]
-            onEntered: drag => { drag.accepted = true; shelf.dragOpen = true; shelf.open = true }
+            onEntered: drag => { drag.accepted = true; shelf.open = true }
             onDropped: drop => { if (drop.hasUrls) { shelf.add(drop.urls); drop.acceptProposedAction() } }
         }
     }
