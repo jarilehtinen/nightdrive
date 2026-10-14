@@ -8,7 +8,7 @@
 # in several listening modes get them listed in the menu; the picked one is remembered per headphones.
 # The chosen preset is saved as the headphones' autoload profile, so EasyEffects always loads it when the headphones
 # connect, and the fallback preset Off for other devices (speakers).
-# Usage: eq current | list | info | set <style> | toggle | anc <mode> | disconnect
+# Usage: eq current | list | info | set <style> | toggle | anc <mode> | max-volume <percent> | disconnect
 #        (info = JSON for the Quickshell headphones menu)
 dir=~/.local/share/easyeffects
 last=~/.local/state/eq-last          # last style that was on (toggle restores it)
@@ -16,6 +16,7 @@ ancdir=~/.local/state/nightdrive/anc # <sink>: the listening mode picked in the 
 # Headphones that tell their mode and take commands (Sony, hypr/scripts/sony-anc): the mode is read from them instead
 live=${XDG_RUNTIME_DIR:-/tmp}/nightdrive/anc          # <MAC>: the mode now, while sony-anc has the headphones
 livesock=${XDG_RUNTIME_DIR:-/tmp}/nightdrive/sony-anc.sock
+maxdir=~/.local/state/nightdrive/max-volume   # <MAC>: the headphones' max volume in percent (hypr/scripts/bt-audio-follow keeps it)
 
 sink_name() { pactl list short sinks 2>/dev/null | awk '$2 ~ /^bluez_output/ {print $2; exit}'; }
 description() { pactl -f json list sinks 2>/dev/null | jq -r --arg s "$1" '.[] | select(.name == $s) | .description'; }
@@ -72,11 +73,12 @@ case ${1:-current} in
     bat=$(bluetoothctl info "$mac" 2>/dev/null | grep -oP 'Battery Percentage:.*\(\K[0-9]+')
     modes=$(anc_modes "$key" "$s")
     [[ -f $live/$mac ]] && controlled=true || controlled=false
+    max=$(cat "$maxdir/$mac" 2>/dev/null || echo 100)
     pactl -f json list sinks | jq -c --arg s "$s" --arg def "$(pactl get-default-sink)" --arg bat "$bat" \
-      --arg cur "$("$0" current)" --arg presets "$("$0" list)" --arg key "$key" --arg modes "$modes" --arg anc "$(anc_mode "$s")" --argjson controlled $controlled \
+      --arg cur "$("$0" current)" --arg presets "$("$0" list)" --arg key "$key" --arg modes "$modes" --arg anc "$(anc_mode "$s")" --argjson controlled $controlled --argjson max "$max" \
       '.[] | select(.name == $s) | {sink: $s, name: .description, default: ($s == $def), battery: $bat,
         codec: (.properties["api.bluez5.codec"] // "" | ascii_upcase), preset: $cur, presets: ($presets | split("\n") | map(select(. != ""))),
-        tuned: ($key != ""), ancModes: ($modes | split("\n") | map(select(. != ""))), anc: $anc, ancControlled: $controlled}' ;;
+        tuned: ($key != ""), ancModes: ($modes | split("\n") | map(select(. != ""))), anc: $anc, ancControlled: $controlled, maxVolume: $max}' ;;
   set)
     style=${2:?style}; s=$(sink_name); [[ -n $s ]] || exit 1
     p=$(full_name "$s" "$(headphones_key "$s")" "$style")
@@ -103,6 +105,13 @@ case ${1:-current} in
     fi
     if [[ $mode == "Noise cancelling" ]]; then rm -f "$ancdir/$s"; else mkdir -p "$ancdir"; echo "$mode" > "$ancdir/$s"; fi
     cur=$("$0" current); [[ $cur != off ]] && "$0" set "$cur"
+    true ;;
+  max-volume)   # the headphones' max volume (100 = no limit); a louder volume is turned down at once
+    pct=${2:?percent}; s=$(sink_name); [[ -n $s ]] || exit 1
+    mkdir -p "$maxdir"
+    if (( pct >= 100 )); then rm -f "$maxdir/$(mac_of "$s")"; else echo "$pct" > "$maxdir/$(mac_of "$s")"; fi
+    vol=$(pactl get-sink-volume "$s" | grep -oP '\d+(?=%)' | sort -n | tail -1)
+    (( pct < 100 && vol > pct )) && pactl set-sink-volume "$s" "$pct%"
     true ;;
   disconnect)   # the headphones' Bluetooth connection off (right click on the bar icon)
     s=$(sink_name); [[ -n $s ]] || exit 1

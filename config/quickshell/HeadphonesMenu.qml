@@ -26,6 +26,7 @@ Column {
         return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b)
     })
     property var info: ({})
+    property real maxShown: -1   // while dragging the Max volume slider (saved on release)
     readonly property bool eqOn: !!info.preset && info.preset !== "off"
     signal close()
 
@@ -127,6 +128,45 @@ Column {
         text: "Sound is playing from another output. The EQ takes effect when the headphones are selected."
         color: Theme.dim
         font { family: Theme.font; pixelSize: 11 }
+    }
+
+    // Max volume per headphones: switching to them (e.g. from a Mac) at full volume can be painfully loud.
+    // hypr/scripts/bt-audio-follow turns any louder volume down to it.
+    Divider {}
+    MenuHeader { width: parent.width; title: "Max volume" }
+    Row {
+        width: parent.width
+        spacing: 12
+        readonly property real value: m.maxShown >= 0 ? m.maxShown : (m.info.maxVolume || 100) / 100
+        Text {
+            id: maxIcon
+            width: 22
+            anchors.verticalCenter: parent.verticalCenter
+            horizontalAlignment: Text.AlignHCenter
+            text: Icons.g("volume-2")
+            color: Theme.dim
+            font { family: Icons.family; pixelSize: 18 }
+        }
+        Slider {
+            width: parent.width - maxIcon.width - maxPct.width - 24
+            anchors.verticalCenter: parent.verticalCenter
+            value: parent.value
+            onMoved: v => m.maxShown = Math.max(0.1, Math.round(v * 20) / 20)   // steps of 5 %, at least 10 %
+            onPressedChanged: if (!pressed && m.maxShown >= 0) {
+                m.run(["max-volume", String(Math.round(m.maxShown * 100))])
+                m.info = Object.assign({}, m.info, { maxVolume: Math.round(m.maxShown * 100) })
+                m.maxShown = -1
+            }
+        }
+        Text {
+            id: maxPct
+            width: 44
+            anchors.verticalCenter: parent.verticalCenter
+            horizontalAlignment: Text.AlignRight
+            text: parent.value >= 1 ? "Off" : Math.round(parent.value * 100) + "%"
+            color: Theme.text
+            font { family: Theme.font; pixelSize: 13 }
+        }
     }
 
     Divider {}
