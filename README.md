@@ -120,7 +120,7 @@ login screen fails, press Ctrl+Alt+F3, log in and run `config/greeter/switch.sh 
 | `--no-greeter` | Keeps the KDE login screen; pick **Hyprland** there (not *Hyprland (uwsm-managed)*) |
 | `--keep-apps` | Keeps the KDE apps, printing, network shares, accessibility tools and other packages listed in `packages-remove.txt` (comment a line out to keep just that one) |
 | `--no-kde` | Removes Plasma completely (experimental) |
-| `--vm` | For trying Nightdrive in a Fedora 44 VM instead of an Asahi Mac (see below) |
+| `--vm` | For trying Nightdrive in a Fedora 44 VM instead of an Asahi Mac ([docs/vm.md](docs/vm.md)) |
 
 A few things stay manual:
 - `sudo tailscale up`
@@ -142,9 +142,8 @@ You can also update any time from the launcher (**Update**) or a terminal:
 nightdrive update   # pulls Nightdrive (and Deck), relinks, installs new packages, updates the system, reloads the desktop
 ```
 
-It never overwrites your own edits: a repo with uncommitted changes is skipped with a note. An install from before the
-`nightdrive` command (13.10.2026) runs it once by its path, `~/dotfiles/bin/nightdrive update`; that also links it. A plain
-`git pull` isn't enough on its own: new links, packages and the switch from Waybar to Quickshell's bar come with the update.
+It never overwrites your own edits: a repo with uncommitted changes is skipped with a note. On an install older than the
+command, run it once as `~/dotfiles/bin/nightdrive update` (a plain `git pull` misses the new links and packages).
 
 The same `nightdrive` command reaches the settings from a terminal (`nightdrive` alone lists everything):
 
@@ -157,29 +156,6 @@ The same `nightdrive` command reaches the settings from a terminal (`nightdrive`
 | `nightdrive display list` | Each screen's even scales; `nightdrive display scale eDP-1 2` sets one |
 | `nightdrive bar-style opacity 80` | Top bar opacity; also `icons`, `icon-opacity` and `highlight` |
 | `nightdrive topbar adjust` | Top bar icon sizes and positions, a pixel at a time, live |
-
-<details>
-<summary><b>Trying it in a virtual machine (experimental)</b></summary>
-
-You can try the whole setup in an aarch64 **Fedora 44** VM on any Apple Silicon Mac. Tested in Parallels Desktop 27:
-
-1. Download the **Fedora 44 KDE Plasma Desktop** live ISO for **aarch64** from [fedoraproject.org/kde](https://fedoraproject.org/kde/download)
-   (the KDE edition, like Asahi Remix; Parallels' own Fedora download may be another release).
-2. In Parallels: File › New › *Install from an image file*, tick *Customize settings before installation*, give it 8 GB of RAM
-   (Deck's Rust build needs it) and under Graphics pick **Best for Retina display**. 3D acceleration (VirGL) is on by default
-   for Linux on ARM; Parallels Tools aren't needed.
-3. Install Fedora to the disk with an administrator user, reboot and check `sudo dmesg | grep virgl` shows `+virgl`.
-4. Optional: to work in the Mac's Terminal (copy and paste) instead of the VM window, run
-   `sudo dnf install -y openssh-server && sudo systemctl enable --now sshd` and `ssh` to the address `ip -4 -br a` prints.
-5. Install as above, with `./install.sh --vm`, and reboot.
-6. To use ⌘ as Super inside the VM, set Parallels' VM settings › Hardware › Mouse & Keyboard › *Send macOS system shortcuts*
-   to *Always*.
-
-`--vm` skips the notch step and writes `config/hypr/local.lua` with scale 2.0 (for *Best for Retina display*; pick 1.0 in the
-launcher's Settings › Display for *Scaled*), a software cursor and the rounded-corner shader off. It must be Fedora 44,
-because the Hyprland COPR builds only for that release. Containers won't work, since Hyprland needs a GPU. Parallels passes
-the Mac's battery to the VM; without a display or keyboard backlight their sliders are left out.
-</details>
 
 ## Keys
 
