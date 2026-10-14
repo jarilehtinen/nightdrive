@@ -7,6 +7,8 @@ import Quickshell.Io
 //   ~/.config/topbar/modules.jsonc (+ local.modules.jsonc)   the modules, in order
 //   ~/.config/topbar/adjust.conf   (+ local.adjust.conf)     icon sizes and positions, the text size
 //   ~/.cache/nightdrive/bar.json                              colours (hypr/scripts/bar-style)
+//   ~/.local/state/nightdrive/bar-items.json                  {hidden, order}: modules turned off and their order
+//                                                             (launcher › Settings › Top bar › Items)
 // A module's state comes from its status command (one line of JSON {icon, text, class}); icons are SVGs from
 // topbar/scripts/icon, cached here by name.
 Singleton {
@@ -16,7 +18,53 @@ Singleton {
     // --- Modules ---
     property var publicModules: []
     property var localModules: []
-    readonly property var modules: localModules.concat(publicModules)
+    // In your order (Items: Ctrl+arrows), then modules not in it in the files' order (a new one goes to the right end)
+    readonly property var allModules: {
+        const def = localModules.concat(publicModules)
+        const key = m => { const i = items.order.indexOf(m.name); return i >= 0 ? i : items.order.length + def.indexOf(m) }
+        return def.slice().sort((a, b) => key(a) - key(b))
+    }
+    // The ones shown: a module turned off isn't run at all
+    readonly property var modules: allModules.filter(m => hidden.indexOf(m.name) < 0)
+    readonly property var hidden: items.hidden
+    property var items: ({ hidden: [], order: [] })
+    readonly property string itemsFile: Quickshell.env("HOME") + "/.local/state/nightdrive/bar-items.json"
+    FileView {
+        path: tb.itemsFile; watchChanges: true; onFileChanged: reload(); printErrors: false
+        // Only a real change: the same lists again would rebuild the launcher's list and lose its selection
+        onLoaded: {
+            let v = {}
+            try { v = JSON.parse(text()) || {} } catch (e) {}
+            const n = { hidden: v.hidden || [], order: v.order || [] }
+            if (JSON.stringify(n) !== JSON.stringify(tb.items)) tb.items = n
+        }
+        onLoadFailed: tb.items = ({ hidden: [], order: [] })
+    }
+    // Shown at once here, then saved (the file watch brings the same lists back)
+    function saveItems(n) {
+        items = n
+        Quickshell.execDetached(["bash", "-c", 'mkdir -p "$(dirname "$2")" && printf "%s\\n" "$1" > "$2.tmp" && mv "$2.tmp" "$2"',
+                                 "_", JSON.stringify(n), itemsFile])
+    }
+    function setHidden(name, off) {
+        saveItems({ hidden: items.hidden.filter(n => n !== name).concat(off ? [name] : []), order: items.order })
+    }
+    // Moves a module one place left (-1) or right (+1); returns its new index in allModules
+    function move(name, dir) {
+        const names = allModules.map(m => m.name)
+        const i = names.indexOf(name), j = i + dir
+        if (i < 0 || j < 0 || j >= names.length) return i
+        names[i] = names[j]; names[j] = name
+        saveItems({ hidden: items.hidden, order: names })
+        return j
+    }
+    // Names and glyphs for the launcher's list; a module can give its own "label" in modules.jsonc
+    readonly property var moduleLabels: ({ deck: ["Music (Deck)", "music"], claude: ["Claude usage", "gauge"], system: ["CPU and memory", "cpu"],
+                                           tailscale: ["Tailscale", "shield-check"], bluetooth: ["Bluetooth", "bluetooth"], wifi: ["Wi-Fi", "wifi"],
+                                           volume: ["Volume", "volume-2"], headphones: ["Headphones", "headphones"], battery: ["Battery", "battery-medium"],
+                                           calendar: ["Date and time", "clock"], notifications: ["Notifications", "menu"] })
+    function moduleLabel(m) { return m.label || (moduleLabels[m.name] || [])[0] || m.name.charAt(0).toUpperCase() + m.name.slice(1) }
+    function moduleGlyph(m) { return (moduleLabels[m.name] || [])[1] || "panel-top" }
     property var states: ({})          // name -> {icon, text, class}
     function parseJsonc(t) {
         try { return JSON.parse(t.split("\n").filter(l => !/^\s*\/\//.test(l)).join("\n")) } catch (e) { return null }

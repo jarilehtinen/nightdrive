@@ -77,7 +77,7 @@ PanelWindow {
     property int barOpacity: -1               // Settings › Top bar opacity: current value (hypr/scripts/bar-style), -1 = not read yet
     property string barIcons: ""              // Settings › Top bar icons: light | dark
     property int barIconOp: -1                // icon and text opacity
-    property string barHl: ""                 // Settings › Theme › Top bar › Highlight: theme | white | black
+    property string barHl: ""                 // Settings › Top bar › Highlight: theme | white | black
     property int updates: 0                   // Update: new Nightdrive commits waiting (nightdrive update check, every 6 h)
     property var displays: null               // Settings › Display: [{ name, desc, scale, opts: [{ value, size }] }] (hypr/scripts/display list)
     property var themeList: []                // Settings › Theme › Color: [{ value, name, swatch, current }] (hypr/scripts/theme list)
@@ -91,7 +91,7 @@ PanelWindow {
     property string extSource: ""             // shell.qml sets this when the file exists
     readonly property var ext: extLoader.item
     readonly property bool extLevel: ext !== null && ext.levels.indexOf(level) >= 0
-    readonly property var parents: Object.assign({ shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", software: "install", webapp: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "theme", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", baropacity: "topbar", baricons: "topbar", barhl: "topbar" }, ext ? ext.parents : {})
+    readonly property var parents: Object.assign({ shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", software: "install", webapp: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, ext ? ext.parents : {})
     // Search found nothing: hint below ⌘⌥⏎ (icons) → send the text to Claude
     readonly property bool noHit: (level === "root" || level === "apps") && query.trim() !== "" && results.length === 0
     // The selected row is an app: ⌃Enter shows it in Apps (the list with an empty query) or hides it from there.
@@ -103,6 +103,7 @@ PanelWindow {
         : selApp ? "Enter: open  ·  Ctrl+Enter: " + (selApp.shown ? "hide from Apps" : "show in Apps")
                                               + "  ·  Alt+Enter: " + (autostartIds.indexOf(appId(selApp)) >= 0 ? "don’t start at login" : "start at login")
         : level === "startup" ? "Enter: start at login on/off  ·  background apps start hidden"
+        : level === "baritems" ? "Enter: show / hide  ·  Ctrl+Up+Down: reorder"
         : level === "passwords" && pwState === "ready" ? "Enter: password  ·  Shift+Enter: username  ·  Ctrl+Enter: one-time code"
         : extLevel ? ext.footer(level, query)
         : level === "clipboard" ? "Enter: paste  ·  Shift+Enter: copy only"
@@ -113,9 +114,10 @@ PanelWindow {
     // The footer as key caps: "Ctrl+Enter: show in Apps  ·  Esc: back" → [{ keys: ["Ctrl", "Enter"], text: "show in Apps" }, ...].
     // "Enter creates …" (no colon) works too; a part that doesn't start with a key is plain text.
     readonly property var keyGlyphs: ({ Enter: "corner-down-left", Ctrl: "chevron-up", Shift: "arrow-big-up", Alt: "option", Cmd: "command",
+                                        Up: "arrow-up", Down: "arrow-down",
                                         Backspace: "delete", Space: "space" })
     readonly property var footerParts: footer === "" ? [] : footer.split(/\s+·\s+/).map(part => {
-        const m = part.match(/^((?:Ctrl|Shift|Alt|Cmd|Enter|Esc|Tab|Space|Backspace)(?:\+(?:Ctrl|Shift|Alt|Cmd|Enter|Esc|Tab|Space|Backspace))*)(?::\s*|\s+)(.*)$/)
+        const m = part.match(/^((?:Ctrl|Shift|Alt|Cmd|Enter|Esc|Tab|Space|Backspace|Up|Down)(?:\+(?:Ctrl|Shift|Alt|Cmd|Enter|Esc|Tab|Space|Backspace|Up|Down))*)(?::\s*|\s+)(.*)$/)
         return m ? { keys: m[1].split("+"), text: m[2] } : { keys: [], text: part }
     })
     property var lastMouse: null              // last mouse position (window coordinates); null = not seen yet since opening
@@ -127,7 +129,7 @@ PanelWindow {
     signal openMenu(string name)              // Settings: opens a Quickshell menu (wifi, bluetooth, ...)
 
     readonly property var titles: Object.assign({ apps: "Apps", music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", musicsearch: "Music › Search", artist: "Music › " + artist.name, keys: "Keybindings", screenshot: "Screenshot", settings: "Settings", display: "Settings › Display", startup: "Settings › Startup", screensaver: "Settings › Screensaver", saverafter: "Screensaver › Start after", screenoff: "Screensaver › Screen off after", saverstyle: "Screensaver › Style", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
-                                     topbar: "Settings › Theme › Top bar", baropacity: "Theme › Top bar › Opacity", baricons: "Theme › Top bar › Icon colors", barhl: "Theme › Top bar › Highlight",
+                                     topbar: "Settings › Top bar", baropacity: "Top bar › Opacity", baricons: "Top bar › Icon colors", barhl: "Top bar › Highlight", baritems: "Top bar › Items",
                                      install: "Install", emoji: "Emoji", software: "Install › Software", webapp: "Install › Webapp", webname: "Install › Webapp › Name", webaddr: "Install › Webapp › Address", remove: "Remove", power: "Power", passwords: "Passwords", clipboard: "Clipboard",
                                      tools: "Tools" }, ext ? ext.titles : {})
 
@@ -189,7 +191,8 @@ PanelWindow {
             { kind: "nav", name: "Screensaver", glyph: "monitor-pause", target: "screensaver" },
             { kind: "nav", name: "Startup", glyph: "rocket", target: "startup" },
             { kind: "menu", name: "Tailscale", glyph: "shield-check", target: "tailscale" },
-            { kind: "nav", name: "Theme", glyph: "palette", target: "theme" }
+            { kind: "nav", name: "Theme", glyph: "palette", target: "theme" },
+            { kind: "nav", name: "Top bar", glyph: "panel-top", target: "topbar" }   // its look and what it shows
         ],
         power: [
             { kind: "action", name: "Lock", glyph: "lock", cmd: ["loginctl", "lock-session"] },
@@ -208,14 +211,14 @@ PanelWindow {
                                               "Top bar": "waybar panel menu bar",
                                               "Opacity": "top bar waybar panel transparency transparent",
                                               "Icon colors": "top bar waybar panel white black light dark text",
-                                              "Highlight": "top bar waybar panel active workspace" })
+                                              "Highlight": "top bar waybar panel active workspace",
+                                              "Items": "top bar panel modules icons show hide clock date battery" })
     // Settings › Theme: sub-items (Color with its current value)
     function themeItems() {
         const cur = themeList.find(t => t.current)
         return [
             { kind: "nav", name: "Color", glyph: "palette", target: "themecolor", summary: cur ? cur.name.toLowerCase() : undefined },
-            { kind: "nav", name: "Background", glyph: "wallpaper", target: "background" },
-            { kind: "nav", name: "Top bar", glyph: "panel-top", target: "topbar" }
+            { kind: "nav", name: "Background", glyph: "wallpaper", target: "background" }
         ]
     }
     // Settings › Screensaver: the two idle times with their current values, and a preview
@@ -228,14 +231,16 @@ PanelWindow {
             { kind: "action", name: "Preview", glyph: "monitor-play", cmd: ["bash", "-c", "sleep 0.4; \"$HOME/.config/screensaver/start\""] }
         ]
     }
-    // Settings › Theme › Top bar: sub-items with their current values
+    // Settings › Top bar: sub-items with their current values
     function topbarItems() {
         return [
             { kind: "nav", name: "Opacity", glyph: "panel-top", target: "baropacity", summary: barOpacity >= 0 ? barOpacity + "%" : undefined },
             { kind: "nav", name: "Icon colors", glyph: "contrast", target: "baricons",
               summary: barIcons !== "" ? (barIcons === "dark" ? "black" : "white") + " " + barIconOp + "%" : undefined },
             { kind: "nav", name: "Highlight", glyph: "highlighter", target: "barhl",
-              summary: barHl === "theme" ? "theme color" : (barHl || undefined) }
+              summary: barHl === "theme" ? "theme color" : (barHl || undefined) },
+            { kind: "nav", name: "Items", glyph: "layout-list", target: "baritems",
+              summary: TopBar.modules.length + " of " + TopBar.allModules.length + " shown" }
         ]
     }
     readonly property var installAliases: ({ "Software": "package dnf rpm flatpak flathub app apps program store",
@@ -435,6 +440,14 @@ PanelWindow {
                                     glyph: v === cur ? "check" : (level === "saverafter" ? "timer" : "monitor-off"), summary: v === cur ? "current" : undefined }))
         } else if (level === "topbar") {
             all = topbarItems().map(t => ({ item: t, text: t.name, extra: settingsAliases[t.name] || "" }))
+        } else if (level === "baritems") {
+            // What the bar shows, in its order (left to right); Enter turns one on or off
+            all = TopBar.allModules.map(m => {
+                const on = TopBar.hidden.indexOf(m.name) < 0
+                return { item: { kind: "baritem", value: m.name, name: TopBar.moduleLabel(m), glyph: TopBar.moduleGlyph(m),
+                                 trailGlyph: on ? "check" : "minus", dimmed: !on }, text: TopBar.moduleLabel(m), extra: m.name }
+            })
+            if (q === "") return all.map(x => x.item)      // a fixed order: toggling doesn't move rows
         } else if (level === "barhl") {
             return [["theme", "Theme color"], ["white", "White"], ["black", "Black"]].map(h => ({
                 kind: "barhl", value: h[0], name: h[1], glyph: barHl === h[0] ? "check" : "highlighter",
@@ -621,6 +634,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
             displays = displays.map(d => d.name === item.output ? Object.assign({}, d, { scale: item.value }) : d)
             Quickshell.execDetached([scripts + "/display", "scale", item.output, String(item.value)])
         }
+        else if (item.kind === "baritem") { keepSelection(); TopBar.setHidden(item.value, TopBar.hidden.indexOf(item.value) < 0) }
         else if (live[item.kind]) {           // stays open: values can be tried one after another (theme colors recolor the launcher immediately)
             const [script, verb, prop] = live[item.kind]
             keepSelection()
@@ -1244,6 +1258,13 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                             if (i >= 0 && i < win.results.length) list.currentIndex = i
                             else if (i < 0) win.playerFocused = true
                             event.accepted = true
+                        } else if (win.level === "baritems" && ctrl && (event.key === Qt.Key_Up || event.key === Qt.Key_Down)) {
+                            const cur = win.results[list.currentIndex]     // Items: the selected module moves, the selection with it
+                            if (cur && cur.kind === "baritem" && win.query === "") {
+                                const j = TopBar.move(cur.value, event.key === Qt.Key_Up ? -1 : 1)
+                                Qt.callLater(() => { list.currentIndex = j })
+                            } else shake.restart()
+                            event.accepted = true
                         } else if (event.key === Qt.Key_Down || (ctrl && (event.key === Qt.Key_N || event.key === Qt.Key_J))) {
                             win.step(1); event.accepted = true
                         } else if (event.key === Qt.Key_Up || (ctrl && (event.key === Qt.Key_P || event.key === Qt.Key_K))) {
@@ -1323,7 +1344,7 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                             anchors.centerIn: parent
                             visible: row.modelData.glyph !== undefined
                             text: row.modelData.glyph !== undefined ? Icons.g(row.modelData.glyph) : ""
-                            color: row.current ? Theme.accent : Theme.text
+                            color: row.modelData.dimmed ? Theme.dim : row.current ? Theme.accent : Theme.text
                             font { family: Icons.family; pixelSize: win.iconSize - 2 }
                         }
                     }
@@ -1339,7 +1360,7 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                         elide: Text.ElideRight
                         text: row.isHeader ? row.modelData.name.toUpperCase()
                             : (row.armedNow ? row.modelData.name + " — " + (row.modelData.armHint || "press Enter again to confirm") : row.modelData.name)
-                        color: row.armedNow ? Theme.primary : (row.isHeader ? Theme.primary : row.modelData.kind === "hint" ? Theme.dim : (row.current ? Theme.accent : Theme.text))
+                        color: row.armedNow ? Theme.primary : (row.isHeader ? Theme.primary : row.modelData.kind === "hint" || row.modelData.dimmed ? Theme.dim : (row.current ? Theme.accent : Theme.text))
                         font { family: Theme.font; pixelSize: row.isHeader ? win.fontSize - 5 : row.modelData.sub ? win.fontSize - 2 : win.fontSize; weight: row.isHeader ? Font.Bold : win.fontWeight; letterSpacing: row.isHeader ? 1.5 : 0 }
                         topPadding: row.isHeader ? 10 : 0
                     }
@@ -1361,11 +1382,14 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                         horizontalAlignment: Text.AlignRight
                         // from = submenu a root-level search hit comes from (small violet tag)
                         readonly property bool tag: row.modelData.from !== undefined
-                        readonly property bool glyphOnly: !tag && row.modelData.keys === undefined && !(row.modelData.summary !== undefined && row.modelData.summary !== "" && !row.armedNow) && row.chevron
-                        text: tag ? row.modelData.from.toUpperCase() : row.modelData.keys !== undefined ? row.modelData.keys
+                        readonly property bool glyphOnly: row.modelData.trailGlyph !== undefined
+                            || (!tag && row.modelData.keys === undefined && !(row.modelData.summary !== undefined && row.modelData.summary !== "" && !row.armedNow) && row.chevron)
+                        text: row.modelData.trailGlyph !== undefined ? Icons.g(row.modelData.trailGlyph)      // Top bar › Items: ✓ / – (hidden)
+                            : tag ? row.modelData.from.toUpperCase() : row.modelData.keys !== undefined ? row.modelData.keys
                             : (row.modelData.summary !== undefined && row.modelData.summary !== "" && !row.armedNow ? row.modelData.summary
                             : (row.chevron ? Icons.g("chevron-right") : ""))
-                        color: tag ? Theme.primary : (row.modelData.keys !== undefined && row.current ? Theme.accent : Theme.dim)
+                        color: row.modelData.trailGlyph !== undefined ? (row.modelData.dimmed ? Theme.dim : row.current ? Theme.accent : Theme.text)
+                             : tag ? Theme.primary : (row.modelData.keys !== undefined && row.current ? Theme.accent : Theme.dim)
                         font { family: glyphOnly ? Icons.family : Theme.font; pixelSize: glyphOnly ? win.iconSize - 6 : tag ? win.fontSize - 6 : row.modelData.kind === "album" ? win.fontSize - 5 : win.fontSize - 3
                                letterSpacing: tag ? 1 : 0 }   // tags: normal weight and spacing, the same as an album's artist
                     }
