@@ -18,18 +18,21 @@ Singleton {
     readonly property int maxPopups: 6
 
     property var popups: []                   // [{ uid, n (Notification), entry (history row) }], newest first
-    property alias history: persist.history   // [{ uid, app, summary, body, icon, image, entry, time }], newest first
+    property var history: []                  // [{ uid, app, summary, body, icon, image, entry, time }], newest first
     property alias dnd: persist.dnd
     property double now: Date.now()           // for "2 min ago": updated every 30 s
 
-    // Survive Quickshell's reload on save (a restart still starts empty, as mako did)
+    // Survive Quickshell's reload on save (a restart still starts empty, as mako did). The history goes over as JSON
+    // text: a JS array can't move to the reloaded config's engine ("JSValue can't be reassigned"), it came back undefined.
     PersistentProperties {
         id: persist
         reloadableId: "notifs"
-        property var history: []
+        property string historyJson: "[]"
         property bool dnd: false
         property int uid: 0
+        onLoaded: { try { s.history = JSON.parse(historyJson) } catch (e) { s.history = [] } }
     }
+    onHistoryChanged: persist.historyJson = JSON.stringify(history)
     Timer { interval: 30000; repeat: true; running: true; onTriggered: s.now = Date.now() }
 
     // "now", "5 min", "2 h", then the time of day
@@ -91,8 +94,13 @@ Singleton {
             const lower = (n.appName || "").toLowerCase()
             const appIcon = (e && e.icon) || (lower && Quickshell.iconPath(lower, true) ? lower : "")
             const own = s.iconPath(n.appIcon || named)
+            // The same notification again: a replacement, or one still shown when Quickshell reloaded (the server keeps
+            // it and hands it over again). Its history row is updated, not added twice.
+            const prev = s.history.find(h => h.nid === n.id)
+            const same = prev && prev.summary === n.summary && prev.body === n.body
             const row = {
-                uid: old ? old.uid : ++persist.uid,
+                uid: old ? old.uid : prev ? prev.uid : ++persist.uid,
+                nid: n.id,
                 app: n.appName || (e ? e.name : ""),
                 summary: n.summary, body: n.body,
                 // The app's icon; the notification's own picture (an avatar, a cover) goes to the right, and so does
@@ -100,7 +108,7 @@ Singleton {
                 icon: appIcon || own,
                 image: (n.image && !named ? n.image : "") || (appIcon && s.ownIconNames.indexOf(n.appIcon || named) >= 0 ? own : ""),
                 entry: n.desktopEntry || (e ? e.id : ""),
-                time: Date.now(),
+                time: same ? prev.time : Date.now(),
                 critical: n.urgency === NotificationUrgency.Critical
             }
             s.history = [row].concat(s.history.filter(h => h.uid !== row.uid)).slice(0, s.maxHistory)
