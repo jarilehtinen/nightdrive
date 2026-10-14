@@ -146,6 +146,8 @@ ShellRoot {
 
     PowerDialog {}
 
+    Drawer {}
+
     Shelf {}
 
     Launcher {

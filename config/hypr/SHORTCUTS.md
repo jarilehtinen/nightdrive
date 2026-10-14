@@ -43,8 +43,8 @@
   ⌘ Tab / ⌘ ⇧ Tab    Next / previous workspace
   3-finger swipe     Switch workspace
   4-finger swipe     Move window in the swipe direction
-  ⌘ S                Scratchpad workspace (toggle)
-  ⌘ ⌥ S              Move window to scratchpad
+  ⌘ D                Drawer: show / hide (slides up over the windows)
+  ⌘ S                Put the window in the drawer / take it back out
 
 ## Other
   ⌘ R                Screenshot of a region to the clipboard

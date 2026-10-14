@@ -109,7 +109,6 @@ hl.config({
 hl.curve("spaces", { type = "bezier", points = { {0.25, 1}, {0.5, 1} } })
 hl.animation({ leaf = "global",           enabled = false })
 hl.animation({ leaf = "workspaces",       enabled = true, speed = 3, bezier = "spaces", style = "slide" })
-hl.animation({ leaf = "specialWorkspace", enabled = false })   -- scratchpad stays instant
 -- Swapping windows (⌘⇧ + arrows, 4-finger swipe, the drawer) slides them quickly to their new places: the move animation
 -- is on only for the swap, so windows otherwise still switch instantly
 function NIGHTDRIVE_SWAP(dir, window)
@@ -117,6 +116,13 @@ function NIGHTDRIVE_SWAP(dir, window)
     hl.dispatch(hl.dsp.window.swap({ direction = dir, window = window }))
     hl.timer(function() hl.animation({ leaf = "windowsMove", enabled = false }) end, { timeout = 220, type = "oneshot" })
 end
+-- Drawer (⌘D, bindings.lua): slides up from the bottom over the windows, 90 % of the screen high, the rest dimmed
+hl.animation({ leaf = "specialWorkspace", enabled = true, speed = 3, bezier = "spaces", style = "slidevert" })
+hl.config({ decoration = { dim_special = 0.6, blur = { special = true } } })   -- dimmed and blurred behind the drawer
+local drawerTop = 98    -- 10 % of the screen height, so the drawer is 90 % high
+local mon = hl.get_monitors()[1]
+if mon then drawerTop = math.floor(mon.height / mon.scale * 0.1) end
+hl.workspace_rule({ workspace = "special:drawer", gaps_out = { top = drawerTop, right = 10, bottom = 10, left = 10 } })   -- the same 10 px gaps as other windows
 
 hl.config({
     dwindle = {

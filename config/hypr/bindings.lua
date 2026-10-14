@@ -142,9 +142,85 @@ end
 hl.bind(mod .. " + TAB",         hl.dsp.focus({ workspace = "e+1" }))
 hl.bind(mod .. " + SHIFT + TAB", hl.dsp.focus({ workspace = "e-1" }))
 
--- Scratchpad workspace
-hl.bind(mod .. " + S",         hl.dsp.workspace.toggle_special("scratch"))
-hl.bind(mod .. " + ALT + S",   hl.dsp.window.move({ workspace = "special:scratch" }))   -- (the Omarchy way; ⌘⇧S is Slack)
+-- Drawer: a special workspace that slides up over the windows (look in hyprland.lua)
+-- ⌘S puts the active window in the drawer, or takes it back out; ⌘D shows/hides the drawer
+-- A window remembers where it came from (until Hyprland reloads its config): ⌘S in the drawer takes it back to that
+-- workspace, a floating one to its old place and size, a tiled one next to the window now at its old place
+local drawerOrigin = {}   -- window address -> { ws, floating, x, y, w, h }
+-- ⌘S throws the window down off the screen before it goes into the drawer: it floats at its own place, slides down
+-- (only this move is animated, windows otherwise switch instantly) and is tiled again in the drawer
+hl.curve("throw", { type = "bezier", points = { {0.5, 0}, {0.75, 0} } })   -- ease in: speeds up as it falls
+local function drawer_throw(w)
+    local win = "address:" .. w.address
+    local x, y = xy(w.at)
+    local sw, sh = xy(w.size)
+    local tiled = not w.floating
+    drawerOrigin[w.address] = { ws = w.workspace.id, floating = w.floating, x = x, y = y, w = sw, h = sh }
+    if tiled then
+        hl.dispatch(hl.dsp.window.float({ action = "enable", window = win }))
+        hl.dispatch(hl.dsp.window.resize({ x = sw, y = sh, exact = true, window = win }))
+        hl.dispatch(hl.dsp.window.move({ x = x, y = y, exact = true, window = win }))
+    end
+    local m = w.monitor
+    hl.animation({ leaf = "windowsMove", enabled = true, speed = 3.5, bezier = "throw" })
+    hl.dispatch(hl.dsp.window.move({ x = x, y = math.floor(m.y + m.height / m.scale) + 20, exact = true, window = win }))
+    hl.timer(function()
+        hl.animation({ leaf = "windowsMove", enabled = false })
+        hl.dispatch(hl.dsp.window.move({ workspace = "special:drawer", follow = false, window = win }))
+        if tiled then hl.dispatch(hl.dsp.window.float({ action = "disable", window = win }))
+        else hl.dispatch(hl.dsp.window.center({ window = win })) end   -- a floating one: in the middle of the drawer
+    end, { timeout = 360, type = "oneshot" })
+end
+local function drawer_return(w)
+    local win = "address:" .. w.address
+    local o = drawerOrigin[w.address]
+    drawerOrigin[w.address] = nil
+    local target = o and hl.get_workspace(o.ws) and o.ws or w.monitor.active_workspace.id
+    hl.dispatch(hl.dsp.workspace.toggle_special("drawer"))   -- hide the drawer, the window is shown where it lands
+    hl.dispatch(hl.dsp.focus({ workspace = target }))
+    if o and not o.floating then
+        -- the tiled window at the old spot's centre gets split, so the window lands about where it was
+        local cx, cy = o.x + o.w / 2, o.y + o.h / 2
+        for _, t in ipairs(hl.get_workspace_windows(target) or {}) do
+            local tx, ty = xy(t.at)
+            local tw, th = xy(t.size)
+            if not t.floating and cx >= tx and cx < tx + tw and cy >= ty and cy < ty + th then
+                hl.dispatch(hl.dsp.focus({ window = "address:" .. t.address }))
+                break
+            end
+        end
+    end
+    hl.dispatch(hl.dsp.window.move({ workspace = target, window = win }))
+    if o and not o.floating then
+        -- the new half may be on the wrong side (dwindle puts it right/below): swap towards the old spot
+        local n = hl.get_window(win)
+        if n then
+            local nx, ny = xy(n.at)
+            local nw, nh = xy(n.size)
+            local dx, dy = (o.x + o.w / 2) - (nx + nw / 2), (o.y + o.h / 2) - (ny + nh / 2)
+            if math.max(math.abs(dx), math.abs(dy)) > 50 then
+                local dir = math.abs(dx) > math.abs(dy) and (dx < 0 and "left" or "right") or (dy < 0 and "up" or "down")
+                NIGHTDRIVE_SWAP(dir, win)
+            end
+        end
+    end
+    if o and o.floating then
+        hl.dispatch(hl.dsp.window.resize({ x = o.w, y = o.h, exact = true, window = win }))
+        hl.dispatch(hl.dsp.window.move({ x = o.x, y = o.y, exact = true, window = win }))
+    end
+    hl.dispatch(hl.dsp.focus({ window = win }))
+end
+local function drawer_send()
+    local w = hl.get_active_window()
+    if not w then return end
+    if w.workspace and w.workspace.name == "special:drawer" then
+        drawer_return(w)
+    else
+        drawer_throw(w)
+    end
+end
+hl.bind(mod .. " + S", drawer_send)
+hl.bind(mod .. " + D", hl.dsp.workspace.toggle_special("drawer"))   -- empty, it shows a hint (quickshell/Drawer.qml)
 
 -- Mouse: ⌘+drag moves, ⌘+right-drag resizes
 hl.bind(mod .. " + mouse:272", hl.dsp.window.drag(),   { mouse = true })
