@@ -91,6 +91,9 @@ update() {
     # Restarted: Quickshell doesn't watch a file that was missing when it started (e.g. the top bar's files before
     # this update linked them), and new QML types need a fresh start
     qs kill >/dev/null 2>&1; hyprctl dispatch 'hl.dsp.exec_cmd("qs")' >/dev/null
+    # hypridle reads its config only at start: restarted through hypr/scripts/idle, which writes it from the current
+    # template (before 14.10.2026 Hyprland ran plain hypridle, whose screensaver closed right away)
+    pkill -x hypridle || true; hyprctl dispatch "hl.dsp.exec_cmd(\"$HOME/.config/hypr/scripts/idle start\")" >/dev/null
   fi
   # The old top bar (before Quickshell drew it, 13.10.2026), also when updating over SSH. Quickshell reloads its own files.
   pkill -x waybar || true
