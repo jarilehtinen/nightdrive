@@ -102,9 +102,14 @@ hl.config({
         },
     },
     animations = {
-        enabled = false,   -- off on purpose: windows and workspaces switch instantly
+        enabled = true,   -- only the workspace slide is on (below); everything else stays instant
     },
 })
+-- Workspace switch slides like macOS Spaces, so a swipe finishes (or snaps back) smoothly after the fingers lift
+hl.curve("spaces", { type = "bezier", points = { {0.25, 1}, {0.5, 1} } })
+hl.animation({ leaf = "global",           enabled = false })
+hl.animation({ leaf = "workspaces",       enabled = true, speed = 3, bezier = "spaces", style = "slide" })
+hl.animation({ leaf = "specialWorkspace", enabled = false })   -- scratchpad stays instant
 
 hl.config({
     dwindle = {
@@ -146,6 +151,21 @@ hl.gesture({
     direction = "horizontal",
     action = "workspace",
 })
+-- A shorter swipe is enough to switch (defaults: half the way, or a fast flick)
+hl.config({
+    gestures = {
+        workspace_swipe_cancel_ratio     = 0.3,    -- switch after 30 % of the way across (default 0.5)
+        workspace_swipe_min_speed_to_force = 15,   -- a quick flick switches regardless of distance (default 30)
+    },
+})
+-- Four-finger swipe moves the window in the swipe direction (like ⌘⇧ + arrows)
+for _, dir in ipairs({ "left", "right", "up", "down" }) do
+    hl.gesture({
+        fingers = 4,
+        direction = dir,
+        action = function() hl.dispatch(hl.dsp.window.swap({ direction = dir })) end,
+    })
+end
 
 ------------------------
 ---- KEYBINDINGS → bindings.lua ----

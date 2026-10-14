@@ -42,6 +42,7 @@
   ⌘ ⇧ 1 … ⌘ ⇧ 0      Move window to workspace
   ⌘ Tab / ⌘ ⇧ Tab    Next / previous workspace
   3-finger swipe     Switch workspace
+  4-finger swipe     Move window in the swipe direction
   ⌘ S                Scratchpad workspace (toggle)
   ⌘ ⌥ S              Move window to scratchpad
 
