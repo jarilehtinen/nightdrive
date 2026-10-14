@@ -1,47 +1,95 @@
 #!/bin/bash
-# Headphone EQ (EasyEffects). Presets: config/easyeffects/output/*.json in the repo, linked into ~/.local/share/easyeffects/output (Off = no effects).
+# Headphone EQ (EasyEffects). Presets in ~/.local/share/easyeffects/output (Off = no effects):
+#   "<headphones> · <style>[ · <mode>]"  per headphones, made by config/easyeffects/build-presets from AutoEq measurements;
+#                                       <headphones> is part of the Bluetooth name (e.g. "VMK25", "AirPods Pro"), <mode> a
+#                                       listening mode other than noise cancelling (e.g. Transparency, Passive)
+#   "<style>"                           the generic ones (config/easyeffects/output) and any made in EasyEffects
+# The menu shows styles only (Neutral, Bass, …): the connected headphones' own, else the generic ones. Headphones measured
+# in several listening modes get them listed in the menu; the picked one is remembered per headphones.
 # The chosen preset is saved as the headphones' autoload profile, so EasyEffects always loads it when the headphones
 # connect, and the fallback preset Off for other devices (speakers).
-# Usage: eq current | list | info | set <preset> | toggle | disconnect   (info = JSON for the Quickshell headphones menu)
+# Usage: eq current | list | info | set <style> | toggle | anc <mode> | disconnect
+#        (info = JSON for the Quickshell headphones menu)
 dir=~/.local/share/easyeffects
-last=~/.local/state/eq-last          # last preset that was on (toggle restores it)
+last=~/.local/state/eq-last          # last style that was on (toggle restores it)
+ancdir=~/.local/state/nightdrive/anc # <sink>: the listening mode picked in the menu (none: Noise cancelling)
 
 sink_name() { pactl list short sinks 2>/dev/null | awk '$2 ~ /^bluez_output/ {print $2; exit}'; }
+description() { pactl -f json list sinks 2>/dev/null | jq -r --arg s "$1" '.[] | select(.name == $s) | .description'; }
 autoload_file() {   # EasyEffects: autoload/output/<node.name>:<active port description>.json
   local route
   route=$(pactl -f json list sinks 2>/dev/null | jq -r --arg s "$1" '.[] | select(.name == $s) | .active_port as $a | .ports[] | select(.name == $a) | .description')
   echo "$dir/autoload/output/$1:${route//\//_}.json"
 }
+presets() { for f in "$dir"/output/*.json; do basename "$f" .json; done; }
+# The headphones' own preset prefix: the longest "<name> · " whose name is part of the Bluetooth name (empty: none)
+headphones_key() {
+  local desc best="" k
+  desc=$(description "$1")
+  while read -r k; do
+    [[ -n $k && ${desc,,} == *"${k,,}"* && ${#k} -gt ${#best} ]] && best=$k
+  done < <(presets | grep -F ' · ' | sed 's/ · .*//' | sort -u)
+  echo "$best"
+}
+anc_mode() { cat "$ancdir/$1" 2>/dev/null || echo "Noise cancelling"; }
+# The headphones' listening modes: Noise cancelling (the main measurement) and the others measured
+anc_modes() { [[ -n $1 ]] && { echo "Noise cancelling"; presets | grep -F "$1 · " | awk -F ' · ' 'NF == 3 { print $3 }' | sort -u; }; }
+# Style -> the preset's full name for these headphones (and their listening mode)
+full_name() {
+  local s=$1 key=$2 style=$3 mode
+  [[ $style == Off ]] && { echo Off; return; }
+  if [[ -n $key && -f "$dir/output/$key · $style.json" ]]; then
+    mode=$(anc_mode "$s")
+    if [[ $mode != "Noise cancelling" && -f "$dir/output/$key · $style · $mode.json" ]]; then echo "$key · $style · $mode"; else echo "$key · $style"; fi
+  else
+    echo "$style"
+  fi
+}
 
 case ${1:-current} in
-  current)
+  current)   # the style (Neutral, Bass, …) or off
     s=$(sink_name); [[ -n $s ]] || exit 1
     p=$(jq -r '."preset-name" // empty' "$(autoload_file "$s")" 2>/dev/null)
+    [[ $p == *" · "*" · "* ]] && p=${p% · *}; p=${p##* · }
     [[ -z $p || $p == Off ]] && echo off || echo "$p" ;;
-  list)
-    for f in "$dir"/output/*.json; do n=$(basename "$f" .json); [[ $n != Off ]] && echo "$n"; done ;;
+  list)      # the connected headphones' styles, or the generic ones; presets made in EasyEffects too
+    s=$(sink_name); key=$([[ -n $s ]] && headphones_key "$s")
+    { if [[ -n $key ]]; then presets | grep -F "$key · " | awk -F ' · ' 'NF == 2 { print $2 }'
+        presets | grep -vF ' · ' | grep -vxF -e Off -e Bass -e Voice
+      else presets | grep -vF ' · ' | grep -vx Off; fi; } | sort -u ;;
   info)
     s=$(sink_name); [[ -n $s ]] || { echo '{}'; exit; }
+    key=$(headphones_key "$s")
     mac=$(sed -E 's/^bluez_output\.([0-9A-F_]+).*/\1/; s/_/:/g' <<<"$s")
     bat=$(bluetoothctl info "$mac" 2>/dev/null | grep -oP 'Battery Percentage:.*\(\K[0-9]+')
+    modes=$(anc_modes "$key")
     pactl -f json list sinks | jq -c --arg s "$s" --arg def "$(pactl get-default-sink)" --arg bat "$bat" \
-      --arg cur "$("$0" current)" --arg presets "$("$0" list)" \
+      --arg cur "$("$0" current)" --arg presets "$("$0" list)" --arg key "$key" --arg modes "$modes" --arg anc "$(anc_mode "$s")" \
       '.[] | select(.name == $s) | {sink: $s, name: .description, default: ($s == $def), battery: $bat,
-        codec: (.properties["api.bluez5.codec"] // "" | ascii_upcase), preset: $cur, presets: ($presets | split("\n") | map(select(. != "")))}' ;;
+        codec: (.properties["api.bluez5.codec"] // "" | ascii_upcase), preset: $cur, presets: ($presets | split("\n") | map(select(. != ""))),
+        tuned: ($key != ""), ancModes: ($modes | split("\n") | map(select(. != ""))), anc: $anc}' ;;
   set)
-    p=${2:?preset}; s=$(sink_name); [[ -n $s ]] || exit 1
+    style=${2:?style}; s=$(sink_name); [[ -n $s ]] || exit 1
+    p=$(full_name "$s" "$(headphones_key "$s")" "$style")
     f=$(autoload_file "$s"); mkdir -p "$(dirname "$f")"
-    desc=$(pactl -f json list sinks | jq -r --arg s "$s" '.[] | select(.name == $s) | .description')
-    jq -n --arg d "$s" --arg desc "$desc" --arg r "$(basename "$f" .json | cut -d: -f2-)" --arg p "$p" \
+    jq -n --arg d "$s" --arg desc "$(description "$s")" --arg r "$(basename "$f" .json | cut -d: -f2-)" --arg p "$p" \
       '{device:$d, "device-description":$desc, "device-profile":$r, "preset-name":$p}' > "$f"
-    [[ $p != Off ]] && { mkdir -p "$(dirname "$last")"; echo "$p" > "$last"; }
+    [[ $style != Off ]] && { mkdir -p "$(dirname "$last")"; echo "$style" > "$last"; }
     pgrep -x easyeffects >/dev/null || { easyeffects --service-mode -w >/dev/null 2>&1 & sleep 1; }
     easyeffects -b 2 >/dev/null 2>&1   # just in case: turn global bypass off
     # Load immediately only if the headphones are the default device now; otherwise autoload handles it on switching to them
     [[ $(pactl get-default-sink) == "$s" ]] && easyeffects -l "$p" >/dev/null 2>&1
     true ;;
   toggle)
-    if [[ $("$0" current) == off ]]; then "$0" set "$(cat "$last" 2>/dev/null || echo Neutral)"; else "$0" set Off; fi ;;
+    if [[ $("$0" current) == off ]]; then
+      p=$(cat "$last" 2>/dev/null); "$0" list | grep -qxF "$p" || p=$("$0" list | grep -x Neutral || "$0" list | head -1)
+      "$0" set "${p:-Off}"
+    else "$0" set Off; fi ;;
+  anc)       # the headphones' listening mode (Noise cancelling, Transparency, Passive …): the EQ switches to that measurement
+    mode=${2:?mode}; s=$(sink_name); [[ -n $s ]] || exit 1
+    if [[ $mode == "Noise cancelling" ]]; then rm -f "$ancdir/$s"; else mkdir -p "$ancdir"; echo "$mode" > "$ancdir/$s"; fi
+    cur=$("$0" current); [[ $cur != off ]] && "$0" set "$cur"
+    true ;;
   disconnect)   # the headphones' Bluetooth connection off (right click on the bar icon)
     s=$(sink_name); [[ -n $s ]] || exit 1
     bluetoothctl disconnect "$(sed -E 's/^bluez_output\.([0-9A-F_]+).*/\1/; s/_/:/g' <<<"$s")" >/dev/null ;;

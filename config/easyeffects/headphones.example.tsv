@@ -1,0 +1,12 @@
+# Headphones with their own EQ presets: copy to headphones.local.tsv (not in the repo) and list your own. build-presets
+# makes the presets from AutoEq measurements (github.com/jaakkopasanen/AutoEq, results/INDEX.md lists them).
+# Columns, separated by tabs:
+#   name     part of the headphones' Bluetooth name (e.g. "AirPods Pro" matches "Jari's AirPods Pro"); also the presets' prefix
+#   result   AutoEq result (results/<this>) with noise cancelling on, or the only measurement
+#   Mode=…   optional: other listening modes, e.g. Transparency=… and Passive=… (noise cancelling off); the headphones
+#            menu then lists Noise cancelling and these under Listening mode, and the EQ follows the one picked
+# After editing: config/easyeffects/build-presets
+# VMK25	Kuulokenurkka/over-ear/Valco VMK25 (wireless, ANC on)	Passive=Kuulokenurkka/over-ear/Valco VMK25 (wireless, ANC off)
+# WH-1000XM6	Kuulokenurkka/over-ear/Sony WH-1000XM6
+# AirPods Pro	crinacle/711 in-ear/Apple AirPods Pro 2 (ANC mode)	Transparency=crinacle/711 in-ear/Apple AirPods Pro 2 (transparency mode)	Passive=crinacle/711 in-ear/Apple AirPods Pro 2 (passive mode)
+# (examples above: remove the '# ' in your copy)

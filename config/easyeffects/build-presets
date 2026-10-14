@@ -1,0 +1,95 @@
+#!/usr/bin/env python3
+"""EQ presets per headphones, from AutoEq measurements.
+
+The list of headphones is headphones.local.tsv (not in the repo: everyone has their own headphones, a private overlay
+links it in; the format is in headphones.example.tsv). Their presets go straight to ~/.local/share/easyeffects/output.
+The generic Bass and Voice go to output/ in the repo (./link.sh links them).
+
+For each headphones (e.g. VMK25) and each style:
+  VMK25 · Neutral   the AutoEq correction (flat to the Harman target)
+  VMK25 · Bass      the correction + a bass shelf
+  VMK25 · Voice     the correction - bass + presence (podcasts, calls)
+and the same for each other listening mode measured (e.g. " · Transparency", " · Passive"). The generic Bass and Voice (the style
+alone, no correction) are for headphones not in the list. The preamp is computed from the combined response so that no
+frequency is boosted above 0 dB (no clipping).
+"""
+import json, math, re, sys, urllib.parse, urllib.request
+from pathlib import Path
+
+here = Path(__file__).resolve().parent
+generic_out = here / "output"
+personal_out = Path.home() / ".local/share/easyeffects/output"
+headphones = here / "headphones.local.tsv"
+AUTOEQ = "https://raw.githubusercontent.com/jaakkopasanen/AutoEq/master/results/"
+FS = 48000
+
+# Style = extra filters on top of the correction: (type, frequency, gain dB, q)
+STYLES = {
+    "Neutral": [],
+    "Bass":    [("Lo-shelf", 105, 5.5, 0.7)],
+    "Voice":   [("Lo-shelf", 105, -4.0, 0.7), ("Bell", 3000, 3.0, 0.9)],
+}
+TYPES = {"PK": "Bell", "LSC": "Lo-shelf", "HSC": "Hi-shelf"}
+
+
+def autoeq(result):
+    name = result.rsplit("/", 1)[1]
+    url = AUTOEQ + urllib.parse.quote(f"{result}/{name} ParametricEQ.txt")
+    text = urllib.request.urlopen(url, timeout=30).read().decode()
+    bands = []
+    for m in re.finditer(r"Filter \d+: ON (\w+) Fc ([\d.]+) Hz Gain (-?[\d.]+) dB Q ([\d.]+)", text):
+        bands.append((TYPES[m[1]], float(m[2]), float(m[3]), float(m[4])))
+    if not bands:
+        sys.exit(f"no filters in {url}")
+    return bands
+
+
+def response_db(band, f):
+    """Magnitude (dB) of one RBJ biquad (the shapes AutoEq and EasyEffects' APO mode use) at frequency f."""
+    kind, f0, gain, q = band
+    a = 10 ** (gain / 40); w0 = 2 * math.pi * f0 / FS; alpha = math.sin(w0) / (2 * q); c = math.cos(w0)
+    if kind == "Bell":
+        b = [1 + alpha * a, -2 * c, 1 - alpha * a]; d = [1 + alpha / a, -2 * c, 1 - alpha / a]
+    else:
+        s = 2 * math.sqrt(a) * alpha; sign = 1 if kind == "Lo-shelf" else -1
+        b = [a * ((a + 1) - sign * (a - 1) * c + s), sign * 2 * a * ((a - 1) - sign * (a + 1) * c), a * ((a + 1) - sign * (a - 1) * c - s)]
+        d = [(a + 1) + sign * (a - 1) * c + s, -sign * 2 * ((a - 1) + sign * (a + 1) * c), (a + 1) + sign * (a - 1) * c - s]
+    z = complex(math.cos(2 * math.pi * f / FS), -math.sin(2 * math.pi * f / FS))
+    h = (b[0] + b[1] * z + b[2] * z * z) / (d[0] + d[1] * z + d[2] * z * z)
+    return 20 * math.log10(abs(h))
+
+
+def preamp(bands):
+    freqs = [20 * (1000 ** (i / 400)) for i in range(401)]   # 20 Hz … 20 kHz
+    peak = max(sum(response_db(b, f) for b in bands) for f in freqs)
+    return -math.ceil(max(0.0, peak) * 10) / 10
+
+
+def preset(bands):
+    channel = {f"band{i}": {"type": t, "mode": "APO (DR)", "slope": "x1", "solo": False, "mute": False,
+                            "gain": g, "frequency": f, "q": q, "width": 4.0} for i, (t, f, g, q) in enumerate(bands)}
+    eq = {"bypass": False, "input-gain": preamp(bands), "output-gain": 0.0, "mode": "IIR", "decramp": "Off",
+          "split-channels": False, "balance": 0.0, "pitch-left": 0.0, "pitch-right": 0.0,
+          "num-bands": len(bands), "left": channel, "right": channel}
+    return {"output": {"blocklist": [], "plugins_order": ["equalizer#0"], "equalizer#0": eq}}
+
+
+def write(out, name, bands):
+    out.mkdir(parents=True, exist_ok=True)
+    (out / f"{name}.json").write_text(json.dumps(preset(bands), indent=2, ensure_ascii=False) + "\n")
+    print(name)
+
+
+for line in (headphones.read_text().splitlines() if headphones.exists() else []):
+    if not line.strip() or line.startswith("#"):
+        continue
+    key, *modes = line.split("\t")
+    for i, mode in enumerate(modes):
+        label, result = mode.split("=", 1) if "=" in mode else ("", mode)
+        suffix = "" if i == 0 else f" · {label}"   # the first measurement is the main one (noise cancelling), no suffix
+        correction = autoeq(result)
+        for style, extra in STYLES.items():
+            write(personal_out, f"{key} · {style}{suffix}", correction + extra)
+for style, extra in STYLES.items():
+    if extra:
+        write(generic_out, style, extra)

@@ -1,7 +1,8 @@
 import QtQuick
 import Quickshell
 
-// Headphones (shown in the bar only while Bluetooth headphones are connected): select as output and pick the EasyEffects EQ preset.
+// Headphones (shown in the bar only while Bluetooth headphones are connected): select as output and pick the EasyEffects EQ preset
+// (the connected headphones' own presets, see config/easyeffects/build-presets) and their noise cancelling state.
 // Info and changes: ~/.config/topbar/scripts/eq (info / set / toggle). The preset is saved as the headphones' autoload profile.
 Column {
     id: m
@@ -13,6 +14,16 @@ Column {
         "Neutral": { icon: "audio-lines", detail: "AutoEq" },
         "Bass":    { icon: "speaker",       detail: "more bass" },
         "Voice":   { icon: "speech",      detail: "podcasts, calls" }
+    })
+    readonly property var ancInfo: ({
+        "Noise cancelling": { icon: "ear-off" },
+        "Transparency":     { icon: "ear" },
+        "Passive":          { icon: "mic-audio-lines" }
+    })
+    // the measured modes, in the order above
+    readonly property var ancModes: (info.ancModes || []).slice().sort((a, b) => {
+        const k = Object.keys(ancInfo), ia = k.indexOf(a), ib = k.indexOf(b)
+        return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b)
     })
     property var info: ({})
     readonly property bool eqOn: !!info.preset && info.preset !== "off"
@@ -77,6 +88,27 @@ Column {
                 active: m.info.preset === modelData
                 checkIcon: active ? "check" : ""
                 onClicked: m.run(["set", active ? "Off" : modelData])   // clicking the selected one turns the EQ off
+            }
+        }
+    }
+    // The headphones' listening mode (noise cancelling, transparency …) can't be read over Bluetooth: picking it here tells the EQ which measurement
+    // to use (only for headphones measured in several modes, see config/easyeffects/headphones.example.tsv)
+    Divider { visible: m.ancModes.length > 1 }
+    MenuHeader { visible: m.ancModes.length > 1; width: parent.width; title: "Listening mode" }
+    Column {
+        visible: m.ancModes.length > 1
+        width: parent.width
+        spacing: 2
+        Repeater {
+            model: m.ancModes
+            delegate: MenuRow {
+                required property string modelData
+                width: parent.width
+                icon: (m.ancInfo[modelData] || { icon: "headphones" }).icon
+                label: modelData
+                active: m.info.anc === modelData
+                checkIcon: active ? "check" : ""
+                onClicked: if (!active) m.run(["anc", modelData])
             }
         }
     }
