@@ -1,0 +1,122 @@
+#!/usr/bin/python3 -I
+"""Software search for the launcher (Install › Software): Fedora's packages (dnf) and Flathub's apps in one list.
+  pkg-search <query>
+Output (JSON): { apps: [row], tools: [row] }, row = { name, summary, src: dnf|flatpak, id, icon, installed, alt }
+- apps: what has AppStream data (a desktop app). One app is one row even when both have it, matched by its AppStream id
+  (org.gnome.Calculator): Fedora's package first (it follows the GTK theme and updates with the system), Flathub's
+  then in alt ({ src, id }). What only Flathub has comes from there.
+- tools: Fedora packages without AppStream data (command-line tools), without libraries and development packages.
+Fedora's AppStream catalog (/usr/share/swcatalog) is read once into ~/.cache/nightdrive/swcatalog.json."""
+import glob, gzip, json, os, re, subprocess, sys
+import xml.etree.ElementTree as ET
+
+LANG = "{http://www.w3.org/XML/1998/namespace}lang"
+CACHE = os.path.expanduser("~/.cache/nightdrive/swcatalog.json")
+FEDORA_ICONS = "/usr/share/swcatalog/icons/fedora/64x64"
+MAX_APPS, MAX_TOOLS = 25, 20
+# Packages nobody installs by hand: libraries, development files, language modules, debug data
+NOT_TOOLS = re.compile(r"(^lib|-(devel|libs?|doc|docs|static|debuginfo|debugsource|tests?|common|data|headers|javadoc)$"
+                       r"|^(perl|python3|rust|golang|ghc|texlive|mingw\d*|R|php|nodejs|ocaml|lua|ruby|rubygem)-)")
+
+
+def appid(i):
+    return re.sub(r"\.desktop$", "", i or "").lower()
+
+
+def catalog():
+    """Fedora's AppStream catalog: pkgname → [appstream id, name, summary, icon file, keywords] (cached by mtime)"""
+    files = sorted(glob.glob("/usr/share/swcatalog/xml/*.xml.gz"))
+    stamp = [os.path.getmtime(f) for f in files]
+    try:
+        with open(CACHE) as fh:
+            c = json.load(fh)
+        if c.get("stamp") == stamp:
+            return c["pkgs"]
+    except (OSError, ValueError):
+        pass
+    pkgs = {}
+    for f in files:
+        try:
+            for _, el in ET.iterparse(gzip.open(f)):
+                if el.tag != "component":
+                    continue
+                pkg = el.findtext("pkgname")
+                if pkg and el.get("type") in ("desktop-application", "desktop", "console-application", "web-application"):
+                    own = lambda t: next((c.text or "" for c in el.findall(t) if c.get(LANG) is None), "")
+                    icon = next((i.text for i in el.findall("icon") if i.get("type") == "cached" and i.text), "")
+                    kw = " ".join(k.text or "" for k in el.findall("keywords/keyword") if k.get(LANG) is None)
+                    pkgs.setdefault(pkg, [el.findtext("id") or "", own("name").strip(), own("summary").strip(), icon, kw])
+                el.clear()
+        except (OSError, ET.ParseError):
+            continue
+    os.makedirs(os.path.dirname(CACHE), exist_ok=True)
+    with open(CACHE + ".tmp", "w") as fh:
+        json.dump({"stamp": stamp, "pkgs": pkgs}, fh)
+    os.replace(CACHE + ".tmp", CACHE)
+    return pkgs
+
+
+def main(q):
+    # The slow ones in parallel: dnf's and Flathub's search, and what's installed
+    dnf = subprocess.Popen(["dnf", "repoquery", "--available", "-q", "--latest-limit=1",
+                            "--queryformat", "%{name}|%{summary}\n", f"*{q}*"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+    fp = subprocess.Popen(["flatpak", "search", "--columns=application,name,description,remotes", q],
+                          stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+    rpms = subprocess.Popen(["rpm", "-qa", "--qf", "%{NAME}\n"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+    fpl = subprocess.Popen(["flatpak", "list", "--app", "--user", "--columns=application"],
+                           stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+    cat = catalog()
+
+    found = {}                                    # dnf: name → summary
+    for line in dnf.communicate()[0].splitlines():
+        name, _, summary = line.partition("|")
+        if name:
+            found.setdefault(name, summary)
+    # Apps whose name or keywords match but whose package name doesn't ("image" → loupe)
+    for pkg, (_, name, summary, _, kw) in cat.items():
+        if pkg not in found and (q in name.lower() or q in kw.lower()):
+            found[pkg] = summary
+    installed_rpm = set(rpms.communicate()[0].split())
+    installed_fp = set(fpl.communicate()[0].split())
+
+    apps, tools = {}, []
+    for pkg, summary in found.items():
+        if pkg in cat:
+            aid, name, asum, icon, _ = cat[pkg]
+            key = appid(aid) or pkg
+            if key in apps:
+                continue
+            path = os.path.join(FEDORA_ICONS, icon) if icon else ""
+            apps[key] = {"name": name or pkg, "summary": asum or summary, "src": "dnf", "id": pkg,
+                         "icon": path if path and os.path.exists(path) else "", "installed": pkg in installed_rpm, "alt": None}
+        elif not NOT_TOOLS.search(pkg):
+            tools.append({"name": pkg, "summary": summary, "src": "dnf", "id": pkg, "icon": "",
+                          "installed": pkg in installed_rpm, "alt": None})
+
+    fp_icons = glob.glob(os.path.expanduser("~/.local/share/flatpak/appstream/flathub/*/active/icons/64x64"))
+    # Flathub has runtimes and extensions too; only apps are installable on their own, and their ids don't look like these
+    skip = re.compile(r"^\S*\.(Platform|Sdk|BaseApp|Extension|Plugin|Plugins|Codecs|GL|Gtk3theme)(\.|$)")
+    for line in fp.communicate()[0].splitlines():
+        f = line.split("\t")
+        if len(f) < 4 or "flathub" not in f[3].split(",") or skip.search(f[0]):
+            continue
+        fid, name, desc = f[0], f[1], f[2]
+        key = appid(fid)
+        if key in apps:                           # Fedora has it too: Flathub's is the alternative
+            if apps[key]["src"] == "dnf" and not apps[key]["alt"]:
+                apps[key]["alt"] = {"src": "flatpak", "id": fid}
+            continue
+        icon = next((p for p in (os.path.join(d, fid + ".png") for d in fp_icons) if os.path.exists(p)), "")
+        apps[key] = {"name": name, "summary": desc, "src": "flatpak", "id": fid, "icon": icon,
+                     "installed": fid in installed_fp, "alt": None}
+
+    def rank(r):
+        n = r["name"].lower()
+        return (not n.startswith(q), q not in n, len(n), n)
+    return {"apps": sorted(apps.values(), key=rank)[:MAX_APPS], "tools": sorted(tools, key=rank)[:MAX_TOOLS]}
+
+
+if len(sys.argv) != 2:
+    print(__doc__.split("\n")[1], file=sys.stderr)
+    sys.exit(2)
+print(json.dumps(main(sys.argv[1].strip().lower())))

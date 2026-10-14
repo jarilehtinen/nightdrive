@@ -94,6 +94,11 @@ def keyvalues(output):
     return fields
 
 
+def source(repo):
+    """Where a package comes from, in words: Fedora's own repos are just "Fedora" """
+    return "Fedora" if repo in ("fedora", "updates", "updates-testing", "@System", "anaconda") else repo
+
+
 def dnf(name):
     installed = subprocess.run(["rpm", "-q", name], capture_output=True).returncode == 0
     f = keyvalues(run("dnf", "info", "-q", "--installed" if installed else "--available", name))
@@ -112,13 +117,16 @@ def dnf(name):
     rows = [
         ("Version", version + ("  (installed)" if installed else "")),
         ("Size", f.get("Installed size", "") + (f"  ·  download {f['Download size']}" if f.get("Download size") else "")),
-        ("Repository", f.get("Repository") or f.get("From repository", "")),
+        ("Source", source(f.get("Repository") or f.get("From repository", ""))),
         ("License", f.get("License", "")),
         ("Developer", a["developer"]),
         ("Homepage", f.get("URL") or a["homepage"]),
     ]
     return {
-        "name": f.get("Name", name), "summary": f.get("Summary", ""), "installed": installed,
+        # An app by its own name ("Calculator", not gnome-calculator), as in the search results
+        "name": (own(comp, "name")[0].text or "").strip() if comp is not None and own(comp, "name") else f.get("Name", name),
+        "summary": (own(comp, "summary")[0].text or "").strip() if comp is not None and own(comp, "summary") else f.get("Summary", ""),
+        "installed": installed,
         "icon": a["icon"], "screenshot": a["screenshot"],
         "paragraphs": a["paragraphs"] or [p for p in paras if p],
         "fields": [[k, v] for k, v in rows if v.strip()],
@@ -152,6 +160,7 @@ def flatpak(app):
     rows = [
         ("Version", f.get("Version", "") + ("  (installed)" if installed else "")),
         ("Size", size + (f"  ·  download {f['Download Size']}" if f.get("Download Size") and not installed else "")),
+        ("Source", "Flathub"),
         ("Developer", a["developer"]),
         ("License", f.get("License", "")),
         ("Runtime", f.get("Runtime", "")),

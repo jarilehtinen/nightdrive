@@ -10,8 +10,10 @@ import Quickshell.Widgets
 // ⌃Enter shows the selected app in Apps or hides it from there; a hidden app is still found by searching, and nothing is
 // uninstalled (your choice, ~/.local/state/nightdrive/apps.json).
 // Keybindings: read from ~/.config/hypr/SHORTCUTS.md (the same file as the ⌘⇧K cheat sheet).
-// Install › Package / Flatpak and Remove: Enter on a package opens its details in a wider card (hypr/scripts/pkg-info);
-// there Enter installs or removes it, Esc goes back to the results.
+// Install › Software: Fedora's packages and Flathub's apps in one search (hypr/scripts/pkg-search): apps first, one row per
+// app (Fedora's if both have it), then command-line tools. Install › Software and Remove: Enter on a row opens its details
+// in a wider card (hypr/scripts/pkg-info); there Enter installs or removes it, Tab takes the app from the other source,
+// Esc goes back to the results.
 PanelWindow {
     id: win
 
@@ -89,13 +91,14 @@ PanelWindow {
     property string extSource: ""             // shell.qml sets this when the file exists
     readonly property var ext: extLoader.item
     readonly property bool extLevel: ext !== null && ext.levels.indexOf(level) >= 0
-    readonly property var parents: Object.assign({ shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", package: "install", flatpak: "install", webapp: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "theme", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", baropacity: "topbar", baricons: "topbar", barhl: "topbar" }, ext ? ext.parents : {})
+    readonly property var parents: Object.assign({ shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", software: "install", webapp: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "theme", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", baropacity: "topbar", baricons: "topbar", barhl: "topbar" }, ext ? ext.parents : {})
     // Search found nothing: hint below ⌘⌥⏎ (icons) → send the text to Claude
     readonly property bool noHit: (level === "root" || level === "apps") && query.trim() !== "" && results.length === 0
     // The selected row is an app: ⌃Enter shows it in Apps (the list with an empty query) or hides it from there.
     // "Hide", not "remove": removing sounded like uninstalling.
     readonly property var selApp: { const c = results[list.currentIndex]; return (level === "apps" || level === "root") && c && c.kind === "app" ? c : null }
     readonly property string footer: detail !== null ? (detail.remove ? "Enter: remove" : detailInfo && detailInfo.installed ? "Already installed" : "Enter: install")
+                                                       + (detail.alt ? "  ·  Tab: get it from " + (detail.alt.src === "flatpak" ? "Flathub" : "Fedora") : "")
                                                        + "  ·  Esc: back"
         : selApp ? "Enter: open  ·  Ctrl+Enter: " + (selApp.shown ? "hide from Apps" : "show in Apps")
                                               + "  ·  Alt+Enter: " + (autostartIds.indexOf(appId(selApp)) >= 0 ? "don’t start at login" : "start at login")
@@ -125,7 +128,7 @@ PanelWindow {
 
     readonly property var titles: Object.assign({ apps: "Apps", music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", musicsearch: "Music › Search", artist: "Music › " + artist.name, keys: "Keybindings", screenshot: "Screenshot", settings: "Settings", display: "Settings › Display", startup: "Settings › Startup", screensaver: "Settings › Screensaver", saverafter: "Screensaver › Start after", screenoff: "Screensaver › Screen off after", saverstyle: "Screensaver › Style", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
                                      topbar: "Settings › Theme › Top bar", baropacity: "Theme › Top bar › Opacity", baricons: "Theme › Top bar › Icon colors", barhl: "Theme › Top bar › Highlight",
-                                     install: "Install", emoji: "Emoji", package: "Install › Package", flatpak: "Install › Flatpak", webapp: "Install › Webapp", webname: "Install › Webapp › Name", webaddr: "Install › Webapp › Address", remove: "Remove", power: "Power", passwords: "Passwords", clipboard: "Clipboard",
+                                     install: "Install", emoji: "Emoji", software: "Install › Software", webapp: "Install › Webapp", webname: "Install › Webapp › Name", webaddr: "Install › Webapp › Address", remove: "Remove", power: "Power", passwords: "Passwords", clipboard: "Clipboard",
                                      tools: "Tools" }, ext ? ext.titles : {})
 
     // Reference at startup: the app list only loads on first reference
@@ -170,8 +173,7 @@ PanelWindow {
             { kind: "action", name: "Full screen", glyph: "monitor", cmd: shot("full") }
         ],
         install: [
-            { kind: "nav", name: "Package", glyph: "package-plus", target: "package", summary: "dnf" },
-            { kind: "nav", name: "Flatpak", glyph: "store", target: "flatpak", summary: "apps from Flathub" },
+            { kind: "nav", name: "Software", glyph: "package-plus", target: "software", summary: "dnf + Flatpak" },
             { kind: "nav", name: "Webapp", glyph: "app-window", target: "webapp", summary: "website as an app" }
         ],
         webapp: [
@@ -236,6 +238,8 @@ PanelWindow {
               summary: barHl === "theme" ? "theme color" : (barHl || undefined) }
         ]
     }
+    readonly property var installAliases: ({ "Software": "package dnf rpm flatpak flathub app apps program store",
+                                             "Webapp": "web app website site pwa url" })
     readonly property var powerAliases: ({ "Lock": "screen", "Sleep": "suspend", "Log out": "logout sign out exit", "Restart": "reboot", "Shut down": "shutdown poweroff power off" })
 
     // 0 = starts with query, 1 = word start, 2 = contains, -1 = no match
@@ -319,6 +323,9 @@ PanelWindow {
                 statics.settings.map(t => ({ item: Object.assign({}, t, { from: "Settings" }), text: t.name, extra: "settings " + (settingsAliases[t.name] || "") })),
                 themeItems().map(t => ({ item: Object.assign({}, t, { from: "Theme", summary: undefined }), text: t.name, extra: "theme " + (settingsAliases[t.name] || "") })),
                 topbarItems().map(t => ({ item: Object.assign({}, t, { from: "Top bar", summary: undefined }), text: t.name, extra: settingsAliases[t.name] || "" })),
+                // Install's sub-items ("flatpak", "webapp", "flathub" → Flatpak)
+                statics.install.map(t => ({ item: Object.assign({}, t, { from: "Install", summary: undefined }), text: t.name,
+                                            extra: "install " + (installAliases[t.name] || "") })),
                 // Power actions ("shut" → Shut down)
                 statics.power.map(t => ({ item: t, text: t.name, extra: powerAliases[t.name] || "" })),
                 // Apps ("1pas" → 1Password), also one named like a root item (e.g. a webapp next to its menu): the APPS tag and
@@ -333,10 +340,9 @@ PanelWindow {
             if (q === "") all.sort((a, b) => a.text.localeCompare(b.text))
         } else if (level === "keys") {
             all = keyList.map(k => ({ item: { kind: "key", name: k.name, keys: k.keys, section: k.section }, text: k.name, extra: k.keys + " " + k.section }))
-        } else if (level === "package" || level === "flatpak") {
-            const what = level === "flatpak" ? "apps" : "packages"
-            if (q.replace(/[^a-z0-9._+\-]/g, "").length < 2) return [{ kind: "hint", name: "Type at least 2 characters to search " + what }]
-            if (installResults.length === 0) return [{ kind: "hint", name: installProc.running || flatpakProc.running ? "Searching…" : "No " + what + " found" }]
+        } else if (level === "software") {
+            if (q.replace(/[^a-z0-9._+\-]/g, "").length < 2) return [{ kind: "hint", name: "Type at least 2 characters to search apps and tools" }]
+            if (installResults.length === 0) return [{ kind: "hint", name: searchProc.running ? "Searching…" : "Nothing found" }]
             return installResults
         } else if (level === "emoji") {
             if (!emojiLoaded) return [{ kind: "hint", name: "Loading emoji…" }]
@@ -769,15 +775,19 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         }
     }
 
-    // Install: dnf or Flathub search while typing (300 ms delay), max 30 results
+    // Install › Software: search while typing (300 ms delay), hypr/scripts/pkg-search: { apps, tools }
     function sanitized() { return query.trim().toLowerCase().replace(/[^a-z0-9._+\-]/g, "") }
     function runSearch() {
         const q = sanitized()
         installQ = q
         if (q.length < 2) { installResults = []; return }
-        const proc = level === "flatpak" ? flatpakProc : installProc
-        proc.environment = { "Q": q }
-        proc.running = true
+        if (searchProc.running) return                 // the running one notices the query went stale and starts again
+        searchProc.command = [scripts + "/pkg-search", q]
+        searchProc.forQ = q
+        searchProc.running = true
+    }
+    function installCmd(src, id) {
+        return src === "flatpak" ? term('flatpak install --user flathub "$1"', id) : term('sudo dnf install "$1"', id)
     }
     // dnf repoquery output ("name|summary" per line) → [{ name, summary }]
     function parsePackages(text) {
@@ -789,45 +799,28 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         return out
     }
     onQueryChanged: {
-        if (level === "package" || level === "flatpak") { armed = ""; searchDelay.restart() }
+        if (level === "software") { armed = ""; searchDelay.restart() }
         if (level === "musicsearch" && query.trim() !== "") spotifyDelay.restart()
     }
     Timer { id: searchDelay; interval: 300; onTriggered: win.runSearch() }
     Sh {
-        id: installProc
-        script: 'dnf repoquery --available -q --latest-limit=1 --queryformat "%{name}|%{summary}\\n" "*$Q*" 2>/dev/null | head -80'
+        id: searchProc
+        property string forQ: ""
         onResult: text => {
-            if (win.level !== "package") return   // left the level while searching
-            const seen = {}, out = []
-            for (const p of win.parsePackages(text)) {
-                if (seen[p.name]) continue
-                seen[p.name] = true
-                out.push({ kind: "action", name: p.name, sub: p.summary, glyph: "package-plus", src: "dnf", id: p.name,
-                           cmd: win.term('sudo dnf install "$1"', p.name) })
-            }
-            const q = win.installQ
-            out.sort((a, b) => (b.name.startsWith(q) - a.name.startsWith(q)) || a.name.length - b.name.length || a.name.localeCompare(b.name))
-            win.installResults = out.slice(0, 30)
-            if (win.level === "package" && win.sanitized() !== win.installQ) win.runSearch()   // the query went stale meanwhile
-        }
-    }
-    // Flathub has runtimes and extensions too; only apps are installable on their own, and their ids don't look like these
-    Sh {
-        id: flatpakProc
-        script: 'flatpak search --columns=application,name,description,remotes "$Q" 2>/dev/null | grep -P "\\tflathub" | grep -vE "^\\S*\\.(Platform|Sdk|BaseApp|Extension|Plugin|Plugins|Codecs|GL|Gtk3theme)(\\.|\\s)" | head -80'
-        onResult: text => {
-            if (win.level !== "flatpak") return
+            if (win.level !== "software") return          // left the level while searching
+            if (win.sanitized() !== forQ) { win.runSearch(); return }
+            let r
+            try { r = JSON.parse(text) } catch (e) { win.installResults = []; return }
+            const row = (p, glyph) => ({ kind: "action", name: p.name, sub: p.summary, iconFile: p.icon || undefined,
+                                         glyph: p.icon ? undefined : glyph, src: p.src, id: p.id, alt: p.alt,
+                                         summary: p.installed ? "installed" : undefined, cmd: win.installCmd(p.src, p.id) })
             const out = []
-            for (const line of text.split("\n")) {
-                const [id, name, desc] = line.split("\t")
-                if (!name) continue
-                out.push({ kind: "action", name: name, sub: desc + "  ·  " + id, glyph: "store", src: "flatpak", id: id,
-                           cmd: win.term('flatpak install --user flathub "$1"', id) })
-            }
-            const q = win.installQ
-            out.sort((a, b) => (b.name.toLowerCase().startsWith(q) - a.name.toLowerCase().startsWith(q)))
-            win.installResults = out.slice(0, 30)
-            if (win.sanitized() !== win.installQ) win.runSearch()
+            if (r.apps.length) out.push({ kind: "header", name: "Apps" })
+            for (const p of r.apps) out.push(row(p, "package-plus"))
+            if (r.tools.length) out.push({ kind: "header", name: "Command-line tools" })
+            for (const p of r.tools) out.push(row(p, "terminal"))
+            win.installResults = out
+            list.currentIndex = win.firstSelectable()
         }
     }
     // Install / Remove: a package's details (hypr/scripts/pkg-info). The results stay as they were behind them.
@@ -846,6 +839,12 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         if (!detail.remove && detailInfo && detailInfo.installed) { shake.restart(); return }
         win.open = false
         Quickshell.execDetached(detail.cmd)
+    }
+    // Tab in the details: the same app from the other source (Fedora ↔ Flathub)
+    function detailSwitch() {
+        const a = detail.alt
+        if (!a) { shake.restart(); return }
+        showDetail(Object.assign({}, detail, { src: a.src, id: a.id, alt: { src: detail.src, id: detail.id }, cmd: installCmd(a.src, a.id) }))
     }
     function detailScroll(dy) {
         detailView.contentY = Math.max(0, Math.min(detailView.contentHeight - detailView.height, detailView.contentY + dy))
@@ -1213,13 +1212,15 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                     font { family: Theme.font; pixelSize: win.fontSize + 2; weight: win.fontWeight }
                     focus: true
                     clip: true
-                    onTextChanged: { win.query = text; win.armed = ""; win.playerFocused = false; list.currentIndex = win.firstSelectable() }
+                    onTextChanged: { if (win.detail !== null) { win.detail = null; win.detailInfo = null }   // a new search (IPC setQuery)
+                                     win.query = text; win.armed = ""; win.playerFocused = false; list.currentIndex = win.firstSelectable() }
                     Keys.onPressed: event => {
                         const ctrl = event.modifiers & Qt.ControlModifier
                         if (win.playerFocused && win.handlePlayerKey(event)) { event.accepted = true; return }
                         if (win.detail !== null) {         // details: Enter installs / removes, arrows scroll, typing does nothing
                             if (event.key === Qt.Key_Escape || event.key === Qt.Key_Backspace) win.back()
                             else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) win.detailConfirm()
+                            else if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) win.detailSwitch()
                             else if (event.key === Qt.Key_Down || (ctrl && (event.key === Qt.Key_N || event.key === Qt.Key_J))) win.detailScroll(win.rowHeight)
                             else if (event.key === Qt.Key_Up || (ctrl && (event.key === Qt.Key_P || event.key === Qt.Key_K))) win.detailScroll(-win.rowHeight)
                             else if (event.key === Qt.Key_PageDown || event.key === Qt.Key_Space) win.detailScroll(detailView.height - win.rowHeight)
@@ -1293,10 +1294,11 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                         width: win.iconSize; height: win.iconSize
                         Image {
                             anchors.fill: parent
-                            visible: row.modelData.kind === "app" && row.modelData.glyph === undefined && source !== ""
+                            visible: (row.modelData.kind === "app" || row.modelData.iconFile !== undefined) && row.modelData.glyph === undefined && source !== ""
                             sourceSize: Qt.size(win.iconSize * 2, win.iconSize * 2)
                             fillMode: Image.PreserveAspectFit
-                            source: row.modelData.kind === "app" ? Quickshell.iconPath(row.modelData.icon, true) : ""
+                            source: row.modelData.iconFile !== undefined ? "file://" + row.modelData.iconFile    // Install › Software
+                                  : row.modelData.kind === "app" ? Quickshell.iconPath(row.modelData.icon, true) : ""
                         }
                         Text {
                             anchors.centerIn: parent
@@ -1412,7 +1414,8 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                             Image {
                                 id: headImg
                                 anchors.fill: parent
-                                source: detailView.info && detailView.info.icon ? "file://" + detailView.info.icon : ""
+                                source: detailView.info && detailView.info.icon ? "file://" + detailView.info.icon
+                                      : detailView.pkg.iconFile ? "file://" + detailView.pkg.iconFile : ""
                                 sourceSize: Qt.size(128, 128)
                                 fillMode: Image.PreserveAspectFit
                             }
