@@ -249,14 +249,24 @@ done; true'
         onClicked: m.forget(m.activeSsid)
     }
 
-    Text {
+    // The two status lines sit in the middle between the lines above and below them: the line above has 2 px under it,
+    // the one below 11 px over it (Divider), hence 9 px more on top
+    Item {      // the dots at the right edge, like the toggle above them
         visible: m.wifiOn && m.nets.length === 0
-        text: "Searching for networks…"
-        color: Theme.dim
-        font { family: Theme.font; pixelSize: 12 }
+        width: parent.width
+        height: searching.height
+        Text {
+            id: searching
+            topPadding: 9
+            text: "Searching for networks"
+            color: Theme.dim
+            font { family: Theme.font; pixelSize: 12 }
+        }
+        BusyDots { anchors.right: parent.right; y: 9 + (searching.height - 9 - height) / 2 + 1 }
     }
     Text {
         visible: !m.wifiOn
+        topPadding: 9
         text: "Wifi is off"
         color: Theme.dim
         font { family: Theme.font; pixelSize: 12 }
