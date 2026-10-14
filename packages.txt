@@ -36,6 +36,8 @@ google-noto-sans-fonts
 google-noto-sans-mono-fonts
 google-noto-color-emoji-fonts
 xdg-desktop-portal-gtk
+# Secret Service for apps that store passwords (Tuba, VS Code, ...). greetd's PAM unlocks the "login" keyring at login
+gnome-keyring
 vulkan-tools
 tuned-ppd
 # Used by the scripts (wallpaper previews, the file picker) but only pulled in by KDE: listed (install.sh marks them
