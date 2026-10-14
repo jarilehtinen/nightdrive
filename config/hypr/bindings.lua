@@ -159,7 +159,7 @@ hl.bind("XF86MonBrightnessUp",   hl.dsp.exec_cmd(scripts .. "/brightness screen 
 hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd(scripts .. "/brightness screen down"), { locked = true, repeating = true })   -- F1
 hl.bind(mod .. " + XF86MonBrightnessUp",   hl.dsp.exec_cmd(scripts .. "/brightness kbd up"),   { locked = true, repeating = true })   -- ⌘F2: keyboard backlight (steps of ten)
 hl.bind(mod .. " + XF86MonBrightnessDown", hl.dsp.exec_cmd(scripts .. "/brightness kbd down"), { locked = true, repeating = true })   -- ⌘F1
-hl.bind("XF86Sleep", hl.dsp.exec_cmd(scripts .. "/dnd"), { locked = true })   -- F6 (Apple keyboard sends KEY_SLEEP): do not disturb (mako mode + toast); logind must be set to ignore the key, see config/system/logind-ignore-sleep-key.conf
+hl.bind("XF86Sleep", hl.dsp.exec_cmd(scripts .. "/dnd"), { locked = true })   -- F6 (Apple keyboard sends KEY_SLEEP): do not disturb (Quickshell notifications + toast); logind must be set to ignore the key, see config/system/logind-ignore-sleep-key.conf
 hl.bind("XF86AudioNext",  hl.dsp.exec_cmd("playerctl next"),       { locked = true })
 hl.bind("XF86AudioPause", hl.dsp.exec_cmd("playerctl pause"),      { locked = true })   -- always pause, never toggle: Bluetooth headphones send PAUSE when taken off
 hl.bind("XF86AudioPlay",  hl.dsp.exec_cmd(scripts .. "/media-play"), { locked = true })   -- F8: play/pause, or starts Deck if no player is open

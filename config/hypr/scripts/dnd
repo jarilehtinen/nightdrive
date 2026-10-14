@@ -1,8 +1,5 @@
 #!/bin/bash
-# Do not disturb toggle (F6): mako's do-not-disturb mode hides notifications (they stay in the history: makoctl history).
-if makoctl mode | grep -qx do-not-disturb; then
-  makoctl mode -r do-not-disturb >/dev/null; state=false
-else
-  makoctl mode -a do-not-disturb >/dev/null; state=true
-fi
+# Do not disturb toggle (F6): Quickshell's notification server (quickshell/Notifs.qml) stops showing popups; they still go
+# into the history (the bar's notification menu).
+state=$(qs ipc call notifications toggleDnd)
 qs ipc call osd dnd "$state"

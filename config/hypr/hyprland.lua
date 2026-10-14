@@ -42,10 +42,9 @@ end
 hl.on("hyprland.start", function ()
     -- graphical-session.target for xdg-desktop-portal (config/systemd/user); restart: fresh environment after a re-login
     hl.exec_cmd("systemctl --user restart nightdrive-session.target")
-    -- Theme colours (~/.cache/nightdrive, hypr/scripts/theme) first: Quickshell (the top bar and its menus) and mako read
-    -- them on startup. mako runs as its systemd unit: graphical-session.target and D-Bus activation start that unit too,
-    -- so a plain `mako &` raced it and left mako.service failed.
-    hl.exec_cmd("sh -c '\"$HOME/.config/hypr/scripts/theme\" apply; qs & exec systemctl --user restart mako'")
+    -- Theme colours (~/.cache/nightdrive, hypr/scripts/theme) first: Quickshell (the top bar, its menus and the notifications)
+    -- reads them on startup
+    hl.exec_cmd("sh -c '\"$HOME/.config/hypr/scripts/theme\" apply; exec qs'")
     hl.exec_cmd(HOME .. "/.config/hypr/scripts/autostart")   -- the user's login apps (launcher › Settings › Startup; 1Password by default)
     hl.exec_cmd(HOME .. "/.config/hypr/scripts/wallpaper restore")   -- swaybg with the remembered wallpaper (change: launcher › Settings › Background)
     hl.exec_cmd("env PATH=" .. HOME .. "/.local/bin:" .. os.getenv("PATH") .. " " .. HOME .. "/.local/bin/voxtype-onnx daemon")   -- speech to text (F5), Parakeet
@@ -216,6 +215,16 @@ hl.window_rule({
     name  = "telegram",
     match = { class = "^org\\.telegram\\.desktop$" },
     suppress_event = "activate activatefocus",
+})
+
+-- Notifications (quickshell/NotificationPopups.qml): what's behind the translucent cards is blurred. ignore_alpha: only
+-- where a card is (not the gaps between them or the rounded corners' outside)
+-- The bar's menus too (shell.qml): the notification menu is cards like the popups; the other menus are opaque
+hl.layer_rule({
+    name  = "notifications-blur",
+    match = { namespace = "^nightdrive-(notifications|menu)$" },
+    blur  = true,
+    ignore_alpha = 0.1,
 })
 
 -- Thunderbird: slightly translucent (values: active, inactive)

@@ -1,104 +1,107 @@
 import QtQuick
 import Quickshell
 
-// Hamburger menu: notifications (mako's history + do-not-disturb toggle), ⌘Esc / F3.
+// Hamburger menu: notifications (Notifs.qml's history + do-not-disturb toggle), ⌘Esc / F3.
+// A bare menu (shell.qml draws no card around it): a bar with the title and the controls, then each notification as its
+// own card, the same as the popups (NotificationCard.qml) and in the same place, so one is easy to find again.
+// Click = open the app, × or right click = remove it, Clear = remove all.
 // The power actions (lock, suspend, log out, reboot, shut down) live in the launcher (⌘Space › Power).
-// Notifications: `makoctl history -j` (summary, app and body text; mako doesn't store a timestamp). "Clear" doesn't empty mako's
-// history; it stores the id of the latest notification (~/.cache/qs-notif-cleared) and everything older is hidden.
-// Mako's ids restart from 1 when mako restarts, so the file also stores mako's PID and is ignored when the PID has changed.
 Column {
     id: m
-    width: parent ? parent.width : 300
-    spacing: 4
 
-    property var items: []             // [{ id, summary, app }], newest first
-    property int clearedId: 0
-    property bool dnd: false
+    // --- Tunables ---
+    readonly property int maxListHeight: 620   // then the list scrolls
+    readonly property real bgOpacity: 0.85     // the same as the popups (NotificationPopups.qml)
+
+    readonly property bool bare: true
+    readonly property int preferredWidth: 300   // the popups' width
+    width: parent ? parent.width : 300
+    spacing: 10                                 // the popups' gap
+
     signal close()
 
-    readonly property string clearedFile: Quickshell.env("HOME") + "/.cache/qs-notif-cleared"
-    readonly property var visibleItems: items.filter(n => n.id > clearedId).slice(0, 6)
+    Component.onCompleted: Notifs.now = Date.now()     // fresh "min ago" when the menu opens
 
-    function parse(t) {
-        try {
-            return JSON.parse(t).map(n => ({ id: n.id, summary: n.summary || "", app: n.app_name || "", entry: n.desktop_entry || "",
-                                            body: (n.body || "").replace(/<[^>]*>/g, "").trim() }))
-        } catch (e) { return [] }
-    }
-    function refresh() { histProc.running = true; modeProc.running = true }
-    Component.onCompleted: { clearedProc.running = true; refresh() }
-
-    Sh { id: clearedProc; command: ["bash", "-c", 'read -r p i < "$1" && [ "$p" = "$(pgrep -o -x mako)" ] && echo "$i"', "_", m.clearedFile]; onResult: t => { m.clearedId = parseInt(t) || 0 } }
-    Sh { id: histProc; command: ["makoctl", "history", "-j"]; onResult: t => { m.items = m.parse(t) } }
-    Sh { id: modeProc; command: ["makoctl", "mode"]; onResult: t => { m.dnd = t.indexOf("do-not-disturb") >= 0 } }
-    Timer { id: after; interval: 300; onTriggered: m.refresh() }
-
-    // Toggle on = notifications are shown; off = do not disturb (mako mode do-not-disturb)
-    MenuHeader {
-        width: parent.width; title: "Notifications"
-        showToggle: true; checked: !m.dnd
-        onToggled: { Quickshell.execDetached([Quickshell.env("HOME") + "/.config/hypr/scripts/dnd"]); after.restart() }
-    }
-    Divider { pad: 7 }
-
-    Repeater {
-        model: m.visibleItems
+    // Toggle on = notifications are shown; off = do not disturb (hypr/scripts/dnd: also shows the OSD). Clear next to it.
+    Rectangle {
+        width: parent.width
+        height: 46
+        radius: 4
+        color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, m.bgOpacity)
+        MenuHeader {
+            id: header
+            anchors { left: parent.left; right: parent.right; leftMargin: 17; rightMargin: 17; verticalCenter: parent.verticalCenter }
+            title: "Notifications"
+            showToggle: true; checked: !Notifs.dnd
+            onToggled: Quickshell.execDetached([Quickshell.env("HOME") + "/.config/hypr/scripts/dnd"])
+        }
         Rectangle {
-            required property var modelData
-            width: m.width
-            height: lines.implicitHeight + 14
-            radius: 5
-            color: rowArea.containsMouse ? Theme.hover : "transparent"
+            id: clear
+            // keyboard navigation (shell.qml: ⌘⇧Space, arrows): a row the menu can select
+            property bool navSelected: false
+            readonly property bool navEnabled: Notifs.history.length > 0
+            function navActivate() { Notifs.history = [] }
+            readonly property bool on: Notifs.history.length > 0
+            readonly property bool lit: on && (clearArea.containsMouse || navSelected)
+            anchors { right: parent.right; rightMargin: 61; verticalCenter: parent.verticalCenter }   // left of the toggle (17 + 34 + 10)
+            width: clearText.implicitWidth + 18; height: 20; radius: 10
+            color: lit ? Theme.sel : "transparent"
+            border.width: 1
+            border.color: lit ? Theme.primary : Theme.border
+            opacity: on ? 1 : 0.4
+            Text {
+                id: clearText
+                anchors.centerIn: parent
+                text: "CLEAR"
+                color: clear.lit ? Theme.accent : Theme.dim
+                font { family: Theme.font; pixelSize: 9; letterSpacing: 0.8 }
+            }
             MouseArea {
-                id: rowArea
+                id: clearArea
                 anchors.fill: parent
                 hoverEnabled: true
+                enabled: clear.on
                 cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                    Quickshell.execDetached([Quickshell.env("HOME") + "/.config/hypr/scripts/focus-app", modelData.app, modelData.entry])
-                    m.close()
-                }
+                onClicked: clear.navActivate()
             }
-            Column {
-                id: lines
-                anchors { left: parent.left; right: parent.right; leftMargin: 10; rightMargin: 10; verticalCenter: parent.verticalCenter }
-                spacing: 2
-                Text {
-                    width: parent.width
-                    text: modelData.app.toUpperCase(); elide: Text.ElideRight; color: Theme.primary
-                    font { family: Theme.font; pixelSize: 9; weight: Font.Light; letterSpacing: 0.6 }
-                }
-                Text {
-                    width: parent.width
-                    text: modelData.summary; elide: Text.ElideRight; color: Theme.text
-                    font { family: Theme.font; pixelSize: 13 }
-                }
-                Text {
-                    visible: modelData.body !== ""
-                    width: parent.width
-                    text: modelData.body; color: Theme.dim; wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight
-                    font { family: Theme.font; pixelSize: 11 }
+        }
+    }
+
+    Flickable {
+        id: flick
+        visible: Notifs.history.length > 0
+        width: parent.width
+        height: Math.min(cards.implicitHeight, m.maxListHeight)
+        contentHeight: cards.implicitHeight
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+        TouchScroll { view: flick; step: 60 }
+        Column {
+            id: cards
+            width: flick.width
+            spacing: 10
+            Repeater {
+                model: Notifs.history
+                NotificationCard {
+                    required property var modelData
+                    row: modelData
+                    width: cards.width
+                    color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, m.bgOpacity)
+                    onActivated: { Notifs.openApp(modelData); m.close() }
+                    onDismissed: Notifs.forget(modelData.uid)
                 }
             }
         }
     }
-    Text {
-        visible: m.visibleItems.length === 0
-        width: parent.width; height: 30; leftPadding: 10; verticalAlignment: Text.AlignVCenter
-        text: "No notifications"; color: Theme.dim
-        font { family: Theme.font; pixelSize: 12 }
-    }
-    Divider {}
-    MenuRow {
-        // always visible; greyed out and not clickable when there are no notifications
-        enabled: m.visibleItems.length > 0
-        opacity: enabled ? 1 : 0.4
-        width: parent.width; icon: "trash-2"; action: true; label: "Clear"
-        onClicked: {
-            if (!enabled) return
-            const top = m.items.length ? m.items[0].id : m.clearedId
-            Quickshell.execDetached(["bash", "-c", 'mkdir -p "$(dirname "$2")"; printf "%s %s\\n" "$(pgrep -o -x mako)" "$1" > "$2"', "_", String(top), m.clearedFile])
-            m.clearedId = top
+    Rectangle {
+        visible: Notifs.history.length === 0
+        width: parent.width; height: 46
+        radius: 4
+        color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, m.bgOpacity)
+        Text {
+            anchors { left: parent.left; leftMargin: 17; verticalCenter: parent.verticalCenter }
+            text: "No notifications"; color: Theme.dim
+            font { family: Theme.font; pixelSize: 12 }
         }
     }
 }

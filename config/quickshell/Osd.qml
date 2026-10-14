@@ -5,7 +5,7 @@ import Quickshell.Wayland
 
 // Toast at the top: volume, screen or keyboard brightness, do not disturb and mic mute.
 // The keybinding runs:  qs ipc call osd volume | brightness | kbd | dnd | mic
-// (called only after wpctl / brightnessctl / makoctl, so this just reads the current state).
+// (called only after wpctl / brightnessctl / the dnd toggle, so this just reads the current state).
 Scope {
     id: osd
     property real volume: 0

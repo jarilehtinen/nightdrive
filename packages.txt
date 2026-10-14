@@ -3,7 +3,6 @@ kitty
 firefox
 tailscale
 quickshell
-mako
 fuzzel
 swaybg
 wl-clipboard

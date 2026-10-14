@@ -140,6 +140,8 @@ ShellRoot {
 
     Osd {}
 
+    NotificationPopups {}
+
     Picker {}
 
     Shelf {}
@@ -157,6 +159,7 @@ ShellRoot {
         color: "transparent"
         exclusionMode: ExclusionMode.Ignore
         WlrLayershell.layer: WlrLayer.Overlay
+        WlrLayershell.namespace: "nightdrive-menu"   // hyprland.lua blurs behind a bare menu's translucent cards
         // Keyboard focus only for the wifi menu (password field): with OnDemand a second click on the top bar
         // was lost until the mouse was moved.
         WlrLayershell.keyboardFocus: root.navMode && !root.viaSubmap ? WlrKeyboardFocus.Exclusive : (root.current === "wifi" ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None)
@@ -167,14 +170,16 @@ ShellRoot {
 
         Rectangle {
             id: card
-            anchors { top: parent.top; topMargin: 6 }
+            // A bare menu (property bare: true, e.g. NotificationsMenu) draws its own cards: no background or padding here
+            readonly property bool bare: loader.item ? loader.item.bare === true : false
+            anchors { top: parent.top; topMargin: card.bare ? 10 : 6 }
             width: loader.item && loader.item.preferredWidth ? loader.item.preferredWidth : 320   // a menu can request a wider card
             // Center below the icon, but keep a 10 px margin from the screen edges
             x: root.anchorX < 0 ? parent.width - width - 10
                                 : Math.max(10, Math.min(parent.width - width - 10, root.anchorX - width / 2))
-            height: loader.item ? loader.item.implicitHeight + 26 : 0   // 10 px top and 16 px bottom margin
+            height: loader.item ? loader.item.implicitHeight + (bare ? 0 : 26) : 0   // 10 px top and 16 px bottom margin
             radius: 10
-            color: Theme.bg
+            color: bare ? "transparent" : Theme.bg
             border.width: 0   // no border (the dividers inside the menu stay)
             Keys.onEscapePressed: root.current = ""
 
@@ -182,7 +187,8 @@ ShellRoot {
 
             Loader {
                 id: loader
-                anchors { top: parent.top; left: parent.left; right: parent.right; leftMargin: 16; rightMargin: 16; topMargin: 10 }
+                anchors { top: parent.top; left: parent.left; right: parent.right; leftMargin: card.bare ? 0 : 16; rightMargin: card.bare ? 0 : 16
+                          topMargin: card.bare ? 0 : 10 }
                 source: root.current === "" ? ""
                       : (root.localMenus.indexOf(root.current) >= 0 ? "local/" : "") + root.current.charAt(0).toUpperCase() + root.current.slice(1) + "Menu.qml"
             }

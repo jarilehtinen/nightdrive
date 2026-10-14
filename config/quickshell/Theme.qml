@@ -21,6 +21,7 @@ Singleton {
     readonly property color border:  c.border  || "#3a2f45"
     readonly property color text:    c.text    || "#c9bdd3"
     readonly property color dim:     c.dim     || "#9486a3"
+    readonly property color muted:   c.muted   || "#aea3b5"       // notification text
     readonly property color accent:  c.accent  || "#e0bff2"       // selected text and icons
     readonly property color primary: c.primary || "#c071eb"       // borders and highlights (the theme's main colour)
     readonly property color danger:  "#f7768e"                    // state colours (Tokyo Night red / orange / green); the theme doesn't change them

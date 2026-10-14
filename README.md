@@ -86,7 +86,7 @@ The top bar's opacity, icon colours and highlight colour are all settings in the
 | Dictation | [Voxtype](https://github.com/peteonrails/voxtype) (Parakeet) | F5 / Fn push-to-talk, recording card on screen |
 | Network | NetworkManager, BlueZ, [Tailscale](https://tailscale.com) | Wi-Fi, Bluetooth and Tailscale menus |
 | Audio | PipeWire, [EasyEffects](https://github.com/wwmm/easyeffects) | output switching, EQ presets for headphones |
-| Notifications | [mako](https://github.com/emersion/mako) | notification history and do not disturb in the bar |
+| Notifications | Quickshell | app icon and time on every notification, history and do not disturb in the bar |
 | Files and images | Nautilus, Loupe | images open in Loupe, a simple viewer like Preview |
 | Markdown | [Apostrophe](https://apps.gnome.org/Apostrophe/) (Flatpak) | `.md` files open in it, themed editor |
 | Messaging | [Telegram Desktop](https://desktop.telegram.org) (Flatpak) | native Wayland app |
@@ -210,7 +210,7 @@ The full list is in [`config/hypr/SHORTCUTS.md`](config/hypr/SHORTCUTS.md).
 - The menus use ordinary command-line tools such as `wpctl`, `nmcli`, `bluetoothctl`, `upower`, `tailscale`, `cliphist` and `dnf`.
   There are no daemons of their own.
 - The theme script (`config/hypr/scripts/theme`) derives every shade from one colour. It writes a small file for Quickshell,
-  mako, fuzzel and hyprlock, then reloads them.
+  fuzzel and hyprlock, then reloads them.
 - Deck writes its playing state to a small JSON file. The bar, the music menu and the launcher read that file.
 
 ## Good to know

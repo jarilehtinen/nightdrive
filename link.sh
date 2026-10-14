@@ -13,7 +13,7 @@ link() {
   echo "linked      $dst -> $src"
 }
 
-for d in hypr topbar mako fuzzel kitty quickshell screensaver; do
+for d in hypr topbar fuzzel kitty quickshell screensaver; do
   link "$repo/config/$d" "$HOME/.config/$d"
 done
 # Waybar drew the top bar until 13.10.2026; its config is gone from the repo (a leftover config/waybar only holds
@@ -21,6 +21,10 @@ done
 [[ -L $HOME/.config/waybar && $(readlink "$HOME/.config/waybar") == "$repo/config/waybar" ]] && rm "$HOME/.config/waybar" && echo "removed     $HOME/.config/waybar"
 # The top bar used to be Waybar (config/waybar): drop its old link
 [[ -L $HOME/.config/waybar && ! -e $HOME/.config/waybar ]] && rm "$HOME/.config/waybar" && echo "removed     $HOME/.config/waybar (old link)"
+# Mako showed the notifications until 14.10.2026; Quickshell does now (quickshell/Notifs.qml). Its old link goes, and the
+# unit is masked: D-Bus activation would start mako for the first notification and take the name from Quickshell.
+[[ -L $HOME/.config/mako && ! -e $HOME/.config/mako ]] && rm "$HOME/.config/mako" && echo "removed     $HOME/.config/mako (old link)"
+systemctl --user mask --now mako.service >/dev/null 2>&1 || true
 link "$repo/config/gtk-4.0/gtk.css" "$HOME/.config/gtk-4.0/gtk.css"   # Tokyo Night colours for libadwaita apps (Nautilus)
 link "$repo/config/gtk-3.0/gtk.css" "$HOME/.config/gtk-3.0/gtk.css"
 # Apostrophe is a Flatpak: it reads its own config dir (install.sh lets the sandbox read config/gtk-4.0)
