@@ -95,8 +95,8 @@ local function deck_at_default(w)
     local cx, cy = (m.width / m.scale - DECK_W) / 2, (m.height / m.scale - DECK_H) / 2
     return sw == DECK_W and sh == DECK_H and math.abs(x - cx) <= 3 and math.abs(y - cy) <= 30   -- y: the bar shifts the centre a little
 end
--- A screen-sized floating window (e.g. a lone window floated with ⌘T: geometry stays screen-sized and the border disappears
--- off the left/top) is shrunk to 70 % x 75 % and centred
+-- A window floated with ⌘T is always centred. A screen-sized one (e.g. a lone window: geometry stays screen-sized and
+-- the border disappears off the left/top) is first shrunk to 70 % x 75 %
 local function tame_float(w)
     if not (w and w.floating) then return end
     local m = w.monitor
@@ -104,8 +104,8 @@ local function tame_float(w)
     local sw, sh = xy(w.size)
     if sw >= mw * 0.95 and sh >= mh * 0.9 then
         hl.dispatch(hl.dsp.window.resize({ x = math.floor(mw * 0.7), y = math.floor(mh * 0.75), exact = true, window = "address:" .. w.address }))
-        hl.dispatch(hl.dsp.window.center({ window = "address:" .. w.address }))
     end
+    hl.dispatch(hl.dsp.window.center({ window = "address:" .. w.address }))
 end
 local function deck_toggle_float()
     local w = hl.get_active_window()
