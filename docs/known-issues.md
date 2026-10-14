@@ -35,3 +35,27 @@ Undo: `nmcli connection modify "<network>" 802-11-wireless.band ""`.
 
 **A fix for everyone could be:** leaving out 6 GHz for every connection, or a shorter DHCP timeout (`ipv4.dhcp-timeout`)
 so that a dead radio is given up sooner.
+
+## The top bar turns black under the mouse and flickers
+
+**Seen:** MacBook (Apple Silicon), Fedora Asahi Remix 44, Hyprland 0.56.2, aquamarine 0.14.0, Mesa 26.2.4. Found 2026-10-14.
+
+**Symptom:** only when the bar is see-through (bar opacity below 100 %): moving the mouse over the top bar "paints" it black where the pointer goes, and the bar flickers between black
+and its normal see-through background. Restarting the bar (`qs`) or `hyprctl reload` doesn't help, and neither does a
+software cursor (`cursor:no_hardware_cursors`).
+
+**Cause:** Hyprland's damage tracking. When only the damaged part of the bar is redrawn, the wallpaper under it isn't, so
+the bar's semi-transparent black background is drawn over the previous frame again and again until it is fully black.
+Turning damage tracking off makes it go away at once. It survives a reboot. Why it started is not known.
+
+**Workaround:** redraw the whole screen every frame (costs a little battery), e.g. in `~/.config/hypr/local.lua`:
+
+```lua
+hl.config({ debug = { damage_tracking = 0 } })
+```
+
+Try it live first with `hyprctl eval 'hl.config({ debug = { damage_tracking = 0 } })'`. Undo: remove the line, or set it to
+`2` (the default). Worth trying without it after the next Hyprland update.
+
+**A fix for everyone could be:** finding which layer's damage is wrong (the bar, the wallpaper or the shelf overlay) and
+reporting it upstream, or making the bar's background opaque (an opaque bar hides it, which is why it only shows with bar opacity).
