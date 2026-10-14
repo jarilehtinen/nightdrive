@@ -21,7 +21,7 @@
   { "name": "bluetooth",     "interval": 5,  "right": "blueman-manager" },
   { "name": "wifi",          "interval": 5,  "right": "kitty --class floating-tui -e nmtui" },
   { "name": "volume",        "interval": 2,  "right": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle", "middle": "pavucontrol" },
-  { "name": "headphones",    "interval": 3,  "right": "~/.config/topbar/scripts/eq toggle", "middle": "easyeffects" },
+  { "name": "headphones",    "interval": 3,  "right": "~/.config/topbar/scripts/eq disconnect", "middle": "easyeffects" },
   { "name": "battery",       "interval": 10 },
   { "name": "calendar",      "interval": 5 },
   { "name": "notifications", "interval": 60 }

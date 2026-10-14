@@ -2,7 +2,7 @@
 # Headphone EQ (EasyEffects). Presets: config/easyeffects/output/*.json in the repo, linked into ~/.local/share/easyeffects/output (Off = no effects).
 # The chosen preset is saved as the headphones' autoload profile, so EasyEffects always loads it when the headphones
 # connect, and the fallback preset Off for other devices (speakers).
-# Usage: eq current | list | info | set <preset> | toggle   (info = JSON for the Quickshell headphones menu)
+# Usage: eq current | list | info | set <preset> | toggle | disconnect   (info = JSON for the Quickshell headphones menu)
 dir=~/.local/share/easyeffects
 last=~/.local/state/eq-last          # last preset that was on (toggle restores it)
 
@@ -42,4 +42,7 @@ case ${1:-current} in
     true ;;
   toggle)
     if [[ $("$0" current) == off ]]; then "$0" set "$(cat "$last" 2>/dev/null || echo Neutral)"; else "$0" set Off; fi ;;
+  disconnect)   # the headphones' Bluetooth connection off (right click on the bar icon)
+    s=$(sink_name); [[ -n $s ]] || exit 1
+    bluetoothctl disconnect "$(sed -E 's/^bluez_output\.([0-9A-F_]+).*/\1/; s/_/:/g' <<<"$s")" >/dev/null ;;
 esac
