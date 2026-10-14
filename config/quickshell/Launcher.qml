@@ -271,9 +271,9 @@ PanelWindow {
                 topbarItems().map(t => ({ item: Object.assign({}, t, { from: "Top bar", summary: undefined }), text: t.name, extra: settingsAliases[t.name] || "" })),
                 // Power actions ("shut" → Shut down)
                 statics.power.map(t => ({ item: t, text: t.name, extra: powerAliases[t.name] || "" })),
-                // Apps ("1pas" → 1Password), but none named like a root item (e.g. a webapp that would duplicate a menu of the same name)
-                appEntries(q).filter(a => !rootItems.some(r => r.name.toLowerCase() === a.text.toLowerCase()))
-                             .map(a => Object.assign({}, a, { item: Object.assign({}, a.item, { from: "Apps" }) })),
+                // Apps ("1pas" → 1Password), also one named like a root item (e.g. a webapp next to its menu): the APPS tag and
+                // the open-window dot tell them apart
+                appEntries(q).map(a => Object.assign({}, a, { item: Object.assign({}, a.item, { from: "Apps" }) })),
                 // Deck's albums ("fm-84" → Atlas)
                 // (the MUSIC tag on the right instead of the year)
                 musicAlbums.map(a => ({ item: Object.assign(albumItem(a), { summary: undefined, from: "Music" }), text: a.name, extra: a.artist }))
