@@ -35,10 +35,9 @@ case $kind in
     elif (( pct < 50 )); then emit volume-1 ""
     else emit volume-2 ""; fi ;;
   headphones)
-    # Shown only while Bluetooth headphones are connected. Dimmed when the EasyEffects EQ is off.
+    # Shown only while Bluetooth headphones are connected, never dimmed (the EasyEffects EQ state is in the menu).
     pactl list short sinks 2>/dev/null | grep -q bluez_output || { emit "" ""; exit; }
-    preset=$(~/.config/topbar/scripts/eq current 2>/dev/null)
-    if [[ -z $preset || $preset == off ]]; then emit headphones "" off; else emit headphones ""; fi ;;
+    emit headphones "" ;;
   battery)
     dev=$(battery); [[ -z $dev ]] && { emit "" ""; exit; }
     info=$(upower -i "$dev" 2>/dev/null)
