@@ -4,7 +4,7 @@
 com.onepassword.OnePassword.desktop   # 1Password
 org.mozilla.firefox.desktop           # Firefox
 kitty.desktop                         # kitty
-code.desktop                          # VS Code
+com.microsoft.VSCode.desktop          # VS Code (older packages: code.desktop)
 webapp-slack.desktop                  # Slack
 webapp-teams.desktop                  # Teams
 webapp-whatsapp.desktop               # WhatsApp

@@ -4,6 +4,7 @@
 com.onepassword.OnePassword.desktop = key-round
 org.mozilla.firefox.desktop         = globe
 kitty.desktop                       = square-terminal
+com.microsoft.VSCode.desktop        = code-xml
 webapp-whatsapp.desktop             = message-circle
 org.telegram.desktop.desktop        = send
 webapp-youtube.desktop              = youtube
