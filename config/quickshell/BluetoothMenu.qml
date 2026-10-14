@@ -9,7 +9,12 @@ Column {
 
     property bool powered: LastState.bluetooth
     onPoweredChanged: LastState.bluetooth = powered
-    property var devices: []         // [{ mac, connected, paired, battery, name }]
+    property var devices: []         // [{ mac, connected, paired, battery, name, named }]
+    // Nameless devices (only an address: mostly nearby phones, Macs and AirTags with a changing random address) are
+    // hidden unless paired; "Show hidden devices" lists them too
+    property bool showHidden: false
+    readonly property var hidden: devices.filter(d => !d.named && !d.paired && !d.connected)
+    readonly property var shown: showHidden ? devices : devices.filter(d => hidden.indexOf(d) < 0)
     property bool scanning: false
     property string busy: ""
     property string message: ""
@@ -49,16 +54,17 @@ Column {
         id: listProc
         script: 'bluetoothctl devices | while read -r _ mac name; do\n' +
                 '  info=$(bluetoothctl info "$mac")\n' +
-                '  c=$(grep -c "Connected: yes" <<<"$info"); p=$(grep -c "Paired: yes" <<<"$info")\n' +
+                '  c=$(grep -c "Connected: yes" <<<"$info"); p=$(grep -c "Paired: yes" <<<"$info"); n=$(grep -c "^\\s*Name:" <<<"$info")\n' +
                 '  b=$(grep -oP "Battery Percentage: 0x\\w+ \\(\\K[0-9]+" <<<"$info")\n' +
-                '  echo "$mac|$c|$p|$b|$name"\n' +
+                '  echo "$mac|$c|$p|$b|$n|$name"\n' +
                 'done'
         onResult: text => {
             const arr = []
             for (const line of text.split("\n")) {
                 const f = line.split("|")
-                if (f.length < 5) continue
-                arr.push({ mac: f[0], connected: f[1] !== "0", paired: f[2] !== "0", battery: f[3], name: f.slice(4).join("|") })
+                if (f.length < 6) continue
+                arr.push({ mac: f[0], connected: f[1] !== "0", paired: f[2] !== "0", battery: f[3], named: f[4] !== "0",
+                           name: f.slice(5).join("|") })
             }
             arr.sort((a, b) => (b.connected - a.connected) || (b.paired - a.paired) || a.name.localeCompare(b.name))
             m.devices = arr
@@ -68,7 +74,8 @@ Column {
     }
     Sh {
         id: scanProc
-        command: ["bluetoothctl", "--timeout", "8", "scan", "on"]
+        // 20 s: headphones' names (e.g. AirPods) can take a while to arrive; the list fills in as they do (refresh timer)
+        command: ["bluetoothctl", "--timeout", "20", "scan", "on"]
         onResult: text => { m.scanning = false; m.refresh() }
     }
     Sh {
@@ -106,7 +113,7 @@ Column {
         font { family: Theme.font; pixelSize: 12 }
     }
     Text {
-        visible: m.powered && m.devices.length === 0
+        visible: m.powered && m.shown.length === 0
         text: "No devices. Press Scan for devices."
         color: Theme.dim
         font { family: Theme.font; pixelSize: 12 }
@@ -117,7 +124,7 @@ Column {
         width: parent.width
         spacing: 2
         Repeater {
-            model: m.powered ? m.devices : []
+            model: m.powered ? m.shown : []
             delegate: MenuRow {
                 required property var modelData
                 width: parent.width
@@ -132,6 +139,16 @@ Column {
                 onClicked: m.activate(modelData)
             }
         }
+    }
+
+    MenuRow {
+        visible: m.powered && m.hidden.length > 0
+        width: parent.width
+        height: visible ? 34 : 0
+        icon: m.showHidden ? "eye-off" : "eye"
+        action: true
+        label: (m.showHidden ? "Hide unnamed devices" : "Show hidden devices") + " (" + m.hidden.length + ")"
+        onClicked: m.showHidden = !m.showHidden
     }
 
     Text {
