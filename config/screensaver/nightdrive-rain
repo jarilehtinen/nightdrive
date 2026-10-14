@@ -1,6 +1,19 @@
 #!/usr/bin/env python3
-"""Nightdrive screensaver 2: falling glyphs + glitch in violet/synthwave colours. Exits on any key."""
-import os, random, select, signal, sys, termios, time, tty
+"""Nightdrive screensaver 2: falling glyphs + glitch in violet/synthwave colours. Exits on any key or mouse movement."""
+import re, os, random, select, signal, sys, termios, time, tty
+
+GRACE = 1.0   # seconds after start when input is ignored (the window opening sends a mouse event)
+MOUSE = re.compile(rb"\x1b\[<(\d+);(\d+);(\d+)[Mm]")   # SGR mouse report: button;column;row
+
+def activity(data, pos):
+    """A key, a click or scroll, or the pointer at a new position. A report at the same position isn't one: the terminal
+    sends those when the pointer enters the window, e.g. when a notification over it goes away."""
+    if MOUSE.sub(b"", data): return True
+    for b, x, y in MOUSE.findall(data):
+        if not int(b) & 32: return True                  # 32 = motion; anything else is a button or the wheel
+        if pos[0] is not None and pos[0] != (x, y): return True
+        pos[0] = (x, y)
+    return False
 
 FPS = 24
 GLYPHS = "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ0123456789:=*+<>|"
@@ -70,12 +83,16 @@ def main():
     for sg in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
         signal.signal(sg, lambda *_: stop.append(1))
     tty.setcbreak(fd)
-    out.write("\x1b[?1049h\x1b[?25l\x1b[2J")
+    # ?1003/?1006: the terminal reports every mouse movement as input, so moving the mouse exits too. hypridle can't do it:
+    # opening any window counts as activity, so its on-resume fired right away and closed the saver as it appeared.
+    out.write("\x1b[?1049h\x1b[?25l\x1b[2J\x1b[?1003h\x1b[?1006h")
+    started, pos = time.time(), [None]
     rain, last, bg_seq = None, time.time(), "\x1b[48;2;%d;%d;%dm" % BG
     try:
         while not stop:
             if select.select([fd], [], [], 0)[0]:
-                break
+                data = os.read(fd, 1024)
+                if time.time() - started > GRACE and activity(data, pos): break   # input in the first moment comes from the window opening
             W, H = os.get_terminal_size()
             if rain is None or (rain.W, rain.H) != (W, H):
                 rain = Rain(W, H)
@@ -94,7 +111,7 @@ def main():
             out.write("".join(buf)); out.flush()
             time.sleep(max(0, 1 / FPS - (time.time() - now)))
     finally:
-        out.write("\x1b[0m\x1b[?25h\x1b[?1049l"); out.flush()
+        out.write("\x1b[?1003l\x1b[?1006l\x1b[0m\x1b[?25h\x1b[?1049l"); out.flush()
         termios.tcsetattr(fd, termios.TCSADRAIN, old)
 
 if __name__ == "__main__":

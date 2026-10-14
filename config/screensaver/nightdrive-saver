@@ -1,7 +1,20 @@
 #!/usr/bin/env python3
 """Nightdrive screensaver: a synthwave landscape in ASCII. No dependencies (truecolor ANSI).
-Exits on any key (and on mouse movement via hypridle's on-resume command)."""
-import math, os, random, select, signal, sys, termios, time, tty
+Exits on any key or mouse movement."""
+import re, math, os, random, select, signal, sys, termios, time, tty
+
+GRACE = 1.0   # seconds after start when input is ignored (the window opening sends a mouse event)
+MOUSE = re.compile(rb"\x1b\[<(\d+);(\d+);(\d+)[Mm]")   # SGR mouse report: button;column;row
+
+def activity(data, pos):
+    """A key, a click or scroll, or the pointer at a new position. A report at the same position isn't one: the terminal
+    sends those when the pointer enters the window, e.g. when a notification over it goes away."""
+    if MOUSE.sub(b"", data): return True
+    for b, x, y in MOUSE.findall(data):
+        if not int(b) & 32: return True                  # 32 = motion; anything else is a button or the wheel
+        if pos[0] is not None and pos[0] != (x, y): return True
+        pos[0] = (x, y)
+    return False
 
 FPS = 20
 FULL_SKY = True      # True: sky fills the whole screen and the sun moves in an arc; False: sky + dot grid
@@ -24,7 +37,10 @@ def main():
     for s in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
         signal.signal(s, lambda *_: stop.append(1))
     tty.setcbreak(fd)
-    out.write("\x1b[?1049h\x1b[?25l\x1b[2J")
+    # ?1003/?1006: the terminal reports every mouse movement as input, so moving the mouse exits too. hypridle can't do it:
+    # opening any window counts as activity, so its on-resume fired right away and closed the saver as it appeared.
+    out.write("\x1b[?1049h\x1b[?25l\x1b[2J\x1b[?1003h\x1b[?1006h")
+    started, pos = time.time(), [None]
     random.seed(84)
     stars = [(random.random(), random.random() ** 1.3, random.random() * 6.28, random.choice("·.+*")) for _ in range(140)]
     ridge_phase = [random.random() * 6.28 for _ in range(4)]
@@ -32,7 +48,8 @@ def main():
     try:
         while not stop:
             if select.select([fd], [], [], 0)[0]:
-                break
+                data = os.read(fd, 1024)
+                if time.time() - started > GRACE and activity(data, pos): break   # input in the first moment comes from the window opening
             W, H = os.get_terminal_size()
             t = time.time() - t0
             hz = H if FULL_SKY else int(H * 0.56)   # horizon
@@ -126,7 +143,7 @@ def main():
             out.write("".join(buf)); out.flush()
             time.sleep(max(0, 1 / FPS - (time.time() - t0 - t)))
     finally:
-        out.write("\x1b[0m\x1b[?25h\x1b[?1049l"); out.flush()
+        out.write("\x1b[?1003l\x1b[?1006l\x1b[0m\x1b[?25h\x1b[?1049l"); out.flush()
         termios.tcsetattr(fd, termios.TCSADRAIN, old)
 
 if __name__ == "__main__":

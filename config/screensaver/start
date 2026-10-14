@@ -8,7 +8,10 @@ case ${1:-} in
   *) name=$(shuf -n1 -e saver rain) ;;
 esac
 case $name in rain) size=18 ;; *) size=9 ;; esac   # rain: bigger glyphs
-exec kitty --class "nightdrive-$name" --start-as=fullscreen \
+# The cursor is hidden by Hyprland while the saver runs: kitty's own hiding (mouse_hide_wait) doesn't apply once the
+# program asks for mouse reports, which the savers do to exit on mouse movement
+hyprctl eval 'hl.config({ cursor = { invisible = true } })' >/dev/null
+trap "hyprctl eval 'hl.config({ cursor = { invisible = false } })' >/dev/null" EXIT
+kitty --class "nightdrive-$name" --start-as=fullscreen \
   -o window_padding_width=0 -o background=#09021e -o font_size=$size -o confirm_os_window_close=0 \
-  -o mouse_hide_wait=0 \
   python3 -I "$dir/nightdrive-$name"
