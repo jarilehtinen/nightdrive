@@ -86,7 +86,10 @@ Singleton {
             // Quickshell hands an icon name sent as the notification's picture as image://icon/<name>: a name we look up
             // ourselves (the icon provider draws a checkerboard for one the theme doesn't have)
             const named = n.image.startsWith("image://icon/") ? n.image.slice(13) : ""
-            const appIcon = (e ? s.iconPath(e.icon) : "") || Quickshell.iconPath((n.appName || "").toLowerCase(), true)   // blueman
+            // The app's icon as a name (AppIcon finds it even when the app was installed after Quickshell started), or
+            // an icon named like the app (blueman)
+            const lower = (n.appName || "").toLowerCase()
+            const appIcon = (e && e.icon) || (lower && Quickshell.iconPath(lower, true) ? lower : "")
             const own = s.iconPath(n.appIcon || named)
             const row = {
                 uid: old ? old.uid : ++persist.uid,

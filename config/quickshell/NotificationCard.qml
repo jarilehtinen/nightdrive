@@ -42,13 +42,12 @@ Rectangle {
         Item {
             width: parent.width
             height: card.iconSize
-            Image {
+            AppIcon {
                 id: appIcon
                 width: card.iconSize; height: card.iconSize
                 anchors.verticalCenter: parent.verticalCenter
-                source: card.row.icon || ""
+                name: card.row.icon || ""
                 sourceSize: Qt.size(card.iconSize * 2, card.iconSize * 2)
-                fillMode: Image.PreserveAspectFit
                 visible: status === Image.Ready
             }
             Text {      // no icon anywhere: a bell

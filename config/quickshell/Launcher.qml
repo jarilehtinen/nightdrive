@@ -1296,13 +1296,12 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                         visible: !row.noIcon
                         anchors { left: parent.left; leftMargin: 14; verticalCenter: parent.verticalCenter }
                         width: win.iconSize; height: win.iconSize
-                        Image {
+                        AppIcon {
                             anchors.fill: parent
                             visible: (row.modelData.kind === "app" || row.modelData.iconFile !== undefined) && row.modelData.glyph === undefined && source !== ""
                             sourceSize: Qt.size(win.iconSize * 2, win.iconSize * 2)
-                            fillMode: Image.PreserveAspectFit
-                            source: row.modelData.iconFile !== undefined ? "file://" + row.modelData.iconFile    // Install › Software
-                                  : row.modelData.kind === "app" ? Quickshell.iconPath(row.modelData.icon, true) : ""
+                            name: row.modelData.iconFile !== undefined ? row.modelData.iconFile    // Install › Software
+                                : row.modelData.kind === "app" ? (row.modelData.icon || "") : ""
                         }
                         Text {
                             anchors.centerIn: parent
