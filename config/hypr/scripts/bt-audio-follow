@@ -1,0 +1,13 @@
+#!/bin/bash
+# Bluetooth headphones become the audio output as soon as they connect. WirePlumber on its own only switches to them if
+# they were the last output picked by hand, so after picking the speakers once, connected headphones stayed silent.
+# Started by hyprland.lua; listens to PipeWire (pactl subscribe) in the background. One instance only (flock).
+exec 9>"${XDG_RUNTIME_DIR:-/tmp}/bt-audio-follow.lock"
+flock -n 9 || exit 0
+
+pactl subscribe | while read -r line; do
+  [[ $line == "Event 'new' on sink #"* ]] || continue
+  id=${line##*#}
+  name=$(pactl list sinks short | awk -v id="$id" '$1 == id { print $2 }')
+  [[ $name == bluez_output.* ]] && pactl set-default-sink "$name"
+done

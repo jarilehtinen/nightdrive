@@ -51,6 +51,7 @@ hl.on("hyprland.start", function ()
     hl.exec_cmd("env PATH=" .. HOME .. "/.local/bin:" .. os.getenv("PATH") .. " " .. HOME .. "/.local/bin/voxtype-onnx daemon")   -- speech to text (F5), Parakeet
     hl.exec_cmd("hypridle")
     hl.exec_cmd("easyeffects --service-mode -w")   -- headphone EQ in the background (presets: config/easyeffects, picked from the headphone icon in the top bar)
+    hl.exec_cmd(HOME .. "/.config/hypr/scripts/bt-audio-follow")   -- Bluetooth headphones become the output when they connect
     -- reset-failed: the previous session's agent crash-loops after logout (Restart=on-failure) and hits the start limit
     hl.exec_cmd("sh -c 'systemctl --user reset-failed hyprpolkitagent; systemctl --user restart hyprpolkitagent'")
     hl.exec_cmd("nm-applet --indicator")
