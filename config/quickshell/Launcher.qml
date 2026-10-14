@@ -818,10 +818,12 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
             const row = (p, glyph) => ({ kind: "action", name: p.name, sub: p.summary, iconFile: p.icon || undefined,
                                          glyph: p.icon ? undefined : glyph, src: p.src, id: p.id, alt: p.alt,
                                          summary: p.installed ? "installed" : undefined, cmd: win.installCmd(p.src, p.id) })
+            // The headers only when both are there: one kind alone needs no title
+            const both = r.apps.length > 0 && r.tools.length > 0
             const out = []
-            if (r.apps.length) out.push({ kind: "header", name: "Apps" })
+            if (both) out.push({ kind: "header", name: "Apps" })
             for (const p of r.apps) out.push(row(p, "package-plus"))
-            if (r.tools.length) out.push({ kind: "header", name: "Command-line tools" })
+            if (both) out.push({ kind: "header", name: "Command-line tools" })
             for (const p of r.tools) out.push(row(p, "terminal"))
             win.installResults = out
             list.currentIndex = win.firstSelectable()
