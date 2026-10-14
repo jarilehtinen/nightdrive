@@ -80,5 +80,5 @@ for p in "$HOME"/.config/thunderbird/*.default-release; do
 done
 
 mkdir -p "$HOME/.local/share/fonts"
-cp -n "$repo"/fonts/*.ttf "$HOME/.local/share/fonts/"
+cp -u "$repo"/fonts/*.ttf "$HOME/.local/share/fonts/"   # -u: an updated font in the repo replaces the old one
 fc-cache -f

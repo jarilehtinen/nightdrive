@@ -124,7 +124,7 @@ PanelWindow {
         Text {
             id: ico
             anchors { left: parent.left; leftMargin: 16; verticalCenter: parent.verticalCenter }
-            text: String.fromCodePoint(0xE11B)       // Lucide "mic"
+            text: String.fromCodePoint(0xE118)       // Lucide "mic"
             font { family: "lucide"; pixelSize: 18 }
             color: panel.waiting ? panel.cDim : panel.cAccent
             SequentialAnimation on opacity {
