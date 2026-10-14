@@ -13,9 +13,9 @@
 dir=~/.local/share/easyeffects
 last=~/.local/state/eq-last          # last style that was on (toggle restores it)
 ancdir=~/.local/state/nightdrive/anc # <sink>: the listening mode picked in the menu (none: Noise cancelling)
-# Headphones that tell their mode and take commands (Sony, hypr/scripts/sony-anc): the mode is read from them instead
-live=${XDG_RUNTIME_DIR:-/tmp}/nightdrive/anc          # <MAC>: the mode now, while sony-anc has the headphones
-livesock=${XDG_RUNTIME_DIR:-/tmp}/nightdrive/sony-anc.sock
+# Headphones that tell their mode and take commands (Sony, AirPods: hypr/scripts/headphones-ctl): read from them instead
+live=${XDG_RUNTIME_DIR:-/tmp}/nightdrive/anc          # <MAC>: the mode now, <MAC>.modes, <MAC>.battery (headphones-ctl)
+livesock=${XDG_RUNTIME_DIR:-/tmp}/nightdrive/headphones-ctl.sock
 maxdir=~/.local/state/nightdrive/max-volume   # <MAC>: the headphones' max volume in percent (hypr/scripts/bt-audio-follow keeps it)
 
 sink_name() { pactl list short sinks 2>/dev/null | awk '$2 ~ /^bluez_output/ {print $2; exit}'; }
@@ -38,9 +38,9 @@ headphones_key() {
 mac_of() { sed -E 's/^bluez_output\.([0-9A-F_]+).*/\1/; s/_/:/g' <<<"$1"; }
 anc_mode() { cat "$live/$(mac_of "$1")" 2>/dev/null || cat "$ancdir/$1" 2>/dev/null || echo "Noise cancelling"; }
 # The headphones' listening modes: Noise cancelling (the main measurement) and the others measured
-# (headphones under sony-anc's control: all three, whether measured or not)
+# (headphones under headphones-ctl's control: the modes they have, whether measured or not)
 anc_modes() {
-  if [[ -f $live/$(mac_of "$2") ]]; then printf '%s\n' "Noise cancelling" Transparency Passive
+  if [[ -f $live/$(mac_of "$2").modes ]]; then cat "$live/$(mac_of "$2").modes"
   elif [[ -n $1 ]]; then echo "Noise cancelling"; presets | grep -F "$1 · " | awk -F ' · ' 'NF == 3 { print $3 }' | sort -u; fi
 }
 # Style -> the preset's full name for these headphones (and their listening mode)
@@ -71,6 +71,7 @@ case ${1:-current} in
     key=$(headphones_key "$s")
     mac=$(mac_of "$s")
     bat=$(bluetoothctl info "$mac" 2>/dev/null | grep -oP 'Battery Percentage:.*\(\K[0-9]+')
+    [[ -s $live/$mac.battery ]] && bat=$(cat "$live/$mac.battery")   # AirPods: per pod and case
     modes=$(anc_modes "$key" "$s")
     [[ -f $live/$mac ]] && controlled=true || controlled=false
     max=$(cat "$maxdir/$mac" 2>/dev/null || echo 100)
@@ -98,7 +99,7 @@ case ${1:-current} in
     else "$0" set Off; fi ;;
   anc)       # the headphones' listening mode (Noise cancelling, Transparency, Passive …): the EQ switches to that measurement
     mode=${2:?mode}; s=$(sink_name); [[ -n $s ]] || exit 1
-    if [[ -f $live/$(mac_of "$s") ]]; then   # switch the headphones themselves; sony-anc then updates the EQ
+    if [[ -f $live/$(mac_of "$s") ]]; then   # switch the headphones themselves; headphones-ctl then updates the EQ
       python3 -c 'import socket, sys; c = socket.socket(socket.AF_UNIX); c.connect(sys.argv[1]); c.send(sys.argv[2].encode()); c.recv(16)' \
         "$livesock" "$(mac_of "$s") $mode"
       exit

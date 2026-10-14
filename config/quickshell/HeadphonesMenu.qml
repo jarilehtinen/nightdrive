@@ -17,6 +17,7 @@ Column {
     })
     readonly property var ancInfo: ({
         "Noise cancelling": { icon: "ear-off" },
+        "Adaptive":         { icon: "sparkles" },
         "Transparency":     { icon: "ear" },
         "Passive":          { icon: "mic-audio-lines" }
     })
@@ -54,7 +55,7 @@ Column {
         width: parent.width
         icon: "headphones"
         label: m.info.name || "Not connected"
-        detail: [m.info.battery ? m.info.battery + "%" : "", m.info.codec || ""].filter(s => s).join(" · ")
+        detail: [m.info.battery ? m.info.battery + (/^\d+$/.test(m.info.battery) ? "%" : "") : "", m.info.codec || ""].filter(s => s).join(" · ")
         active: !!m.info.default
         checkIcon: m.info.default ? "check" : ""
         hoverCheckIcon: m.info.default ? "unplug" : ""
@@ -92,7 +93,7 @@ Column {
             }
         }
     }
-    // The headphones' listening mode: Sony headphones switch to it and report it (hypr/scripts/sony-anc); for others it only
+    // The headphones' listening mode: Sony headphones and AirPods switch to it and report it (hypr/scripts/headphones-ctl); for others it only
     // tells the EQ which measurement to use (headphones measured in several modes, see config/easyeffects/headphones.example.tsv)
     Divider { visible: m.ancModes.length > 1 }
     MenuHeader { visible: m.ancModes.length > 1; width: parent.width; title: "Listening mode" }
@@ -113,7 +114,7 @@ Column {
             }
         }
     }
-    Text {   // headphones that can't tell their mode (sony-anc handles Sony's: the list then follows the headphones)
+    Text {   // headphones that can't tell their mode (headphones-ctl handles Sony's and AirPods': the list then follows them)
         visible: m.ancModes.length > 1 && !m.info.ancControlled
         width: parent.width
         wrapMode: Text.Wrap

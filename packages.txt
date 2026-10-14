@@ -18,7 +18,7 @@ easyeffects
 network-manager-applet
 NetworkManager-tui
 blueman
-# hypr/scripts/sony-anc (Sony headphones' listening mode over Bluetooth)
+# hypr/scripts/headphones-ctl (Sony and AirPods: listening mode, ear detection over Bluetooth)
 python3-dbus
 python3-gobject
 papirus-icon-theme

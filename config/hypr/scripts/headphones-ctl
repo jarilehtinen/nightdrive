@@ -1,0 +1,335 @@
+#!/usr/bin/env python3
+"""Headphones' own controls over Bluetooth, for the headphones menu: Sony and Apple (AirPods, Beats) headphones.
+
+Keeps the headphones' control channel open while they are connected (the one the maker's own app or iPhone uses):
+  - listening mode (noise cancelling / adaptive / transparency / off), both ways: a press on the headphones shows in the
+    menu at once, and picking a mode in the menu switches the headphones
+  - AirPods: ear detection (taking a pod out pauses, putting it back resumes what it paused) and battery
+Started by hyprland.lua. Files for topbar/scripts/eq and the menu, while the channel is open:
+
+  $XDG_RUNTIME_DIR/nightdrive/anc/<MAC>          the mode now, as the menu names it
+  $XDG_RUNTIME_DIR/nightdrive/anc/<MAC>.modes    the modes these headphones have, one per line
+  $XDG_RUNTIME_DIR/nightdrive/anc/<MAC>.battery  AirPods: e.g. "L 85% · R 84% · case 40%"
+  $XDG_RUNTIME_DIR/nightdrive/headphones-ctl.sock  "<MAC> <mode>" switches the headphones (eq anc does this)
+
+Sony (MDR over RFCOMM, reverse engineered by Gadgetbridge and mos9527/SonyHeadphonesClient): frames 3e <type> <seq>
+<len:4> <payload> <checksum> 3c with 3c/3d/3e escaped as 3d <byte & ef>; type 0c = command, 01 = ack. Payload 66 <kind>
+asks the noise cancelling / ambient state, 67 is the reply, 69 a notification (a button press), 68 sets it. <kind>:
+  02  protocol v1 (WH-1000XM3, XM4)    17  v2 (XM5)    19  v2 with noise adaptation (XM6)
+Tested on the WH-1000XM6; the others follow the same sources but are untested.
+
+Apple (AAP over L2CAP PSM 0x1001, documented by LibrePods): a handshake and a notification request, then packets
+04 00 04 00 <opcode> 00 …: 06 ear detection (per pod 00 in ear, 01 out, 02 in the case), 04 battery, 09 0d <mode>
+the listening mode (01 off, 02 noise cancelling, 03 transparency, 04 adaptive; the same packet sets it).
+Tested on the AirPods Pro 3; other AirPods and Beats speak the same protocol (modes they lack are ignored).
+"""
+import fcntl, os, socket, subprocess, sys
+import dbus, dbus.service, dbus.mainloop.glib
+from gi.repository import GLib
+
+SONY_UUIDS = {"96cc203e-5068-46ad-b32d-e316f5e069ba": 1, "956c7b26-d49a-4ba8-b03f-b17d393cb6e2": 2}
+APPLE_UUID = "74ec2172-0bad-4d01-8f77-997b2be0722a"   # Apple accessories' AAP service
+NAMES = {"nc": "Noise cancelling", "adaptive": "Adaptive", "ambient": "Transparency", "off": "Passive"}
+KEYS = {v: k for k, v in NAMES.items()}
+RUN = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "nightdrive")
+STATE = os.path.join(RUN, "anc")
+SOCK = os.path.join(RUN, "headphones-ctl.sock")
+EQ = os.path.expanduser("~/.config/topbar/scripts/eq")
+connected = {}
+
+
+class Headphones:
+    """One open control channel; subclasses speak the maker's protocol."""
+    modes = ()
+
+    def __init__(self, mac, sock):
+        self.mac, self.sock, self.mode = mac, sock, None
+        sock.setblocking(False)
+        self.watch = GLib.io_add_watch(sock.fileno(), GLib.IO_IN | GLib.IO_HUP | GLib.IO_ERR, self.readable)
+        self.write(".modes", "\n".join(NAMES[m] for m in self.modes) + "\n")
+
+    def readable(self, fd, cond):
+        try:
+            chunk = self.sock.recv(4096)
+        except BlockingIOError:
+            return True
+        except OSError:
+            chunk = b""
+        if not chunk or cond & (GLib.IO_HUP | GLib.IO_ERR):
+            self.close()
+            return False
+        self.received(chunk)
+        return True
+
+    def write(self, suffix, text):
+        os.makedirs(STATE, exist_ok=True)
+        path = os.path.join(STATE, self.mac + suffix)
+        if (open(path).read() if os.path.exists(path) else None) != text:
+            with open(path, "w") as f: f.write(text)
+            return True
+        return False
+
+    def publish(self, mode):
+        self.mode = mode
+        if self.write("", NAMES[mode]):
+            # the EQ follows the mode (headphones measured in several modes, see config/easyeffects/build-presets)
+            subprocess.Popen(["bash", "-c", f'cur=$("{EQ}" current) && [[ $cur != off ]] && "{EQ}" set "$cur"'],
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    def close(self):
+        GLib.source_remove(self.watch)
+        try: self.sock.close()
+        except OSError: pass
+        for suffix in ("", ".modes", ".battery"):
+            try: os.remove(os.path.join(STATE, self.mac + suffix))
+            except FileNotFoundError: pass
+        if connected.get(self.mac) is self:
+            del connected[self.mac]
+
+
+class Sony(Headphones):
+    modes = ("nc", "ambient", "off")
+    HDR, TRL, ESC = 0x3e, 0x3c, 0x3d
+
+    def __init__(self, mac, sock):
+        self.buf, self.seq, self.version, self.kind = b"", 0, None, None
+        self.state = None   # the last reply / notification payload: its other values are kept when setting the mode
+        self.queue = []     # commands waiting for the previous one's ack (the headphones take one at a time)
+        self.waiting = False
+        super().__init__(mac, sock)
+        self.send([0x00, 0x00])   # init: the reply tells the protocol version
+
+    def frame(self, mtype, seq, payload):
+        body = bytes([mtype, seq]) + len(payload).to_bytes(4, "big") + bytes(payload)
+        body += bytes([sum(body) & 0xff])
+        out = bytearray([self.HDR])
+        for b in body:
+            out += bytes([self.ESC, b & 0xef]) if b in (self.HDR, self.TRL, self.ESC) else bytes([b])
+        return bytes(out + bytes([self.TRL]))
+
+    def send(self, payload):
+        self.queue.append(payload)
+        self.flush()
+
+    def flush(self):
+        if not self.waiting and self.queue:
+            self.sock.send(self.frame(0x0c, self.seq, self.queue.pop(0)))
+            self.waiting = True
+
+    def received(self, chunk):
+        self.buf += chunk
+        while self.HDR in self.buf and self.TRL in self.buf[self.buf.index(self.HDR):]:
+            s = self.buf.index(self.HDR); e = self.buf.index(self.TRL, s)
+            raw, self.buf = self.buf[s + 1:e], self.buf[e + 1:]
+            data, i = bytearray(), 0
+            while i < len(raw):
+                if raw[i] == self.ESC and i + 1 < len(raw): data.append(raw[i + 1] | 0x10); i += 2
+                else: data.append(raw[i]); i += 1
+            if len(data) < 7:
+                continue
+            mtype, seq, payload = data[0], data[1], bytes(data[6:-1])
+            if mtype == 0x01:   # ack: the next command may go
+                self.seq, self.waiting = seq, False
+                self.flush()
+            else:
+                self.sock.send(self.frame(0x01, 1 - seq, b""))
+                self.message(payload)
+
+    def message(self, p):
+        if p[:1] == b"\x01" and self.version is None:   # init reply: 4 bytes = v1, 8 = v2
+            self.version = 1 if len(p) == 4 else 2
+            if self.version == 1:
+                self.kind = 0x02; self.send([0x66, 0x02])
+            else:   # XM6 answers 19, XM5 17: ask 19 first, 17 if that reply doesn't come
+                self.send([0x66, 0x19])
+                GLib.timeout_add(1500, self.fallback)
+        elif p[:1] in (b"\x67", b"\x69") and len(p) > 2:
+            if self.kind is None and p[1] in (0x17, 0x19) and not (p[1] == 0x17 and not any(p[2:])):
+                self.kind = p[1]
+            if p[1] == self.kind:
+                self.state = p
+                self.publish(self.parse())
+
+    def fallback(self):
+        if self.kind is None:
+            self.send([0x66, 0x17])
+        return False
+
+    def parse(self):
+        p = self.state
+        if self.kind == 0x02:   # v1: [2] on, [3] 00 = nc/ambient, 02 = with wind reduction, [4] the choice
+            if p[2] == 0: return "off"
+            return "ambient" if p[4] == 0 else "nc"
+        return "off" if p[3] == 0 else ("nc" if p[4] == 0 else "ambient")   # v2: [3] on, [4] 00 nc / 01 ambient
+
+    def set_mode(self, mode):
+        if self.state is None or mode not in self.modes:
+            return
+        p = bytearray(self.state)
+        if self.kind == 0x02:
+            nc = (2 if p[3] == 0x02 else 1) if mode == "nc" else 0
+            level = p[7] if len(p) > 7 else 0
+            payload = [0x68, 0x02, 0x00 if mode == "off" else 0x11, p[3], nc, 0x01, p[6], 0 if mode == "nc" else level]
+        else:
+            p[0], p[2] = 0x68, 0x01   # set, value changed
+            p[3] = 0 if mode == "off" else 1
+            p[4] = 1 if mode == "ambient" else 0
+            payload = list(p)
+            self.state = bytes(p)
+        self.send(payload)
+        self.publish(mode)
+
+
+class Apple(Headphones):
+    modes = ("nc", "adaptive", "ambient", "off")
+    MODE_BYTES = {1: "off", 2: "nc", 3: "ambient", 4: "adaptive"}
+    HEAD = bytes.fromhex("04000400")
+
+    def __init__(self, mac, sock):
+        self.ears = None          # (pod, pod): 0 in ear, 1 out, 2 in the case
+        self.paused = False       # ear detection paused the music: putting a pod back resumes it
+        super().__init__(mac, sock)
+        for packet in ("00000400010002000000000000000000",   # handshake
+                       "040004004d00ff00000000000000",       # features (adaptive transparency …)
+                       "040004000f00ffffffffff"):            # notifications
+            sock.send(bytes.fromhex(packet))
+
+    def received(self, p):
+        if not p.startswith(self.HEAD) or len(p) < 6:
+            return
+        op = p[4]
+        if op == 0x09 and len(p) >= 8 and p[6] == 0x0d and p[7] in self.MODE_BYTES:
+            self.publish(self.MODE_BYTES[p[7]])
+        elif op == 0x06 and len(p) >= 8:
+            self.ear(p[6], p[7])
+        elif op == 0x04 and len(p) >= 7:
+            parts, names = {}, {0x04: "L", 0x02: "R", 0x08: "case"}
+            for i in range(p[6]):
+                c = p[7 + i * 5: 12 + i * 5]
+                if len(c) == 5 and c[0] in names and c[3] != 0x04:   # 04: not connected (e.g. the case with no pods)
+                    parts[names[c[0]]] = f"{names[c[0]]} {c[2]}%"
+            self.write(".battery", " · ".join(parts[k] for k in ("L", "R", "case") if k in parts))
+
+    def ear(self, a, b):
+        inear = (a == 0) + (b == 0)
+        before = None if self.ears is None else sum(x == 0 for x in self.ears)
+        self.ears = (a, b)
+        if before is None:
+            return
+        if inear < before:   # a pod came out
+            if run(["playerctl", "status"]).strip() == "Playing":
+                run(["playerctl", "pause"]); self.paused = True
+        elif inear > before and self.paused:
+            run(["playerctl", "play"]); self.paused = False
+
+    def set_mode(self, mode):
+        byte = {v: k for k, v in self.MODE_BYTES.items()}.get(mode)
+        if byte:
+            self.sock.send(bytes.fromhex("0400040009000d") + bytes([byte, 0, 0, 0]))
+
+
+def run(cmd):
+    try:
+        return subprocess.run(cmd, capture_output=True, text=True, timeout=3).stdout
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+
+
+class Profile(dbus.service.Object):
+    """Sony's channel comes from BlueZ (an RFCOMM profile)."""
+    @dbus.service.method("org.bluez.Profile1", in_signature="oha{sv}", out_signature="")
+    def NewConnection(self, path, fd, props):
+        mac = path.rsplit("dev_", 1)[1].replace("_", ":")
+        if mac in connected:
+            connected[mac].close()
+        connected[mac] = Sony(mac, socket.socket(fileno=fd.take()))
+
+    @dbus.service.method("org.bluez.Profile1", in_signature="o", out_signature="")
+    def RequestDisconnection(self, path):
+        mac = path.rsplit("dev_", 1)[1].replace("_", ":")
+        if mac in connected:
+            connected[mac].close()
+
+    @dbus.service.method("org.bluez.Profile1", in_signature="", out_signature="")
+    def Release(self): pass
+
+
+def try_connect(path, tries=3):
+    """Opens the control channel of a connected Sony or Apple device."""
+    try:
+        props = dbus.Interface(bus.get_object("org.bluez", path), "org.freedesktop.DBus.Properties").GetAll("org.bluez.Device1")
+    except dbus.DBusException:
+        return False
+    mac = str(props.get("Address", ""))
+    uuids = [str(u).lower() for u in props.get("UUIDs", [])]
+    if not props.get("Connected") or mac in connected:
+        return False
+    if APPLE_UUID in uuids:   # an L2CAP socket of our own
+        sock = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_SEQPACKET, socket.BTPROTO_L2CAP)
+        sock.settimeout(5)
+        try:
+            sock.connect((mac, 0x1001))
+            connected[mac] = Apple(mac, sock)
+        except OSError:
+            sock.close()
+            if tries > 1:   # e.g. right after taking the pods out of the case
+                GLib.timeout_add_seconds(5, try_connect, path, tries - 1)
+        return False
+    for uuid in sorted(SONY_UUIDS, key=SONY_UUIDS.get, reverse=True):   # v2 first
+        if uuid in uuids:
+            dev = dbus.Interface(bus.get_object("org.bluez", path), "org.bluez.Device1")
+            dev.ConnectProfile(uuid, reply_handler=lambda: None, error_handler=lambda e: None)
+            break
+    return False
+
+
+def on_properties(iface, changed, invalidated, path=None):
+    if iface != "org.bluez.Device1" or "Connected" not in changed:
+        return
+    if changed["Connected"]:
+        GLib.timeout_add_seconds(3, try_connect, path)   # after the audio profiles have settled
+    else:
+        mac = path.rsplit("dev_", 1)[1].replace("_", ":")
+        if mac in connected:
+            connected[mac].close()
+
+
+def on_command(src, cond):
+    conn, _ = server.accept()
+    try:
+        mac, mode = conn.recv(256).decode().strip().split(" ", 1)
+        if mac in connected and mode in KEYS:
+            connected[mac].set_mode(KEYS[mode])
+            conn.send(b"ok\n")
+    except (ValueError, OSError):
+        pass
+    conn.close()
+    return True
+
+
+os.makedirs(RUN, exist_ok=True)
+lock = open(os.path.join(RUN, "headphones-ctl.lock"), "w")
+try:
+    fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)   # one instance only
+except BlockingIOError:
+    sys.exit(0)
+dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+bus = dbus.SystemBus()
+if os.path.exists(STATE):
+    for f in os.listdir(STATE): os.remove(os.path.join(STATE, f))   # left over from a previous run
+try: os.remove(SOCK)
+except FileNotFoundError: pass
+server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+server.bind(SOCK); server.listen(4)
+GLib.io_add_watch(server.fileno(), GLib.IO_IN, on_command)
+
+mgr = dbus.Interface(bus.get_object("org.bluez", "/org/bluez"), "org.bluez.ProfileManager1")
+for uuid, version in SONY_UUIDS.items():   # one object per profile: BlueZ takes a path once
+    Profile(bus, f"/nightdrive/headphones_sony_v{version}")
+    mgr.RegisterProfile(f"/nightdrive/headphones_sony_v{version}", uuid, {"Role": "client", "AutoConnect": False})
+bus.add_signal_receiver(on_properties, "PropertiesChanged", "org.freedesktop.DBus.Properties", "org.bluez", path_keyword="path")
+objects = dbus.Interface(bus.get_object("org.bluez", "/"), "org.freedesktop.DBus.ObjectManager").GetManagedObjects()
+for path, ifaces in objects.items():
+    if "org.bluez.Device1" in ifaces:
+        try_connect(path)
+GLib.MainLoop().run()
