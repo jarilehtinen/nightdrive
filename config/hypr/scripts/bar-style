@@ -51,9 +51,13 @@ apply() {
 }
 JSON
   mv "$out.tmp" "$out"
+  # Written to a temp file and moved into place, only when it changed: at startup the theme script runs this while
+  # Hyprland is compiling the shader, and a half-written file gave "error compiling shader 0:1(1): syntax error".
   if (( v < 100 )); then
+    local frag="$HOME/.cache/hypr/corners-$v.frag"
     mkdir -p "$HOME/.cache/hypr"
-    sed -E "s/^const float BAR = [0-9.]+;/const float BAR = $a;/" "$cfg/hypr/shaders/rounded-corners.frag" > "$HOME/.cache/hypr/corners-$v.frag"
+    sed -E "s/^const float BAR = [0-9.]+;/const float BAR = $a;/" "$cfg/hypr/shaders/rounded-corners.frag" > "$frag.tmp"
+    if cmp -s "$frag.tmp" "$frag"; then rm -f "$frag.tmp"; else mv "$frag.tmp" "$frag"; fi
   fi
 }
 
