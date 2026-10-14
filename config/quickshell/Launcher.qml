@@ -9,6 +9,8 @@ import Quickshell.Widgets
 // Apps: with an empty query, the allow-listed apps; when searching, also those hidden by sync-apps (hidden-apps.sh). See fuzzel/sync-apps, apps-allow.txt.
 // ⌃Enter adds the selected app to Apps or removes it (your choice, ~/.local/state/nightdrive/apps.json).
 // Keybindings: read from ~/.config/hypr/SHORTCUTS.md (the same file as the ⌘⇧K cheat sheet).
+// Install › Package / Flatpak and Remove: Enter on a package opens its details in a wider card (hypr/scripts/pkg-info);
+// there Enter installs or removes it, Esc goes back to the results.
 PanelWindow {
     id: win
 
@@ -33,6 +35,9 @@ PanelWindow {
     property var emojiList: []               // Emoji: [{ ch, name, kw }] (data/emoji.tsv, CLDR names in English and Finnish)
     property bool emojiLoaded: false
     property var removeList: []               // Remove: user-installed packages
+    property var detail: null                 // Install / Remove: the package row whose details are shown ({ name, summary, src, id, cmd, remove })
+    property var detailInfo: null             // its details from pkg-info (null = still loading)
+    readonly property int detailWidth: 860    // the card's width while showing them
     property bool removeLoaded: false
     property var pwItems: []                  // Passwords: 1Password items (op item list)
     property string pwState: "idle"           // idle | loading | ready | error
@@ -71,7 +76,9 @@ PanelWindow {
     readonly property bool noHit: (level === "root" || level === "apps") && query.trim() !== "" && results.length === 0
     // The selected row is an app: ⌃Enter adds it to Apps (shown with an empty query) or removes it from there
     readonly property var selApp: { const c = results[list.currentIndex]; return (level === "apps" || level === "root") && c && c.kind === "app" ? c : null }
-    readonly property string footer: selApp ? "Enter: open  ·  Ctrl+Enter: " + (selApp.shown ? "remove from Apps" : "add to Apps")
+    readonly property string footer: detail !== null ? (detail.remove ? "Enter: remove" : detailInfo && detailInfo.installed ? "Already installed" : "Enter: install")
+                                                       + "  ·  Esc: back"
+        : selApp ? "Enter: open  ·  Ctrl+Enter: " + (selApp.shown ? "remove from Apps" : "add to Apps")
                                               + "  ·  Alt+Enter: " + (autostartIds.indexOf(appId(selApp)) >= 0 ? "don’t start at login" : "start at login")
         : level === "startup" ? "Enter: start at login on/off  ·  background apps start hidden"
         : level === "passwords" && pwState === "ready" ? "Enter: password  ·  Shift+Enter: username  ·  Ctrl+Enter: one-time code"
@@ -438,7 +445,7 @@ PanelWindow {
         const cur = results[list.currentIndex]
         if (cur && cur.name && target !== level && (parents[target] || "root") === level)   // going down one level
             lastSel[level] = { kind: cur.kind, name: cur.name }
-        level = target; input.text = ""; query = ""; armed = ""; playerFocused = false
+        level = target; input.text = ""; query = ""; armed = ""; playerFocused = false; detail = null; detailInfo = null
         hiddenProc.running = true
         if (target === "keys") keysProc.running = true     // re-read SHORTCUTS.md: changes show up immediately
         list.currentIndex = firstSelectable()
@@ -602,6 +609,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         else if (ext && ext.activate(item)) {}
         else if (item.kind === "pw") copyField(item, "password")
         else if (item.kind === "menu") { win.open = false; win.openMenu(item.target) }
+        else if (item.src && detail === null) showDetail(item)
         else if (item.kind === "action") {
             if (item.confirm && armed !== item.name) { armed = item.name; disarm.restart(); return }
             armed = ""; win.open = false
@@ -681,6 +689,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
     // Selects the first row matching pred (e.g. a setting's current value), if any
     function selectWhere(pred) { const i = results.findIndex(pred); if (i >= 0) list.currentIndex = i }
     function back() {
+        if (detail !== null) { detail = null; detailInfo = null; return }
         if (level === "root") { win.open = false; return }
         go(parents[level] || "root")
         const sel = lastSel[level]
@@ -688,7 +697,9 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         if (i >= 0) list.currentIndex = i
     }
 
-    onOpenChanged: if (open) { lastMouse = null; spotify = null; lastSel = ({}); if (ext) ext.opened(); go("root"); deckProc.running = true; musicProc.running = true; bgProc.running = true; bgAppsProc.running = true; autostartProc.running = true; updatesProc.running = true; input.forceActiveFocus() }
+    // Closing leaves the details right away (after the Behavior above has seen open = false), so the next open starts narrow
+    onOpenChanged: if (!open) Qt.callLater(() => { if (!win.open) { win.detail = null; win.detailInfo = null } })
+    else { lastMouse = null; spotify = null; lastSel = ({}); if (ext) ext.opened(); go("root"); deckProc.running = true; musicProc.running = true; bgProc.running = true; bgAppsProc.running = true; autostartProc.running = true; updatesProc.running = true; input.forceActiveFocus() }
     Component.onCompleted: keysProc.running = true
 
     Timer { id: disarm; interval: 4000; onTriggered: win.armed = "" }
@@ -764,7 +775,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
             for (const p of win.parsePackages(text)) {
                 if (seen[p.name]) continue
                 seen[p.name] = true
-                out.push({ kind: "action", name: p.name, summary: p.summary, glyph: "package-plus",
+                out.push({ kind: "action", name: p.name, sub: p.summary, glyph: "package-plus", src: "dnf", id: p.name,
                            cmd: win.term('sudo dnf install "$1"', p.name) })
             }
             const q = win.installQ
@@ -783,13 +794,43 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
             for (const line of text.split("\n")) {
                 const [id, name, desc] = line.split("\t")
                 if (!name) continue
-                out.push({ kind: "action", name: name, summary: desc + "  ·  " + id, glyph: "store",
+                out.push({ kind: "action", name: name, sub: desc + "  ·  " + id, glyph: "store", src: "flatpak", id: id,
                            cmd: win.term('flatpak install --user flathub "$1"', id) })
             }
             const q = win.installQ
             out.sort((a, b) => (b.name.toLowerCase().startsWith(q) - a.name.toLowerCase().startsWith(q)))
             win.installResults = out.slice(0, 30)
             if (win.sanitized() !== win.installQ) win.runSearch()
+        }
+    }
+    // Install / Remove: a package's details (hypr/scripts/pkg-info). The results stay as they were behind them.
+    function showDetail(item) {
+        detail = item; detailInfo = null; armed = ""
+        detailView.contentY = 0
+        if (!detailProc.running) runDetail()          // otherwise the running one notices it's stale and starts again
+    }
+    function runDetail() {
+        detailProc.forId = detail.src + ":" + detail.id
+        detailProc.command = [scripts + "/pkg-info", detail.src, detail.id]
+        detailProc.running = true
+    }
+    // Enter in the details: installs / removes in a terminal (an installed package can't be installed again)
+    function detailConfirm() {
+        if (!detail.remove && detailInfo && detailInfo.installed) { shake.restart(); return }
+        win.open = false
+        Quickshell.execDetached(detail.cmd)
+    }
+    function detailScroll(dy) {
+        detailView.contentY = Math.max(0, Math.min(detailView.contentHeight - detailView.height, detailView.contentY + dy))
+    }
+    Sh {
+        id: detailProc
+        property string forId: ""
+        onResult: text => {
+            if (win.detail === null) return
+            if (win.detail.src + ":" + win.detail.id !== forId) { win.runDetail(); return }
+            try { win.detailInfo = JSON.parse(text) }
+            catch (e) { win.detailInfo = { name: win.detail.name, summary: win.detail.summary, installed: false, icon: "", screenshot: "", paragraphs: [], fields: [["Details", "not available"]] } }
         }
     }
     Loader {
@@ -977,10 +1018,10 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
         onResult: text => {
             const [dnf, fp] = text.split("--flatpak--\n")
             const apps = (fp || "").split("\n").map(l => l.split("\t")).filter(f => f[1])
-            win.removeList = win.parsePackages(dnf).map(p => ({ kind: "action", name: p.name, summary: p.summary, glyph: "package-minus", confirm: true,
-                                                                 cmd: win.term('sudo dnf remove "$1"', p.name) }))
-                .concat(apps.map(([id, name, desc]) => ({ kind: "action", name: name, summary: (desc || "") + "  ·  Flatpak", glyph: "package-minus", confirm: true,
-                                                            cmd: win.term('flatpak uninstall --user "$1"', id) })))
+            win.removeList = win.parsePackages(dnf).map(p => ({ kind: "action", name: p.name, summary: p.summary, glyph: "package-minus",
+                                                                 src: "dnf", id: p.name, remove: true, cmd: win.term('sudo dnf remove "$1"', p.name) }))
+                .concat(apps.map(([id, name, desc]) => ({ kind: "action", name: name, summary: (desc || "") + "  ·  Flatpak", glyph: "package-minus",
+                                                            src: "flatpak", id: id, remove: true, cmd: win.term('flatpak uninstall --user "$1"', id) })))
             win.removeLoaded = true
         }
     }
@@ -1033,8 +1074,9 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
         // pick <index>: selects a row like Enter (automated testing)
         function pick(index: int): void { const r = win.results[index]; if (r) win.activate(r); else shake.restart() }
         function deleteSelected(): void { if (win.open && win.level === "background" && win.wallLoaded) win.deleteWall() }
-        function stepUp(): void { win.step(-1) }
-        function stepDown(): void { win.playerFocused ? (win.playerFocused = false) : win.step(1) }
+        function stepUp(): void { win.detail !== null ? win.detailScroll(-win.rowHeight) : win.step(-1) }
+        function stepDown(): void { win.detail !== null ? win.detailScroll(win.rowHeight) : win.playerFocused ? (win.playerFocused = false) : win.step(1) }
+        function back(): void { win.back() }
     }
 
     visible: open
@@ -1048,7 +1090,9 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
 
     Rectangle {
         id: card
-        width: win.cardWidth
+        width: win.detail !== null ? win.detailWidth : win.cardWidth
+        // Animated only while open: a closed launcher drops back to the normal width at once (onOpenChanged)
+        Behavior on width { enabled: win.open; NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
         height: col.implicitHeight + 36
         x: (parent.width - width) / 2
         y: parent.height * win.topPosition
@@ -1146,6 +1190,16 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                     Keys.onPressed: event => {
                         const ctrl = event.modifiers & Qt.ControlModifier
                         if (win.playerFocused && win.handlePlayerKey(event)) { event.accepted = true; return }
+                        if (win.detail !== null) {         // details: Enter installs / removes, arrows scroll, typing does nothing
+                            if (event.key === Qt.Key_Escape || event.key === Qt.Key_Backspace) win.back()
+                            else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) win.detailConfirm()
+                            else if (event.key === Qt.Key_Down || (ctrl && (event.key === Qt.Key_N || event.key === Qt.Key_J))) win.detailScroll(win.rowHeight)
+                            else if (event.key === Qt.Key_Up || (ctrl && (event.key === Qt.Key_P || event.key === Qt.Key_K))) win.detailScroll(-win.rowHeight)
+                            else if (event.key === Qt.Key_PageDown || event.key === Qt.Key_Space) win.detailScroll(detailView.height - win.rowHeight)
+                            else if (event.key === Qt.Key_PageUp) win.detailScroll(-(detailView.height - win.rowHeight))
+                            event.accepted = true
+                            return
+                        }
                         if (event.key === Qt.Key_Escape) { win.back(); event.accepted = true }
                         else if (ctrl && event.key === Qt.Key_Space) { win.deckPlayPress(); event.accepted = true }
                         else if (event.key === Qt.Key_Backspace && text === "" && win.level !== "root") { win.back(); event.accepted = true }
@@ -1181,7 +1235,7 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                 id: list
                 width: parent.width
                 // On the grid level the list is hidden, but its currentIndex is still the selection (keys, Enter)
-                visible: !win.grid || !win.wallLoaded
+                visible: (!win.grid || !win.wallLoaded) && win.detail === null
                 height: visible ? win.listHeight() : 0
                 model: win.results
                 clip: true
@@ -1241,26 +1295,29 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                     }
                     Text {
                         id: nameText
-                        readonly property bool twoLines: !!row.modelData.artist   // an album: its artist on a second line
+                        // A second line: an album's artist, or the description of an Install search result (row.modelData.sub)
+                        readonly property bool twoLines: !!row.modelData.artist || !!row.modelData.sub
                         anchors {
                             left: row.noIcon ? parent.left : slot.right; leftMargin: 16
                             right: trailing.left; rightMargin: (row.modelData.kind === "key" ? 36 : 12) + (dot.visible ? 19 : 0)   // keybindings get more room before the keys (description is elided with …)
-                            verticalCenter: parent.verticalCenter; verticalCenterOffset: twoLines ? -7 : 0
+                            verticalCenter: parent.verticalCenter; verticalCenterOffset: twoLines ? (row.modelData.sub ? -9 : -7) : 0
                         }
                         elide: Text.ElideRight
                         text: row.isHeader ? row.modelData.name.toUpperCase()
                             : (row.armedNow ? row.modelData.name + " — " + (row.modelData.armHint || "press Enter again to confirm") : row.modelData.name)
                         color: row.armedNow ? Theme.primary : (row.isHeader ? Theme.primary : row.modelData.kind === "hint" ? Theme.dim : (row.current ? Theme.accent : Theme.text))
-                        font { family: Theme.font; pixelSize: row.isHeader ? win.fontSize - 5 : win.fontSize; weight: row.isHeader ? Font.Bold : win.fontWeight; letterSpacing: row.isHeader ? 1.5 : 0 }
+                        font { family: Theme.font; pixelSize: row.isHeader ? win.fontSize - 5 : row.modelData.sub ? win.fontSize - 2 : win.fontSize; weight: row.isHeader ? Font.Bold : win.fontWeight; letterSpacing: row.isHeader ? 1.5 : 0 }
                         topPadding: row.isHeader ? 10 : 0
                     }
                     Text {
                         visible: nameText.twoLines
-                        anchors { left: nameText.left; right: nameText.right; top: nameText.bottom; topMargin: -1 }
+                        anchors { left: nameText.left; right: nameText.right; top: nameText.bottom; topMargin: row.modelData.sub ? 0 : -1 }
                         elide: Text.ElideRight
-                        text: (row.modelData.artist || "").toUpperCase()
-                        color: Theme.primary
-                        font { family: Theme.font; pixelSize: win.fontSize - 6; letterSpacing: 1 }
+                        textFormat: Text.PlainText
+                        text: row.modelData.sub || (row.modelData.artist || "").toUpperCase()
+                        color: row.modelData.sub ? Theme.dim : Theme.primary
+                        font { family: Theme.font; pixelSize: row.modelData.sub ? win.fontSize - 5 : win.fontSize - 6; weight: row.modelData.sub ? win.fontWeight : Font.Normal
+                               letterSpacing: row.modelData.sub ? 0 : 1 }
                     }
                     Text {
                         id: trailing
@@ -1294,6 +1351,194 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                         enabled: !row.isHeader
                         onPositionChanged: mouse => win.hover(rowArea, mouse, row.index)
                         onClicked: win.activate(row.modelData)
+                    }
+                }
+            }
+
+            // Install / Remove: a package's details. Header (icon, name, summary, button), facts, screenshot, description.
+            Flickable {
+                id: detailView
+                readonly property var info: win.detailInfo
+                readonly property var pkg: win.detail || ({})
+                visible: win.detail !== null
+                width: parent.width
+                height: visible ? Math.min(contentHeight, win.maxRows * win.rowHeight + 60) : 0
+                contentHeight: detailCol.implicitHeight
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+                TouchScroll { view: detailView; step: win.rowHeight }
+
+                Column {
+                    id: detailCol
+                    width: detailView.width
+                    spacing: 18
+                    topPadding: 4
+                    bottomPadding: 6
+
+                    Item {      // header
+                        width: parent.width
+                        height: Math.max(72, headText.implicitHeight)
+                        Item {
+                            id: headIcon
+                            width: 64; height: 64
+                            anchors { left: parent.left; leftMargin: 10; verticalCenter: parent.verticalCenter }
+                            Image {
+                                id: headImg
+                                anchors.fill: parent
+                                source: detailView.info && detailView.info.icon ? "file://" + detailView.info.icon : ""
+                                sourceSize: Qt.size(128, 128)
+                                fillMode: Image.PreserveAspectFit
+                            }
+                            Text {
+                                anchors.centerIn: parent
+                                visible: headImg.status !== Image.Ready
+                                text: Icons.g(detailView.pkg.glyph || "package")
+                                color: Theme.primary
+                                font { family: Icons.family; pixelSize: 44 }
+                            }
+                        }
+                        Column {
+                            id: headText
+                            anchors { left: headIcon.right; leftMargin: 20; right: button.left; rightMargin: 20; verticalCenter: parent.verticalCenter }
+                            spacing: 4
+                            Text {
+                                width: parent.width
+                                elide: Text.ElideRight
+                                textFormat: Text.PlainText
+                                text: detailView.info ? detailView.info.name : (detailView.pkg.name || "")
+                                color: Theme.accent
+                                font { family: Theme.font; pixelSize: win.fontSize + 7; weight: Font.Normal }
+                            }
+                            Text {
+                                width: parent.width
+                                wrapMode: Text.Wrap
+                                maximumLineCount: 2
+                                elide: Text.ElideRight
+                                textFormat: Text.PlainText
+                                text: detailView.info && detailView.info.summary ? detailView.info.summary : (detailView.pkg.summary || detailView.pkg.sub || "")
+                                color: Theme.dim
+                                font { family: Theme.font; pixelSize: win.fontSize - 2; weight: win.fontWeight }
+                            }
+                        }
+                        Rectangle {      // Install / Remove (= Enter); grey when already installed
+                            id: button
+                            readonly property bool off: !detailView.pkg.remove && detailView.info !== null && detailView.info.installed
+                            anchors { right: parent.right; rightMargin: 6; verticalCenter: parent.verticalCenter }
+                            width: buttonRow.implicitWidth + 32
+                            height: 40
+                            radius: 10
+                            color: off ? "transparent" : buttonArea.containsMouse ? Theme.primary : Theme.sel
+                            border.width: off ? 1 : 0
+                            border.color: Theme.border
+                            Row {
+                                id: buttonRow
+                                anchors.centerIn: parent
+                                spacing: 8
+                                Text {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: Icons.g(button.off ? "check" : detailView.pkg.remove ? "trash-2" : "download")
+                                    color: button.off ? Theme.dim : buttonArea.containsMouse ? Theme.bg : Theme.accent
+                                    font { family: Icons.family; pixelSize: 17 }
+                                }
+                                Text {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: button.off ? "Installed" : detailView.pkg.remove ? "Remove" : "Install"
+                                    color: button.off ? Theme.dim : buttonArea.containsMouse ? Theme.bg : Theme.accent
+                                    font { family: Theme.font; pixelSize: win.fontSize - 1; weight: Font.Normal }
+                                }
+                            }
+                            MouseArea {
+                                id: buttonArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: button.off ? Qt.ArrowCursor : Qt.PointingHandCursor
+                                onClicked: win.detailConfirm()
+                            }
+                        }
+                    }
+
+                    Rectangle { width: parent.width; height: 1; color: Theme.border }
+
+                    Text {
+                        visible: detailView.info === null
+                        leftPadding: 10
+                        text: "Loading details…"
+                        color: Theme.dim
+                        font { family: Theme.font; pixelSize: win.fontSize - 3; weight: win.fontWeight }
+                    }
+
+                    Grid {      // facts: label on the left, value on the right; the homepage opens in the browser
+                        id: facts
+                        visible: detailView.info !== null
+                        x: 10
+                        width: parent.width - 20
+                        columns: 2
+                        columnSpacing: 20
+                        rowSpacing: 7
+                        readonly property int labelWidth: 120
+                        Repeater {
+                            model: detailView.info ? detailView.info.fields.reduce((a, f) => a.concat([{ label: true, t: f[0] }, { label: false, t: f[1], link: f[0] === "Homepage" }]), []) : []
+                            Text {
+                                id: fact
+                                required property var modelData
+                                width: modelData.label ? facts.labelWidth : facts.width - facts.labelWidth - facts.columnSpacing
+                                wrapMode: modelData.label ? Text.NoWrap : Text.WrapAtWordBoundaryOrAnywhere
+                                textFormat: Text.PlainText
+                                text: modelData.label ? modelData.t.toUpperCase() : modelData.t
+                                color: modelData.label ? Theme.primary : modelData.link ? (linkArea.containsMouse ? Theme.accent : Theme.text) : Theme.text
+                                font {
+                                    family: Theme.font; pixelSize: modelData.label ? win.fontSize - 6 : win.fontSize - 3
+                                    weight: win.fontWeight; letterSpacing: modelData.label ? 1 : 0; underline: !!modelData.link && linkArea.containsMouse
+                                }
+                                topPadding: modelData.label ? 3 : 0
+                                MouseArea {
+                                    id: linkArea
+                                    enabled: !!fact.modelData.link
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                    onClicked: { win.open = false; Quickshell.execDetached(["xdg-open", fact.modelData.t]) }
+                                }
+                            }
+                        }
+                    }
+
+                    ClippingRectangle {      // screenshot (from the internet; left out until it has loaded)
+                        id: shotFrame
+                        readonly property real ratio: shotImg.implicitWidth > 0 ? shotImg.implicitHeight / shotImg.implicitWidth : 0
+                        visible: shotImg.status === Image.Ready
+                        height: visible ? Math.min(360, parent.width * ratio) : 0
+                        width: ratio > 0 ? Math.min(parent.width, height / ratio) : 0
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        radius: 8
+                        color: "transparent"
+                        Image {
+                            id: shotImg
+                            anchors.fill: parent
+                            source: detailView.info && detailView.info.screenshot ? detailView.info.screenshot : ""
+                            asynchronous: true
+                            fillMode: Image.PreserveAspectFit
+                        }
+                    }
+
+                    Column {      // description
+                        visible: detailView.info !== null && detailView.info.paragraphs.length > 0
+                        x: 10
+                        width: parent.width - 20
+                        spacing: 10
+                        Repeater {
+                            model: detailView.info ? detailView.info.paragraphs : []
+                            Text {
+                                required property string modelData
+                                width: parent.width
+                                wrapMode: Text.Wrap
+                                textFormat: Text.PlainText
+                                lineHeight: 1.15
+                                text: modelData
+                                color: Theme.text
+                                font { family: Theme.font; pixelSize: win.fontSize - 3; weight: win.fontWeight }
+                            }
+                        }
                     }
                 }
             }
