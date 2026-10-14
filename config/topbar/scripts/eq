@@ -17,6 +17,7 @@ ancdir=~/.local/state/nightdrive/anc # <sink>: the listening mode picked in the 
 live=${XDG_RUNTIME_DIR:-/tmp}/nightdrive/anc          # <MAC>: the mode now, <MAC>.modes, <MAC>.battery (headphones-ctl)
 livesock=${XDG_RUNTIME_DIR:-/tmp}/nightdrive/headphones-ctl.sock
 maxdir=~/.local/state/nightdrive/max-volume   # <MAC>: the headphones' max volume in percent (hypr/scripts/bt-audio-follow keeps it)
+maxdefault=50                                 # for headphones without a saved one (100 = no limit)
 
 sink_name() { pactl list short sinks 2>/dev/null | awk '$2 ~ /^bluez_output/ {print $2; exit}'; }
 description() { pactl -f json list sinks 2>/dev/null | jq -r --arg s "$1" '.[] | select(.name == $s) | .description'; }
@@ -74,7 +75,7 @@ case ${1:-current} in
     [[ -s $live/$mac.battery ]] && bat=$(cat "$live/$mac.battery")   # AirPods: per pod and case
     modes=$(anc_modes "$key" "$s")
     [[ -f $live/$mac ]] && controlled=true || controlled=false
-    max=$(cat "$maxdir/$mac" 2>/dev/null || echo 100)
+    max=$(cat "$maxdir/$mac" 2>/dev/null || echo $maxdefault)
     pactl -f json list sinks | jq -c --arg s "$s" --arg def "$(pactl get-default-sink)" --arg bat "$bat" \
       --arg cur "$("$0" current)" --arg presets "$("$0" list)" --arg key "$key" --arg modes "$modes" --arg anc "$(anc_mode "$s")" --argjson controlled $controlled --argjson max "$max" \
       '.[] | select(.name == $s) | {sink: $s, name: .description, default: ($s == $def), battery: $bat,
@@ -109,8 +110,7 @@ case ${1:-current} in
     true ;;
   max-volume)   # the headphones' max volume (100 = no limit); a louder volume is turned down at once
     pct=${2:?percent}; s=$(sink_name); [[ -n $s ]] || exit 1
-    mkdir -p "$maxdir"
-    if (( pct >= 100 )); then rm -f "$maxdir/$(mac_of "$s")"; else echo "$pct" > "$maxdir/$(mac_of "$s")"; fi
+    mkdir -p "$maxdir"; echo "$pct" > "$maxdir/$(mac_of "$s")"
     vol=$(pactl get-sink-volume "$s" | grep -oP '\d+(?=%)' | sort -n | tail -1)
     (( pct < 100 && vol > pct )) && pactl set-sink-volume "$s" "$pct%"
     true ;;

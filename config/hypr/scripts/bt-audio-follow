@@ -1,19 +1,21 @@
 #!/bin/bash
 # Bluetooth headphones become the audio output as soon as they connect. WirePlumber on its own only switches to them if
 # they were the last output picked by hand, so after picking the speakers once, connected headphones stayed silent.
-# Also keeps each headphones' volume at or under their max volume (headphones menu › Max volume, saved in $maxdir/<MAC>):
+# Also keeps each headphones' volume at or under their max volume (headphones menu › Max volume, saved in $maxdir/<MAC>;
+# 50% for headphones without one, 100 = no limit):
 # a change from anywhere (keys, apps, a Mac or phone over AVRCP) is pulled back, and headphones connect at most at it.
 # Started by hyprland.lua; listens to PipeWire (pactl subscribe) in the background. One instance only (flock).
 exec 9>"${XDG_RUNTIME_DIR:-/tmp}/bt-audio-follow.lock"
 flock -n 9 || exit 0
 maxdir=~/.local/state/nightdrive/max-volume
+maxdefault=50   # the same in topbar/scripts/eq
 
 sink_of() { pactl list sinks short | awk -v id="$1" '$1 == id { print $2 }'; }
 # Volume over the headphones' max -> the max (percent of the louder channel)
 limit() {
   local name=$1 mac max vol
   mac=$(sed -E 's/^bluez_output\.([0-9A-F_]+).*/\1/; s/_/:/g' <<<"$name")
-  max=$(cat "$maxdir/$mac" 2>/dev/null) || return
+  max=$(cat "$maxdir/$mac" 2>/dev/null || echo $maxdefault)
   vol=$(pactl get-sink-volume "$name" 2>/dev/null | grep -oP '\d+(?=%)' | sort -n | tail -1)
   [[ -n $vol ]] && (( vol > max )) && pactl set-sink-volume "$name" "$max%"
 }
