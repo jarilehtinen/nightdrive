@@ -165,6 +165,24 @@ Column {
         script: 'nmcli connection down id "$SSID"'
         onResult: text => { m.connecting = ""; m.refresh() }
     }
+    // Forget: deletes the saved connection(s) of the network (its password too), which also disconnects. By the SSID
+    // stored in each profile, as a profile's name can differ from it ("Home 1"). Needs a second click within 4 s.
+    property string forgetArmed: ""
+    Timer { id: forgetDisarm; interval: 4000; onTriggered: m.forgetArmed = "" }
+    function forget(ssid) {
+        if (m.forgetArmed !== ssid) { m.forgetArmed = ssid; forgetDisarm.restart(); return }
+        m.forgetArmed = ""
+        m.connecting = ssid
+        forgetProc.environment = { "SSID": ssid }
+        forgetProc.running = true
+    }
+    Sh {
+        id: forgetProc
+        script: 'nmcli -t -f UUID,TYPE connection show | while IFS=: read -r uuid type; do
+  [ "$type" = 802-11-wireless ] && [ "$(nmcli -g 802-11-wireless.ssid connection show "$uuid")" = "$SSID" ] && nmcli connection delete uuid "$uuid"
+done; true'
+        onResult: text => { m.connecting = ""; m.refresh(); TopBar.refresh("wifi") }
+    }
 
     MenuHeader {
         width: parent.width
@@ -180,7 +198,7 @@ Column {
     }
     Divider { pad: 2 }
 
-    // Connected network at the top (an information row), throughput and public IP below it, then Disconnect
+    // Connected network at the top (an information row), throughput and public IP below it, then Disconnect and Forget
     MenuRow {
         visible: m.wifiOn && m.activeNet !== null
         width: parent.width
@@ -220,6 +238,15 @@ Column {
         label: "Disconnect"
         busy: m.connecting === m.activeSsid
         onClicked: m.activate(m.activeNet)
+    }
+    MenuRow {      // unlike Disconnect, also deletes the saved password: the network won't connect again by itself
+        visible: m.wifiOn && m.activeNet !== null
+        width: parent.width
+        icon: "trash-2"
+        action: true
+        danger: m.forgetArmed === m.activeSsid
+        label: m.forgetArmed === m.activeSsid ? "Click again to forget" : "Forget network"
+        onClicked: m.forget(m.activeSsid)
     }
 
     Text {
