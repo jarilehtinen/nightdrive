@@ -7,6 +7,7 @@ Rectangle {
     property string label: ""
     property string detail: ""
     property string checkIcon: ""
+    property string hoverCheckIcon: "" // replaces checkIcon under the mouse: what a click does (e.g. "unplug" on a connected device)
     property int checkIconSize: 16
     property bool active: false
     property bool tinted: false        // a light highlight (the action buttons' faint theme colour), e.g. this machine in Tailscale
@@ -78,12 +79,36 @@ Rectangle {
             color: Theme.dim
             font { family: Theme.font; pixelSize: 11 }
         }
-        Text {
-            visible: row.checkIcon !== ""
+        // Under the mouse the hover icon cross-fades over the check: one shrinks and fades out while the other grows in
+        Item {
+            id: checkBox
+            readonly property bool hovering: row.hoverCheckIcon !== "" && (area.containsMouse || row.navSelected)
+            visible: row.checkIcon !== "" || row.hoverCheckIcon !== ""
             anchors.verticalCenter: parent.verticalCenter
-            text: Icons.g(row.checkIcon)
-            color: row.active ? Theme.accent : Theme.dim
-            font { family: Icons.family; pixelSize: row.checkIconSize }
+            width: checkText.implicitWidth; height: checkText.implicitHeight
+            Text {
+                id: checkText
+                readonly property bool on: !checkBox.hovering && row.checkIcon !== ""
+                anchors.centerIn: parent
+                text: Icons.g(row.checkIcon || row.hoverCheckIcon)
+                color: row.active ? Theme.accent : Theme.dim
+                font { family: Icons.family; pixelSize: row.checkIconSize }
+                opacity: on ? 1 : 0
+                scale: on ? 1 : 0.6
+                Behavior on opacity { NumberAnimation { duration: 140; easing.type: Easing.OutQuad } }
+                Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutQuad } }
+            }
+            Text {
+                readonly property bool on: checkBox.hovering
+                anchors.centerIn: parent
+                text: Icons.g(row.hoverCheckIcon)
+                color: row.active ? Theme.accent : Theme.dim
+                font { family: Icons.family; pixelSize: row.checkIconSize }
+                opacity: on ? 1 : 0
+                scale: on ? 1 : 0.6
+                Behavior on opacity { NumberAnimation { duration: 140; easing.type: Easing.OutQuad } }
+                Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutQuad } }
+            }
         }
     }
     MouseArea {

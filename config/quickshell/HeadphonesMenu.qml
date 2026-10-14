@@ -45,7 +45,15 @@ Column {
         detail: [m.info.battery ? m.info.battery + "%" : "", m.info.codec || ""].filter(s => s).join(" · ")
         active: !!m.info.default
         checkIcon: m.info.default ? "check" : ""
-        onClicked: if (m.info.sink) { Quickshell.execDetached(["pactl", "set-default-sink", m.info.sink]); m.refresh() }
+        hoverCheckIcon: m.info.default ? "unplug" : ""
+        // Already the output: a click disconnects the headphones (the MAC is in the sink name, bluez_output.C4_6E_….1).
+        // Otherwise it makes them the output.
+        onClicked: {
+            if (!m.info.sink) return
+            const mac = (m.info.sink.match(/^bluez_output\.([0-9A-F_]{17})/) || [])[1]
+            if (m.info.default && mac) { Quickshell.execDetached(["bluetoothctl", "disconnect", mac.replace(/_/g, ":")]); m.close() }
+            else { Quickshell.execDetached(["pactl", "set-default-sink", m.info.sink]); m.refresh() }
+        }
     }
 
     Divider {}

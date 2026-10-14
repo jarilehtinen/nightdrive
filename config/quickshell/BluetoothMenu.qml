@@ -125,6 +125,7 @@ Column {
                 label: modelData.name
                 active: modelData.connected
                 checkIcon: modelData.connected ? "check" : ""
+                hoverCheckIcon: modelData.connected ? "unplug" : ""   // a click disconnects
                 busy: m.busy === modelData.mac
                 detail: modelData.battery !== "" ? modelData.battery + " %"
                       : (!modelData.paired ? "not paired" : "")
