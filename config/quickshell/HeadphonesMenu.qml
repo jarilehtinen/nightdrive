@@ -37,12 +37,19 @@ Column {
         setProc.running = true
     }
     Component.onCompleted: refresh()
-    Timer { interval: 2000; repeat: true; running: true; onTriggered: m.refresh() }
+    // Every 2 s; every 0.4 s while a picked listening mode is on its way to the headphones
+    Timer { interval: m.ancPending !== "" ? 400 : 2000; repeat: true; running: true; onTriggered: m.refresh() }
+    // The listening mode picked in the menu until the headphones report it (busy dots on its row); gives up after 10 s
+    property string ancPending: ""
+    Timer { id: ancGiveUp; interval: 10000; onTriggered: m.ancPending = "" }
 
     Sh {
         id: infoProc
         command: [m.eq, "info"]
-        onResult: text => { try { m.info = JSON.parse(text) } catch (e) {} }
+        onResult: text => {
+            try { m.info = JSON.parse(text) } catch (e) {}
+            if (m.info.anc === m.ancPending) m.ancPending = ""
+        }
     }
     Sh {
         id: setProc
@@ -110,7 +117,8 @@ Column {
                 label: modelData
                 active: m.info.anc === modelData
                 checkIcon: active ? "check" : ""
-                onClicked: if (!active) m.run(["anc", modelData])
+                busy: m.ancPending === modelData
+                onClicked: if (!active && m.ancPending === "") { m.ancPending = modelData; ancGiveUp.restart(); m.run(["anc", modelData]) }
             }
         }
     }
