@@ -73,16 +73,26 @@ Scope {
     PanelWindow {
         visible: shelf.open
         anchors { top: true }
-        margins { top: Theme.barHeight }   // attached to the top bar
         implicitWidth: card.width
-        implicitHeight: card.height
+        implicitHeight: Theme.barHeight + card.height   // from the top edge: the shelf covers the bar behind it, like a dropped-down notch
         color: "transparent"
         exclusionMode: ExclusionMode.Ignore
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
+        // The black reaches the top edge (the see-through bar would show between the notch and the shelf otherwise)
+        Rectangle { width: card.width; height: Theme.barHeight + card.radius; color: card.color }
+        HoverHandler { id: hover }
+        DropArea {   // the part over the bar takes drops too
+            anchors.fill: parent
+            keys: ["text/uri-list"]
+            onEntered: drag => { drag.accepted = true }
+            onDropped: drop => { if (drop.hasUrls) { shelf.add(drop.urls); drop.acceptProposedAction() } }
+        }
+
         Rectangle {
             id: card
+            y: Theme.barHeight
             property bool hovered: hover.hovered
             // 4 files fit comfortably; width grows up to 6, after that the list scrolls (mouse wheel / two fingers)
             function chipsW(n) { return n * 64 + (n - 1) * 10 }
@@ -92,8 +102,6 @@ Scope {
             color: "#000000"
             // Square top corners: the shelf continues the top bar
             Rectangle { anchors { top: parent.top; left: parent.left; right: parent.right } height: parent.radius; color: parent.color }
-
-            HoverHandler { id: hover }
 
             DropArea {
                 id: dropArea
