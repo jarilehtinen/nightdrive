@@ -1,7 +1,7 @@
 #!/bin/bash
 # The nightdrive command (linked to ~/.local/bin by link.sh). New subcommands go in the case at the bottom.
 #   nightdrive update          pull Nightdrive (and a private overlay and Deck's source, if any), relink, install new
-#                              packages, dnf upgrade, reload the desktop (launcher › Update runs this)
+#                              packages, dnf upgrade, Flatpak apps, reload the desktop (launcher › Update runs this)
 #   nightdrive update check    fetch only: how many new commits are waiting. Notifies once per new count, the notification's
 #                              Update button runs the update in a terminal (nightdrive-update-check.timer, every 6 h)
 #   nightdrive topbar adjust     top bar icon and text sizes / positions a pixel at a time, live (config/topbar/adjust.conf)
@@ -72,6 +72,11 @@ update() {
 
   echo "==> System update"
   sudo dnf upgrade --refresh -y
+
+  echo "==> Flatpak apps (flatpaks.txt)"
+  flatpaks=$(grep -vE '^\s*(#|$)' "$repo/flatpaks.txt" 2>/dev/null)
+  [[ -n $flatpaks ]] && flatpak install --user -y --noninteractive flathub $flatpaks   # already installed ones are skipped
+  flatpak update --user -y --noninteractive
 
   (( deck )) && { echo "==> Deck (rebuild)"; DECK_SRC=${DECK_SRC:-$HOME/.local/src/deck} "$repo/install-deck.sh"; }
 

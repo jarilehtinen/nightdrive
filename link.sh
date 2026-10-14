@@ -20,6 +20,8 @@ done
 [[ -L $HOME/.config/waybar && ! -e $HOME/.config/waybar ]] && rm "$HOME/.config/waybar" && echo "removed     $HOME/.config/waybar (old link)"
 link "$repo/config/gtk-4.0/gtk.css" "$HOME/.config/gtk-4.0/gtk.css"   # Tokyo Night colours for libadwaita apps (Nautilus)
 link "$repo/config/gtk-3.0/gtk.css" "$HOME/.config/gtk-3.0/gtk.css"
+# Apostrophe is a Flatpak: it reads its own config dir (install.sh lets the sandbox read config/gtk-4.0)
+link "$repo/config/gtk-4.0/apostrophe.css" "$HOME/.var/app/org.gnome.gitlab.somas.Apostrophe/config/gtk-4.0/gtk.css"
 link "$repo/config/fontconfig/conf.d/10-nerd-font-symbols.conf" "$HOME/.config/fontconfig/conf.d/10-nerd-font-symbols.conf"
 
 # EasyEffects (headphone EQ): presets as links, settings as a copy (KConfig would replace a link with a regular file)

@@ -112,8 +112,15 @@ gsettings set org.gnome.desktop.interface gtk-theme 'Adwaita' 2>/dev/null || tru
 gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark' 2>/dev/null || true
 gsettings set org.gnome.desktop.wm.preferences button-layout ':' 2>/dev/null || true
 
-echo "==> Default apps: images open in Loupe (instead of the browser)"
+echo "==> Flatpak apps (flatpaks.txt, from Flathub, per user)"
+flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+flatpak install --user -y --noninteractive flathub $(pkgs "$repo/flatpaks.txt")
+# Apostrophe's theme is a link into the repo (link.sh), which the sandbox can't see otherwise
+flatpak override --user --filesystem="$repo/config/gtk-4.0:ro" org.gnome.gitlab.somas.Apostrophe
+
+echo "==> Default apps: images open in Loupe (instead of the browser), Markdown in Apostrophe"
 xdg-mime default org.gnome.Loupe.desktop image/png image/jpeg image/gif image/webp image/bmp image/tiff image/svg+xml image/avif image/heic
+xdg-mime default org.gnome.gitlab.somas.Apostrophe.desktop text/markdown text/x-markdown
 
 echo "==> Sleep hook (Wi-Fi and Bluetooth off during sleep, battery drain logging)"
 sudo install -m 0755 "$repo/config/system/nightdrive-sleep" /usr/lib/systemd/system-sleep/nightdrive-sleep

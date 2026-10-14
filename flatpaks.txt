@@ -1,0 +1,3 @@
+# Flatpak apps from Flathub, installed per user (no sudo). install.sh installs these, `nightdrive update` adds new ones.
+# Markdown viewer and editor (not in Fedora's repos)
+org.gnome.gitlab.somas.Apostrophe

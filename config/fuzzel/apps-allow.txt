@@ -14,3 +14,4 @@ org.gnome.Nautilus.desktop           # Files
 net.thunderbird.Thunderbird.desktop  # Thunderbird
 com.github.wwmm.easyeffects.desktop  # Easy Effects (headphone EQ)
 org.gnome.Loupe.desktop              # Image Viewer
+org.gnome.gitlab.somas.Apostrophe.desktop  # Markdown (Apostrophe)
