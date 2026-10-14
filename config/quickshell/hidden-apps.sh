@@ -1,5 +1,5 @@
 #!/bin/sh
-# Prints the apps hidden by fuzzel/sync-apps (also your own ones removed from Apps): path|Name|Icon|Keywords+GenericName
+# Prints the apps hidden by fuzzel/sync-apps (also the ones you hid from Apps): path|Name|Icon|Keywords+GenericName
 # (DesktopEntries doesn't return NoDisplay apps, so the Launcher reads the override files itself.)
 grep -l -e 'managed by fuzzel/sync-apps' -e '^X-Nightdrive-Hidden=true' "$HOME"/.local/share/applications/*.desktop 2>/dev/null |
 while read -r f; do

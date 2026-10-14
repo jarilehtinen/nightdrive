@@ -100,7 +100,7 @@ for id_, path in sorted(sysdefs.items()):
         open(target, "w", encoding="utf-8").write(MARK + "\n" + edit(text, remove=("NoDisplay",), add=("NoDisplay=true",)))
         hidden.append(name)
 
-# 2) Own files (e.g. webapp-*): hidden only when removed from Apps in the launcher
+# 2) Own files (e.g. webapp-*): hidden only when hidden from Apps in the launcher
 for f in sorted(glob.glob(USER_DIR + "/*.desktop")):
     id_ = os.path.basename(f)
     text = read(f)

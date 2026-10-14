@@ -7,7 +7,8 @@ import Quickshell.Widgets
 // Launcher (⌘Space). Player row above the search field while Deck is playing (Ctrl+Space = play/pause). Root level: Apps, Passwords, Clipboard, Screenshot, Keybindings, Settings, Install, Remove, Update, Power. Enter opens an item, Esc/Backspace (with an empty query) goes back,
 // at the root level Esc closes. Up/down arrows or Ctrl+N/P/J/K move the selection.
 // Apps: with an empty query, the allow-listed apps; when searching, also those hidden by sync-apps (hidden-apps.sh). See fuzzel/sync-apps, apps-allow.txt.
-// ⌃Enter adds the selected app to Apps or removes it (your choice, ~/.local/state/nightdrive/apps.json).
+// ⌃Enter shows the selected app in Apps or hides it from there; a hidden app is still found by searching, and nothing is
+// uninstalled (your choice, ~/.local/state/nightdrive/apps.json).
 // Keybindings: read from ~/.config/hypr/SHORTCUTS.md (the same file as the ⌘⇧K cheat sheet).
 // Install › Package / Flatpak and Remove: Enter on a package opens its details in a wider card (hypr/scripts/pkg-info);
 // there Enter installs or removes it, Esc goes back to the results.
@@ -91,11 +92,12 @@ PanelWindow {
     readonly property var parents: Object.assign({ shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", package: "install", flatpak: "install", webapp: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "theme", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", baropacity: "topbar", baricons: "topbar", barhl: "topbar" }, ext ? ext.parents : {})
     // Search found nothing: hint below ⌘⌥⏎ (icons) → send the text to Claude
     readonly property bool noHit: (level === "root" || level === "apps") && query.trim() !== "" && results.length === 0
-    // The selected row is an app: ⌃Enter adds it to Apps (shown with an empty query) or removes it from there
+    // The selected row is an app: ⌃Enter shows it in Apps (the list with an empty query) or hides it from there.
+    // "Hide", not "remove": removing sounded like uninstalling.
     readonly property var selApp: { const c = results[list.currentIndex]; return (level === "apps" || level === "root") && c && c.kind === "app" ? c : null }
     readonly property string footer: detail !== null ? (detail.remove ? "Enter: remove" : detailInfo && detailInfo.installed ? "Already installed" : "Enter: install")
                                                        + "  ·  Esc: back"
-        : selApp ? "Enter: open  ·  Ctrl+Enter: " + (selApp.shown ? "remove from Apps" : "add to Apps")
+        : selApp ? "Enter: open  ·  Ctrl+Enter: " + (selApp.shown ? "hide from Apps" : "show in Apps")
                                               + "  ·  Alt+Enter: " + (autostartIds.indexOf(appId(selApp)) >= 0 ? "don’t start at login" : "start at login")
         : level === "startup" ? "Enter: start at login on/off  ·  background apps start hidden"
         : level === "passwords" && pwState === "ready" ? "Enter: password  ·  Shift+Enter: username  ·  Ctrl+Enter: one-time code"
@@ -105,7 +107,7 @@ PanelWindow {
         : level === "emoji" ? "Enter: paste  ·  Shift+Enter: copy only  ·  search in English or Finnish"
         : level === "webname" && query.trim() !== "" ? "Enter: continue to the address"
         : level === "webaddr" && query.trim() !== "" ? "Enter: create the webapp" : ""
-    // The footer as key caps: "Ctrl+Enter: add to Apps  ·  Esc: back" → [{ keys: ["Ctrl", "Enter"], text: "add to Apps" }, ...].
+    // The footer as key caps: "Ctrl+Enter: show in Apps  ·  Esc: back" → [{ keys: ["Ctrl", "Enter"], text: "show in Apps" }, ...].
     // "Enter creates …" (no colon) works too; a part that doesn't start with a key is plain text.
     readonly property var keyGlyphs: ({ Enter: "corner-down-left", Ctrl: "chevron-up", Shift: "arrow-big-up", Alt: "option", Cmd: "command",
                                         Backspace: "delete", Space: "space" })
