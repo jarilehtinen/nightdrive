@@ -8,6 +8,7 @@ Slider 1.0 Slider.qml
 Launcher 1.0 Launcher.qml
 Osd 1.0 Osd.qml
 Picker 1.0 Picker.qml
+PowerDialog 1.0 PowerDialog.qml
 Divider 1.0 Divider.qml
 Shelf 1.0 Shelf.qml
 OutputList 1.0 OutputList.qml

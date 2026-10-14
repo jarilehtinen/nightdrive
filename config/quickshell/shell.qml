@@ -144,6 +144,8 @@ ShellRoot {
 
     Picker {}
 
+    PowerDialog {}
+
     Shelf {}
 
     Launcher {

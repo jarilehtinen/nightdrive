@@ -130,6 +130,11 @@ xdg-mime default org.gnome.gitlab.somas.Apostrophe.desktop text/markdown text/x-
 echo "==> Sleep hook (Wi-Fi and Bluetooth off during sleep, battery drain logging)"
 sudo install -m 0755 "$repo/config/system/nightdrive-sleep" /usr/lib/systemd/system-sleep/nightdrive-sleep
 
+echo "==> logind: F6 (KEY_SLEEP) is do not disturb, the power button opens the power dialog (config/hypr/bindings.lua)"
+sudo install -Dm644 "$repo/config/system/logind-ignore-sleep-key.conf" /etc/systemd/logind.conf.d/50-ignore-sleep-key.conf
+sudo install -Dm644 "$repo/config/system/logind-power-key.conf" /etc/systemd/logind.conf.d/50-power-key.conf
+sudo systemctl kill -s HUP systemd-logind
+
 echo "==> Web apps (config/webapps.txt)"
 grep -vE '^\s*(#|$)' "$repo/config/webapps.txt" | while IFS='|' read -r name url; do
   "$repo/config/hypr/scripts/webapp-add" "$name" "$url" >/dev/null && echo "  $name"

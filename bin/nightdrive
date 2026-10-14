@@ -72,6 +72,22 @@ update() {
   missing=$(for p in $want; do rpm -q --whatprovides "$p" >/dev/null 2>&1 || echo "$p"; done)
   if [[ -n $missing ]]; then echo "    $(echo $missing)"; sudo dnf install -y $missing; else echo "    none"; fi
 
+  # The system files install.sh puts in place: copied again when the repo's version differs (or is missing), so an
+  # install from before a file was added gets it too (e.g. the power key, 14.10.2026)
+  echo "==> System files"
+  changed=0 copied=0
+  while read -r src dst mode; do
+    cmp -s "$repo/config/system/$src" "$dst" && continue
+    echo "    $dst"; copied=1; sudo install -Dm"$mode" "$repo/config/system/$src" "$dst"
+    [[ $dst == /etc/systemd/logind.conf.d/* ]] && changed=1
+  done <<'LIST'
+nightdrive-sleep /usr/lib/systemd/system-sleep/nightdrive-sleep 755
+logind-ignore-sleep-key.conf /etc/systemd/logind.conf.d/50-ignore-sleep-key.conf 644
+logind-power-key.conf /etc/systemd/logind.conf.d/50-power-key.conf 644
+LIST
+  (( changed )) && sudo systemctl kill -s HUP systemd-logind
+  (( copied )) || echo "    up to date"
+
   echo "==> System update"
   sudo dnf upgrade --refresh -y
 
