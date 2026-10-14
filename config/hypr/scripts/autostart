@@ -1,0 +1,51 @@
+#!/bin/bash
+# Apps started at login, chosen by the user in the launcher (Settings › Startup, or ⌥Enter on an app).
+# The list is per user, one .desktop id per line, in ~/.local/state/nightdrive/autostart.
+# Background apps (hypr/background-apps) start hidden in special:bg, the rest open normally.
+#   autostart              start the listed apps (hyprland.lua runs this at login)
+#   autostart list         print the ids
+#   autostart toggle ID    add the id, or remove it if it's there
+f=$HOME/.local/state/nightdrive/autostart
+# On by default: 1Password's SSH agent, `op` and the launcher's Passwords level need it running
+DEFAULT=com.onepassword.OnePassword.desktop
+
+desktop_file() {
+  local d
+  for d in "${XDG_DATA_HOME:-$HOME/.local/share}" ${XDG_DATA_DIRS//:/ }; do
+    [[ -f $d/applications/$1 ]] && { echo "$d/applications/$1"; return 0; }
+  done
+  return 1
+}
+
+# First run: seed the default, so a later empty file means the user turned everything off
+if [[ ! -e $f ]]; then
+  mkdir -p "${f%/*}"
+  if desktop_file "$DEFAULT" >/dev/null; then echo "$DEFAULT" > "$f"; else : > "$f"; fi
+fi
+
+case $1 in
+  list) cat "$f" ;;
+  toggle)
+    [[ -n $2 ]] || exit 1
+    if grep -qxF "$2" "$f"; then grep -vxF "$2" "$f" > "$f.tmp"; mv "$f.tmp" "$f"; else echo "$2" >> "$f"; fi ;;
+  "")
+    # At login Hyprland may not answer yet when this starts
+    for _ in $(seq 20); do hyprctl -j version >/dev/null 2>&1 && break; sleep 0.25; done
+    d=$HOME/.config/hypr
+    bg=$(cat "$d/background-apps" "$d/background-apps.local" 2>/dev/null | grep -vE '^\s*(#|$)' | sed 's/ *=.*//')
+    while read -r id; do
+      [[ -n $id ]] || continue
+      file=$(desktop_file "$id") || continue
+      name=$(grep -m1 '^Name=' "$file" | cut -d= -f2-)
+      # Exec without its field codes (%U…) and Flatpak's file-forwarding markers (@@u … @@)
+      cmd=$(grep -m1 '^Exec=' "$file" | cut -d= -f2- | sed -E 's/ +%[a-zA-Z]//g; s/ +@@u?//g; s/ +--$//')
+      if grep -qxF "$name" <<<"$bg"; then
+        # Hyprland's exec rule follows the process, so the window opens straight in the background without flashing
+        esc=${cmd//\\/\\\\}; esc=${esc//\"/\\\"}
+        hyprctl dispatch "hl.dsp.exec_cmd(\"$esc\", { workspace = \"special:bg silent\" })" >/dev/null
+      else
+        setsid sh -c "$cmd" >/dev/null 2>&1 &
+      fi
+    done < "$f"
+    ;;
+esac

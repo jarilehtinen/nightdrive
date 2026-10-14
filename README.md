@@ -65,6 +65,8 @@ The top bar's opacity, icon colours and highlight colour are all settings in the
 - **Web apps**: turn any site into an app window from the launcher (Install › Webapp).
 - **Installing apps**: search Fedora packages (Install › Package) or Flathub apps (Install › Flatpak) right in the launcher;
   Remove lists both.
+- **Login apps**: you choose what starts at login in the launcher (Settings › Startup, or ⌥Enter on an app). Background
+  apps start hidden. Only 1Password is on by default, because its SSH agent and the Passwords level need it.
 - **Login screen**: a password-only greeter that matches the theme (`--no-greeter` keeps the distribution's own).
 
 ![Screensavers: synthwave sunset and rain](docs/screenshots/screensavers.jpg)

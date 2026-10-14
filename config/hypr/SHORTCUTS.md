@@ -3,7 +3,7 @@
 ## Apps
   ⌘ Enter            Terminal
   ⌘ ⌥ Enter          Claude Code (with text typed in the launcher: sends it as the prompt)
-  ⌘ Space            App launcher (↑↓ select, Enter open, Esc close)
+  ⌘ Space            App launcher (↑↓ select, Enter open, Esc close; on an app ⌃Enter adds/removes it in Apps, ⌥Enter starts it at login)
   ⌘ ⇧ Enter / ⌘ ⇧ B  Browser
   ⌘ ⇧ F              Files
   ⌘ ⇧ P              1Password

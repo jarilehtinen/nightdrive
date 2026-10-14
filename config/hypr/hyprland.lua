@@ -46,7 +46,7 @@ hl.on("hyprland.start", function ()
     -- them on startup. mako runs as its systemd unit: graphical-session.target and D-Bus activation start that unit too,
     -- so a plain `mako &` raced it and left mako.service failed.
     hl.exec_cmd("sh -c '\"$HOME/.config/hypr/scripts/theme\" apply; qs & exec systemctl --user restart mako'")
-    hl.exec_cmd("1password", { workspace = "special:bg silent" })   -- 1Password straight to the background without flashing (⌘P brings it up)
+    hl.exec_cmd(HOME .. "/.config/hypr/scripts/autostart")   -- the user's login apps (launcher › Settings › Startup; 1Password by default)
     hl.exec_cmd(HOME .. "/.config/hypr/scripts/wallpaper restore")   -- swaybg with the remembered wallpaper (change: launcher › Settings › Background)
     hl.exec_cmd("env PATH=" .. HOME .. "/.local/bin:" .. os.getenv("PATH") .. " " .. HOME .. "/.local/bin/voxtype-onnx daemon")   -- speech to text (F5), Parakeet
     hl.exec_cmd("hypridle")

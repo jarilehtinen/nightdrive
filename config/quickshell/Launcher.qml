@@ -62,12 +62,14 @@ PanelWindow {
     property string extSource: ""             // shell.qml sets this when the file exists
     readonly property var ext: extLoader.item
     readonly property bool extLevel: ext !== null && ext.levels.indexOf(level) >= 0
-    readonly property var parents: Object.assign({ shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", package: "install", flatpak: "install", webapp: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "theme", baropacity: "topbar", baricons: "topbar", barhl: "topbar" }, ext ? ext.parents : {})
+    readonly property var parents: Object.assign({ shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", package: "install", flatpak: "install", webapp: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "theme", startup: "settings", baropacity: "topbar", baricons: "topbar", barhl: "topbar" }, ext ? ext.parents : {})
     // Search found nothing: hint below ⌘⌥⏎ (icons) → send the text to Claude
     readonly property bool noHit: (level === "root" || level === "apps") && query.trim() !== "" && results.length === 0
     // The selected row is an app: ⌃Enter adds it to Apps (shown with an empty query) or removes it from there
     readonly property var selApp: { const c = results[list.currentIndex]; return (level === "apps" || level === "root") && c && c.kind === "app" ? c : null }
     readonly property string footer: selApp ? "Enter: open  ·  Ctrl+Enter: " + (selApp.shown ? "remove from Apps" : "add to Apps")
+                                              + "  ·  Alt+Enter: " + (autostartIds.indexOf(appId(selApp)) >= 0 ? "don’t start at login" : "start at login")
+        : level === "startup" ? "Enter: start at login on/off  ·  background apps start hidden"
         : level === "passwords" && pwState === "ready" ? "Enter: password  ·  Shift+Enter: username  ·  Ctrl+Enter: one-time code"
         : extLevel ? ext.footer(level, query)
         : level === "clipboard" ? "Enter: paste  ·  Shift+Enter: copy only"
@@ -83,7 +85,7 @@ PanelWindow {
     readonly property var deckLiked: deckOverride.liked !== undefined ? deckOverride.liked : (deckInfo ? deckInfo.liked : null)
     signal openMenu(string name)              // Settings: opens a Quickshell menu (wifi, bluetooth, ...)
 
-    readonly property var titles: Object.assign({ apps: "Apps", music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", musicsearch: "Music › Search", artist: "Music › " + artist.name, keys: "Keybindings", screenshot: "Screenshot", settings: "Settings", display: "Settings › Display", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
+    readonly property var titles: Object.assign({ apps: "Apps", music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", musicsearch: "Music › Search", artist: "Music › " + artist.name, keys: "Keybindings", screenshot: "Screenshot", settings: "Settings", display: "Settings › Display", startup: "Settings › Startup", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
                                      topbar: "Settings › Theme › Top bar", baropacity: "Theme › Top bar › Opacity", baricons: "Theme › Top bar › Icon colors", barhl: "Theme › Top bar › Highlight",
                                      install: "Install", emoji: "Emoji", package: "Install › Package", flatpak: "Install › Flatpak", webapp: "Install › Webapp", webname: "Install › Webapp › Name", webaddr: "Install › Webapp › Address", remove: "Remove", power: "Power", passwords: "Passwords", clipboard: "Clipboard",
                                      tools: "Tools" }, ext ? ext.titles : {})
@@ -144,6 +146,7 @@ PanelWindow {
             { kind: "menu", name: "Sound", glyph: "volume-2", target: "volume" },
             { kind: "menu", name: "Battery & display", glyph: "battery-medium", target: "battery" },
             { kind: "nav", name: "Display", glyph: "monitor", target: "display" },
+            { kind: "nav", name: "Startup", glyph: "rocket", target: "startup" },
             { kind: "menu", name: "Tailscale", glyph: "shield-check", target: "tailscale" },
             { kind: "nav", name: "Theme", glyph: "palette", target: "theme" }
         ],
@@ -382,6 +385,12 @@ PanelWindow {
             if (pwState === "loading" && pwItems.length === 0) return [{ kind: "hint", name: "Waiting for 1Password… (unlock it if prompted; Esc closes this menu)" }]
             if (pwState === "error") return pwError.split("\n").filter(l => l.trim() !== "").slice(0, 4).map(l => ({ kind: "hint", name: l }))
             all = pwItems.map(p => ({ item: p, text: p.name, extra: p.summary + " " + p.urls }))
+        } else if (level === "startup") {
+            all = appEntries(q).map(a => {
+                const on = autostartIds.indexOf(appId(a.item)) >= 0
+                return Object.assign({}, a, { item: Object.assign({}, a.item, { summary: on ? (bgApps[a.item.name] !== undefined ? "at login, hidden" : "at login") : undefined }) })
+            })
+            if (q === "") return all.sort((a, b) => a.text.localeCompare(b.text)).map(x => x.item)   // a fixed order: toggling doesn't move rows
         } else if (level === "remove") {
             if (!removeLoaded) return [{ kind: "hint", name: "Loading packages…" }]
             all = removeList.map(p => ({ item: p, text: p.name, extra: p.summary }))
@@ -502,9 +511,24 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         onResult: { hiddenProc.running = true; pinSettle.restart() }   // (prunePins runs when the lists change)
     }
 
+    // Login apps (Settings › Startup, ⌥Enter on an app): hypr/scripts/autostart keeps the list and starts them at login
+    property var autostartIds: []
+    Sh {
+        id: autostartProc
+        command: [win.scripts + "/autostart", "list"]
+        onResult: text => { win.autostartIds = text.split("\n").filter(l => l !== "") }
+    }
+    function toggleAutostart(item) {
+        keepSelection()
+        const id = appId(item)
+        autostartIds = autostartIds.indexOf(id) >= 0 ? autostartIds.filter(x => x !== id) : autostartIds.concat([id])   // shown at once
+        Quickshell.execDetached([scripts + "/autostart", "toggle", id])
+    }
+
     function activate(item) {
         if (!item) return
         if (item.kind === "nav") go(item.target)
+        else if (item.kind === "app" && level === "startup") toggleAutostart(item)
         else if (item.kind === "app") {
             win.open = false
             // Background app: bring the hidden window back (no second instance)
@@ -638,7 +662,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         if (i >= 0) list.currentIndex = i
     }
 
-    onOpenChanged: if (open) { lastMouse = null; spotify = null; lastSel = ({}); if (ext) ext.opened(); go("root"); deckProc.running = true; musicProc.running = true; bgProc.running = true; bgAppsProc.running = true; updatesProc.running = true; input.forceActiveFocus() }
+    onOpenChanged: if (open) { lastMouse = null; spotify = null; lastSel = ({}); if (ext) ext.opened(); go("root"); deckProc.running = true; musicProc.running = true; bgProc.running = true; bgAppsProc.running = true; autostartProc.running = true; updatesProc.running = true; input.forceActiveFocus() }
     Component.onCompleted: keysProc.running = true
 
     Timer { id: disarm; interval: 4000; onTriggered: win.armed = "" }
@@ -1101,6 +1125,7 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                             if (win.level === "passwords" && cur && cur.kind === "pw" && (event.modifiers & Qt.ShiftModifier)) win.copyField(cur, "username")
                             else if (win.level === "passwords" && cur && cur.kind === "pw" && ctrl) win.copyField(cur, "otp")
                             else if (win.selApp && ctrl) win.togglePin(cur)
+                            else if (win.selApp && (event.modifiers & Qt.AltModifier)) win.toggleAutostart(cur)
                             else if (win.extLevel && cur && (event.modifiers & Qt.ShiftModifier)) win.extShift(cur)
                             else if (win.level === "clipboard" && cur && cur.kind === "clip" && (event.modifiers & Qt.ShiftModifier)) win.clipPick(cur, false)
                             else if (win.level === "emoji" && cur && cur.kind === "emoji" && (event.modifiers & Qt.ShiftModifier)) win.emojiPick(cur, false)
