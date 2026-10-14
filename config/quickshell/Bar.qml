@@ -57,6 +57,7 @@ Variants {
                     readonly property bool active: { const m = Hyprland.monitorFor(win.modelData); return !!m && !!m.activeWorkspace && m.activeWorkspace.id === modelData }
                     width: num.implicitWidth + 20; height: 27; radius: 8
                     color: active ? TopBar.c("wsBg") : "transparent"
+                    opacity: active && drawer.open ? 0.5 : 1   // the drawer is over it
                     BarText {
                         id: num
                         element: "workspaces"
@@ -70,6 +71,34 @@ Variants {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: Quickshell.execDetached(["hyprctl", "dispatch", "hl.dsp.focus({ workspace = " + ws.modelData + " })"])
                     }
+                }
+            }
+            // The drawer (⌘D, hypr/bindings.lua) after the workspaces, as an icon: highlighted while open on this screen, dimmed when empty
+            Rectangle {
+                id: drawer
+                property bool open: false
+                readonly property bool full: Hyprland.toplevels.values.some(t => t.workspace && t.workspace.name === "special:drawer")
+                Connections {
+                    target: Hyprland
+                    function onRawEvent(e) {
+                        if (e.name !== "activespecial") return
+                        const [ws, mon] = e.data.split(",")
+                        if (mon === win.modelData.name) drawer.open = ws === "special:drawer"
+                    }
+                }
+                width: icon.implicitWidth + 20; height: 27; radius: 8
+                color: open ? TopBar.c("wsBg") : "transparent"
+                Text {
+                    id: icon
+                    anchors.centerIn: parent
+                    text: Icons.g(drawer.open ? "panel-top-open" : "panel-top-close")
+                    font { family: Icons.family; pixelSize: 15 }
+                    color: drawer.open ? TopBar.c("hlFg") : drawer.full ? TopBar.c("dim") : TopBar.c("off")
+                }
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: Quickshell.execDetached(["hyprctl", "dispatch", "hl.dsp.workspace.toggle_special(\"drawer\")"])
                 }
             }
         }
