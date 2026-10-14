@@ -110,6 +110,13 @@ hl.curve("spaces", { type = "bezier", points = { {0.25, 1}, {0.5, 1} } })
 hl.animation({ leaf = "global",           enabled = false })
 hl.animation({ leaf = "workspaces",       enabled = true, speed = 3, bezier = "spaces", style = "slide" })
 hl.animation({ leaf = "specialWorkspace", enabled = false })   -- scratchpad stays instant
+-- Swapping windows (⌘⇧ + arrows, 4-finger swipe, the drawer) slides them quickly to their new places: the move animation
+-- is on only for the swap, so windows otherwise still switch instantly
+function NIGHTDRIVE_SWAP(dir, window)
+    hl.animation({ leaf = "windowsMove", enabled = true, speed = 2, bezier = "spaces" })
+    hl.dispatch(hl.dsp.window.swap({ direction = dir, window = window }))
+    hl.timer(function() hl.animation({ leaf = "windowsMove", enabled = false }) end, { timeout = 220, type = "oneshot" })
+end
 
 hl.config({
     dwindle = {
@@ -163,7 +170,7 @@ for _, dir in ipairs({ "left", "right", "up", "down" }) do
     hl.gesture({
         fingers = 4,
         direction = dir,
-        action = function() hl.dispatch(hl.dsp.window.swap({ direction = dir })) end,
+        action = function() NIGHTDRIVE_SWAP(dir) end,
     })
 end
 

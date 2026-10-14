@@ -130,7 +130,7 @@ hl.bind(mod .. " + J",           hl.dsp.layout("togglesplit"))
 -- Focus with arrows, move window with Shift+arrows
 for _, dir in ipairs({ "left", "right", "up", "down" }) do
     hl.bind(mod .. " + " .. dir,             hl.dsp.focus({ direction = dir }))
-    hl.bind(mod .. " + SHIFT + " .. dir,     hl.dsp.window.swap({ direction = dir }))
+    hl.bind(mod .. " + SHIFT + " .. dir,     function() NIGHTDRIVE_SWAP(dir) end)   -- slides (hyprland.lua)
 end
 
 -- Workspaces ⌘1–⌘0, move window ⌘⇧1–⌘⇧0
