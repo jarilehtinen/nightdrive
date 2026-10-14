@@ -13,5 +13,4 @@ config/topbar/local.modules.jsonc
 config/topbar/local.adjust.conf
 config/topbar/status.local
 config/fuzzel/apps-allow.local.txt
-config/fuzzel/app-icons.local.txt
 config/easyeffects/headphones.local.tsv

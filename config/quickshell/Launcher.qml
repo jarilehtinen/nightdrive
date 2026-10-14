@@ -251,13 +251,10 @@ PanelWindow {
 
     function hint(text) { return [{ kind: "hint", name: text }] }
 
-    // Apps whose colored icon is replaced with a monochrome Lucide glyph (app name → glyph)
-    readonly property var monoGlyphs: ({ "Slack": "hash", "Teams": "users", "Home Assistant": "house" })
-
     // App rows: with an empty query only allow-listed apps; when searching, also those hidden by sync-apps
     function appEntries(q) {
         const all = apps.filter(e => !e.noDisplay).map(e => ({
-            item: { kind: "app", name: e.name, icon: e.icon, entry: e, glyph: monoGlyphs[e.name], shown: true },
+            item: { kind: "app", name: e.name, icon: e.icon, entry: e, shown: true },
             text: e.name,
             extra: (e.genericName || "") + " " + (e.keywords || []).join(" ")
         }))

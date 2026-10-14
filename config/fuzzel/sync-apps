@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Tidies the Fuzzel menu: shows only the apps in apps-allow.txt and gives them the icons from app-icons.txt
-(plus a private overlay's apps-allow.local.txt / app-icons.local.txt), and the user's own choices from the launcher
+"""Tidies the Fuzzel menu: shows only the apps in apps-allow.txt (plus a private overlay's apps-allow.local.txt),
+and the user's own choices from the launcher
 (⌃Enter in Apps: ~/.local/state/nightdrive/apps.json, {"shown": [ids], "hidden": [ids]}, on top of the lists).
 
-Hiding and icons are done with overrides in ~/.local/share/applications/<id>.desktop (a copy of the original), so
+Hiding is done with overrides in ~/.local/share/applications/<id>.desktop (a copy of the original), so
 system files are never touched and no apps are removed. Overrides are marked with a comment, and the script removes
-them once they are no longer needed. In your own .desktop files (e.g. webapp-*) only the Icon= line is changed; the original
-value is kept in an X-Original-Icon line and restored when the line is removed from app-icons.txt.
+them once they are no longer needed. Apps keep their own icons; an Icon= line changed by an older version
+(X-Original-Icon) is restored.
 Run again after installing new apps or editing the lists.
 """
 import glob, json, os, re, subprocess, sys
@@ -48,12 +48,6 @@ def edit(text, remove=(), add=()):
     return head + "".join("\n" + a for a in add) + body + tail
 
 
-def with_icon(text, path):
-    kv = entry_keys(text)
-    orig = kv.get("X-Original-Icon", kv.get("Icon", ""))
-    return edit(text, remove=("Icon", "X-Original-Icon"), add=(f"Icon={path}", f"X-Original-Icon={orig}"))
-
-
 def restore_icon(text):
     kv = entry_keys(text)
     if "X-Original-Icon" not in kv: return text
@@ -78,11 +72,6 @@ except (OSError, ValueError): choices = {}
 allow |= set(choices.get("shown", []))
 unpinned = set(choices.get("hidden", []))
 allow -= unpinned
-icons = {}
-for id_, name in read_list("app-icons").items():
-    path = f"{HERE}/icons/{name}.svg"
-    if os.path.exists(path): icons[id_] = path
-    else: print(f"Warning: icon not found: {path}", file=sys.stderr)
 
 sysdefs = {}
 for d in SYS_DIRS:
@@ -91,9 +80,9 @@ for d in SYS_DIRS:
 
 os.makedirs(USER_DIR, exist_ok=True)
 read = lambda p: open(p, encoding="utf-8", errors="replace").read()
-hidden, shown, iconed, restored = [], [], [], []
+hidden, shown, restored = [], [], []
 
-# 1) System apps: hide or change the icon with an override
+# 1) System apps: hide with an override
 for id_, path in sorted(sysdefs.items()):
     text = read(path)
     kv = entry_keys(text)
@@ -105,18 +94,13 @@ for id_, path in sorted(sysdefs.items()):
     name = kv.get("Name", id_)
     if id_ in allow:
         shown.append(name)
-        if id_ in icons:
-            open(target, "w", encoding="utf-8").write(MARK + "\n" + with_icon(text, icons[id_]))
-            iconed.append(name)
-        elif ours:
+        if ours:
             os.remove(target); restored.append(name)
     else:
-        # Hidden apps still show up when searching in the launcher, so they get their icon too
-        if id_ in icons: text = with_icon(text, icons[id_]); iconed.append(name)
         open(target, "w", encoding="utf-8").write(MARK + "\n" + edit(text, remove=("NoDisplay",), add=("NoDisplay=true",)))
         hidden.append(name)
 
-# 2) Own files (e.g. webapp-*): the Icon= line, and hidden only when removed from Apps in the launcher
+# 2) Own files (e.g. webapp-*): hidden only when removed from Apps in the launcher
 for f in sorted(glob.glob(USER_DIR + "/*.desktop")):
     id_ = os.path.basename(f)
     text = read(f)
@@ -128,11 +112,7 @@ for f in sorted(glob.glob(USER_DIR + "/*.desktop")):
     elif id_ not in unpinned and kv.get(HIDE_KEY) == "true":
         text = edit(text, remove=("NoDisplay", HIDE_KEY))
         open(f, "w", encoding="utf-8").write(text); kv = entry_keys(text)
-    if id_ in icons:
-        new = with_icon(text, icons[id_])
-        if new != text: open(f, "w", encoding="utf-8").write(new)
-        iconed.append(kv.get("Name", id_))
-    elif "X-Original-Icon" in kv:
+    if "X-Original-Icon" in kv:
         open(f, "w", encoding="utf-8").write(restore_icon(text)); restored.append(kv.get("Name", id_))
 
 # 3) Remove stale overrides (app removed from the system)
@@ -141,7 +121,6 @@ for f in glob.glob(USER_DIR + "/*.desktop"):
         os.remove(f)
 
 subprocess.run(["update-desktop-database", USER_DIR], stderr=subprocess.DEVNULL)
-print(f"Hidden: {len(hidden)}   Custom icon: {len(iconed)}   Visible (system): {len(shown)}   Restored: {len(restored)}")
+print(f"Hidden: {len(hidden)}   Visible (system): {len(shown)}   Restored: {len(restored)}")
 if "-v" in sys.argv:
     print("Hidden:", ", ".join(sorted(hidden)))
-    print("Icons changed:", ", ".join(sorted(iconed)))

@@ -13,17 +13,18 @@ command -v cargo >/dev/null 2>&1 || sudo dnf install -y rust cargo gcc openssl-d
   || echo "Warning: couldn't update Deck's source in $src, building it as it is" >&2
 cargo install --locked --path "$src" --root "$HOME/.local"      # --locked: librespot does not build with the latest dependencies
 
-mkdir -p "$HOME/.local/share/applications"
+mkdir -p "$HOME/.local/share/applications" "$HOME/.local/share/icons/hicolor/scalable/apps"
+install -m 644 "$src/assets/deck.svg" "$HOME/.local/share/icons/hicolor/scalable/apps/deck.svg"
 cat > "$HOME/.local/share/applications/deck.desktop" <<DESK
 [Desktop Entry]
 Type=Application
 Name=Deck
 Comment=Spotify player for the terminal
 Exec=$HOME/.config/hypr/scripts/deck-open
-Icon=music
+Icon=deck
 Terminal=false
 Categories=AudioVideo;Audio;Player;
 StartupWMClass=deck
 DESK
-"$HOME/.config/fuzzel/sync-apps" >/dev/null 2>&1 || true     # icon and visibility in the launcher
+"$HOME/.config/fuzzel/sync-apps" >/dev/null 2>&1 || true     # visibility in the launcher
 echo "Deck installed: $HOME/.local/bin/deck  (launch: ⌘M or from the launcher)"
