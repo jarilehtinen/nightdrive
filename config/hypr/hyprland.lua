@@ -211,6 +211,12 @@ hl.window_rule({
     no_screen_share = true,
     suppress_event = "activate activatefocus",   -- must not raise itself (otherwise the special:bg background workspace shows up and covers the windows); ⌘P brings it up
 })
+-- Telegram: same reason as 1Password, a background app that raises itself (opening it again, links); the launcher and ⌘W handle it
+hl.window_rule({
+    name  = "telegram",
+    match = { class = "^org\\.telegram\\.desktop$" },
+    suppress_event = "activate activatefocus",
+})
 
 -- Thunderbird: slightly translucent (values: active, inactive)
 hl.window_rule({

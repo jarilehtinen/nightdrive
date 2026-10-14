@@ -426,6 +426,7 @@ PanelWindow {
     // the same list close-or-hide uses. An open app (also a hidden one) gets a green dot at the right end of its row.
     property var bgApps: ({})
     Sh {
+        id: bgAppsProc   // re-read on every open, so an app added to the list works without restarting the shell
         script: 'cd "$HOME/.config/hypr" && cat background-apps background-apps.local 2>/dev/null'
         running: true
         onResult: text => {
@@ -637,7 +638,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         if (i >= 0) list.currentIndex = i
     }
 
-    onOpenChanged: if (open) { lastMouse = null; spotify = null; lastSel = ({}); if (ext) ext.opened(); go("root"); deckProc.running = true; musicProc.running = true; bgProc.running = true; updatesProc.running = true; input.forceActiveFocus() }
+    onOpenChanged: if (open) { lastMouse = null; spotify = null; lastSel = ({}); if (ext) ext.opened(); go("root"); deckProc.running = true; musicProc.running = true; bgProc.running = true; bgAppsProc.running = true; updatesProc.running = true; input.forceActiveFocus() }
     Component.onCompleted: keysProc.running = true
 
     Timer { id: disarm; interval: 4000; onTriggered: win.armed = "" }

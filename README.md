@@ -87,6 +87,7 @@ The top bar's opacity, icon colours and highlight colour are all settings in the
 | Notifications | [mako](https://github.com/emersion/mako) | notification history and do not disturb in the bar |
 | Files and images | Nautilus, Loupe | images open in Loupe, a simple viewer like Preview |
 | Markdown | [Apostrophe](https://apps.gnome.org/Apostrophe/) (Flatpak) | `.md` files open in it, themed editor |
+| Messaging | [Telegram Desktop](https://desktop.telegram.org) (Flatpak) | native Wayland app |
 | Web apps | Chromium app windows | WhatsApp, Slack, Teams and YouTube by default; add your own |
 | Lock and idle | hyprlock, hypridle | screensaver after 10 min, lock after 30 min |
 | Optional | VS Code, Jottacloud | `install-vscode.sh`, `install-jotta.sh` |

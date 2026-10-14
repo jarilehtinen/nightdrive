@@ -3,6 +3,7 @@
 # Personal additions go to background-apps.local (same format, not in the repo).
 Deck = ^deck$
 WhatsApp = ^chrome-web\.whatsapp\.com
+Telegram = ^org\.telegram\.desktop$
 Slack = ^chrome-app\.slack\.com
 Teams = ^chrome-teams\.
 1Password = ^(1[pP]assword|com\.onepassword\.OnePassword)$

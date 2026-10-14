@@ -8,6 +8,7 @@ code.desktop                          # VS Code
 webapp-slack.desktop                  # Slack
 webapp-teams.desktop                  # Teams
 webapp-whatsapp.desktop               # WhatsApp
+org.telegram.desktop.desktop          # Telegram
 webapp-youtube.desktop                # YouTube
 deck.desktop                         # Deck (Spotify)
 org.gnome.Nautilus.desktop           # Files

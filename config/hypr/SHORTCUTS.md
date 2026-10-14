@@ -27,7 +27,7 @@
   ⌘ ⇧ E              Emoji picker (Enter pastes, ⇧ Enter copies only)
 
 ## Windows
-  ⌘ W                Close window; background apps (Deck, WhatsApp, Slack, Teams, 1Password) are only hidden and keep running (green dot in the launcher; their shortcut or the launcher brings them back)
+  ⌘ W                Close window; background apps (Deck, WhatsApp, Telegram, Slack, Teams, 1Password) are only hidden and keep running (green dot in the launcher; their shortcut or the launcher brings them back)
   ⌘ Q                Really close the window (also those background apps; in Deck `q` does the same)
   ⌘ F                Fullscreen
   ⌘ T                Toggle floating (Deck: tiled → floating at start size in the centre; moved → back to centre; already there → tiles)

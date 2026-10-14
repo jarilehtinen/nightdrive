@@ -5,6 +5,7 @@ com.onepassword.OnePassword.desktop = key-round
 org.mozilla.firefox.desktop         = globe
 kitty.desktop                       = square-terminal
 webapp-whatsapp.desktop             = message-circle
+org.telegram.desktop.desktop        = send
 webapp-youtube.desktop              = youtube
 deck.desktop                        = music
 org.gnome.Nautilus.desktop           = folder
