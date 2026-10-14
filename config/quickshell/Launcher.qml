@@ -14,6 +14,23 @@ import Quickshell.Widgets
 PanelWindow {
     id: win
 
+    // A key in the footer: Lucide glyph (Enter, Ctrl, ...) or its name (Esc) in a rounded frame
+    component Keycap: Rectangle {
+        property string key: ""
+        readonly property string glyph: win.keyGlyphs[key] || ""
+        width: Math.max(22, label.implicitWidth + 10); height: 19; radius: 5
+        color: "transparent"
+        border.color: Theme.dim
+        border.width: 1
+        Text {
+            id: label
+            anchors.centerIn: parent
+            text: parent.glyph !== "" ? Icons.g(parent.glyph) : parent.key.toLowerCase()
+            color: Theme.dim
+            font { family: parent.glyph !== "" ? Icons.family : Theme.font; pixelSize: parent.glyph !== "" ? 12 : 11 }
+        }
+    }
+
     // --- Tunables ---
     readonly property int iconSize: 28        // icon size (px)
     readonly property int rowHeight: 52       // row height (px)
@@ -87,7 +104,15 @@ PanelWindow {
         : level === "shelf" || level === "curated" ? "Enter: play in Deck"
         : level === "emoji" ? "Enter: paste  ·  Shift+Enter: copy only  ·  search in English or Finnish"
         : level === "webname" && query.trim() !== "" ? "Enter: continue to the address"
-        : level === "webaddr" && query.trim() !== "" ? "Enter creates the webapp" : ""
+        : level === "webaddr" && query.trim() !== "" ? "Enter: create the webapp" : ""
+    // The footer as key caps: "Ctrl+Enter: add to Apps  ·  Esc: back" → [{ keys: ["Ctrl", "Enter"], text: "add to Apps" }, ...].
+    // "Enter creates …" (no colon) works too; a part that doesn't start with a key is plain text.
+    readonly property var keyGlyphs: ({ Enter: "corner-down-left", Ctrl: "chevron-up", Shift: "arrow-big-up", Alt: "option", Cmd: "command",
+                                        Backspace: "delete", Space: "space" })
+    readonly property var footerParts: footer === "" ? [] : footer.split(/\s+·\s+/).map(part => {
+        const m = part.match(/^((?:Ctrl|Shift|Alt|Cmd|Enter|Esc|Tab|Space|Backspace)(?:\+(?:Ctrl|Shift|Alt|Cmd|Enter|Esc|Tab|Space|Backspace))*)(?::\s*|\s+)(.*)$/)
+        return m ? { keys: m[1].split("+"), text: m[2] } : { keys: [], text: part }
+    })
     property var lastMouse: null              // last mouse position (window coordinates); null = not seen yet since opening
     property var deckOverride: ({})           // pending local changes (playing, liked)
     readonly property string scripts: Quickshell.env("HOME") + "/.config/hypr/scripts"
@@ -1662,14 +1687,30 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                 }
             }
 
-            Text {
+            Row {      // footer: the keys of this level, as key caps + what they do
                 visible: win.footer !== ""
-                width: parent.width
-                horizontalAlignment: Text.AlignRight
+                anchors.right: parent.right
                 rightPadding: 6
-                text: win.footer
-                color: Theme.dim
-                font { family: Theme.font; pixelSize: 12 }
+                spacing: 18
+                Repeater {
+                    model: win.footerParts
+                    Row {
+                        id: part
+                        required property var modelData
+                        spacing: 4
+                        Repeater {
+                            model: part.modelData.keys
+                            Keycap { required property string modelData; key: modelData }
+                        }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            leftPadding: part.modelData.keys.length ? 3 : 0
+                            text: part.modelData.text.charAt(0).toUpperCase() + part.modelData.text.slice(1)
+                            color: Theme.dim
+                            font { family: Theme.font; pixelSize: 12 }
+                        }
+                    }
+                }
             }
         }
     }
