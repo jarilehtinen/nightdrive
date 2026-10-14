@@ -142,7 +142,9 @@ You can also update any time from the launcher (**Update**) or a terminal:
 nightdrive update   # pulls Nightdrive (and Deck), relinks, installs new packages, updates the system, reloads the desktop
 ```
 
-It never overwrites your own edits: a repo with uncommitted changes is skipped with a note.
+It never overwrites your own edits: a repo with uncommitted changes is skipped with a note. An install from before the
+`nightdrive` command (13.10.2026) runs it once by its path, `~/dotfiles/bin/nightdrive update`; that also links it. A plain
+`git pull` isn't enough on its own: new links, packages and the switch from Waybar to Quickshell's bar come with the update.
 
 The same `nightdrive` command reaches the settings from a terminal (`nightdrive` alone lists everything):
 

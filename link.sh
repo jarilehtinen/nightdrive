@@ -16,6 +16,9 @@ link() {
 for d in hypr topbar mako fuzzel kitty quickshell screensaver; do
   link "$repo/config/$d" "$HOME/.config/$d"
 done
+# Waybar drew the top bar until 13.10.2026; its config is gone from the repo (a leftover config/waybar only holds
+# the old generated bar.css and your local.css), so the link goes
+[[ -L $HOME/.config/waybar && $(readlink "$HOME/.config/waybar") == "$repo/config/waybar" ]] && rm "$HOME/.config/waybar" && echo "removed     $HOME/.config/waybar"
 # The top bar used to be Waybar (config/waybar): drop its old link
 [[ -L $HOME/.config/waybar && ! -e $HOME/.config/waybar ]] && rm "$HOME/.config/waybar" && echo "removed     $HOME/.config/waybar (old link)"
 link "$repo/config/gtk-4.0/gtk.css" "$HOME/.config/gtk-4.0/gtk.css"   # Tokyo Night colours for libadwaita apps (Nautilus)

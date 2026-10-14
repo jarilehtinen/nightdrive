@@ -45,7 +45,6 @@ check() {
 }
 
 update() {
-  relink=()
   deck=0
   while read -r r; do
     name=$(basename "$r")
@@ -58,12 +57,15 @@ update() {
     fi
     git -C "$r" --no-pager log --format='    %s' HEAD..@{upstream}
     git -C "$r" merge -q --ff-only @{upstream} || { echo "    has its own commits: skipped (rebase it by hand)"; continue; }
-    if [[ $r == "$(readlink -f "${DECK_SRC:-$HOME/.local/src/deck}")" ]]; then deck=1
-    elif [[ -x $r/link.sh ]]; then relink+=("$r"); fi
+    [[ $r == "$(readlink -f "${DECK_SRC:-$HOME/.local/src/deck}")" ]] && deck=1
   done < <(repos | sort -u)
 
-  # The overlay's link.sh after Nightdrive's, as on install
-  for r in "${relink[@]}"; do echo "==> Links ($(basename "$r"))"; "$r/link.sh" | grep -v '^ok ' ; done
+  # Relinked even when nothing new came in: after a `git pull` by hand the new links (this command among them) would
+  # otherwise never appear. Nightdrive's link.sh first, then the overlay's, as on install.
+  while read -r r; do
+    [[ -x $r/link.sh ]] || continue
+    echo "==> Links ($(basename "$r"))"; "$r/link.sh" | grep -v '^ok '
+  done < <(echo "$repo"; repos | sort -u | grep -vxF "$repo")
 
   echo "==> New packages"
   want=$(cat "$repo/packages.txt" "$repo/packages-hyprland.txt" 2>/dev/null | grep -vE '^\s*(#|$)')
@@ -75,6 +77,8 @@ update() {
 
   echo "==> Flatpak apps (flatpaks.txt)"
   flatpaks=$(grep -vE '^\s*(#|$)' "$repo/flatpaks.txt" 2>/dev/null)
+  # Added by install.sh; an install from before Flatpak support (13.10.2026) doesn't have it yet
+  flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
   [[ -n $flatpaks ]] && flatpak install --user -y --noninteractive flathub $flatpaks   # already installed ones are skipped
   flatpak update --user -y --noninteractive
 
@@ -84,8 +88,12 @@ update() {
     echo "==> Reloading the desktop"
     hyprctl reload >/dev/null
     "$repo/config/hypr/scripts/theme" apply >/dev/null 2>&1
-    pkill -x waybar || true   # the old top bar (before Quickshell drew it); Quickshell reloads its own files
+    # Restarted: Quickshell doesn't watch a file that was missing when it started (e.g. the top bar's files before
+    # this update linked them), and new QML types need a fresh start
+    qs kill >/dev/null 2>&1; hyprctl dispatch 'hl.dsp.exec_cmd("qs")' >/dev/null
   fi
+  # The old top bar (before Quickshell drew it, 13.10.2026), also when updating over SSH. Quickshell reloads its own files.
+  pkill -x waybar || true
 
   mkdir -p "$cache"; echo 0 > "$cache/updates"; echo 0 > "$cache/updates-notified"
   echo
