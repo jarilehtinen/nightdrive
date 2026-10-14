@@ -15,6 +15,9 @@ default-timeout=5000
 # Chromium (web notifications) and nm-applet request expire_timeout=0 (never expire); ignore the app's timeout and always use default-timeout
 ignore-timeout=1
 max-history=50
+# Own icons (icons/<size>/<category>/<name>.svg, e.g. headphones for blueman's audio-headphones/audio-headset): mako's default
+# path has no icon themes, so those were left empty. hypr/scripts/theme recolours them and sets icon-path (mako doesn't expand ~)
+max-icon-size=32
 anchor=top-right
 
 [urgency=critical]

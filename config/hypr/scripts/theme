@@ -84,8 +84,15 @@ def apply():
     os.makedirs(OUT, exist_ok=True)
     write(f"{OUT}/theme.json", json.dumps(dict(p, name=current()), indent=1) + "\n")
     hx = {k: v[1:] for k, v in p.items()}
+    # Notification icons (mako/icons, drawn in the original muted colour) in the theme's text colour
+    src, icons = f"{HOME}/.config/mako/icons", f"{OUT}/mako-icons"
+    for d, _, files in os.walk(src):
+        for name in files:
+            os.makedirs(icons + d[len(src):], exist_ok=True)
+            write(f"{icons}{d[len(src):]}/{name}", open(f"{d}/{name}").read().replace(BASE["muted"], p["muted"]))
     write(f"{OUT}/mako.conf", f"# written by theme\ntext-color={p['muted']}\nborder-color={p['primary']}\n"
-          f"format=<b><span foreground=\"{p['primary']}\">%s</span></b>\\n<span size=\"9216\">%b</span>\n")   # title in the theme colour
+          f"format=<b><span foreground=\"{p['primary']}\">%s</span></b>\\n<span size=\"9216\">%b</span>\n"   # title in the theme colour
+          f"icon-path={icons}:/usr/share/icons/hicolor:/usr/share/pixmaps\n")
     write(f"{OUT}/fuzzel.ini", "# written by theme\n[colors]\n"
           f"text={hx['muted']}ff\ninput={hx['muted']}ff\nprompt={hx['primary']}ff\nmatch={hx['primary']}ff\nselection={hx['sel']}ff\n"
           f"selection-text={hx['accent']}ff\nselection-match={hx['primary']}ff\nborder={hx['primary']}ff\n")
