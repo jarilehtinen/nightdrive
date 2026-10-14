@@ -250,6 +250,31 @@ hl.on("window.fullscreen", update_corners)
 hl.on("workspace.active",  update_corners)
 hl.on("config.reloaded",   update_corners)
 
+-- A background app that raises itself (a notification click, a link) gets focus inside special:bg, and Hyprland shows the
+-- whole background workspace over the windows. Bring just that window to the current workspace instead, as its shortcut does.
+-- Hyprland first focuses the background workspace's last window and only then the one that asked, so wait a moment and
+-- take the window that ends up active. Only while special:bg is shown: after ⌘W hides a window, focus can fall back to a
+-- hidden one without showing it.
+local raise_pending = false
+local function raise_from_background()
+    raise_pending = false
+    local win = hl.get_active_window()
+    local ws = hl.get_active_workspace()
+    local special = hl.get_active_special_workspace()
+    if not (win and win.workspace and win.workspace.name == "special:bg" and ws
+            and special and special.name == "special:bg") then return end
+    local target = "address:" .. win.address
+    hl.dispatch(hl.dsp.window.move({ workspace = ws.id, follow = false, window = target }))
+    hl.dispatch(hl.dsp.workspace.toggle_special("bg"))
+    hl.dispatch(hl.dsp.focus({ window = target }))
+end
+hl.on("window.active", function ()
+    local special = hl.get_active_special_workspace()
+    if raise_pending or not (special and special.name == "special:bg") then return end
+    raise_pending = true
+    hl.timer(raise_from_background, { timeout = 50, type = "oneshot" })
+end)
+
 -- Per-machine overrides: ~/.config/hypr/local.lua (not in the repo, see .gitignore). `./install.sh --vm` creates it for a virtual machine.
 pcall(require, "local")
 -- Personal additions from a private overlay: every ~/.config/hypr/local.d/*.lua, in name order (not in the repo, see README)
