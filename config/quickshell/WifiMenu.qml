@@ -356,6 +356,6 @@ done; true'
         icon: "settings"
         action: true
         label: "Network settings…"
-        onClicked: { Quickshell.execDetached(["kitty", "--class", "floating-tui", "-e", "nmtui"]); m.close() }
+        onClicked: { Quickshell.execDetached(["nm-connection-editor"]); m.close() }   // all of NetworkManager's settings (IP, DNS, VPN)
     }
 }

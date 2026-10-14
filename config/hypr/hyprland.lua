@@ -186,6 +186,13 @@ hl.window_rule({
     float = true,
     size  = "700 500",
 })
+-- Network Connections (Wi-Fi menu › Network settings…): a settings dialog, floating like the TUI it replaced
+hl.window_rule({
+    name  = "float-network",
+    match = { class = "^nm-connection-editor$" },
+    float = true,
+    size  = "760 520",
+})
 -- Deck: small floating window on top of everything, centred; ⌘T moves it into the tiling layout (and back to floating)
 hl.window_rule({
     name  = "float-deck",

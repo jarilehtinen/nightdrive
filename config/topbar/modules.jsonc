@@ -21,7 +21,7 @@
   { "name": "system",        "interval": 3 },
   { "name": "tailscale",     "interval": 5,  "right": "~/.config/topbar/scripts/tailscale toggle" },
   { "name": "bluetooth",     "interval": 5,  "right": "blueman-manager" },
-  { "name": "wifi",          "interval": 5,  "right": "kitty --class floating-tui -e nmtui" },
+  { "name": "wifi",          "interval": 5,  "right": "nm-connection-editor" },
   { "name": "volume",        "interval": 2,  "right": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle", "middle": "pavucontrol" },
   { "name": "headphones",    "interval": 3,  "right": "~/.config/topbar/scripts/eq disconnect", "middle": "easyeffects" },
   { "name": "battery",       "interval": 10 },

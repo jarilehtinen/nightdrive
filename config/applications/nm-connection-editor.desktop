@@ -1,0 +1,14 @@
+# Fedora's nm-connection-editor has no .desktop file, so the launcher didn't find it. link.sh links this one to
+# ~/.local/share/applications (the Wi-Fi menu's "Network settings…" and the bar's right click open it too).
+[Desktop Entry]
+Type=Application
+Name=Network Connections
+GenericName=Network Settings
+Comment=Wi-Fi, Ethernet and VPN connections: IP addresses, DNS, saved networks
+Exec=nm-connection-editor
+# By path: Quickshell only looks in hicolor, and Papirus (packages.txt) has this one
+Icon=/usr/share/icons/Papirus/64x64/apps/preferences-system-network.svg
+Terminal=false
+Categories=Settings;Network;
+Keywords=network;wifi;wlan;ethernet;vpn;dns;ip;proxy;settings;
+StartupWMClass=nm-connection-editor
