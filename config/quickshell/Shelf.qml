@@ -14,6 +14,9 @@ Scope {
     property bool open: false
     property bool pinned: false        // a shelf opened via IPC doesn't close by itself
     property int dragging: 0           // outgoing drags in progress (the shelf must not close mid-drag)
+    // 0 = hidden above the screen, 1 = fully down; the window stays mapped until the slide-up has finished
+    property real reveal: open ? 1 : 0
+    Behavior on reveal { NumberAnimation { duration: 80; easing.type: shelf.open ? Easing.OutCubic : Easing.InCubic } }
     readonly property bool busy: pinned || dragging > 0 || card.hovered || dropArea.containsDrag || trigger.containsDrag || triggerHover.hovered
 
     function add(urls) {
@@ -71,7 +74,7 @@ Scope {
     }
 
     PanelWindow {
-        visible: shelf.open
+        visible: shelf.open || shelf.reveal > 0
         anchors { top: true }
         implicitWidth: card.width
         implicitHeight: Theme.barHeight + card.height   // from the top edge: the shelf covers the bar behind it, like a dropped-down notch
@@ -80,8 +83,6 @@ Scope {
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
-        // The black reaches the top edge (the see-through bar would show between the notch and the shelf otherwise)
-        Rectangle { width: card.width; height: Theme.barHeight + card.radius; color: card.color }
         HoverHandler { id: hover }
         DropArea {   // the part over the bar takes drops too
             anchors.fill: parent
@@ -89,6 +90,15 @@ Scope {
             onEntered: drag => { drag.accepted = true }
             onDropped: drop => { if (drop.hasUrls) { shelf.add(drop.urls); drop.acceptProposedAction() } }
         }
+
+        // Everything visible slides down from above the top edge when the shelf opens
+        Item {
+            width: card.width
+            height: Theme.barHeight + card.height
+            transform: Translate { y: -(1 - shelf.reveal) * (Theme.barHeight + card.height) }
+
+        // The black reaches the top edge (the see-through bar would show between the notch and the shelf otherwise)
+        Rectangle { width: card.width; height: Theme.barHeight + card.radius; color: card.color }
 
         Rectangle {
             id: card
@@ -266,6 +276,7 @@ Scope {
                 hoverEnabled: true
                 onClicked: { shelf.clear(); shelf.pinned = false; shelf.open = false }   // Clear hides the shelf immediately
             }
+        }
         }
     }
 }
