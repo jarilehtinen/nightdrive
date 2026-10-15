@@ -250,10 +250,11 @@ PanelWindow {
             { kind: "nav", name: "Top bar", glyph: "panel-top", target: "topbar" },   // its look and what it shows
             { kind: "nav", name: "Screensaver", glyph: "monitor-pause", target: "screensaver" },
             { kind: "header", name: "Behaviour" },
-            { kind: "nav", name: "Launcher", glyph: "text-search", target: "launcherprefs" },
+            { kind: "nav", name: "Launcher", glyph: "text-search", target: "launcherprefs" }
+        ].concat(home.settingsItems, [   // Home: only while Home Assistant is set up
             { kind: "nav", name: "Notifications", glyph: "bell-ring", target: "sounds" },
             { kind: "nav", name: "Startup", glyph: "rocket", target: "startup" }
-        ],
+        ]),
         power: [
             { kind: "action", name: "Lock", glyph: "lock", cmd: ["loginctl", "lock-session"] },
             { kind: "action", name: "Sleep", glyph: "moon", cmd: ["systemctl", "suspend"] },
@@ -271,6 +272,7 @@ PanelWindow {
                                               "Background": "wallpaper desktop image picture",
                                               "Top bar": "waybar panel menu bar",
                                               "Launcher": "search fuzzy typos shortcuts hints spotlight",
+                                              "Home": "home assistant automations buttons lights types",
                                               "Opacity": "top bar waybar panel transparency transparent",
                                               "Icon colors": "top bar waybar panel white black light dark text",
                                               "Highlight": "top bar waybar panel active workspace",

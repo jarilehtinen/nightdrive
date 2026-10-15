@@ -1,6 +1,7 @@
 pragma Singleton
 import QtQuick
 import Quickshell
+import Quickshell.Io
 
 // Home Assistant's devices for the launcher's Home level (HomeLevels.qml) and the top bar's Home menu (HomeMenu.qml):
 // one copy of the states, so a toggle in one shows in the other. Data and actions: hypr/scripts/home-assistant.
@@ -15,6 +16,33 @@ QtObject {
     property string error: ""
     property var pending: ({})       // id -> on: a toggle sent, shown until HA reports it (or a few seconds pass)
     readonly property var favorites: states.filter(e => e.fav)
+    // Settings › Home: kinds left out of the launcher (rooms, search, counts); pinned devices show anyway.
+    // ~/.local/state/nightdrive/home.json { hidden: [domains] }; no file = automations and buttons hidden (maintenance
+    // buttons like Restart / Identify, and automations are logic, not things to press)
+    readonly property var defaultHidden: ["automation", "button", "input_button"]
+    property var hidden: defaultHidden
+    readonly property var shown: states.filter(e => hidden.indexOf(e.domain) < 0)
+    // The kinds in Settings › Home, in the launcher's section order; Buttons covers both button domains
+    readonly property var kinds: [["Lights", ["light"]], ["Switches", ["switch"]], ["Fans", ["fan"]], ["Covers", ["cover"]],
+                                  ["Climate", ["climate"]], ["Media", ["media_player"]], ["Locks", ["lock"]], ["Helpers", ["input_boolean"]],
+                                  ["Scenes", ["scene"]], ["Scripts", ["script"]], ["Automations", ["automation"]], ["Buttons", ["button", "input_button"]]]
+    readonly property string prefsFile: Quickshell.env("HOME") + "/.local/state/nightdrive/home.json"
+    property FileView prefsView: FileView {
+        path: h.prefsFile; watchChanges: true; onFileChanged: reload(); printErrors: false
+        onLoaded: {
+            let v = {}
+            try { v = JSON.parse(text()) || {} } catch (e) {}
+            const n = Array.isArray(v.hidden) ? v.hidden : h.defaultHidden
+            if (JSON.stringify(n) !== JSON.stringify(h.hidden)) { h.changing(); h.hidden = n }
+        }
+    }
+    function setHidden(domains, off) {
+        const n = hidden.filter(d => domains.indexOf(d) < 0).concat(off ? domains : [])
+        changing()
+        hidden = n
+        Quickshell.execDetached(["bash", "-c", 'mkdir -p "$(dirname "$2")" && printf "%s\\n" "$1" > "$2.tmp" && mv "$2.tmp" "$2"',
+                                 "_", JSON.stringify({ hidden: n }), prefsFile])
+    }
     signal changing()                // just before states / pending change: the launcher keeps its selected row
 
     // Launcher open / menu open: is it set up (cheap: reads the config file), then the states
@@ -44,6 +72,8 @@ QtObject {
         Quickshell.execDetached([bin, "fav", e.id, on ? "on" : "off"])
     }
 
+    // A kind's icon in Settings › Home (a device's own icon, on)
+    function kindIcon(domain) { return domain === "input_boolean" ? "sliders-horizontal" : domain === "button" ? "circle-dot" : icon({ domain: domain, id: "", on: true }) }
     function icon(e) {
         const on = isOn(e)
         switch (e.domain) {

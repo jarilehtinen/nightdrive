@@ -12,14 +12,17 @@ Item {
     property var launcher: null
     property string room: ""                 // Home › <room>: the room that is open
 
-    readonly property var levels: ["home", "homeroom"]
-    readonly property var titles: ({ home: "Home", homeroom: "Home › " + room })
-    readonly property var parents: ({ homeroom: "home" })
+    readonly property var levels: ["home", "homeroom", "homeprefs"]
+    readonly property var titles: ({ home: "Home", homeroom: "Home › " + room, homeprefs: "Settings › Home" })
+    readonly property var parents: ({ homeroom: "home", homeprefs: "settings" })
+    // Settings › Home, in Launcher.qml's Settings list (Behaviour) while Home Assistant is set up
+    readonly property var settingsItems: Home.configured ? [{ kind: "nav", name: "Home", glyph: "house", target: "homeprefs" }] : []
     readonly property var rootItems: Home.configured ? [{ kind: "nav", name: "Home", glyph: "house", target: "home", extra: "home assistant hass lights rooms" }] : []
 
     function footer(level, query) {
         const cur = launcher.results[launcher.selIndex] || {}
         if (cur.kind === "haroom") return "Enter: open"
+        if (cur.kind === "hakind") return "Enter: show / hide in Home  ·  pinned devices show anyway"
         if (cur.kind !== "haent") return ""
         const e = cur.ent
         const what = Home.canToggle(e) || e.domain === "climate" ? "on/off" : e.domain === "scene" ? "activate" : e.domain.indexOf("button") >= 0 ? "press" : "run now"
@@ -34,7 +37,7 @@ Item {
     function roomOf(e) { return e.area || ({ scene: "Scenes", script: "Scripts", automation: "Automations" })[e.domain] || "Other devices" }
     function rooms() {
         const names = []
-        for (const e of Home.states) { const r = roomOf(e); if (names.indexOf(r) < 0) names.push(r) }
+        for (const e of Home.shown) { const r = roomOf(e); if (names.indexOf(r) < 0) names.push(r) }
         const loose = n => looseRooms.indexOf(n)
         return names.sort((a, b) => (loose(a) - loose(b)) || a.localeCompare(b))   // real rooms (-1) first, by name
     }
@@ -50,7 +53,7 @@ Item {
     ]
     function roomIcon(name) { const m = roomIcons.find(t => t[0].test(name)); return m ? m[1] : "door-open" }
     function roomRow(name) {
-        const list = Home.states.filter(e => roomOf(e) === name)
+        const list = Home.shown.filter(e => roomOf(e) === name)
         const on = list.filter(e => Home.canToggle(e) && Home.isOn(e)).length
         return { kind: "haroom", name: name, glyph: roomIcon(name),
                  summary: (on ? on + " on · " : "") + list.length + (list.length === 1 ? " device" : " devices") }
@@ -75,16 +78,24 @@ Item {
     function rootRows() {
         if (!Home.configured) return []
         return rooms().map(n => ({ item: Object.assign(roomRow(n), { from: "Home", summary: undefined }), text: n, extra: "room home" }))
-            .concat(Home.states.map(e => searchRow(e, "Home")))
+            .concat(Home.shown.map(e => searchRow(e, "Home")))
     }
 
     function items(level, q) {
+        if (level === "homeprefs") {   // which kinds the launcher shows; the count is how many your Home Assistant has
+            return Home.kinds.map(k => {
+                const n = Home.states.filter(e => k[1].indexOf(e.domain) >= 0).length
+                const on = k[1].some(d => Home.hidden.indexOf(d) < 0)
+                return { kind: "hakind", name: k[0], domains: k[1], on: on, glyph: Home.kindIcon(k[1][0]), switchOn: on,
+                         note: Home.loaded ? String(n) : undefined, dimmed: Home.loaded && n === 0 }
+            })
+        }
         if (!Home.loaded) return [{ kind: "hint", name: "Loading…" }]
         if (Home.error !== "" && Home.states.length === 0) return [{ kind: "hint", name: Home.error }]
         const out = Home.error !== "" ? [{ kind: "hint", name: Home.error }] : []
         if (level === "home") {
             if (q !== "")   // rooms and devices at once, no sections (a pinned device would show twice)
-                return { all: rooms().map(n => ({ item: roomRow(n), text: n, extra: "room" })).concat(Home.states.map(e => searchRow(e))) }
+                return { all: rooms().map(n => ({ item: roomRow(n), text: n, extra: "room" })).concat(Home.shown.map(e => searchRow(e))) }
             out.push({ kind: "header", name: "Pinned" })
             if (Home.favorites.length) for (const e of Home.favorites) out.push(row(e))
             // Until something is pinned, say how: the footer only tells it on a device row, one level down
@@ -96,7 +107,7 @@ Item {
             return out
         }
         // homeroom: the room's devices, by kind (no headers when they're all one kind, e.g. Scenes)
-        const list = Home.states.filter(e => roomOf(e) === room)
+        const list = Home.shown.filter(e => roomOf(e) === room)
         if (q !== "") return { all: list.map(e => ({ item: row(e, { noArea: true }), text: e.name, extra: (Home.sectionNames[e.domain] || "") + " " + e.id })) }
         const kinds = list.map(e => Home.sectionNames[e.domain] || e.domain).filter((k, i, a) => a.indexOf(k) === i)
         let sec = ""
@@ -110,6 +121,7 @@ Item {
     }
 
     function activate(it) {
+        if (it.kind === "hakind") { launcher.keepSelection(); Home.setHidden(it.domains, it.on); return true }
         if (it.kind === "haroom") { room = it.name; launcher.go("homeroom"); return true }
         if (it.kind !== "haent") return false
         launcher.keepSelection()
