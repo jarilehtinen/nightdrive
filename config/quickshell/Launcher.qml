@@ -115,6 +115,7 @@ PanelWindow {
                                               + "  ·  Alt+Enter: " + (autostartIds.indexOf(appId(selApp)) >= 0 ? "don’t start at login" : "start at login")
         : level === "startup" ? "Enter: start at login on/off  ·  background apps start hidden"
         : (results[list.currentIndex] || {}).kind === "brightness" ? "Left+Right: brightness"
+        : (results[list.currentIndex] || {}).kind === "mirrordev" ? sys.footer(level, query)
         : (results[list.currentIndex] || {}).kind === "nightlight" ? "Enter: night light on/off"
         : level === "baritems" ? "Enter: show / hide  ·  Ctrl+Up+Down: reorder"
         : level === "passwords" && pwState === "ready" ? "Enter: password  ·  Shift+Enter: username  ·  Ctrl+Enter: one-time code"
@@ -233,7 +234,8 @@ PanelWindow {
                                               "Items": "top bar panel modules icons show hide clock date battery",
                                               "Brightness": "screen dim dimmer brighter backlight",
                                               "Night light": "night shift warm yellow blue light evening",
-                                              "Scale": "scaling resolution monitor screen retina hidpi zoom size bigger smaller" })
+                                              "Scale": "scaling resolution monitor screen retina hidpi zoom size bigger smaller",
+                                              "Screen Mirroring": "airplay cast mirror apple tv share screen" })
     // Settings › Theme: sub-items (Color with its current value)
     function themeItems() {
         const cur = themeList.find(t => t.current)
@@ -257,7 +259,8 @@ PanelWindow {
     function displayItems() {
         return (bright >= 0 ? [{ kind: "brightness", name: "Brightness", glyph: "sun" }] : [])
             .concat([{ kind: "nightlight", name: "Night light", glyph: "moon" },
-                     { kind: "nav", name: "Scale", glyph: "monitor", target: "display" }])
+                     { kind: "nav", name: "Scale", glyph: "monitor", target: "display" }],
+                    sys.mirrorAvail ? [{ kind: "nav", name: "Screen Mirroring", glyph: "screen-share", target: "display" }] : [])
     }
     // Settings › Top bar: sub-items with their current values
     function topbarItems() {
@@ -362,6 +365,13 @@ PanelWindow {
                 topbarItems().map(t => ({ item: Object.assign({}, t, { from: "Top bar", summary: undefined }), text: t.name, extra: settingsAliases[t.name] || "" })),
                 // Display and Screensaver sub-items ("night" → Night light, "dim" → Brightness, "saver" → Start after)
                 displayItems().map(t => ({ item: Object.assign({}, t, { from: "Display" }), text: t.name, extra: "display " + (settingsAliases[t.name] || "") })),
+                // Screen Mirroring's receivers ("mirror", "airplay", "olohuone"): Enter starts mirroring right from the search
+                sys.mirrorRows().filter(t => t.kind === "mirrordev").map(t => ({ item: Object.assign({}, t, { from: "Screen Mirroring", summary: undefined }),
+                                                                                  text: t.name, extra: "screen mirroring " + t.extra })),
+                // AirPlay speakers ("airplay", "olohuone"): Enter makes it the sound output
+                sys.sinks.filter(d => d.airplay).map(d => ({ item: { kind: "sounddev", id: d.id, name: d.name, glyph: "speaker", from: "Sound",
+                                                                     trailGlyph: d.current ? "check" : undefined },
+                                                             text: d.name, extra: "airplay sound audio output speaker" })),
                 screensaverItems().map(t => ({ item: Object.assign({}, t, { from: "Screensaver", summary: undefined }), text: t.name, extra: "screensaver idle lock" })),
                 // System's items ("upd" → Update, "cpu" → Status)
                 statics.system.map(t => ({ item: Object.assign({}, t, { from: "System", summary: undefined }), text: t.name, extra: t.extra || "" })),
@@ -452,6 +462,7 @@ PanelWindow {
                 out.push({ kind: "nightlight", name: "Night light", glyph: "moon", summary: night })
             }
             // Scales the panel divides evenly, shown as the resulting desktop size ("looks like" in macOS); current one marked
+            out.push(...sys.mirrorRows())   // Screen Mirroring (AirPlay; SystemLevels.qml), empty without doubletake
             for (const d of displays) {
                 out.push({ kind: "header", name: "Scale" + (displays.length > 1 ? " · " + d.name + (d.desc !== "-" ? "  " + d.desc : "") : "") })
                 for (const o of d.opts) {
@@ -564,7 +575,7 @@ PanelWindow {
         if (target === "background") wallProc.running = true
         if (target === "topbar" || target === "baropacity" || target === "baricons" || target === "barhl") barProc.running = true
         if (target === "theme" || target === "themecolor") themeProc.running = true
-        if (target === "display") { displayProc.running = true; brightProc.running = true; nightProc.running = true }
+        if (target === "display") { displayProc.running = true; brightProc.running = true; nightProc.running = true; sys.entered("display") }
         if (target === "battery") { battProc.running = true; battDetailProc.running = true }
         if (target === "screensaver" || target === "saverafter" || target === "screenoff" || target === "saverstyle") idleProc.running = true
         if (extOf(target)) extOf(target).entered(target)
@@ -816,7 +827,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
 
     // Closing leaves the details right away (after the Behavior above has seen open = false), so the next open starts narrow
     onOpenChanged: if (!open) Qt.callLater(() => { if (!win.open) { win.detail = null; win.detailInfo = null } })
-    else { lastMouse = null; spotify = null; lastSel = ({}); if (ext) ext.opened(); go("root"); deckProc.running = true; musicProc.running = true; bgProc.running = true; bgAppsProc.running = true; autostartProc.running = true; updatesProc.running = true; brightProc.running = true; nightProc.running = true; input.forceActiveFocus() }
+    else { lastMouse = null; spotify = null; lastSel = ({}); if (ext) ext.opened(); go("root"); deckProc.running = true; musicProc.running = true; bgProc.running = true; bgAppsProc.running = true; autostartProc.running = true; updatesProc.running = true; brightProc.running = true; nightProc.running = true; sys.entered("display"); sys.soundRefresh(); input.forceActiveFocus() }
     Component.onCompleted: keysProc.running = true
 
     Timer { id: disarm; interval: 4000; onTriggered: win.armed = "" }

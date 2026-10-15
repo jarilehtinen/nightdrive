@@ -146,6 +146,8 @@ ShellRoot {
 
     PowerDialog {}
 
+    SharePicker {}
+
     Drawer {}
 
     Shelf {}

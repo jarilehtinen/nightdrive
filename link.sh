@@ -25,6 +25,16 @@ done
 # unit is masked: D-Bus activation would start mako for the first notification and take the name from Quickshell.
 [[ -L $HOME/.config/mako && ! -e $HOME/.config/mako ]] && rm "$HOME/.config/mako" && echo "removed     $HOME/.config/mako (old link)"
 systemctl --user mask --now mako.service >/dev/null 2>&1 || true
+# The share window (Screen Mirroring, Cast, video calls): xdg-desktop-portal-hyprland runs our picker (hypr/scripts/share-picker,
+# quickshell/SharePicker.qml). Written here: the path must be absolute, and the file is git-ignored. Read when xdph starts.
+xdph="$repo/config/hypr/xdph.conf"
+want="screencopy {
+    custom_picker_binary = $HOME/.config/hypr/scripts/share-picker
+}"
+if [[ $(cat "$xdph" 2>/dev/null) != "$want" ]]; then
+  printf '%s\n' "$want" > "$xdph"; echo "wrote       $xdph"
+  systemctl --user try-restart xdg-desktop-portal-hyprland >/dev/null 2>&1 || true
+fi
 link "$repo/config/gtk-4.0/gtk.css" "$HOME/.config/gtk-4.0/gtk.css"   # Tokyo Night colours for libadwaita apps (Nautilus)
 link "$repo/config/gtk-3.0/gtk.css" "$HOME/.config/gtk-3.0/gtk.css"
 # Apostrophe is a Flatpak: it reads its own config dir (install.sh lets the sandbox read config/gtk-4.0)

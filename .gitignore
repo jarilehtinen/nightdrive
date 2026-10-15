@@ -3,6 +3,7 @@
 __pycache__/
 *.pyc
 config/hypr/local.lua
+config/hypr/xdph.conf
 
 # Personal additions from a private overlay (linked in by the overlay's own link.sh; see README)
 config/hypr/local.d/

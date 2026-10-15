@@ -1,0 +1,17 @@
+#!/bin/bash
+# The share window (what to share when an app captures the screen): xdg-desktop-portal-hyprland runs this instead of
+# hyprland-share-picker (hypr/xdph.conf, written by link.sh). It opens Quickshell's SharePicker and prints the choice in
+# xdph's format: [SELECTION]/screen:<output> or [SELECTION]/window:<id>. Nothing printed = cancelled.
+dir="${XDG_RUNTIME_DIR:-/tmp}/nightdrive"
+mkdir -p "$dir"
+fifo="$dir/share-picker.$$" list="$dir/share-windows.$$"
+trap 'rm -f "$fifo" "$list"' EXIT
+mkfifo "$fifo"
+printf '%s' "${XDPH_WINDOW_SHARING_LIST:-}" > "$list"
+# Quickshell not running: fall back to Hyprland's own share window
+# --any-display: xdph starts this without DISPLAY, and qs would then not count the running shell as its own
+qs ipc --any-display call sharepicker open "$fifo" "$list" >/dev/null 2>&1 || exec hyprland-share-picker "$@"
+exec 3<>"$fifo"                       # read-write: opening doesn't wait for the writer
+read -r -t 300 -u 3 sel || exit 0     # 5 min, then cancelled
+[[ -n $sel ]] && echo "[SELECTION]/$sel"
+exit 0

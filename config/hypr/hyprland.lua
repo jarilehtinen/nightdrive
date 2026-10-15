@@ -48,6 +48,8 @@ hl.on("hyprland.start", function ()
     hl.exec_cmd(HOME .. "/.config/hypr/scripts/autostart")   -- the user's login apps (launcher › Settings › Startup; 1Password by default)
     hl.exec_cmd(HOME .. "/.config/hypr/scripts/wallpaper restore")   -- swaybg with the remembered wallpaper (change: launcher › Settings › Background)
     hl.exec_cmd("env PATH=" .. HOME .. "/.local/bin:" .. os.getenv("PATH") .. " " .. HOME .. "/.local/bin/voxtype-onnx daemon")   -- speech to text (F5), Parakeet
+    -- AirPlay screen mirroring (install-doubletake.sh): the daemon finds the receivers; Settings › Display › Screen Mirroring
+    hl.exec_cmd("sh -c '[ -x \"$HOME/.local/bin/doubletake\" ] && exec \"$HOME/.local/bin/doubletake\" -daemonize'")
     hl.exec_cmd(HOME .. "/.config/hypr/scripts/idle start")   -- hypridle with the screensaver and screen-off times (launcher › Settings › Screensaver)
     hl.exec_cmd("easyeffects --service-mode -w")   -- headphone EQ in the background (presets: config/easyeffects, picked from the headphone icon in the top bar)
     hl.exec_cmd(HOME .. "/.config/hypr/scripts/bt-audio-follow")   -- Bluetooth headphones become the output when they connect
@@ -193,12 +195,13 @@ hl.window_rule({
     match = { class = ".*" },
     suppress_event = "maximize",
 })
--- Slower scrolling for Chromium (browser + webapps) so it matches Firefox: the touchpad scroll_factor (0.4) is global, this multiplies it for these only
+-- Slower scrolling for Chromium (browser + webapps) so it matches Firefox (delta_multiplier_y 100): Chromium moves further per scroll event,
+-- the touchpad scroll_factor (0.4) is global, this multiplies it for these only (0.7 was still faster than Firefox)
 hl.window_rule({
     name  = "chromium-scroll",
     match = { class = "^(chromium|chromium-browser|chrome-.*-Default)$" },   -- Chromium browser and app windows (webapps)
-    scroll_touchpad = 0.7,
-    scroll_mouse    = 0.7,
+    scroll_touchpad = 0.5,
+    scroll_mouse    = 0.5,
 })
 hl.window_rule({
     name  = "float-small-tools",

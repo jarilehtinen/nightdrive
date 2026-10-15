@@ -107,6 +107,9 @@ make -C "$blesh_src" -s install PREFIX="$HOME/.local"
 echo "==> Deck (Spotify player: fetched from GitHub and compiled, takes a few minutes; dependencies are installed)"
 "$repo/install-deck.sh"
 
+echo "==> doubletake (AirPlay screen mirroring: fetched from GitHub and compiled)"
+"$repo/install-doubletake.sh"
+
 echo "==> GTK: no KDE 1.7x text scaling, Papirus icons"
 for v in 3.0 4.0; do
   f=$HOME/.config/gtk-$v/settings.ini

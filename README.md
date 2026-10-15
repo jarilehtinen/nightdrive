@@ -62,6 +62,9 @@ The top bar's opacity, icon colours and highlight colour are all settings in the
 - **Dictation**: hold F5 or Fn, speak, and let go. It runs fully offline with Voxtype and Parakeet ([setup](docs/dictation.md)).
 - **Night light**: a warm screen tint for the evening (Settings › Display, or the display icon in the bar). It works
   through Hyprland's screen shader, since Asahi's display driver has no gamma tables for gammastep and the like.
+- **Screen Mirroring**: mirror the screen to an Apple TV or an AirPlay TV from the display menu or the launcher (search
+  "airplay"), with sound. Google Cast works from Chromium (⋮ › Cast…). Sharing the screen, for these and video calls, asks
+  in a themed window: the whole screen or one window.
 - **Screensavers**: a synthwave sunset and a falling-characters rain, both drawn in the terminal.
 - **Background apps**: ⌘W only hides chat apps and the music player, so they keep running. Their shortcut brings them straight back.
 - **Web apps**: turn any site into an app window from the launcher (System › Install › Webapp).
@@ -87,7 +90,8 @@ The top bar's opacity, icon colours and highlight colour are all settings in the
 | AI | [Claude Code](https://claude.com/claude-code) | ⌘⌥Enter, ask from the launcher, usage limits in the bar |
 | Dictation | [Voxtype](https://github.com/peteonrails/voxtype) (Parakeet) | F5 / Fn push-to-talk, recording card on screen |
 | Network | NetworkManager, BlueZ, [Tailscale](https://tailscale.com) | Wi-Fi, Bluetooth and Tailscale menus |
-| Audio | PipeWire, [EasyEffects](https://github.com/wwmm/easyeffects) | output switching, EQ presets for headphones |
+| Audio | PipeWire, [EasyEffects](https://github.com/wwmm/easyeffects) | output switching (AirPlay speakers too), EQ presets for headphones |
+| Screen Mirroring | [doubletake](https://github.com/omarroth/doubletake) (AirPlay, built by `install-doubletake.sh`) | Settings › Display; experimental, picture limited to 1080p (no hardware encoder on Asahi) |
 | Notifications | Quickshell | app icon and time on every notification, history and do not disturb in the bar |
 | Files and images | Nautilus, Loupe | images open in Loupe, a simple viewer like Preview |
 | Markdown | [Apostrophe](https://apps.gnome.org/Apostrophe/) (Flatpak) | `.md` files open in it, themed editor |

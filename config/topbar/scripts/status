@@ -41,8 +41,10 @@ case $kind in
     pactl list short sinks 2>/dev/null | grep -q bluez_output || { emit "" ""; exit; }
     emit headphones "" ;;
   display)
-    # Brightness, night light and scale are in the menu (DisplayMenu.qml); a dot on the monitor while the night light is on
-    if [[ $(~/.config/hypr/scripts/nightlight status) == on ]]; then emit monitor-dot ""; else emit monitor ""; fi ;;
+    # Brightness, night light, Screen Mirroring and scale are in the menu (DisplayMenu.qml). Mirroring: highlighted
+    # screen-share icon; otherwise a dot on the monitor while the night light is on
+    if [[ -x ~/.local/bin/doubletake-ctl && $(~/.local/bin/doubletake-ctl status 2>/dev/null | jq -r .state) == streaming ]]; then emit screen-share "" active
+    elif [[ $(~/.config/hypr/scripts/nightlight status) == on ]]; then emit monitor-dot ""; else emit monitor ""; fi ;;
   battery)
     dev=$(battery); [[ -z $dev ]] && { emit "" ""; exit; }
     info=$(upower -i "$dev" 2>/dev/null)

@@ -11,10 +11,10 @@ Item {
     id: s
     property var launcher: null
 
-    readonly property var levels: ["wifi", "wifipw", "bluetooth", "sound", "tailscale", "status"]
-    readonly property var titles: ({ status: "System › Status", wifi: "Settings › Wi-Fi", wifipw: "Wi-Fi › Password", bluetooth: "Settings › Bluetooth",
+    readonly property var levels: ["wifi", "wifipw", "bluetooth", "sound", "tailscale", "status", "mirrorpin"]
+    readonly property var titles: ({ status: "System › Status", mirrorpin: "Screen Mirroring › Code", wifi: "Settings › Wi-Fi", wifipw: "Wi-Fi › Password", bluetooth: "Settings › Bluetooth",
                                      sound: "Settings › Sound", tailscale: "Settings › Tailscale" })
-    readonly property var parents: ({ status: "system", wifi: "settings", wifipw: "wifi", bluetooth: "settings", sound: "settings", tailscale: "settings" })
+    readonly property var parents: ({ status: "system", mirrorpin: "display", wifi: "settings", wifipw: "wifi", bluetooth: "settings", sound: "settings", tailscale: "settings" })
     readonly property string level: launcher ? launcher.level : ""
     readonly property bool shown: launcher !== null && launcher.open && levels.indexOf(level) >= 0
 
@@ -32,6 +32,8 @@ Item {
         if (cur.kind === "tsmachine") return "Enter: copy IP address  ·  Cmd+C: copy"
         if (cur.copy !== undefined) return "Cmd+C: copy"
         if (level === "wifipw") return query !== "" ? "Enter: connect  ·  Esc: back" : ""
+        if (level === "mirrorpin") return query !== "" ? "Enter: pair" : ""
+        if (cur.kind === "mirrordev") return "Enter: " + (cur.ip === mirrorIp && mirrorState !== "idle" ? "stop mirroring" : "mirror the screen here")
         return ""
     }
     function opened() {}
@@ -41,6 +43,7 @@ Item {
         if (level === "sound") soundRefresh()
         if (level === "tailscale") { tsMessage = ""; tsProc.running = true }
         if (level === "status") { sysProc.running = true; claudeProc.running = true }
+        if (level === "mirrorpin" || level === "display") mirrorProc.running = true
     }
     function shiftActivate(item) {}
 
@@ -52,6 +55,8 @@ Item {
         if (level === "sound") return { all: soundRows().map(row) }
         if (level === "tailscale") return { all: tsRows().map(row) }
         if (level === "status") return { all: statusRows().map(row) }
+        if (level === "mirrorpin") return [{ kind: "mirrorcode", name: "Pair with " + (mirrorName || "the receiver"), glyph: "key-round",
+                                             summary: launcher.query === "" ? "type the code on the TV" : undefined, dimmed: launcher.query === "" }]
         return []
     }
 
@@ -99,6 +104,19 @@ Item {
             return true
         }
         if (it.kind === "tsmachine") { copyText(it.ip); return true }
+        if (it.kind === "mirrordev") {
+            if (it.ip === mirrorIp && mirrorState !== "idle") { sel(); mirrorState = "idle"; Quickshell.execDetached([mirrorScript, "stop"]); return true }
+            // The share window can't be clicked under the launcher (it takes the keyboard): close it; a code request reopens it
+            launcher.open = false
+            Quickshell.execDetached([mirrorScript, "connect", it.ip])
+            return true
+        }
+        if (it.kind === "mirrorcode") {
+            if (launcher.query === "") { launcher.shakeNow(); return true }
+            Quickshell.execDetached([mirrorScript, "pin", launcher.query.trim()])
+            launcher.open = false           // the share window comes next
+            return true
+        }
         return false
     }
     // Rows that need a second Enter (the launcher shows the armHint while armed); true = confirmed
@@ -423,7 +441,8 @@ done; true'
                      glyph: muted || volume === 0 ? "volume-x" : volume < 0.34 ? "volume" : volume < 0.67 ? "volume-1" : "volume-2",
                      summary: muted ? "muted" : pct(volume) }]
         for (const d of sinks)
-            r.push({ kind: "sounddev", id: d.id, name: d.name, glyph: devIcon(d, false), trailGlyph: d.current ? "check" : undefined, extra: "output speakers" })
+            r.push({ kind: "sounddev", id: d.id, name: d.name, glyph: devIcon(d, false), trailGlyph: d.current ? "check" : undefined,
+                     summary: d.airplay && !d.current ? "AirPlay" : undefined, extra: "output speakers" + (d.airplay ? " airplay" : "") })
         r.push({ kind: "header", name: "Microphone" },
                { kind: "slider", key: "mic", name: "Microphone", value: micVolume, dimmed: micMuted, extra: "mute input",
                  glyph: micMuted ? "mic-off" : "mic", summary: micMuted ? "muted" : pct(micVolume) })
@@ -479,7 +498,8 @@ done; true'
                 const list = out[p["media.class"]]
                 if (!list || /^easyeffects_/.test(p["node.name"])) continue   // EasyEffects' virtual device, not a real one
                 const key = p["media.class"] === "Audio/Sink" ? "default.audio.sink" : "default.audio.source"
-                list.push({ id: ob.id, name: p["node.description"] || p["node.name"], current: p["node.name"] === def[key], bt: /^bluez_/.test(p["node.name"]) })
+                list.push({ id: ob.id, name: p["node.description"] || p["node.name"], current: p["node.name"] === def[key], bt: /^bluez_/.test(p["node.name"]),
+                            airplay: /^raop_sink\./.test(p["node.name"]) })   // PipeWire's AirPlay speakers (RAOP)
             }
             // The machine's own devices first, the rest alphabetically (as in OutputList)
             const rank = n => /^MacBook Pro/i.test(n) ? 0 : /^Built-in/i.test(n) ? 1 : 2
@@ -623,6 +643,45 @@ done; true'
             try { s.usage = JSON.parse(text) } catch (e) { s.usage = null }
             s.usageLoaded = true
             s.updateShape()
+        }
+    }
+
+    // ================= Screen Mirroring (AirPlay with doubletake; hypr/scripts/mirror) =================
+    // Rows for Settings › Display (Launcher.qml adds them under Screen Mirroring). Nothing while doubletake isn't installed.
+    readonly property string mirrorScript: Quickshell.env("HOME") + "/.config/hypr/scripts/mirror"
+    property bool mirrorAvail: false
+    property var mirrorDevices: []   // [{ name, model, ip }]
+    property string mirrorState: "idle"   // idle | connecting | pin_required | streaming
+    property string mirrorIp: ""
+    readonly property string mirrorName: (mirrorDevices.find(d => d.ip === mirrorIp) || {}).name || ""
+    function mirrorRows() {
+        if (!mirrorAvail) return []
+        const r = [{ kind: "header", name: "Screen Mirroring" }]
+        if (mirrorDevices.length === 0) r.push({ kind: "hint", name: "Looking for AirPlay devices…" })
+        for (const d of mirrorDevices) {
+            const mine = d.ip === mirrorIp && mirrorState !== "idle"
+            r.push({ kind: "mirrordev", name: d.name, ip: d.ip, extra: "airplay cast mirror " + d.model,
+                     glyph: /STR-|receiver|HomePod|AudioAccessory|speaker/i.test(d.name + " " + d.model) ? "speaker" : "tv",
+                     summary: !mine ? "AirPlay" : mirrorState === "streaming" ? "mirroring" : mirrorState === "pin_required" ? "waiting for the code" : "connecting…",
+                     trailGlyph: mine && mirrorState === "streaming" ? "check" : undefined })
+        }
+        return r
+    }
+    Timer { interval: 2000; repeat: true; running: s.launcher !== null && s.launcher.open && (s.level === "display" || s.level === "mirrorpin"); onTriggered: mirrorProc.running = true }
+    Sh {
+        id: mirrorProc
+        script: 'c="$HOME/.local/bin/doubletake-ctl"; [ -x "$c" ] || exit 0; "$c" status; echo; "$c" devices'
+        onResult: text => {
+            const parts = text.trim().split(/\n(?=\{)/)   // two JSON objects: status, then devices
+            let st = null, dev = null
+            try { st = JSON.parse(parts[0]); dev = JSON.parse(parts[1]) } catch (e) {}
+            const avail = st !== null && st.ok === true
+            const devices = dev && dev.devices ? dev.devices.map(d => ({ name: d.name, model: d.model || "", ip: d.ip })) : []
+            const state = st && st.state ? st.state : "idle"
+            const ip = st && st.device_ip ? st.device_ip : ""
+            if (avail === s.mirrorAvail && state === s.mirrorState && ip === s.mirrorIp && JSON.stringify(devices) === JSON.stringify(s.mirrorDevices)) return
+            s.sel()
+            s.mirrorAvail = avail; s.mirrorState = state; s.mirrorIp = ip; s.mirrorDevices = devices
         }
     }
 }

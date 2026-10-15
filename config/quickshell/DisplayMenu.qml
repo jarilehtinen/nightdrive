@@ -1,8 +1,9 @@
 import QtQuick
 import Quickshell
 
-// Display: screen brightness (brightnessctl), night light (hypr/scripts/nightlight) and the scale of each output
-// (hypr/scripts/display: only scales the panel divides evenly, shown as the resulting desktop size).
+// Display: screen brightness (brightnessctl), night light (hypr/scripts/nightlight), Screen Mirroring over AirPlay
+// (doubletake, hypr/scripts/mirror; hidden without it) and the scale of each output (hypr/scripts/display: only scales the
+// panel divides evenly, shown as the resulting desktop size).
 // The launcher's Settings › Display has the same settings.
 Column {
     id: m
@@ -13,9 +14,14 @@ Column {
     property real pending: -1
     property string night: ""        // on | off
     property var displays: []        // [{ name, desc, scale, opts: [{ value, size }] }]
+    property bool mirrorAvail: false
+    property var mirrorDevices: []   // [{ name, model, ip }] (doubletake-ctl devices)
+    property string mirrorState: "idle"   // idle | connecting | pin_required | streaming
+    property string mirrorIp: ""
+    readonly property string mirrorScript: Quickshell.env("HOME") + "/.config/hypr/scripts/mirror"
     signal close()
 
-    function refresh() { briProc.running = true; nightProc.running = true }
+    function refresh() { briProc.running = true; nightProc.running = true; mirrorProc.running = true }
     Component.onCompleted: { refresh(); displayProc.running = true }
     Timer { interval: 3000; repeat: true; running: true; onTriggered: m.refresh() }
 
@@ -41,6 +47,19 @@ Column {
         id: nightProc
         script: '"$HOME/.config/hypr/scripts/nightlight" status'
         onResult: text => { m.night = text.trim() }
+    }
+    Sh {
+        id: mirrorProc
+        script: 'c="$HOME/.local/bin/doubletake-ctl"; [ -x "$c" ] || exit 0; "$c" status; echo; "$c" devices'
+        onResult: text => {
+            const parts = text.trim().split(/\n(?=\{)/)   // two JSON objects: status, then devices
+            let st = null, dev = null
+            try { st = JSON.parse(parts[0]); dev = JSON.parse(parts[1]) } catch (e) {}
+            m.mirrorAvail = st !== null && st.ok === true
+            m.mirrorState = st && st.state ? st.state : "idle"
+            m.mirrorIp = st && st.device_ip ? st.device_ip : ""
+            m.mirrorDevices = dev && dev.devices ? dev.devices.map(d => ({ name: d.name, model: d.model || "", ip: d.ip })) : []
+        }
     }
     Sh {
         id: displayProc
@@ -96,6 +115,41 @@ Column {
         onClicked: {
             m.night = m.night === "on" ? "off" : "on"
             Quickshell.execDetached([Quickshell.env("HOME") + "/.config/hypr/scripts/nightlight", m.night])
+        }
+    }
+
+    Divider { visible: m.mirrorAvail }
+    MenuSection { visible: m.mirrorAvail; title: "Screen Mirroring" }
+    Text {
+        visible: m.mirrorAvail && m.mirrorDevices.length === 0
+        text: "Looking for AirPlay devices…"
+        color: Theme.dim
+        font { family: Theme.font; pixelSize: 12 }
+    }
+    Column {
+        visible: m.mirrorAvail
+        width: parent.width
+        spacing: 2
+        Repeater {
+            model: m.mirrorAvail ? m.mirrorDevices : []
+            delegate: MenuRow {
+                required property var modelData
+                readonly property bool mine: modelData.ip === m.mirrorIp && m.mirrorState !== "idle"
+                width: parent.width
+                icon: /STR-|receiver|HomePod|AudioAccessory|speaker/i.test(modelData.name + " " + modelData.model) ? "speaker" : "tv"
+                label: modelData.name
+                active: mine && m.mirrorState === "streaming"
+                checkIcon: mine && m.mirrorState === "streaming" ? "check" : ""
+                hoverCheckIcon: mine ? "x" : ""   // a click stops mirroring
+                busy: mine && m.mirrorState !== "streaming"
+                detail: "AirPlay"   // the only kind for now (doubletake); Google Cast goes through Chromium
+                onClicked: {
+                    if (mine) { m.mirrorState = "idle"; Quickshell.execDetached([m.mirrorScript, "stop"]); return }
+                    // The share window comes next (and the launcher for a receiver's code): the menu gets out of the way
+                    Quickshell.execDetached([m.mirrorScript, "connect", modelData.ip])
+                    m.close()
+                }
+            }
         }
     }
 

@@ -1,0 +1,39 @@
+#!/bin/bash
+# Screen Mirroring over AirPlay (doubletake, install-doubletake.sh): Settings › Display › Screen Mirroring in the launcher and
+# the top bar's display menu. The daemon (`doubletake -daemonize`, started by hyprland.lua) finds the receivers.
+#   mirror connect <ip>    starts mirroring and follows it: a receiver that asks for its on-screen code opens the launcher's
+#                          code field (Display › Screen Mirroring › Code); a notification when it starts or fails
+#   mirror pin <code>      sends the code (the launcher's code field)
+#   mirror stop            stops mirroring
+# Pairing is saved by doubletake (~/.config/doubletake), so the code is asked only once per receiver.
+ctl="$HOME/.local/bin/doubletake-ctl"
+[[ -x $ctl ]] || { echo "doubletake isn't installed (install-doubletake.sh)" >&2; exit 1; }
+note() { notify-send -a "Screen Mirroring" "$@"; }
+refresh() { qs ipc call bar refreshModule display >/dev/null 2>&1; }
+
+case ${1:-} in
+  connect)
+    ip=${2:?ip}
+    name=$("$ctl" devices | jq -r --arg ip "$ip" '.devices[]? | select(.ip == $ip) | .name' | head -1)
+    "$ctl" connect "$ip" >/dev/null || { note -u critical "Couldn't connect to ${name:-$ip}"; exit 1; }
+    asked=0
+    # Follows it until it streams or stops: the share window gives 30 s (doubletake's portal timeout), a code as long as it takes
+    for _ in $(seq 240); do
+      st=$("$ctl" status 2>/dev/null)
+      case $(jq -r '.state' <<<"$st") in
+        pin_required)
+          (( asked )) || { asked=1; qs ipc call launcher openLevel mirrorpin >/dev/null; } ;;
+        streaming)
+          note "Mirroring to ${name:-$ip}"; refresh; exit 0 ;;
+        idle)
+          err=$(jq -r '.error // empty' <<<"$st" | sed -E 's/^[0-9.]+: //')
+          [[ $err == *"request was canceled"* ]] && { refresh; exit 0; }   # Esc in the share window: no error
+          [[ $err == *"deadline exceeded"* ]] && err="The screen wasn't picked within 30 seconds. Try again."
+          note -u critical "Mirroring to ${name:-$ip} failed" "${err:-Stopped}"; refresh; exit 1 ;;
+      esac
+      sleep 0.5
+    done ;;
+  pin)  "$ctl" pin "${2:?code}" >/dev/null ;;
+  stop) "$ctl" disconnect >/dev/null; refresh ;;
+  *)    sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+esac

@@ -72,6 +72,14 @@ update() {
   missing=$(for p in $want; do rpm -q --whatprovides "$p" >/dev/null 2>&1 || echo "$p"; done)
   if [[ -n $missing ]]; then echo "    $(echo $missing)"; sudo dnf install -y $missing; else echo "    none"; fi
 
+  # doubletake (Screen Mirroring, install-doubletake.sh): installed when missing (an install from before 15.10.2026), and
+  # built again when the tested commit in install-doubletake.sh changes
+  echo "==> doubletake (Screen Mirroring)"
+  dt_want=$(sed -nE 's/^ref=\$\{DOUBLETAKE_REF:-([0-9a-f]+)\}.*/\1/p' "$repo/install-doubletake.sh")
+  dt_have=$(git -C "$HOME/.local/src/doubletake" rev-parse HEAD 2>/dev/null || true)
+  if [[ ! -x $HOME/.local/bin/doubletake || -z $dt_want || $dt_have != "$dt_want"* ]]; then "$repo/install-doubletake.sh"
+  else echo "    up to date"; fi
+
   # The system files install.sh puts in place: copied again when the repo's version differs (or is missing), so an
   # install from before a file was added gets it too (e.g. the power key, 14.10.2026)
   echo "==> System files"
