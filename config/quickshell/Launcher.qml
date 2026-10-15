@@ -941,7 +941,12 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
     }
     // The current value is part of the rows (✓, "current"), so changing it rebuilds the list and the selection would jump to the top:
     // restore the selection to the same row after the update
-    function keepSelection() { const i = list.currentIndex; Qt.callLater(() => { list.currentIndex = i }) }
+    // Rebuilding the rows resets both the selection and the scroll position: put both back (a scrolled list jumped to the top)
+    function keepSelection() {
+        const i = list.currentIndex, y = list.contentY
+        // The scroll position only after the list has settled on the new rows (in the same call it was reset again)
+        Qt.callLater(() => { list.currentIndex = i; Qt.callLater(() => { list.contentY = Math.min(y, Math.max(0, list.contentHeight - list.height)) }) })
+    }
     // Selects the first row matching pred (e.g. a setting's current value), if any
     function selectWhere(pred) { const i = results.findIndex(pred); if (i >= 0) list.currentIndex = i }
     function back() {
