@@ -1,0 +1,146 @@
+#!/bin/bash
+# nightdrive sandbox: Nightdrive in a headless rootless Podman container, to check a change and take screenshots of it on
+# a machine without Hyprland, or without taking over the desktop's keyboard. How it works and why: docs/sandbox.md.
+#   nightdrive sandbox up          builds the image when needed, starts KWin, Hyprland, Quickshell and swaybg in it
+#   nightdrive sandbox check       Hyprland --verify-config, hyprctl configerrors, Quickshell's errors: exit 1 if any
+#   nightdrive sandbox shot [NAME] screenshot -> prints the path of NAME.png
+#   nightdrive sandbox ipc ARGS…   qs ipc call ARGS… (or `ipc show`)
+#   nightdrive sandbox exec CMD…   a command in the session (hyprctl, qs, …); `shell` for an interactive one
+#   nightdrive sandbox vnc [stop]  wayvnc on the tailnet address only, prints it; the display drops to the VNC size
+#   nightdrive sandbox down        removes the container
+#   nightdrive sandbox build       rebuilds the image (up does it when the Containerfile or the package lists change)
+# check, shot, ipc and exec start the sandbox first if it isn't up. The repo is mounted read-only: an edit in it reloads
+# in the sandbox right away, as on the desktop.
+set -uo pipefail
+
+# Hyprland's display. Screenshots: the MacBook Pro 14" (3024x1964 at scale 2). VNC: half of it at scale 1, the same UI
+# size with a quarter of the pixels, which a viewer over the tailnet keeps up with.
+SHOT_MODE=3024x1964 SHOT_SCALE=2
+VNC_MODE=1512x982 VNC_SCALE=1
+VNC_PORT=5901   # on the host's tailnet address (tailscale ip -4)
+IMAGE=nightdrive-sandbox
+NAME=nightdrive-sandbox
+
+here=$(cd "$(dirname "$(readlink -f "$0")")" && pwd)
+repo=$(cd "$here/../.." && pwd)
+state=${XDG_CACHE_HOME:-$HOME/.cache}/nightdrive/sandbox
+inside=/home/nd/nightdrive/config/sandbox/inside   # the same file as $here/inside, through the container's mount
+usage() { sed -n '4,13p' "$0" | sed 's/^# \{0,1\}//'; }
+die() { echo "nightdrive sandbox: $*" >&2; exit 2; }
+running() { [[ $(podman container inspect -f '{{.State.Running}}' "$NAME" 2>/dev/null) == true ]]; }
+in_box() { podman exec "$NAME" "$inside" "$@"; }
+
+# The image is labelled with a hash of what goes into it, so up rebuilds it only when one of them changed
+inputs() { cat "$here/Containerfile" "$repo/packages.txt" "$repo/packages-hyprland.txt" | sha256sum | cut -c1-16; }
+build() {
+  mkdir -p "$state"
+  echo "Building the image $IMAGE (from scratch ~10 min and ~4.5 GB, KWin brings much of KDE): log in $state/build.log"
+  podman build --label "nightdrive.inputs=$(inputs)" -t "$IMAGE" -f "$here/Containerfile" "$repo" >"$state/build.log" 2>&1 \
+    || { tail -30 "$state/build.log"; die "the build failed (log: $state/build.log)"; }
+}
+
+# local.lua for the container (the repo's own, if any, stays under it). Written in place: the container's bind mount
+# follows the file's inode, which a new file renamed over it would replace.
+write_local() {
+  cat > "$state/local.lua" <<EOF
+-- nightdrive sandbox (written by config/sandbox/sandbox): Hyprland runs nested in KWin's virtual screen, its output is WAYLAND-1
+hl.monitor({ output = "WAYLAND-1", mode = "$1@60", position = "0x0", scale = $2 })
+-- KWin would draw the cursor itself, outside Hyprland's frames: drawn by Hyprland, moving it updates the image (VNC)
+hl.config({ cursor = { no_hardware_cursors = 1 } })
+EOF
+}
+set_mode() { write_local "$1" "$2"; in_box exec hyprctl reload >/dev/null; }
+
+up() {
+  command -v podman >/dev/null || die "needs Podman (sudo dnf install podman)"
+  mkdir -p "$state/shots"
+  [[ $(podman image inspect -f '{{index .Config.Labels "nightdrive.inputs"}}' "$IMAGE" 2>/dev/null) == "$(inputs)" ]] || build
+  write_local "$SHOT_MODE" "$SHOT_SCALE"
+  # The same content link.sh writes into the repo, so its comparison matches and it doesn't try to write (read-only)
+  printf 'screencopy {\n    custom_picker_binary = /home/nd/.config/hypr/scripts/share-picker\n}\n' > "$state/xdph.conf"
+  # A file mounted inside the read-only repo needs a file to mount over: Podman would create a missing one in the repo
+  # itself, owned by a subordinate uid. An empty one made here instead, and down removes it again.
+  local f
+  for f in local.lua xdph.conf; do
+    [[ -e $repo/config/hypr/$f || -L $repo/config/hypr/$f ]] && continue
+    : > "$repo/config/hypr/$f" && echo "$f" >> "$state/placeholders"
+  done
+  # The Hyprland window in KWin's virtual screen: big enough for both display sizes
+  local w h kw kh
+  for m in "$SHOT_MODE" "$VNC_MODE"; do
+    w=${m%x*} h=${m#*x}; (( w > ${kw:-0} )) && kw=$w; (( h > ${kh:-0} )) && kh=$h
+  done
+  local opts=()
+  for f in /dev/dri/renderD*; do [[ -e $f ]] && opts+=(--device "$f"); done   # GPU rendering when the host has one
+  local addr; addr=$(tailscale ip -4 2>/dev/null | head -1)
+  [[ -n $addr ]] && opts+=(-p "$addr:$VNC_PORT:5900")   # VNC only on the tailnet address (nightdrive sandbox vnc)
+
+  podman rm -f -t 0 "$NAME" >/dev/null 2>&1
+  # --init: `sleep infinity` as PID 1 doesn't reap, and the top bar's scripts would pile up as zombies.
+  # label=disable instead of :Z, which would relabel the repo on the host.
+  podman run -d --init --name "$NAME" --hostname nightdrive \
+    --userns=keep-id:uid=1000,gid=1000 --security-opt label=disable --tz=local "${opts[@]}" \
+    -v "$repo":/home/nd/nightdrive:ro \
+    -v "$state/local.lua":/home/nd/nightdrive/config/hypr/local.lua:ro \
+    -v "$state/xdph.conf":/home/nd/nightdrive/config/hypr/xdph.conf:ro \
+    -v "$state/shots":/home/nd/shots \
+    "$IMAGE" sleep infinity >/dev/null || die "podman run failed"
+  podman exec "$NAME" /home/nd/nightdrive/link.sh >"$state/link.log" 2>&1 \
+    || { tail -20 "$state/link.log"; die "link.sh failed in the container (log: $state/link.log)"; }
+  in_box start "$kw" "$kh" || die "the session didn't start (logs in the container: /tmp/kwin.log, /tmp/hyprland.log)"
+  echo "Sandbox up: $SHOT_MODE at scale $SHOT_SCALE, repo $repo (read-only)"
+}
+need_up() { running || { echo "(sandbox not up, starting it)" >&2; up >&2 || exit; }; }
+
+down() {
+  podman rm -f -t 0 "$NAME" >/dev/null 2>&1
+  local f p
+  while read -r f; do
+    p=$repo/config/hypr/$f
+    [[ -f $p && ! -L $p && ! -s $p ]] && rm -f "$p"   # only if still the empty placeholder
+  done < <(cat "$state/placeholders" 2>/dev/null)
+  rm -f "$state/placeholders"
+  echo "Sandbox down"
+}
+
+shot() {
+  local name=${1:-shot}
+  [[ $name =~ ^[A-Za-z0-9._-]+$ ]] || die "a screenshot name is letters, digits, . _ and - (got: $name)"
+  need_up
+  in_box shot "/home/nd/shots/$name.png" || die "grim failed"
+  echo "$state/shots/$name.png"
+}
+
+vnc() {
+  running || die "not up: nightdrive sandbox up"
+  if [[ ${1:-} == stop ]]; then
+    in_box vnc stop; set_mode "$SHOT_MODE" "$SHOT_SCALE"
+    echo "VNC stopped, display back at $SHOT_MODE (scale $SHOT_SCALE)"; return
+  fi
+  local addr; addr=$(podman port "$NAME" 5900/tcp 2>/dev/null | head -1)
+  [[ -n $addr ]] || die "VNC is published only on the tailnet address, and there was none when the sandbox started
+(tailscale ip -4). Bring Tailscale up, then nightdrive sandbox up again."
+  set_mode "$VNC_MODE" "$VNC_SCALE"
+  in_box vnc start || die "wayvnc didn't start (log in the container: /tmp/wayvnc.log)"
+  local zone; zone=$(firewall-cmd --get-zone-of-interface=tailscale0 2>/dev/null)
+  echo "VNC: $addr ($VNC_MODE, no password: only the tailnet reaches it). Stop: nightdrive sandbox vnc stop"
+  echo "If a viewer can't connect, the host's firewall must let $VNC_PORT/tcp in from the tailnet, e.g. (firewalld):"
+  echo "  sudo firewall-cmd --permanent --zone=${zone:-<the zone of tailscale0>} --add-port=$VNC_PORT/tcp && sudo firewall-cmd --reload"
+  echo "The size is fixed: a viewer's \"SetDesktopSize failed\" is harmless (TigerVNC: turn off \"Resize remote session\")."
+}
+
+case ${1:-} in
+  up) up ;;
+  down) down ;;
+  build) build ;;
+  # The container's paths as the repo's (config/hypr/hyprland.lua:361 rather than /home/nd/.config/hypr/hyprland.lua:361)
+  check) need_up; in_box check | sed -E 's#/home/nd/nightdrive/##g; s#/home/nd/\.config/(hypr|quickshell|topbar)/#config/\1/#g' ;;
+  shot) shot "${2:-}" ;;
+  ipc) need_up
+       case ${2:-} in show|call|prop|"") in_box exec qs ipc "${@:2}" ;; *) in_box exec qs ipc call "${@:2}" ;; esac ;;
+  exec) need_up; in_box exec "${@:2}" ;;
+  shell) need_up; exec podman exec -it "$NAME" "$inside" exec bash ;;
+  vnc) vnc "${2:-}" ;;
+  ""|help|-h|--help) usage ;;
+  *) usage >&2; exit 1 ;;
+esac

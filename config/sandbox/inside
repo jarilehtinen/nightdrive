@@ -1,0 +1,81 @@
+#!/bin/bash
+# Runs inside the sandbox container (config/sandbox/sandbox calls it through podman exec): starts the session and does the
+# checks, screenshots and VNC there. The repo is mounted read-only at ~/nightdrive, so this file is always the repo's own.
+#   inside start W H      D-Bus, KWin's virtual screen (W x H), Hyprland nested in it; waits for Quickshell
+#   inside check          Hyprland --verify-config, hyprctl configerrors, Quickshell's errors since its last (re)load
+#   inside shot FILE      grim of Hyprland's output
+#   inside vnc start|stop wayvnc on the container's port 5900 (the host publishes it on the tailnet address only)
+#   inside exec CMD…      a command with the session's environment (hyprctl, qs, …)
+set -u
+export XDG_RUNTIME_DIR=/tmp/xdg
+export DBUS_SESSION_BUS_ADDRESS=unix:path=$XDG_RUNTIME_DIR/bus
+export WAYLAND_DISPLAY=wayland-1   # Hyprland's socket (KWin's is wayland-kwin)
+export QT_QPA_PLATFORM="wayland;xcb"   # as hyprland.lua sets it: qs log and qs ipc only find instances with the same display connection
+export PATH=$HOME/.local/bin:$PATH
+OUTPUT=WAYLAND-1   # Hyprland's output: its window in KWin
+hypr_env() { HYPRLAND_INSTANCE_SIGNATURE=$(ls -t "$XDG_RUNTIME_DIR/hypr" 2>/dev/null | head -1); export HYPRLAND_INSTANCE_SIGNATURE; }
+hypr_env
+
+start() {
+  local w=$1 h=$2
+  mkdir -p -m700 "$XDG_RUNTIME_DIR"
+  [[ -S $XDG_RUNTIME_DIR/bus ]] || dbus-daemon --session --address="$DBUS_SESSION_BUS_ADDRESS" --fork --nopidfile
+  # Hyprland 0.56 can't run on its headless backend alone (aquamarine: "no allocator available"), and sway 1.11 and
+  # Weston 15 are too old as hosts (aquamarine binds xdg_wm_base v6 and wl_compositor v6). KWin 6.7's virtual screen is new enough.
+  if ! pgrep -x kwin_wayland >/dev/null; then
+    # --no-lockscreen: KWin locks after 5 idle minutes and hides the Hyprland window, which then stops drawing (VNC freezes,
+    # grim hangs). +100 for KWin's own title bar around the Hyprland window.
+    setsid -f kwin_wayland --no-lockscreen --virtual --width "$w" --height $((h + 100)) --socket wayland-kwin >/tmp/kwin.log 2>&1
+    for _ in $(seq 50); do [[ -S $XDG_RUNTIME_DIR/wayland-kwin ]] && break; sleep 0.1; done
+  fi
+  if ! pgrep -f '^(start-hyprland|Hyprland)' >/dev/null; then
+    cd ~ || exit
+    # start-hyprland, as the login screen does (config/greeter/shell.qml): without it Hyprland shows a warning
+    WAYLAND_DISPLAY=wayland-kwin setsid -f start-hyprland >/tmp/hyprland.log 2>&1
+    for _ in $(seq 100); do ls "$XDG_RUNTIME_DIR"/hypr/*/.socket.sock >/dev/null 2>&1 && break; sleep 0.1; done
+    hypr_env
+  fi
+  [[ -n $HYPRLAND_INSTANCE_SIGNATURE ]] || { echo "Hyprland didn't start:"; tail -20 /tmp/hyprland.log; exit 1; }
+  # hyprland.lua starts Quickshell (and swaybg): ready once its IPC answers, so a check or a screenshot right after sees it
+  for _ in $(seq 150); do qs ipc show >/dev/null 2>&1 && return; sleep 0.2; done
+  echo "Quickshell didn't come up in 30 s (qs log below)"; qs log 2>&1 | tail -20; exit 1
+}
+
+check() {
+  local fail=0 out
+  # Hyprland and Quickshell reload a second or so after a save: a check right after an edit waits for that
+  [[ -n $(find ~/nightdrive/config -newermt '-3 seconds' -print -quit 2>/dev/null) ]] && sleep 2
+  if ! out=$(Hyprland --verify-config -c ~/.config/hypr/hyprland.lua 2>&1); then
+    echo "== Hyprland --verify-config"
+    # only its result: the lines before it are Hyprland's start-up log
+    sed -n '/Config parsing result/,$p' <<<"$out" | sed '1d;/^$/d' | grep . || echo "$out"
+    fail=1
+  fi
+  out=$(hyprctl configerrors 2>&1)
+  if [[ -n ${out//[[:space:]]/} ]]; then echo "== hyprctl configerrors"; echo "$out"; fail=1; fi
+  # Quickshell: only since its last (re)load, so an error that's fixed and reloaded no longer counts. A failed reload keeps
+  # the old config running and logs ERROR lines; a QML runtime error is a WARN with its place, e.g. "@Osd.qml[13:-1]: …"
+  # (the other WARNs are Qt's own noise: propertyCache, portal registration).
+  out=$(qs log 2>&1 | sed 's/\x1b\[[0-9;]*m//g' \
+        | awk '/INFO: (Launching config|Reloading configuration)/ { n = 0; delete l; next }
+               /^ *ERROR/ || (/^ *WARN/ && /@[^ ]+\.qml\[/) { l[++n] = $0 }
+               END { for (i = 1; i <= n; i++) print l[i] }')
+  if [[ -n $out ]]; then echo "== qs log (since the last reload)"; echo "$out"; fail=1; fi
+  if ! pgrep -x qs >/dev/null; then echo "== Quickshell isn't running (qs log | tail)"; fail=1; fi
+  (( fail )) || echo "ok: Hyprland config, hyprctl configerrors, Quickshell"
+  exit $fail
+}
+
+case ${1:-} in
+  start) start "$2" "$3" ;;
+  check) check ;;
+  shot) exec grim -o "$OUTPUT" "$2" ;;
+  vnc) case ${2:-start} in
+         # -r: the cursor drawn into the image (Remmina showed none without it, and it doesn't depend on the cursor capture
+         # that Hyprland fails on shape changes)
+         start) pgrep -x wayvnc >/dev/null || setsid -f wayvnc -r -o "$OUTPUT" 0.0.0.0 5900 >/tmp/wayvnc.log 2>&1 ;;
+         stop) pkill -x wayvnc; true ;;
+       esac ;;
+  exec) shift; exec "$@" ;;
+  *) sed -n '2,9p' "$0" >&2; exit 1 ;;
+esac

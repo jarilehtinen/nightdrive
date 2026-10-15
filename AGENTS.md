@@ -10,6 +10,8 @@ Test over IPC (`qs ipc show`, e.g. `qs ipc call launcher openLevel settings`) an
 The user may be typing on this same desktop, and the launcher and menus take the keyboard: run `nightdrive agent-warn
 "the launcher"` before opening one (once per burst of tests) and open it only after it returns (~5 s countdown with sound).
 Don't press Enter over IPC on rows that act on real things (Home Assistant devices, Power).
+On a machine without Hyprland, or to leave the user's desktop alone, use the headless container: `nightdrive sandbox
+check` (exit 1 with the findings) and `nightdrive sandbox shot NAME`, `ipc …` for the rest (docs/sandbox.md; no agent-warn there).
 
 **Pitfalls**
 - Menu icons are invisible private-use glyphs in strings. Don't retype those lines, and compare the glyph counts with HEAD.

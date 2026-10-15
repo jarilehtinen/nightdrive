@@ -252,7 +252,8 @@ Nightdrive is work in progress, and help of almost any kind moves it forward:
   of the failing command helps a lot.
 - **Send a pull request.** Keep it small and in the spirit of the rest: plain files, comments that explain *why*, and nothing
   personal (that goes in the git-ignored local slots, see [Make it yours](#make-it-yours)). [`AGENTS.md`](AGENTS.md) has the
-  working notes, handy for people and coding agents alike.
+  working notes, handy for people and coding agents alike. No Mac at hand? `nightdrive sandbox` runs the desktop in a
+  headless container on Linux with Podman (tested on x86_64), for checks and screenshots ([docs/sandbox.md](docs/sandbox.md)).
 - **Make wallpapers.** See below.
 
 ## Credits
