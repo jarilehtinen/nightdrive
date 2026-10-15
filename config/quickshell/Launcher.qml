@@ -1729,7 +1729,7 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                         readonly property bool twoLines: !!row.modelData.artist || !!row.modelData.sub
                         anchors {
                             left: row.noIcon ? parent.left : slot.right; leftMargin: 16
-                            right: shortcut.visible ? shortcut.left : trailing.left; rightMargin: (row.modelData.kind === "key" ? 36 : 12) + (dot.visible ? 19 : 0) + (badge.visible ? badge.implicitWidth + 10 : 0)   // keybindings get more room before the keys (description is elided with …)
+                            right: shortcut.visible ? shortcut.left : trailing.left; rightMargin: (row.modelData.kind === "key" ? 36 : 12) + (dot.visible ? 19 : 0) + (badge.visible ? badge.implicitWidth + 10 : 0) + (note.visible ? note.implicitWidth + 10 : 0)   // keybindings get more room before the keys (description is elided with …)
                             verticalCenter: parent.verticalCenter; verticalCenterOffset: twoLines ? (row.modelData.sub ? -9 : -7) : 0
                         }
                         elide: Text.ElideRight
@@ -1808,6 +1808,16 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                         anchors.verticalCenter: parent.verticalCenter
                         width: 9; height: 9; radius: 5
                         color: Theme.ok
+                    }
+                    Text {           // row.modelData.note: small dim text after the name (Settings › Home: how many there are)
+                        id: note
+                        visible: row.modelData.note !== undefined
+                        x: nameText.x + Math.min(nameText.contentWidth, nameText.width) + 10
+                        anchors.baseline: nameText.baseline
+                        text: visible ? row.modelData.note : ""
+                        color: Theme.dim
+                        opacity: 0.55   // further back than the summaries on the right: a side note
+                        font { family: Theme.font; pixelSize: win.fontSize - 5 }
                     }
                     Text {           // a small mark after the name (and the dot): row.modelData.badge, a Lucide name (Home: "pin")
                         id: badge
