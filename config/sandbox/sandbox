@@ -53,6 +53,10 @@ set_mode() { write_local "$1" "$2"; in_box exec hyprctl reload >/dev/null; }
 
 up() {
   command -v podman >/dev/null || die "needs Podman (sudo dnf install podman)"
+  local f opts=()
+  # Hyprland renders through a GPU render node: without one it crashes at start (no software fallback)
+  for f in /dev/dri/renderD*; do [[ -e $f ]] && opts+=(--device "$f"); done
+  (( ${#opts[@]} )) || die "needs a GPU render node (/dev/dri/renderD*): Hyprland crashes without one"
   mkdir -p "$state/shots"
   [[ $(podman image inspect -f '{{index .Config.Labels "nightdrive.inputs"}}' "$IMAGE" 2>/dev/null) == "$(inputs)" ]] || build
   write_local "$SHOT_MODE" "$SHOT_SCALE"
@@ -60,7 +64,6 @@ up() {
   printf 'screencopy {\n    custom_picker_binary = /home/nd/.config/hypr/scripts/share-picker\n}\n' > "$state/xdph.conf"
   # A file mounted inside the read-only repo needs a file to mount over: Podman would create a missing one in the repo
   # itself, owned by a subordinate uid. An empty one made here instead, and down removes it again.
-  local f
   for f in local.lua xdph.conf; do
     [[ -e $repo/config/hypr/$f || -L $repo/config/hypr/$f ]] && continue
     : > "$repo/config/hypr/$f" && echo "$f" >> "$state/placeholders"
@@ -70,8 +73,6 @@ up() {
   for m in "$SHOT_MODE" "$VNC_MODE"; do
     w=${m%x*} h=${m#*x}; (( w > ${kw:-0} )) && kw=$w; (( h > ${kh:-0} )) && kh=$h
   done
-  local opts=()
-  for f in /dev/dri/renderD*; do [[ -e $f ]] && opts+=(--device "$f"); done   # GPU rendering when the host has one
   local addr; addr=$(tailscale ip -4 2>/dev/null | head -1)
   [[ -n $addr ]] && opts+=(-p "$addr:$VNC_PORT:5900")   # VNC only on the tailnet address (nightdrive sandbox vnc)
 

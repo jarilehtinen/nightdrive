@@ -2,7 +2,9 @@
 
 `nightdrive sandbox` runs the desktop in a rootless Podman container with no screen. It is meant for checking a change and
 taking a screenshot of it on a machine without Hyprland (a build server, say), or without taking over the keyboard of the
-desktop you're sitting at. Needs Podman, and a GPU render node (`/dev/dri/renderD*`) if there is one.
+desktop you're sitting at. Needs Linux with rootless Podman and a GPU render node (`/dev/dri/renderD*`, readable by
+you): without one Hyprland crashes at start. Tested on x86_64 (Rocky Linux 9, Intel GPU); not on macOS, where Podman runs
+in a VM without a GPU.
 
     nightdrive sandbox up           # builds the image the first time (~10 min, ~4.5 GB: KWin brings much of KDE), then starts it
     nightdrive sandbox check        # exit 1 and the findings, if Hyprland's config or Quickshell has errors
