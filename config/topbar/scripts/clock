@@ -1,0 +1,41 @@
+#!/bin/bash
+# The top bar clock (the calendar module). Right click cycles its format, from long to short (here in the dmy style):
+#   0  Thu 15.10. 13:48     1  Thu 15. 13:48     2  15.10. 13:48     3  13:48
+# The day and month follow the date style: auto = the order and separator of the locale's date (LC_TIME: fi 15.10.,
+# en_GB 15/10, en_US 10/15, sv 10-15), or one of dmy (15.10.), mdy (10/15), iso (10-15) set with `clock style`.
+# Weekdays are always in English.
+# Usage: clock [text|next]   the clock's text now | the next format
+#        clock style [auto|dmy|mdy|iso]   shows or sets the date style (`nightdrive topbar date …`)
+state=${XDG_STATE_HOME:-$HOME/.local/state}/nightdrive
+mode=$(cat "$state/clock-mode" 2>/dev/null); [[ $mode =~ ^[0-3]$ ]] || mode=0
+style=$(cat "$state/date-style" 2>/dev/null); [[ $style =~ ^(dmy|mdy|iso)$ ]] || style=auto
+
+# The locale's own date, e.g. 31.12.2000 / 31/12/00 / 12/31/2000 / 2000-12-31: the order and the separator
+locale_dm() {
+  local x; x=$(date -d 2000-12-31 +%x 2>/dev/null)
+  local sep; sep=$(grep -o '[^0-9]' <<<"$x" | head -1); sep=${sep:-.}
+  if [[ $x == 2000* || $x == 00[^0-9]* ]]; then echo "%m-%d|%d"
+  elif [[ $x == 12* ]]; then echo "%m$sep%d|%d"
+  elif [[ $sep == . ]]; then echo "%d.%m.|%d."
+  else echo "%d$sep%m|%d"; fi
+}
+
+case ${1:-text} in
+  next)
+    mkdir -p "$state" && echo $(( (mode + 1) % 4 )) > "$state/clock-mode" ;;
+  style)
+    if [[ -z ${2:-} ]]; then echo "$style"; exit; fi
+    [[ $2 =~ ^(auto|dmy|mdy|iso)$ ]] || { echo "usage: clock style [auto|dmy|mdy|iso]" >&2; exit 1; }
+    mkdir -p "$state" && echo "$2" > "$state/date-style"
+    command -v qs >/dev/null && qs ipc call bar refresh >/dev/null 2>&1 || true ;;
+  text)
+    case $style in
+      dmy) dm="%d.%m.|%d." ;;
+      mdy) dm="%m/%d|%d" ;;
+      iso) dm="%m-%d|%d" ;;
+      *)   dm=$(locale_dm) ;;
+    esac
+    full=${dm%|*} day=${dm#*|}
+    fmt=("%a $full %H:%M" "%a $day %H:%M" "$full %H:%M" "%H:%M")
+    LC_TIME=en_GB.UTF-8 date "+${fmt[mode]}" ;;
+esac

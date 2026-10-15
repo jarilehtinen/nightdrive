@@ -68,6 +68,7 @@ Item {
             text: mod.label
             color: mod.fg
             dpr: mod.dpr
+            font.letterSpacing: mod.def.spacing || 0   // modules.jsonc "spacing"
             x: mod.snap(mod.icon ? img.x + img.width + mod.gap : (mod.width - implicitWidth) / 2)
         }
     }

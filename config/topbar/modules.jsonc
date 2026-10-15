@@ -7,6 +7,7 @@
 //   status    optional: another command printing the state (default ~/.config/topbar/scripts/status <name>)
 //   menu      optional: the menu to open on a left click, if not <Name>Menu.qml ("" = none)
 //   right, middle  optional: shell commands for a right / middle click (the module updates right after)
+//   spacing   optional: letter spacing of its text in px (- = tighter)
 //
 // A status command prints one line of JSON:  {"icon": "wifi", "text": "95%", "class": "off"}
 //   icon   a Lucide name (lucide.dev/icons), or pack:name from any Iconify set (mdi:wifi, tabler:cpu…); see scripts/icon.
@@ -26,6 +27,6 @@
   { "name": "headphones",    "interval": 3,  "right": "~/.config/topbar/scripts/eq disconnect", "middle": "easyeffects" },
   { "name": "display",       "interval": 30 },
   { "name": "battery",       "interval": 10 },
-  { "name": "calendar",      "interval": 5 },
+  { "name": "calendar",      "interval": 5,  "right": "~/.config/topbar/scripts/clock next", "spacing": -0.4 },
   { "name": "notifications", "interval": 60 }
 ]

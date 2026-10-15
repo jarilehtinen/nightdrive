@@ -78,7 +78,7 @@ case $kind in
     if [[ $(tailscale status --json 2>/dev/null | jq -r '.BackendState // empty') == Running ]]; then emit tailscale ""
     else emit tailscale-off ""; fi ;;
   calendar)
-    emit "" "$(LC_TIME=en_GB.UTF-8 date '+%a %d.%m. %H:%M')" ;;
+    emit "" "$(~/.config/topbar/scripts/clock)" ;;
   notifications)
     emit menu "" ;;
   *)  # modules of a private overlay: status.local has its own case for them and can use emit
