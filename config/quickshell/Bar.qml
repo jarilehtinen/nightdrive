@@ -104,19 +104,53 @@ Variants {
             }
         }
 
-        Row {
-            anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
-            spacing: 3
+        // The modules from the right edge leftwards. On a MacBook with a notch (appledrm.show_notch=1) a module that would
+        // reach under it goes, with the rest, to the notch's left side. The notch's width: the `notch` row in adjust.conf
+        // (px, 0 = none), otherwise found from the internal screen's resolution.
+        readonly property real notchWidth: {
+            const row = TopBar.sizesLocal.notch || TopBar.sizesPublic.notch
+            if (row) return row.size
+            // Physical sizes with the notch shown -> its physical width (approximate, a little wider than the notch)
+            const known = { "3024x1964": 400, "3456x2234": 400, "2560x1664": 360, "2880x1864": 360 }
+            const phys = Math.round(modelData.width * dpr) + "x" + Math.round(modelData.height * dpr)
+            return known[phys] ? known[phys] / dpr : 0
+        }
+        property var xs: []
+        function layout() {
+            const nl = (width - notchWidth) / 2, nr = (width + notchWidth) / 2
+            let cursor = width - 10, jumped = notchWidth <= 0
+            const out = []
+            for (let i = rep.count - 1; i >= 0; i--) {
+                const m = rep.itemAt(i)
+                if (!m || !m.visible) { out[i] = 0; continue }
+                let x = cursor - m.width
+                if (!jumped && x < nr) { jumped = true; cursor = nl - 6; x = cursor - m.width }
+                out[i] = Math.round(x * dpr) / dpr
+                cursor = x - 3
+            }
+            xs = out
+        }
+        onWidthChanged: Qt.callLater(layout)
+        onNotchWidthChanged: Qt.callLater(layout)
+
+        Item {
+            anchors.fill: parent
             Repeater {
                 id: rep
                 model: TopBar.modules
+                onCountChanged: Qt.callLater(win.layout)
                 BarModule {
                     required property var modelData
+                    required property int index
                     def: modelData
                     dpr: win.dpr
+                    x: win.xs[index] || 0
+                    anchors.verticalCenter: parent.verticalCenter
                     hasMenu: bar.menuOf(modelData) !== ""
                     open: hasMenu && bar.current === bar.menuOf(modelData)
                     onLeftClicked: x => bar.menuClicked(bar.menuOf(modelData), x, win.modelData)
+                    onWidthChanged: Qt.callLater(win.layout)
+                    onVisibleChanged: Qt.callLater(win.layout)
                 }
             }
         }
