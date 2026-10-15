@@ -48,10 +48,12 @@
   ⌘ D                Drawer: show / hide (slides up over the windows)
   ⌘ S                Put the window in the drawer / take it back out
 
+## Screenshots
+  ⌘ R                Region to the clipboard
+  ⌘ ⇧ R              Window to the clipboard (click the window)
+  ⌘ Space → Tools › Screenshot   Region, window or whole screen (saved to a file and the clipboard)
+
 ## Other
-  ⌘ R                Screenshot of a region to the clipboard
-  ⌘ ⇧ R              Screenshot of a window to the clipboard (click the window)
-  ⌘ Space → Screenshot   Region or whole screen, saved to a file (from the launcher)
   ⌘ ⌫ in Settings › Background   Delete the selected own background (press twice; moves it to the trash)
   Top-row keys       Volume, screen brightness (F1/F2); keyboard backlight = ⌘F1/⌘F2
   F3                 Notification center (hamburger menu)

@@ -47,7 +47,7 @@ PanelWindow {
     property string level: "root"             // root | apps | keys
     property string query: ""
     property var syncHidden: []               // apps hidden by sync-apps: [{ path, name, icon, extra }]
-    property var keyList: []                  // [{ name, keys, section }]
+    property var keyList: []                  // [{ name, sub, keys, section }]
     property string armed: ""                 // action awaiting confirmation
     property var installResults: []           // Install: search results
     property string installQ: ""              // the query the results belong to
@@ -391,7 +391,8 @@ PanelWindow {
             all = appEntries(q)
             if (q === "") all.sort((a, b) => a.text.localeCompare(b.text))
         } else if (level === "keys") {
-            all = keyList.map(k => ({ item: { kind: "key", name: k.name, keys: k.keys, section: k.section }, text: k.name, extra: k.keys + " " + k.section }))
+            all = keyList.map(k => ({ item: { kind: "key", name: k.name, sub: k.sub || undefined, keys: k.keys, section: k.section }, text: k.name,
+                                      extra: k.keys + " " + k.section + " " + k.sub }))
         } else if (level === "software") {
             if (q.replace(/[^a-z0-9._+\-]/g, "").length < 2) return [{ kind: "hint", name: "Type at least 2 characters to search apps and tools" }]
             if (installResults.length === 0) return [{ kind: "hint", name: searchProc.running ? "Searching…" : "Nothing found" }]
@@ -1241,7 +1242,30 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
         }
     }
 
-    // SHORTCUTS.md → [{ name, keys, section }]
+    // A keybinding's text → [name, second line]: the row has no room for long texts. A note in parentheses at the end goes
+    // on the second line ("Emoji picker (Enter pastes…)"), and so does what a long name has after its first ": " or "; "
+    // outside parentheses ("Play/pause; starts Deck if…").
+    function splitKeyText(text) {
+        let name = text, sub = ""
+        const p = name.match(/^(.*\S)\s*\(([^()]*)\)$/)
+        if (p) { name = p[1]; sub = p[2] }
+        if (name.length > 36) {
+            let depth = 0
+            for (let i = 0; i < name.length - 1; i++) {
+                const c = name[i]
+                if (c === "(") depth++
+                else if (c === ")") depth--
+                else if (depth === 0 && (c === ":" || c === ";") && name[i + 1] === " ") {
+                    sub = name.slice(i + 2) + (sub ? " (" + sub + ")" : "")
+                    name = name.slice(0, i)
+                    break
+                }
+            }
+        }
+        return [name, sub.charAt(0).toUpperCase() + sub.slice(1)]
+    }
+
+    // SHORTCUTS.md → [{ name, sub, keys, section }]
     Sh {
         id: keysProc
         script: 'cd "$HOME/.config/hypr" && cat SHORTCUTS.md SHORTCUTS.local.md 2>/dev/null'
@@ -1253,7 +1277,9 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                 if (h) { section = h[1]; continue }
                 // Keys and description are split at the last run of two or more spaces
                 const m = line.match(/^ {2}(\S.*) {2,}(\S.*)$/)
-                if (m && section) out.push({ keys: m[1].trim(), name: m[2].trim(), section: section })
+                if (!m || !section) continue
+                const t = win.splitKeyText(m[2].trim())
+                out.push({ keys: m[1].trim(), name: t[0], sub: t[1], section: section })
             }
             win.keyList = out
         }
