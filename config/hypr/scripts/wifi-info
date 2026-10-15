@@ -1,0 +1,38 @@
+#!/bin/bash
+# The connected Wi-Fi link as one JSON object (WifiMenu.qml and the launcher's Settings › Wi-Fi show it):
+#   {band, gen, width, rate, sec, dbm, bssid, ip, gw, ping, dns}   strings, dbm and ping numbers; missing ones are ""/null
+# From iw (nmcli reports channel 0 and 0 Mbit/s for 6 GHz links here), ip, nmcli and one ping to the router.
+dev=$(nmcli -t -f DEVICE,TYPE,STATE device | awk -F: '$2 == "wifi" && $3 == "connected" { print $1; exit }')
+[[ -z $dev ]] && { echo '{}'; exit 0; }
+link=$(iw dev "$dev" link 2>/dev/null)
+
+freq=$(awk '/freq:/ { print int($2); exit }' <<<"$link")
+band=""; (( freq >= 5925 )) && band="6 GHz" || { (( freq >= 4900 )) && band="5 GHz" || { (( freq > 0 )) && band="2.4 GHz"; }; }
+bitrates=$(grep -E '(rx|tx) bitrate' <<<"$link")
+# The standard from the modulation iw names (on either direction's line)
+gen=""
+if grep -q EHT <<<"$bitrates"; then gen="Wi-Fi 7"
+elif grep -q 'HE-' <<<"$bitrates"; then [[ $band == "6 GHz" ]] && gen="Wi-Fi 6E" || gen="Wi-Fi 6"
+elif grep -q VHT <<<"$bitrates"; then gen="Wi-Fi 5"
+elif grep -q MCS <<<"$bitrates"; then gen="Wi-Fi 4"
+fi
+width=$(grep -oE '[0-9]+MHz' <<<"$bitrates" | head -n1 | sed 's/MHz/ MHz/')
+# The link rate the router sends at (what downloads can reach at most)
+mbit=$(awk '/rx bitrate:/ { print $3; exit }' <<<"$link")
+rate=""
+[[ -n $mbit ]] && rate=$(awk -v m="$mbit" 'BEGIN { if (m >= 1000) printf "%.1f Gb/s", m / 1000; else printf "%d Mb/s", m }')
+dbm=$(awk '/signal:/ { print $2; exit }' <<<"$link")
+bssid=$(awk '/Connected to/ { print $3; exit }' <<<"$link")
+sec=$(nmcli -t -f IN-USE,SECURITY device wifi list ifname "$dev" --rescan no 2>/dev/null | awk -F: '$1 == "*" { print $2; exit }')
+
+ip=$(ip -4 -o addr show dev "$dev" | awk '{ sub(/\/.*/, "", $4); print $4; exit }')
+gw=$(ip route show default dev "$dev" | awk '{ print $3; exit }')
+ping=""
+# The fastest of three: the first answer comes late while the card wakes from power save (78 ms vs 2 ms here)
+[[ -n $gw ]] && ping=$(ping -n -q -c3 -i0.2 -W1 "$gw" 2>/dev/null | sed -nE 's|^rtt [^=]*= ([0-9.]+)/.*|\1|p')
+dns=$(nmcli -g IP4.DNS device show "$dev" 2>/dev/null | tr '|' '\n' | sed 's/ //g' | paste -sd, -)
+
+jq -nc --arg band "$band" --arg gen "$gen" --arg width "$width" --arg rate "$rate" --arg sec "${sec// WPA/, WPA}" \
+  --arg dbm "$dbm" --arg bssid "$bssid" --arg ip "$ip" --arg gw "$gw" --arg ping "$ping" --arg dns "$dns" \
+  '{band: $band, gen: $gen, width: $width, rate: $rate, sec: $sec, dbm: ($dbm | tonumber? // null), bssid: $bssid,
+    ip: $ip, gw: $gw, ping: ($ping | tonumber? // null), dns: $dns}'

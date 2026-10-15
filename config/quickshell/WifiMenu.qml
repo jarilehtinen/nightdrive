@@ -50,6 +50,20 @@ Column {
         }
     }
 
+    // The link (hypr/scripts/wifi-info): band, standard, link rate; local IP and the router's ping. Every 5 s. Security and
+    // the rest are in the launcher's Settings › Wi-Fi (the line would not fit the menu).
+    property var link: ({})
+    Timer { interval: 5000; repeat: true; running: m.activeSsid !== ""; triggeredOnStart: true; onTriggered: linkProc.running = true }
+    Sh {
+        id: linkProc
+        command: [Quickshell.env("HOME") + "/.config/hypr/scripts/wifi-info"]
+        onResult: text => { try { m.link = JSON.parse(text) } catch (e) {} }
+    }
+    function ms(v) { return v === null || v === undefined ? "" : v < 1 ? "<1 ms" : Math.round(v) + " ms" }
+    // "…" until the first reading: the rows are there from the start, so the menu keeps its size
+    readonly property string linkLine: [link.band, link.gen, link.rate].filter(x => x).join(" · ") || "…"
+    readonly property string localLine: [link.ip, ms(link.ping)].filter(x => x).join(" · ") || "…"
+
     // Live throughput: read the wifi interface's byte counters every second (only while the menu is open)
     property real rxRate: 0
     property real txRate: 0
@@ -228,6 +242,20 @@ done; true'
         spacing: 6
         Text { text: Icons.g("globe"); color: Theme.accent; font { family: Icons.family; pixelSize: 13 } anchors.verticalCenter: parent.verticalCenter }
         Text { text: m.publicIp !== "" ? m.publicIp : (m.ipFailed ? "public IP unavailable" : "…"); color: m.publicIp !== "" ? Theme.text : Theme.dim; font { family: Theme.font; pixelSize: 12 } }
+    }
+    Row {      // local IP and how long the router takes to answer (slow here = the Wi-Fi, not the internet)
+        visible: m.wifiOn && m.activeNet !== null
+        leftPadding: 33
+        spacing: 6
+        Text { text: Icons.g("router"); color: Theme.accent; font { family: Icons.family; pixelSize: 13 } anchors.verticalCenter: parent.verticalCenter }
+        Text { text: m.localLine; color: Theme.text; font { family: Theme.font; pixelSize: 12 } }
+    }
+    Row {      // the link: 6 GHz · Wi-Fi 6E · 1.9 Gb/s
+        visible: m.wifiOn && m.activeNet !== null
+        leftPadding: 33
+        spacing: 6
+        Text { text: Icons.g("radio-tower"); color: Theme.accent; font { family: Icons.family; pixelSize: 13 } anchors.verticalCenter: parent.verticalCenter }
+        Text { text: m.linkLine; color: Theme.dim; font { family: Theme.font; pixelSize: 12 } }
     }
     Item { visible: m.wifiOn && m.activeNet !== null; width: 1; height: 6 }   // extra space between the statistics and Disconnect
     MenuRow {

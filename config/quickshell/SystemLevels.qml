@@ -138,6 +138,8 @@ Item {
     // the rows: rebuilding the rows every second made the list jump while moving in it
     function liveText(key) {
         if (key === "wifirate") return "↓ " + fmtRate(rxRate) + "   ↑ " + fmtRate(txRate)
+        if (key === "wifilocal") return !link.ip ? "…" : copied !== "" && copied === link.ip ? "copied"
+                                        : link.ip + (linkPing < 0 ? "" : " · " + (linkPing < 1 ? "<1" : Math.round(linkPing)) + " ms")
         return statusLive(key)
     }
 
@@ -216,7 +218,21 @@ Item {
             r.push({ kind: "header", name: "Connected" },
                    { kind: "stat", name: a.ssid, glyph: sigIcon(a.signal), live: "wifirate" },
                    { kind: "stat", name: "Public IP", glyph: "globe", copy: /^[0-9a-fA-F:.]+$/.test(publicIp) ? publicIp : undefined,
-                     summary: copied !== "" && copied === publicIp ? "copied" : publicIp || "…" },
+                     summary: copied !== "" && copied === publicIp ? "copied" : publicIp || "…" })
+        }
+        // The link (hypr/scripts/wifi-info): the same two lines as the menu, then the details the menu leaves out
+        const L = link
+        const line = xs => xs.filter(x => x).join(" · ")
+        // All rows from the start ("…" until the first reading), so the list doesn't grow under the selection
+        if (a) r.push({ kind: "stat", name: "Local IP", glyph: "router", copy: L.ip || undefined, live: "wifilocal" },
+                       { kind: "stat", name: "Connection", glyph: "radio-tower", summary: line([L.band, L.gen, L.rate]) || "…" },
+                       { kind: "stat", name: "Security", glyph: "lock", summary: L.band === undefined ? "…" : L.sec || "none" },
+                       { kind: "stat", name: "Signal", glyph: "signal", summary: line([L.dbm !== null && L.dbm !== undefined ? L.dbm + " dBm" : "", L.width]) || "…" },
+                       { kind: "stat", name: "Router", glyph: "house-wifi", copy: L.gw || undefined,
+                         summary: copied !== "" && copied === L.gw ? "copied" : line([L.gw, L.bssid]) || "…" },
+                       { kind: "stat", name: "DNS", glyph: "server", summary: L.band === undefined ? "…" : (L.dns || "").replace(/,/g, ", ") || "—" })
+        if (a) {
+            r.push({ kind: "header", name: "Actions" },   // apart from the statistics above
                    { kind: "wifidisconnect", name: "Disconnect", glyph: "unplug", summary: connecting === a.ssid ? "…" : undefined },
                    { kind: "wififorget", name: "Forget network", glyph: "trash-2", armKey: "forget:" + a.ssid,
                      armHint: "press Enter again to forget it and its password" })
@@ -236,6 +252,22 @@ Item {
     Timer { interval: 3000; repeat: true; running: s.shown && s.level === "wifi"; onTriggered: s.wifiRefresh() }
     Timer { interval: 10000; repeat: true; running: s.shown && s.level === "wifi"; onTriggered: s.rescan() }
     Timer { interval: 60000; repeat: true; running: s.shown && s.level === "wifi" && s.activeSsid !== ""; onTriggered: ipProc.running = true }
+    property var link: ({})          // without the ping: it changes every time, and the rows rebuild when `link` does
+    property real linkPing: -1       // ms to the router, -1 = no answer (shown live in the Local IP row)
+    Timer { interval: 5000; repeat: true; running: s.shown && s.level === "wifi" && s.activeSsid !== ""; triggeredOnStart: true; onTriggered: linkProc.running = true }
+    Sh {
+        id: linkProc   // hypr/scripts/wifi-info (as in WifiMenu); the rows rebuild only when something changed
+        command: [Quickshell.env("HOME") + "/.config/hypr/scripts/wifi-info"]
+        onResult: text => {
+            let v
+            try { v = JSON.parse(text) } catch (e) { return }
+            s.linkPing = v.ping === null || v.ping === undefined ? -1 : v.ping
+            delete v.ping
+            if (JSON.stringify(v) === JSON.stringify(s.link)) return
+            s.sel()
+            s.link = v
+        }
+    }
     Timer { interval: 1000; repeat: true; running: s.shown && s.level === "wifi" && s.activeSsid !== ""; triggeredOnStart: true; onTriggered: rateProc.running = true }
     Sh {
         id: radioProc
