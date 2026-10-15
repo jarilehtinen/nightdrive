@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell
 
-// Wifi: on/off, network list, connecting (asks for a password for new secured networks).
+// Wi-Fi: on/off, network list, connecting (asks for a password for new secured networks).
 // Uses nmcli (Quickshell's Networking module returns no data on this machine).
 Column {
     id: m
@@ -186,7 +186,7 @@ done; true'
 
     MenuHeader {
         width: parent.width
-        title: "Wifi"
+        title: "Wi-Fi"
         showToggle: true
         checked: m.wifiOn
         onToggled: {
@@ -267,7 +267,7 @@ done; true'
     Text {
         visible: !m.wifiOn
         topPadding: 9
-        text: "Wifi is off"
+        text: "Wi-Fi is off"
         color: Theme.dim
         font { family: Theme.font; pixelSize: 12 }
     }
