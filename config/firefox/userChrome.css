@@ -53,6 +53,7 @@
 #nav-bar, #PersonalToolbar { background: var(--jn-bg) !important; }
 #TabsToolbar { background: var(--jn-bg) !important; padding-left: 5px !important; }
 .tab-background[selected] { background: #2a2e45 !important; }
+.tab-background:not([selected]) { background: #1e1f2d !important; }   /* inactive: a touch lighter than the tab strip #1a1b26 */
 .tabbrowser-tab { --tab-hover-background-color: #222435 !important; }   /* hover: halfway between inactive #1a1b26 and selected #2a2e45 */
 .tabbrowser-tab:hover > .tab-stack > .tab-background:not([selected]) { background: #222435 !important; }
 .tabbrowser-tab[selected] .tab-label { color: var(--jn-fg) !important; }
