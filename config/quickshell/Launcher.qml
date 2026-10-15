@@ -532,7 +532,7 @@ PanelWindow {
                                            { kind: "brightness", name: "Screen", glyph: "sun", summary: Math.round(bright * 100) + "%" }]
             if (night !== "") {
                 if (bright < 0) out.push({ kind: "header", name: "Brightness" })
-                out.push({ kind: "nightlight", name: "Night light", glyph: "moon", summary: night })
+                out.push({ kind: "nightlight", name: "Night light", glyph: "moon", switchOn: night === "on" })
             }
             // Scales the panel divides evenly, shown as the resulting desktop size ("looks like" in macOS); current one marked
             out.push(...sys.mirrorRows())   // Screen Mirroring (AirPlay; SystemLevels.qml), empty without doubletake
@@ -621,10 +621,10 @@ PanelWindow {
             if (q === "") return all.sort((a, b) => a.text.localeCompare(b.text)).map(x => x.item)   // a fixed order: toggling doesn't move rows
         } else if (level === "launcherprefs") {
             // The footer's key hints always show; these are the extras
-            return [{ kind: "lpref", key: "fuzzy", name: "Fuzzy search", glyph: prefs.fuzzy ? "toggle-right" : "toggle-left",
-                      sub: "Typos and initials also match: firefx, vsc", summary: prefs.fuzzy ? "on" : "off" },
-                    { kind: "lpref", key: "shortcuts", name: "Shortcut hints", glyph: prefs.shortcuts ? "toggle-right" : "toggle-left",
-                      sub: "An app’s or menu’s keys on its row (⌘⇧P)", summary: prefs.shortcuts ? "on" : "off" }]
+            return [{ kind: "lpref", key: "fuzzy", name: "Fuzzy search", glyph: "wand-sparkles",
+                      sub: "Typos and initials also match: firefx, vsc", switchOn: prefs.fuzzy },
+                    { kind: "lpref", key: "shortcuts", name: "Shortcut hints", glyph: "keyboard",
+                      sub: "An app’s or menu’s keys on its row (⌘⇧P)", switchOn: prefs.shortcuts }]
         } else if (level === "plugins") {
             // Enter runs the installer in a terminal (they ask things: sudo, tokens, logins); an installed one can be run again
             if (pluginList === null) return hint("Loading…")
@@ -1768,9 +1768,22 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                             font { family: Theme.font; pixelSize: win.fontSize - 5 }
                         }
                     }
+                    Rectangle {      // row.switchOn: an on/off switch like the top bar menus' (MenuHeader), instead of "on"/"off"
+                        id: rowSwitch
+                        visible: row.modelData.switchOn !== undefined
+                        anchors { right: parent.right; rightMargin: 16; verticalCenter: parent.verticalCenter }
+                        width: 34; height: 20; radius: 10
+                        color: row.modelData.switchOn ? Theme.accent : Theme.border
+                        Rectangle {
+                            width: 14; height: 14; radius: 7; y: 3
+                            x: row.modelData.switchOn ? 17 : 3
+                            color: row.modelData.switchOn ? Theme.bg : Theme.text
+                            Behavior on x { NumberAnimation { duration: 120 } }
+                        }
+                    }
                     Text {
                         id: trailing
-                        anchors { right: parent.right; rightMargin: 16; verticalCenter: parent.verticalCenter }
+                        anchors { right: parent.right; rightMargin: 16 + (rowSwitch.visible ? 34 + 14 : 0); verticalCenter: parent.verticalCenter }
                         width: Math.min(implicitWidth, row.width * 0.42)
                         elide: Text.ElideRight
                         horizontalAlignment: Text.AlignRight

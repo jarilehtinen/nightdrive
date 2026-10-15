@@ -211,7 +211,7 @@ Item {
         } else connectTo(n.ssid, "")
     }
     function wifiRows() {
-        const r = [{ kind: "systoggle", key: "wifi", name: "Wi-Fi", glyph: wifiOn ? "wifi" : "wifi-off", summary: wifiOn ? "on" : "off" }]
+        const r = [{ kind: "systoggle", key: "wifi", name: "Wi-Fi", glyph: wifiOn ? "wifi" : "wifi-off", switchOn: wifiOn }]
         if (!wifiOn) return r
         const a = activeNet
         if (a) {
@@ -380,7 +380,7 @@ done; true'
              : /watch/i.test(name) ? "watch" : /speaker|boom|jbl|soundbar/i.test(name) ? "speaker" : "bluetooth"
     }
     function btRows() {
-        const r = [{ kind: "systoggle", key: "bluetooth", name: "Bluetooth", glyph: powered ? "bluetooth" : "bluetooth-off", summary: powered ? "on" : "off" }]
+        const r = [{ kind: "systoggle", key: "bluetooth", name: "Bluetooth", glyph: powered ? "bluetooth" : "bluetooth-off", switchOn: powered }]
         if (!powered) return r
         // Nameless devices (only an address: nearby phones, Macs and AirTags) are hidden unless paired, as in the menu
         const hidden = devices.filter(d => !d.named && !d.paired && !d.connected)
@@ -553,7 +553,7 @@ done; true'
     property string copied: ""
     Timer { id: copiedTimer; interval: 1500; onTriggered: { s.sel(); s.copied = "" } }
     function tsRows() {
-        const r = [{ kind: "systoggle", key: "tailscale", name: "Tailscale", glyph: tsRunning ? "shield-check" : "shield-off", summary: tsRunning ? "on" : "off" }]
+        const r = [{ kind: "systoggle", key: "tailscale", name: "Tailscale", glyph: tsRunning ? "shield-check" : "shield-off", switchOn: tsRunning }]
         if (tsMessage !== "") r.push({ kind: "hint", name: tsMessage })
         if (!tsRunning) return r
         if (selfIp !== "") r.push({ kind: "header", name: "This machine" },

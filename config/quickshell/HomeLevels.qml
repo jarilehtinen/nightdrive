@@ -60,9 +60,12 @@ Item {
     function row(e, opts) {
         const o = opts || {}
         // In the root search the room goes in the name (the HOME tag takes the summary's place): "Olohuone › Katto"
+        // A device that turns on/off gets a switch; "on" / "off" then drop from the text (80 %, open… stay)
+        const sw = !o.from && Home.canToggle(e) && e.state !== "unavailable" && e.state !== "unknown"
+        const detail = Home.detail(e)
         return { kind: "haent", ent: e, name: o.from && e.area ? e.area + " › " + e.name : e.name, glyph: Home.icon(e), from: o.from,
-                 summary: o.from ? undefined : [o.noArea ? "" : e.area, Home.detail(e)].filter(t => t).join(" · ") || undefined,
-                 badge: e.fav && !o.from ? "pin" : undefined, dimmed: e.state === "unavailable" }
+                 summary: o.from ? undefined : [o.noArea ? "" : e.area, sw && (detail === "on" || detail === "off") ? "" : detail].filter(t => t).join(" · ") || undefined,
+                 switchOn: sw ? Home.isOn(e) : undefined, badge: e.fav && !o.from ? "pin" : undefined, dimmed: e.state === "unavailable" }
     }
     function searchRow(e, from) {
         return { item: row(e, { from: from }), text: e.name,
