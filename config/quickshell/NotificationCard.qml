@@ -18,7 +18,7 @@ Rectangle {
     property var row: ({})
     property var n: null
     readonly property var actions: n ? n.actions.filter(a => a.identifier !== "default") : []
-    readonly property bool hovered: hover.hovered
+    readonly property bool hovered: hover.hovered || shotDrag.active   // a drag of the preview keeps a popup up too
     signal activated()                         // click: open
     signal dismissed()                         // ×, right click or a two-finger swipe to the right
 
@@ -295,7 +295,26 @@ Rectangle {
             visible: !!card.row.preview && shotImg.status === Image.Ready && ar > 0
             width: parent.width
             height: visible ? Math.min(card.previewHeight, width * ar) : 0
+            // Draggable as a file (text/uri-list): dropped on a terminal it's the file's path (Claude Code attaches
+            // it as a picture), on a file manager or a browser the file. A click still opens the notification.
+            readonly property string uri: {
+                const i = card.row.image || ""
+                return i.startsWith("/") ? "file://" + i : i.startsWith("file://") ? i : ""
+            }
+            Drag.dragType: Drag.Automatic
+            Drag.supportedActions: Qt.CopyAction
+            Drag.mimeData: ({ "text/uri-list": uri, "text/plain": decodeURIComponent(uri.slice(7)) })
+            Drag.active: shotDrag.active
+            DragHandler { id: shotDrag; target: null; enabled: shot.uri !== "" }
+            // The picture under the pointer while dragging: a small copy of the preview
+            function grabIcon() {
+                if (shotImg.status !== Image.Ready || shotClip.width <= 0) return
+                const sc = Math.min(1, 160 / shotClip.width)
+                shotClip.grabToImage(r => shot.Drag.imageSource = r.url, Qt.size(shotClip.width * sc, shotClip.height * sc))
+            }
+            onHeightChanged: grabIcon()
             ClippingRectangle {
+                id: shotClip
                 width: Math.min(parent.width, parent.height / Math.max(shot.ar, 0.001)); height: parent.height
                 radius: 6
                 color: "transparent"
@@ -306,6 +325,7 @@ Rectangle {
                     source: card.row.preview ? card.row.image : ""
                     sourceSize.width: 600
                     asynchronous: true
+                    onStatusChanged: shot.grabIcon()
                 }
             }
         }
