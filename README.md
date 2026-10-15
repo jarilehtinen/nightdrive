@@ -1,16 +1,17 @@
 # Nightdrive
 
-**A synthwave-tinted Hyprland desktop for Apple Silicon Macs running Fedora Asahi Remix.**
-Mac shortcuts, one launcher for everything, a top bar that behaves like the macOS menu bar, and a look you can change in a click.
+**A keyboard-driven Hyprland desktop for Apple Silicon Macs running Fedora Asahi Remix.**
+Mac shortcuts, one launcher for everything, a top bar that behaves like the macOS menu bar, and a synthwave look you can
+change in a click.
 
 ![Nightdrive: Firefox, Deck playing FM-84 and the launcher on top](docs/screenshots/desktop.jpg)
 
-**Hi, I'm Jari Lehtinen.** I've used a Mac for over 15 years. Every year or so I've tried a Linux distro or two, but none of them
+**Hi, I'm Jari Lehtinen.** I've used a Mac for over 20 years. Every year or so I've tried a Linux distro or two, but none of them quite
 stuck. Omarchy came closest, but I wanted something built entirely around my own preferences and the apps I actually use.
 In my day job as a web developer, user interfaces and ease of use are at the core of what I do, and that's what I wanted from
 my desktop too: ⌘ shortcuts, a launcher like Spotlight, a menu bar that just works, only faster and lighter.
 So I installed Fedora Asahi on my MacBook Pro and built Nightdrive, evening by evening and with a lot
-of help from Claude Code. If you're a Mac person curious about Linux on Apple Silicon, I hope it makes the jump easier.
+of help from Claude Code.
 
 > **Work in progress.** Nightdrive is my daily setup, published so others can use it or borrow from it. It has been tested on
 > one machine so far (MacBook Pro 14″, M2 Max). Feedback, issues and ideas are very welcome.
@@ -18,8 +19,7 @@ of help from Claude Code. If you're a Mac person curious about Linux on Apple Si
 ## Why Nightdrive?
 
 [Hyprland](https://hypr.land) is a great tiling compositor, but on its own it's a toolkit: no bar, launcher, theme or apps.
-Nightdrive puts all of that together into one opinionated desktop, made for **Fedora Asahi**, **Apple Silicon** and
-**habits from macOS**.
+Nightdrive puts all of that together into one opinionated desktop.
 
 - **⌘ is the main key.** ⌘C / ⌘V / ⌘X work in every app, including the terminal. ⌘W closes, ⌘Q quits, ⌘Space opens the launcher.
 - **Built for the MacBook.** The top bar sits in the notch area. The display uses a clean 2× scale. The top-row keys control
@@ -45,27 +45,33 @@ Click an icon and a small menu opens under it: sound and output devices, Wi-Fi, 
 headphone EQ, system load and temperatures, the calendar, notifications, music, and your **Claude usage limits**. ⌘⇧Space lets
 you walk through the menus with the arrow keys.
 
-![Claude usage, system and calendar menus](docs/screenshots/menus.jpg)
+![Claude usage, system and display menus](docs/screenshots/menus.jpg)
 
 ### Make it yours in a click
 
 Pick from seven theme colours: Violet, Blue, Teal, Green, Amber, Rose or Graphite. The colour changes the menus, launcher,
 window borders, notifications, lock screen and top bar at once. Two synthwave wallpapers come with it, and you can add your own.
-The top bar's opacity, icon colours and highlight colour are all settings in the launcher, and so is the display scale
-(Settings › Display, for each screen).
+The top bar's items, opacity, and colours are all settings in the launcher.
 
 ![Settings › Theme › Color with Teal selected](docs/screenshots/themes.jpg)
+
+### A drawer for what you want at hand
+
+⌘S drops the active window into the drawer, and ⌘D slides the drawer up over your windows, dimming and blurring the rest.
+⌘D again puts it away. ⌘S in the drawer sends the window back to the workspace and place it came from. It suits notes,
+a to-do list or a chat you want one keystroke away without giving them a workspace of their own.
+
+![The drawer empty, and with a terminal and Files in it](docs/screenshots/drawer.jpg)
 
 ### Little things that add up
 
 - **Shelf**: drag a file to the top edge of the screen to park it, then drag it into another app (like Dropover / Yoink).
 - **Dictation**: hold F5 or Fn, speak, and let go. It runs fully offline with Voxtype and Parakeet ([setup](docs/dictation.md)).
-- **Night light**: a warm screen tint for the evening (Settings › Display, or the display icon in the bar). It works
-  through Hyprland's screen shader, since Asahi's display driver has no gamma tables for gammastep and the like.
 - **Screen Mirroring**: mirror the screen to an Apple TV or an AirPlay TV from the display menu or the launcher (search
   "airplay"), with sound. Google Cast works from Chromium (⋮ › Cast…). Sharing the screen, for these and video calls, asks
   in a themed window: the whole screen or one window.
-- **Screensavers**: a synthwave sunset and a falling-characters rain, both drawn in the terminal.
+- **Screensavers**: a synthwave sunset and a falling-characters rain, both drawn in the terminal, and a big clock whose
+  digits slide up as the minutes change.
 - **Background apps**: ⌘W only hides chat apps and the music player, so they keep running. Their shortcut brings them straight back.
 - **Web apps**: turn any site into an app window from the launcher (System › Install › Webapp).
 - **Installing apps**: System › Install › Software searches Fedora's packages and Flathub's apps at once, one row per app (Fedora's
@@ -175,6 +181,7 @@ The same `nightdrive` command reaches the settings from a terminal (`nightdrive`
 | ⌘ W · ⌘ Q | Close (background apps are only hidden) · really quit |
 | ⌘ F · ⌘ T · ⌘ J | Fullscreen · floating · split direction |
 | ⌘ 1…0 · ⌘ ⇧ 1…0 | Go to workspace · move the window there |
+| ⌘ D · ⌘ S | Drawer: show / hide · put the window in it, or take it back out |
 | ⌘ ⇧ V · ⌘ ⇧ E | Clipboard history · emoji |
 | ⌘ R · ⌘ ⇧ R | Screenshot of a region · of a window, to the clipboard |
 | ⌘ ⇧ B / F / P / M / I | Browser / Files / 1Password / Music / Mail |
@@ -229,12 +236,27 @@ The full list is in [`config/hypr/SHORTCUTS.md`](config/hypr/SHORTCUTS.md).
 - **The Claude usage menu** reads your plan's limits with Claude Code's own sign-in, so Claude Code must have been run once.
 - **No credentials are stored in this repo.** Tokens stay with each app (Deck, Claude Code) or in 1Password.
 
+## Want to participate?
+
+Nightdrive is work in progress, and help of almost any kind moves it forward:
+
+- **Try it on your Mac.** It has only been tested on a MacBook Pro 14″ with M2 Max. A report from any other Apple Silicon
+  model is valuable (in Discussions), whether everything worked or something broke.
+- **Ask or share in [Discussions](https://github.com/jarilehtinen/nightdrive/discussions):** questions, ideas, how it runs
+  on your Mac, or a screenshot of your setup.
+- **Open an [issue](https://github.com/jarilehtinen/nightdrive/issues)** for a bug or a rough edge. A screenshot or the output
+  of the failing command helps a lot.
+- **Send a pull request.** Keep it small and in the spirit of the rest: plain files, comments that explain *why*, and nothing
+  personal (that goes in the git-ignored local slots, see [Make it yours](#make-it-yours)). [`AGENTS.md`](AGENTS.md) has the
+  working notes, handy for people and coding agents alike.
+- **Make wallpapers.** See below.
+
 ## Credits
 
 Inspired by [Omarchy](https://omarchy.org). Built on [Hyprland](https://hypr.land) and [Quickshell](https://quickshell.org), on top of the [Asahi Linux](https://asahilinux.org) team's work. The colours start
 from the [Tokyo Night](https://github.com/enkia/tokyo-night-vscode-theme) palette, and the icons are [Lucide](https://lucide.dev) (ISC).
 The wallpapers were made with ChatGPT image generation for now. I'd much rather ship wallpapers by real artists, so if you make
-synthwave art (or know someone who does) and would like it included, please get in touch. The Tailscale logo in the bar is Tailscale's trademark.
+synthwave art (or know someone who does) and would like it included, please get in touch in Discussions. The Tailscale logo in the bar is Tailscale's trademark.
 
 ## License
 
