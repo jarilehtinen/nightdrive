@@ -155,7 +155,7 @@ hl.config({
             natural_scroll       = false,
             clickfinger_behavior = true,  -- two-finger click = right click
             tap_to_click         = false,  -- like the macOS default: only a physical press clicks
-            scroll_factor        = 0.4,
+            scroll_factor        = 1.0,   -- libinput's own distance; per-app speeds in scroll.lua
         },
     },
 })
@@ -186,6 +186,7 @@ end
 ---- KEYBINDINGS → bindings.lua ----
 ------------------------
 require("bindings")
+require("scroll")
 
 -----------------------
 ---- WINDOW RULES ----
@@ -194,14 +195,6 @@ hl.window_rule({
     name  = "suppress-maximize-events",
     match = { class = ".*" },
     suppress_event = "maximize",
-})
--- Slower scrolling for Chromium (browser + webapps) so it matches Firefox (delta_multiplier_y 100): Chromium moves further per scroll event,
--- the touchpad scroll_factor (0.4) is global, this multiplies it for these only (0.7 was still faster than Firefox)
-hl.window_rule({
-    name  = "chromium-scroll",
-    match = { class = "^(chromium|chromium-browser|chrome-.*-Default)$" },   -- Chromium browser and app windows (webapps)
-    scroll_touchpad = 0.5,
-    scroll_mouse    = 0.5,
 })
 hl.window_rule({
     name  = "float-small-tools",

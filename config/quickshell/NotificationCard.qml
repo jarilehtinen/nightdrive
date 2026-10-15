@@ -116,7 +116,7 @@ Rectangle {
         id: swipe
 
         // --- Tunables ---
-        property real touchScale: 2            // the same as TouchScroll.qml (Hyprland's scroll_factor 0.4)
+        property real touchScale: 0.8          // the same as TouchScroll.qml
         property real swipeDistance: 0.17      // of the card's width
         property real flickSpeed: 900          // px/s to the right on release
         property real direction: -1            // natural_scroll = false: fingers to the right give a negative delta

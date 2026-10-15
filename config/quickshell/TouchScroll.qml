@@ -1,14 +1,14 @@
 import QtQuick
 
-// Touchpad scrolling for a Flickable (ListView, GridView): put it inside the view. Hyprland's scroll_factor (0.4)
-// makes Qt's own scrolling slow and it stops dead when the fingers lift. This moves by the finger's distance
+// Touchpad scrolling for a Flickable (ListView, GridView): put it inside the view. Qt's own touchpad scrolling
+// is slow and it stops dead when the fingers lift. This moves by the finger's distance
 // (× touchScale) and glides on with the swipe's speed, like GTK and Firefox. A new swipe in the same direction
 // while the list is still gliding adds to the speed. A mouse wheel keeps Qt's own scrolling.
 // The glide is our own (Flickable.flick() is ignored when a swipe interrupted the previous glide).
 WheelHandler {
     id: h
     required property Flickable view
-    property real touchScale: 2
+    property real touchScale: 0.8   // with Hyprland's scroll_factor 1.0 (app speeds: hypr/scroll.lua)
     property real step: 52          // px per wheel notch when the touchpad sends no pixel distance
     property real tau: 0.45         // glide's time constant (s): it travels speed × tau
     property real maxSpeed: 12000   // px/s

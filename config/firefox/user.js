@@ -5,8 +5,7 @@ user_pref("layout.spellcheckDefault", 0);
 // Dark UI (Jokela Night)
 user_pref("browser.theme.toolbar-theme", 0);
 user_pref("browser.theme.content-theme", 0);
-// Scroll speed (default 100). Hyprland's touchpad scroll_factor (0.4) affects every app,
-// so the fine-tuning is done per app (kitty: touchpad_scroll_multiplier). Needs a Firefox restart.
+// Scroll speed (default 100). The touchpad speed is set in hypr/scroll.lua with every other app's. Needs a Firefox restart.
 user_pref("mousewheel.default.delta_multiplier_y", 100);   // the default, set explicitly so an older value in prefs.js is reset
 // Touchpad momentum like macOS: a fling glides a little longer (friction, default 0.002), and quick repeated flings
 // in the same direction speed up (multipliers, default 1.0)
