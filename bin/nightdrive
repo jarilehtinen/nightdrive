@@ -73,6 +73,10 @@ update() {
     echo "==> Links ($(basename "$r"))"; "$r/link.sh" | grep -v '^ok '
   done < <(echo "$repo"; repos | sort -u | grep -vxF "$repo")
 
+  # Fonts, ble.sh, GTK settings, default apps (the same steps as install.sh): what was added since this install
+  echo "==> Fonts, ble.sh, GTK, default apps"
+  "$repo/setup-user.sh" >/dev/null || echo "    failed: run $repo/setup-user.sh to see why"
+
   echo "==> New packages"
   want=$(cat "$repo/packages.txt" "$repo/packages-hyprland.txt" 2>/dev/null | grep -vE '^\s*(#|$)')
   missing=$(for p in $want; do rpm -q --whatprovides "$p" >/dev/null 2>&1 || echo "$p"; done)
@@ -119,6 +123,7 @@ LIST
   (( deck )) && { echo "==> Deck (rebuild)"; DECK_SRC=${DECK_SRC:-$HOME/.local/src/deck} "$repo/install-deck.sh"; }
 
   plugins_installed >/dev/null     # the optional parts' list, before the reload reads it (hypr/bindings.lua)
+  "$repo/config/fuzzel/sync-apps" >/dev/null 2>&1 || true   # the launcher's app list, as at the end of install.sh
   if [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
     echo "==> Reloading the desktop"
     hyprctl reload >/dev/null
@@ -135,7 +140,7 @@ LIST
 
   mkdir -p "$cache"; echo 0 > "$cache/updates"; echo 0 > "$cache/updates-notified"
   echo
-  echo "Nightdrive is up to date. If a change mentions install.sh, re-run it for that step (it's safe to re-run)."
+  echo "Nightdrive is up to date."
 }
 
 # Plugins (plugins.txt, its format is explained there): one tab-separated line each, id, name, icon, description,

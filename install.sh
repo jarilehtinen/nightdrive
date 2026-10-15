@@ -101,7 +101,7 @@ has() { [[ " ${chosen[*]} " == *" $1 "* ]]; }
 sudo -v
 while sleep 50; do kill -0 $$ 2>/dev/null || exit; sudo -n -v 2>/dev/null; done &
 keepalive=$!
-tmp=$(mktemp -d); trap 'kill $keepalive 2>/dev/null; rm -rf "$tmp"' EXIT   # downloads (Nerd Fonts)
+trap 'kill $keepalive 2>/dev/null' EXIT
 
 echo "==> System update (a fresh install from an older image would otherwise get a half-updated KDE: file conflicts)"
 sudo dnf upgrade --refresh -y
@@ -136,45 +136,15 @@ else
   sudo grubby --update-kernel=ALL --args="appledrm.show_notch=1"
 fi
 
-echo "==> Nerd Fonts symbols (icons for the top bar and menus)"
-fonts=$HOME/.local/share/fonts; mkdir -p "$fonts"
-if ! ls "$fonts"/SymbolsNerdFont-Regular.ttf >/dev/null 2>&1; then
-  curl -fsSL -o "$tmp/nf.zip" https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/NerdFontsSymbolsOnly.zip
-  unzip -o -q "$tmp/nf.zip" -d "$tmp/nf" && cp "$tmp"/nf/*.ttf "$fonts"/
-fi
-echo "==> Six Caps (the clock screensaver's font, Google Fonts)"
-if ! ls "$fonts"/SixCaps.ttf >/dev/null 2>&1; then
-  curl -fsSL -o "$fonts/SixCaps.ttf" https://raw.githubusercontent.com/google/fonts/main/ofl/sixcaps/SixCaps.ttf && fc-cache -f "$fonts"
-fi
-
 echo "==> Configs (links into ~/.config, fonts)"
 "$repo/link.sh"
-
-echo "==> ble.sh (bash: history suggestions while typing, syntax colours; config/bash/00-blesh.sh loads it)"
-blesh_src=$HOME/.local/src/ble.sh
-[[ -d $blesh_src/.git ]] || git clone -q --recursive --depth 1 --shallow-submodules https://github.com/akinomyoga/ble.sh.git "$blesh_src"
-make -C "$blesh_src" -s install PREFIX="$HOME/.local"
-
-echo "==> GTK: no KDE 1.7x text scaling, Papirus icons"
-for v in 3.0 4.0; do
-  f=$HOME/.config/gtk-$v/settings.ini
-  [[ -f $f ]] || { mkdir -p "$(dirname "$f")"; printf '[Settings]\n' > "$f"; }
-  for kv in 'gtk-xft-dpi=98304' 'gtk-icon-theme-name=Papirus-Dark' 'gtk-decoration-layout=:' 'gtk-cursor-theme-name=breeze_cursors' 'gtk-application-prefer-dark-theme=1'; do
-    k=${kv%%=*}
-    if grep -q "^$k=" "$f"; then sed -i "s|^$k=.*|$kv|" "$f"; else echo "$kv" >> "$f"; fi
-  done
-done
-gsettings set org.gnome.desktop.interface icon-theme 'Papirus-Dark' 2>/dev/null || true
-gsettings set org.gnome.desktop.interface gtk-theme 'Adwaita' 2>/dev/null || true
-gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark' 2>/dev/null || true
-gsettings set org.gnome.desktop.wm.preferences button-layout ':' 2>/dev/null || true
 
 echo "==> Flatpak apps (flatpaks.txt, from Flathub, per user)"
 flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 [[ -z $(pkgs "$repo/flatpaks.txt") ]] || flatpak install --user -y --noninteractive flathub $(pkgs "$repo/flatpaks.txt")
 
-echo "==> Default apps: images open in Loupe (instead of the browser); Markdown in Apostrophe, if chosen (its installer)"
-xdg-mime default org.gnome.Loupe.desktop image/png image/jpeg image/gif image/webp image/bmp image/tiff image/svg+xml image/avif image/heic
+# Fonts, ble.sh, GTK settings, default apps: also run by `nightdrive update`
+"$repo/setup-user.sh"
 
 echo "==> Sleep hook (Wi-Fi and Bluetooth off during sleep, battery drain logging)"
 sudo install -m 0755 "$repo/config/system/nightdrive-sleep" /usr/lib/systemd/system-sleep/nightdrive-sleep
