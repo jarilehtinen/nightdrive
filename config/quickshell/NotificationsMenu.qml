@@ -162,15 +162,4 @@ Column {
             }
         }
     }
-    Rectangle {
-        visible: Notifs.history.length === 0
-        width: parent.width; height: 46
-        radius: 4
-        color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, m.bgOpacity)
-        Text {
-            anchors { left: parent.left; leftMargin: 17; verticalCenter: parent.verticalCenter }
-            text: "No notifications"; color: Theme.dim
-            font { family: Theme.font; pixelSize: 12 }
-        }
-    }
 }
