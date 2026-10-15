@@ -61,6 +61,18 @@ hl.bind(mod .. " + C", hl.dsp.send_shortcut({ mods = "CTRL",  key = "Insert" }))
 hl.bind(mod .. " + V", hl.dsp.send_shortcut({ mods = "SHIFT", key = "Insert" }))
 hl.bind(mod .. " + X", hl.dsp.send_shortcut({ mods = "CTRL",  key = "X" }))
 
+-- Undo / redo / select all ⌘Z / ⌘⇧Z / ⌘A. Not in terminals (kitty and its floating windows): there Ctrl+Z would
+-- suspend the running program and Ctrl+A jumps to the start of the line
+local TERMINAL_CLASSES = { ["kitty"] = true, ["floating-tui"] = true, ["floating-help"] = true, ["deck"] = true }
+for _, k in ipairs({ { "", "Z" }, { " SHIFT", "Z" }, { "", "A" } }) do
+    local shift, key = k[1], k[2]
+    hl.bind(mod .. (shift ~= "" and " +" .. shift or "") .. " + " .. key, function ()
+        local w = hl.get_active_window()
+        if w and TERMINAL_CLASSES[w.class] then return end
+        hl.dispatch(hl.dsp.send_shortcut({ mods = "CTRL" .. shift, key = key }))
+    end)
+end
+
 -- ⌘⌫ = Delete (move to trash) in the file manager, like in macOS Finder. Elsewhere it messages the launcher:
 -- in Settings › Background it removes the selected custom wallpaper (otherwise it does nothing)
 hl.bind(mod .. " + BACKSPACE", function ()

@@ -22,6 +22,8 @@
 
 ## Copy and paste (in every app)
   ⌘ C / ⌘ V / ⌘ X    Copy / paste / cut
+  ⌘ Z / ⌘ ⇧ Z        Undo / redo (not in the terminal)
+  ⌘ A                Select all (not in the terminal)
   ⌘ ⌫                Move file to trash (in Files)
   ⌘ ⇧ V              Clipboard history (Enter pastes into the active window, ⇧ Enter copies only)
   ⌘ ⇧ E              Emoji picker (Enter pastes, ⇧ Enter copies only)
