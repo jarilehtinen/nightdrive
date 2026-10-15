@@ -3,11 +3,15 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Notifications
+import Quickshell.Wayland
 
 // Notification server (org.freedesktop.Notifications; replaced mako on 14.10.2026). NotificationPopups.qml draws the popups,
 // NotificationsMenu.qml the history. The app's icon comes from its .desktop file, so every notification shows one.
 // Like mako's ignore-timeout: every popup goes after `timeout` whatever the app asks (Chromium and nm-applet ask for never);
 // critical ones stay until clicked. Do not disturb hides the popups, the history keeps them.
+// A new notification plays a sound (hypr/scripts/sounds; Settings › Notification sounds): regular or urgent by its urgency,
+// none for low ones, in do not disturb, for an update of one already shown, when its app is the focused window (you are
+// looking at it), or when the same app chimed under `soundGap` ago (a burst of messages chimes once).
 //   qs ipc call notifications toggleDnd     → "true" when do not disturb is now on (hypr/scripts/dnd, F6)
 //   qs ipc call notifications dismissAll | clear | count
 Singleton {
@@ -16,6 +20,7 @@ Singleton {
     readonly property int timeout: 5000       // ms a popup stays (hover keeps it)
     readonly property int maxHistory: 50
     readonly property int maxPopups: 6
+    readonly property int soundGap: 2000      // ms: an app's notifications closer together than this chime once
 
     property var popups: []                   // [{ uid, n (Notification), entry (history row) }], newest first
     property var history: []                  // [{ uid, app, summary, body, icon, image, preview, entry, time }], newest first
@@ -81,6 +86,25 @@ Singleton {
 
     function remove(uid) { popups = popups.filter(p => p.uid !== uid) }
 
+    property var lastChime: ({})              // app → time of its last sound
+    // The focused window belongs to the notification's app: its class is the app's name or (the last part of) its desktop id
+    // (firefox ↔ org.mozilla.firefox, Slack ↔ com.slack.Slack)
+    function appFocused(row) {
+        const t = ToplevelManager.activeToplevel
+        const cls = t && t.activated ? (t.appId || "").toLowerCase() : ""
+        if (cls === "") return false
+        const id = (row.entry || "").replace(/\.desktop$/, "").toLowerCase()
+        return cls === (row.app || "").toLowerCase() || (id !== "" && (cls === id || cls === id.split(".").pop()))
+    }
+    function chime(row, n) {
+        if (n.urgency === NotificationUrgency.Low || appFocused(row)) return
+        const key = row.app || row.entry
+        const now = Date.now()
+        if (now - (lastChime[key] || 0) < soundGap) return
+        lastChime[key] = now
+        Quickshell.execDetached([Quickshell.env("HOME") + "/.config/hypr/scripts/sounds", "play", row.critical ? "urgent" : "regular"])
+    }
+
     NotificationServer {
         keepOnReload: true
         actionsSupported: true
@@ -119,6 +143,7 @@ Singleton {
                 critical: n.urgency === NotificationUrgency.Critical
             }
             s.history = [row].concat(s.history.filter(h => h.uid !== row.uid)).slice(0, s.maxHistory)
+            if (!s.dnd && !old && !prev) s.chime(row, n)
             if (s.dnd || s.menuOpen) { n.expire(); return }
             n.tracked = true
             if (!old) n.closed.connect(() => s.remove(row.uid))

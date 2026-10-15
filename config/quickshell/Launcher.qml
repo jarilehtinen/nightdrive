@@ -71,6 +71,16 @@ PanelWindow {
     property int idleSaver: -1                // Settings › Screensaver: minutes until the screensaver / screen off, 0 = never,
     property int idleOff: -1                  // -1 = not read yet (hypr/scripts/idle)
     property string idleStyle: ""             // which screensaver: random | saver | rain | clock
+    // Settings › Notification sounds (hypr/scripts/sounds): file name, shown name, icon
+    property string soundRegular: ""
+    property string soundUrgent: ""
+    readonly property var soundChoices: ({
+        regular: [["plip", "Plip", "bell"], ["drop", "Drop", "bell"], ["tick", "Tick", "bell"], ["retro", "Retro", "bell"], ["glass", "Glass", "bell"]],
+        urgent: [["double-plip", "Double plip", "bell-ring"], ["plip-fall", "Falling plip", "bell-ring"], ["synth-fall", "Synth fall", "bell-ring"],
+                 ["arpeggio", "Arpeggio", "bell-ring"], ["pulse", "Pulse", "bell-ring"]]
+    })
+    readonly property var soundDefaults: ({ regular: "plip", urgent: "double-plip" })
+    function soundName(which, v) { return v === "none" ? "none" : (soundChoices[which].find(t => t[0] === v) || [])[1] }
     readonly property var saverStyles: [["random", "Random", "shuffle"], ["saver", "Synthwave", "sunset"], ["rain", "Rain", "cloud-rain"], ["clock", "Clock", "clock"]]
     property int barOpacity: -1               // Settings › Top bar opacity: current value (hypr/scripts/bar-style), -1 = not read yet
     property string barIcons: ""              // Settings › Top bar icons: light | dark
@@ -100,7 +110,7 @@ PanelWindow {
     readonly property bool extLevel: extOf(level) !== null
     readonly property int selIndex: list.currentIndex
     function shakeNow() { shake.restart() }
-    readonly property var parents: Object.assign({ shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", battery: "settings", install: "system", remove: "system", emoji: "tools", screenshot: "tools", software: "install", webapp: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, sys.parents, ext ? ext.parents : {})
+    readonly property var parents: Object.assign({ shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", battery: "settings", install: "system", remove: "system", emoji: "tools", screenshot: "tools", software: "install", webapp: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", sounds: "settings", soundregular: "sounds", soundurgent: "sounds", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, sys.parents, ext ? ext.parents : {})
     // Search found nothing: hint below ⌘⌥⏎ (icons) → send the text to Claude
     readonly property bool noHit: (level === "root" || level === "apps") && query.trim() !== "" && results.length === 0
     // The selected row is an app: ⌃Enter shows it in Apps (the list with an empty query) or hides it from there.
@@ -115,6 +125,7 @@ PanelWindow {
         : (results[list.currentIndex] || {}).kind === "brightness" ? "Left+Right: brightness"
         : (results[list.currentIndex] || {}).kind === "mirrordev" ? sys.footer(level, query)
         : (results[list.currentIndex] || {}).kind === "nightlight" ? "Enter: night light on/off"
+        : (results[list.currentIndex] || {}).kind === "sound" ? "Enter: choose  ·  Shift+Enter: listen"
         : level === "baritems" ? "Enter: show / hide  ·  Ctrl+Up+Down: reorder"
         : level === "passwords" && pwState === "ready" ? "Enter: password  ·  Shift+Enter: username  ·  Ctrl+Enter: one-time code"
         : extOf(level) ? extOf(level).footer(level, query)   // not extLevel: it can lag a level change by one update
@@ -140,7 +151,7 @@ PanelWindow {
     readonly property var deckLiked: deckOverride.liked !== undefined ? deckOverride.liked : (deckInfo ? deckInfo.liked : null)
     signal openMenu(string name)              // Settings: opens a Quickshell menu (wifi, bluetooth, ...)
 
-    readonly property var titles: Object.assign({ apps: "Apps", music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", musicsearch: "Music › Search", artist: "Music › " + artist.name, keys: "Keybindings", screenshot: "Tools › Screenshot", settings: "Settings", display: "Settings › Display", battery: "Settings › Battery", startup: "Settings › Startup", screensaver: "Settings › Screensaver", saverafter: "Screensaver › Start after", screenoff: "Screensaver › Screen off after", saverstyle: "Screensaver › Style", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
+    readonly property var titles: Object.assign({ apps: "Apps", music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", musicsearch: "Music › Search", artist: "Music › " + artist.name, keys: "Keybindings", screenshot: "Tools › Screenshot", settings: "Settings", display: "Settings › Display", battery: "Settings › Battery", startup: "Settings › Startup", screensaver: "Settings › Screensaver", saverafter: "Screensaver › Start after", screenoff: "Screensaver › Screen off after", saverstyle: "Screensaver › Style", sounds: "Settings › Notification sounds", soundregular: "Notification sounds › Regular", soundurgent: "Notification sounds › Urgent", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
                                      topbar: "Settings › Top bar", baropacity: "Top bar › Opacity", baricons: "Top bar › Icon colors", barhl: "Top bar › Highlight", baritems: "Top bar › Items",
                                      system: "System", install: "System › Install", emoji: "Tools › Emoji", software: "Install › Software", webapp: "Install › Webapp", webname: "Install › Webapp › Name", webaddr: "Install › Webapp › Address", remove: "System › Remove", power: "Power", passwords: "Passwords", clipboard: "Clipboard",
                                      tools: "Tools" }, sys.titles, ext ? ext.titles : {})
@@ -203,6 +214,7 @@ PanelWindow {
             { kind: "nav", name: "Wi-Fi", glyph: "wifi", target: "wifi" },
             { kind: "nav", name: "Bluetooth", glyph: "bluetooth", target: "bluetooth" },
             { kind: "nav", name: "Sound", glyph: "volume-2", target: "sound" },
+            { kind: "nav", name: "Notification sounds", glyph: "bell-ring", target: "sounds" },
             { kind: "nav", name: "Battery", glyph: "battery-medium", target: "battery" },
             { kind: "nav", name: "Display", glyph: "monitor", target: "display" },
             { kind: "nav", name: "Screensaver", glyph: "monitor-pause", target: "screensaver" },
@@ -222,6 +234,7 @@ PanelWindow {
 
     readonly property var settingsAliases: ({ "Wi-Fi": "wifi wlan network internet", "Sound": "audio volume output speakers", "Battery": "power charge charging health cycles",
                                               "Display": "brightness night light warm scale scaling resolution monitor screen retina hidpi zoom size bigger smaller",
+                                              "Notification sounds": "alert chime beep ping tone urgent critical",
                                               "Tailscale": "vpn", "Theme": "appearance style look colors",
                                               "Color": "theme accent violet purple blue teal green amber rose graphite gray",
                                               "Background": "wallpaper desktop image picture",
@@ -250,6 +263,13 @@ PanelWindow {
             { kind: "nav", name: "Start after", glyph: "timer", target: "saverafter", summary: minutes(idleSaver) },
             { kind: "nav", name: "Screen off after", glyph: "monitor-off", target: "screenoff", summary: minutes(idleOff) },
             { kind: "action", name: "Preview", glyph: "monitor-play", cmd: ["bash", "-c", "sleep 0.4; \"$HOME/.config/screensaver/start\""] }
+        ]
+    }
+    // Settings › Notification sounds: the two choices with their current sound
+    function soundsItems() {
+        return [
+            { kind: "nav", name: "Regular", glyph: "bell", target: "soundregular", summary: soundName("regular", soundRegular) },
+            { kind: "nav", name: "Urgent", glyph: "bell-ring", target: "soundurgent", summary: soundName("urgent", soundUrgent) }
         ]
     }
     // Settings › Display for the root search: the brightness slider row itself (←/→ work there too), the night light toggle
@@ -498,6 +518,13 @@ PanelWindow {
                                                summary: t.current ? "current" : (t.value === "violet" ? "default" : undefined) }, text: t.name }))
         } else if (level === "screensaver") {
             all = screensaverItems().map(t => ({ item: t, text: t.name }))
+        } else if (level === "sounds") {
+            all = soundsItems().map(t => ({ item: t, text: t.name }))
+        } else if (level === "soundregular" || level === "soundurgent") {
+            const which = level === "soundregular" ? "regular" : "urgent"
+            const cur = which === "regular" ? soundRegular : soundUrgent
+            return soundChoices[which].concat([["none", "None", "bell-off"]]).map(t => ({ kind: "sound", which: which, value: t[0], name: t[1],
+                glyph: t[0] === cur ? "check" : t[2], summary: t[0] === cur ? "current" : (t[0] === soundDefaults[which] ? "default" : undefined) }))
         } else if (level === "saverstyle") {
             return saverStyles.map(t => ({ kind: "idlestyle", value: t[0], name: t[1], glyph: t[0] === idleStyle ? "check" : t[2],
                                            summary: t[0] === idleStyle ? "current" : (t[0] === "random" ? "default" : undefined) }))
@@ -577,6 +604,7 @@ PanelWindow {
         if (target === "display") { displayProc.running = true; brightProc.running = true; nightProc.running = true; sys.entered("display") }
         if (target === "battery") { battProc.running = true; battDetailProc.running = true }
         if (target === "screensaver" || target === "saverafter" || target === "screenoff" || target === "saverstyle") idleProc.running = true
+        if (target === "sounds" || target === "soundregular" || target === "soundurgent") soundsProc.running = true
         if (extOf(target)) extOf(target).entered(target)
         if (target === "passwords") { pwState = pwItems.length ? "ready" : "loading"; pwProc.running = true }
     }
@@ -710,6 +738,11 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
             Quickshell.execDetached([scripts + "/display", "scale", item.output, String(item.value)])
         }
         else if (item.kind === "baritem") { keepSelection(); TopBar.setHidden(item.value, TopBar.hidden.indexOf(item.value) < 0) }
+        else if (item.kind === "sound") {     // stays open: each sound plays as it's chosen, so they can be compared
+            keepSelection()
+            win[item.which === "regular" ? "soundRegular" : "soundUrgent"] = item.value
+            Quickshell.execDetached(["bash", "-c", '"$1" "$2" "$3" && "$1" play "$2"', "_", scripts + "/sounds", item.which, item.value])
+        }
         else if (live[item.kind]) {           // stays open: values can be tried one after another (theme colors recolor the launcher immediately)
             const [script, verb, prop] = live[item.kind]
             keepSelection()
@@ -1139,6 +1172,23 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                 win.selectWhere(r => r.value === (win.level === "saverafter" ? win.idleSaver : win.idleOff))
         }
     }
+    // ⇧Enter on a sound: plays it without choosing it ("None" has nothing to play)
+    function listenSound(item) {
+        if (item.value === "none") { shake.restart(); return }
+        Quickshell.execDetached([scripts + "/sounds", "play", item.which, item.value])
+    }
+    // Settings › Notification sounds: the current sounds; select the current one
+    Sh {
+        id: soundsProc
+        script: 's="$HOME/.config/hypr/scripts/sounds"; "$s" regular; "$s" urgent'
+        onResult: text => {
+            const f = text.trim().split("\n")
+            win.soundRegular = f[0] || ""
+            win.soundUrgent = f[1] || ""
+            if ((win.level === "soundregular" || win.level === "soundurgent") && win.query === "")
+                win.selectWhere(r => r.value === (win.level === "soundregular" ? win.soundRegular : win.soundUrgent))
+        }
+    }
     // Settings › Top bar opacity / icons: current values; select the current one
     Sh {
         id: barProc
@@ -1502,6 +1552,7 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                             else if (win.extLevel && cur && (event.modifiers & Qt.ShiftModifier)) win.extShift(cur)
                             else if (win.level === "clipboard" && cur && cur.kind === "clip" && (event.modifiers & Qt.ShiftModifier)) win.clipPick(cur, false)
                             else if (win.level === "emoji" && cur && cur.kind === "emoji" && (event.modifiers & Qt.ShiftModifier)) win.emojiPick(cur, false)
+                            else if (cur && cur.kind === "sound" && (event.modifiers & Qt.ShiftModifier)) win.listenSound(cur)
                             else if (win.results.length === 0) shake.restart()
                             else win.activate(cur)
                             event.accepted = true

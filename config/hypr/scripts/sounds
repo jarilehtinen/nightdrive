@@ -1,0 +1,33 @@
+#!/bin/bash
+# Notification sounds (launcher Settings › Notification sounds; quickshell/Notifs.qml plays them). The files are in
+# ~/.local/share/nightdrive/sounds/<kind>/<name>.wav (the repo's sounds/, made by sounds/generate.py).
+# Choice: ~/.local/state/nightdrive/sounds, lines "<kind> <name>"; "none" = no sound.
+#
+#   sounds regular|urgent [NAME]       prints / sets the sound for regular or urgent (critical) notifications
+#   sounds play regular|urgent [NAME]  plays the chosen sound, or NAME (the launcher's preview)
+set -euo pipefail
+dir="$HOME/.local/share/nightdrive/sounds"
+state="$HOME/.local/state/nightdrive/sounds"
+declare -A default=([regular]=plip [urgent]=double-plip)
+
+get() {
+  local v
+  v=$( { awk -v k="$1" '$1 == k { print $2 }' "$state" 2>/dev/null || true; } | tail -n1)
+  [[ $v == none || -f $dir/$1/$v.wav ]] || v=${default[$1]}
+  echo "$v"
+}
+kind() { [[ -n ${default[${1:-}]+x} ]] || { echo "usage: sounds regular|urgent [NAME] | play regular|urgent [NAME]" >&2; exit 2; }; }
+
+if [[ ${1:-} == play ]]; then
+  kind "${2:-}"
+  name=${3:-$(get "$2")}
+  [[ $name == none ]] && exit 0
+  # The Notification role: PipeWire/WirePlumber can route or duck it apart from music
+  exec pw-play --media-role=Notification "$dir/$2/$name.wav"
+fi
+
+kind "${1:-}"
+if [[ -z ${2:-} ]]; then get "$1"; exit 0; fi
+[[ $2 == none || -f $dir/$1/$2.wav ]] || { echo "no such sound: $1/$2" >&2; exit 1; }
+mkdir -p "${state%/*}"
+{ grep -v "^$1 " "$state" 2>/dev/null || true; echo "$1 $2"; } > "$state.tmp" && mv "$state.tmp" "$state"

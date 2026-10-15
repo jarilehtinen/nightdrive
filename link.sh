@@ -63,6 +63,7 @@ mkdir -p "$HOME/.local/bin"
 for f in "$repo"/bin/*; do link "$f" "$HOME/.local/bin/$(basename "$f")"; done
 
 link "$repo/wallpapers" "$HOME/.local/share/wallpapers"   # wallpapers (chosen via: launcher › Settings › Background, hypr/scripts/wallpaper)
+link "$repo/sounds" "$HOME/.local/share/nightdrive/sounds"   # notification sounds (launcher › Settings › Notification sounds, hypr/scripts/sounds)
 
 # Bash: prompt, history, ble.sh (Fedora's ~/.bashrc sources ~/.bashrc.d/*)
 mkdir -p "$HOME/.bashrc.d"
