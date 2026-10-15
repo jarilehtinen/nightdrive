@@ -784,6 +784,18 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         armed = ""
         (extOf(level) || ext).shiftActivate(item)
     }
+    // ⌘⌫ / ⌥⌫ in the query: a selection goes first, otherwise to the line start (word = only the word before the cursor)
+    function deleteBack(word) {
+        if (input.selectedText !== "") { input.remove(input.selectionStart, input.selectionEnd); return }
+        const end = input.cursorPosition
+        let start = 0
+        if (word) {
+            start = end
+            while (start > 0 && /\s/.test(input.text[start - 1])) start--
+            while (start > 0 && !/\s/.test(input.text[start - 1])) start--
+        }
+        if (start < end) input.remove(start, end)
+    }
     // ⌘⌫ in Background (bindings.lua → IPC deleteSelected): a second press moves your own image to the trash.
     // Only your own images (~/Pictures/Wallpapers, `own` from hypr/scripts/wallpaper list); bundled ones can't be deleted.
     function deleteWall() {
@@ -1264,7 +1276,14 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
         }
         // pick <index>: selects a row like Enter (automated testing)
         function pick(index: int): void { const r = win.results[index]; if (r) win.activate(r); else shake.restart() }
-        function deleteSelected(): void { if (win.open && win.level === "background" && win.wallLoaded) win.deleteWall() }
+        // ⌘⌫ (bindings.lua): in Background removes your own wallpaper, elsewhere deletes the query to the cursor's left (like macOS)
+        function deleteSelected(): void {
+            if (!win.open) return
+            if (win.level === "background" && win.wallLoaded) win.deleteWall()
+            else win.deleteBack(false)
+        }
+        // ⌥⌫: deletes the word to the cursor's left (Hyprland's binding takes the key, so the launcher does it here)
+        function deleteWord(): void { if (win.open) win.deleteBack(true) }
         function stepUp(): void { win.detail !== null ? win.detailScroll(-win.rowHeight) : win.step(-1) }
         function stepDown(): void { win.detail !== null ? win.detailScroll(win.rowHeight) : win.playerFocused ? (win.playerFocused = false) : win.step(1) }
         function back(): void { win.back() }
