@@ -104,13 +104,14 @@ PanelWindow {
     // It may add root items and whole levels; see the functions it is asked for below (extItems, activate, ...).
     property string extSource: ""             // shell.qml sets this when the file exists
     readonly property var ext: extLoader.item
-    // Levels from other files: SystemLevels.qml (Wi-Fi, Bluetooth, Sound, Tailscale) and the private extension; they answer
+    // Levels from other files: SystemLevels.qml (Wi-Fi, Bluetooth, Sound, Tailscale), HomeLevels.qml (Home Assistant) and the
+    // private extension; they answer
     // the same questions (items, activate, footer, entered)
-    function extOf(l) { return sys.levels.indexOf(l) >= 0 ? sys : ext !== null && ext.levels.indexOf(l) >= 0 ? ext : null }
+    function extOf(l) { return sys.levels.indexOf(l) >= 0 ? sys : home.levels.indexOf(l) >= 0 ? home : ext !== null && ext.levels.indexOf(l) >= 0 ? ext : null }
     readonly property bool extLevel: extOf(level) !== null
     readonly property int selIndex: list.currentIndex
     function shakeNow() { shake.restart() }
-    readonly property var parents: Object.assign({ shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", battery: "settings", install: "system", remove: "system", emoji: "tools", screenshot: "tools", software: "install", webapp: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", sounds: "settings", soundregular: "sounds", soundurgent: "sounds", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, sys.parents, ext ? ext.parents : {})
+    readonly property var parents: Object.assign({ shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", battery: "settings", install: "system", remove: "system", emoji: "tools", screenshot: "tools", software: "install", webapp: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", sounds: "settings", soundregular: "sounds", soundurgent: "sounds", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, sys.parents, home.parents, ext ? ext.parents : {})
     // Search found nothing: hint below ⌘⌥⏎ (icons) → send the text to Claude
     readonly property bool noHit: (level === "root" || level === "apps") && query.trim() !== "" && results.length === 0
     // The selected row is an app: ⌃Enter shows it in Apps (the list with an empty query) or hides it from there.
@@ -124,6 +125,7 @@ PanelWindow {
         : level === "startup" ? "Enter: start at login on/off  ·  background apps start hidden"
         : (results[list.currentIndex] || {}).kind === "brightness" ? "Left+Right: brightness"
         : (results[list.currentIndex] || {}).kind === "mirrordev" ? sys.footer(level, query)
+        : (results[list.currentIndex] || {}).kind === "haent" ? home.footer(level, query)
         : (results[list.currentIndex] || {}).kind === "nightlight" ? "Enter: night light on/off"
         : (results[list.currentIndex] || {}).kind === "sound" ? "Enter: choose  ·  Shift+Enter: listen"
         : level === "baritems" ? "Enter: show / hide  ·  Ctrl+Up+Down: reorder"
@@ -154,7 +156,7 @@ PanelWindow {
     readonly property var titles: Object.assign({ apps: "Apps", music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", musicsearch: "Music › Search", artist: "Music › " + artist.name, keys: "Keybindings", screenshot: "Tools › Screenshot", settings: "Settings", display: "Settings › Display", battery: "Settings › Battery", startup: "Settings › Startup", screensaver: "Settings › Screensaver", saverafter: "Screensaver › Start after", screenoff: "Screensaver › Screen off after", saverstyle: "Screensaver › Style", sounds: "Settings › Notification sounds", soundregular: "Notification sounds › Regular", soundurgent: "Notification sounds › Urgent", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
                                      topbar: "Settings › Top bar", baropacity: "Top bar › Opacity", baricons: "Top bar › Icon colors", barhl: "Top bar › Highlight", baritems: "Top bar › Items",
                                      system: "System", install: "System › Install", emoji: "Tools › Emoji", software: "Install › Software", webapp: "Install › Webapp", webname: "Install › Webapp › Name", webaddr: "Install › Webapp › Address", remove: "System › Remove", power: "Power", passwords: "Passwords", clipboard: "Clipboard",
-                                     tools: "Tools" }, sys.titles, ext ? ext.titles : {})
+                                     tools: "Tools" }, sys.titles, home.titles, ext ? ext.titles : {})
 
     // Reference at startup: the app list only loads on first reference
     property var apps: DesktopEntries.applications.values
@@ -174,7 +176,7 @@ PanelWindow {
         { kind: "nav", name: "Passwords", glyph: "key-round", target: "passwords" },
         { kind: "nav", name: "Clipboard", glyph: "clipboard-list", target: "clipboard" },
         { kind: "nav", name: "Music", glyph: "disc-3", target: "music" },
-    ].concat(ext ? ext.rootItems : [], [
+    ].concat(home.rootItems, ext ? ext.rootItems : [], [
         { kind: "nav", name: "Tools", glyph: "wrench", target: "tools" },
         { kind: "nav", name: "Keybindings", glyph: "keyboard", target: "keys" },
         { kind: "nav", name: "Settings", glyph: "settings", target: "settings" },
@@ -401,6 +403,8 @@ PanelWindow {
                 // Apps ("1pas" → 1Password), also one named like a root item (e.g. a webapp next to its menu): the APPS tag and
                 // the open-window dot tell them apart
                 appEntries(q).map(a => Object.assign({}, a, { item: Object.assign({}, a.item, { from: "Apps" }) })),
+                // Home Assistant's devices ("olohuone" → its lights): Enter turns one on/off right from the search
+                home.rootRows(),
                 // Deck's albums ("fm-84" → Atlas)
                 // (the MUSIC tag on the right instead of the year)
                 musicAlbums.map(a => ({ item: Object.assign(albumItem(a), { summary: undefined, from: "Music" }), text: a.name, extra: a.artist }))
@@ -773,6 +777,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                 "_", webName, item.value])
         }
         else if (sys.activate(item)) {}
+        else if (home.activate(item)) {}
         else if (ext && ext.activate(item)) {}
         else if (item.kind === "pw") copyField(item, "password")
         else if (item.kind === "menu") { win.open = false; win.openMenu(item.target) }
@@ -879,7 +884,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
 
     // Closing leaves the details right away (after the Behavior above has seen open = false), so the next open starts narrow
     onOpenChanged: if (!open) Qt.callLater(() => { if (!win.open) { win.detail = null; win.detailInfo = null } })
-    else { lastMouse = null; spotify = null; lastSel = ({}); if (ext) ext.opened(); go("root"); deckProc.running = true; musicProc.running = true; bgProc.running = true; bgAppsProc.running = true; autostartProc.running = true; updatesProc.running = true; brightProc.running = true; nightProc.running = true; sys.entered("display"); sys.soundRefresh(); input.forceActiveFocus() }
+    else { lastMouse = null; spotify = null; lastSel = ({}); if (ext) ext.opened(); home.opened(); go("root"); deckProc.running = true; musicProc.running = true; bgProc.running = true; bgAppsProc.running = true; autostartProc.running = true; updatesProc.running = true; brightProc.running = true; nightProc.running = true; sys.entered("display"); sys.soundRefresh(); input.forceActiveFocus() }
     Component.onCompleted: keysProc.running = true
 
     Timer { id: disarm; interval: 4000; onTriggered: win.armed = "" }
@@ -1009,6 +1014,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         }
     }
     SystemLevels { id: sys; launcher: win }
+    HomeLevels { id: home; launcher: win }
     Loader {
         id: extLoader
         source: win.extSource

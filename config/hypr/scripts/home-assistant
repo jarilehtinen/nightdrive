@@ -1,0 +1,288 @@
+#!/usr/bin/python3 -I
+"""Home Assistant for the launcher (Home), the top bar's Home menu and the bar icon. Set up with ./install-home-assistant.sh.
+
+  home-assistant configured        exit status 0 when set up (the launcher and the bar show Home only then)
+  home-assistant states            the controllable devices as JSON: [{id, name, domain, state, on, area, fav, detail}]
+  home-assistant toggle ID         turns a device on/off, runs a scene / script, presses a button
+  home-assistant fav ID [on|off]   pins a device to the top bar's Home menu (no on/off: flips it)
+  home-assistant bar               the top bar module's state line (modules.jsonc format)
+  home-assistant open              opens the Home Assistant webapp (focuses it if already open)
+  home-assistant test URL TOKEN    checks an address and a token (install-home-assistant.sh uses this)
+
+Config: ~/.config/nightdrive/home-assistant (KEY=value, mode 600):
+  HA_URLS="http://homeassistant.local:8123 http://ha:8123 https://xxxx.ui.nabu.casa"   tried in order, like the
+          official apps' internal / external URL: the first that answers is used and remembered for a while
+  HA_TOKEN=…               a long-lived access token (HA › Profile › Security), or
+  HA_TOKEN_CMD="op read op://Private/Home Assistant/token"   a command that prints it
+Pinned devices: ~/.local/state/nightdrive/home-favorites, one entity id per line.
+"""
+import json, os, shlex, subprocess, sys, time, urllib.error, urllib.request
+
+HOME = os.environ["HOME"]
+CONFIG = f"{HOME}/.config/nightdrive/home-assistant"
+FAVS = f"{HOME}/.local/state/nightdrive/home-favorites"
+CACHE = f"{HOME}/.cache/nightdrive/home-assistant-url"
+TOKEN_CACHE = f"{os.environ.get('XDG_RUNTIME_DIR', '/tmp')}/nightdrive-ha-token"   # HA_TOKEN_CMD's answer, until logout
+PROBE_TIMEOUT = 1.5      # s per address while looking for one that answers
+TIMEOUT = 8              # s for a request to the chosen address
+RECHECK = 300            # s: a fallback address is used this long before the preferred ones are tried again
+WEBAPP = "home-assistant"   # webapp-add's slug: ~/.local/share/applications/webapp-home-assistant.desktop
+
+# What the launcher can control, in this order (its sections). Sensors and the like are left out: nothing to press.
+DOMAINS = ["light", "switch", "fan", "cover", "climate", "media_player", "lock", "input_boolean", "scene", "script",
+           "automation", "button", "input_button"]
+# Entities with these states have no on/off to show
+ONE_SHOT = {"scene", "script", "button", "input_button"}
+
+
+def die(msg, code=1):
+    print(msg, file=sys.stderr)
+    sys.exit(code)
+
+
+def load_config():
+    cfg = {}
+    try:
+        for line in open(CONFIG):
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            k, v = line.split("=", 1)
+            v = v.strip()
+            cfg[k.strip()] = " ".join(shlex.split(v)) if v else ""
+    except FileNotFoundError:
+        pass
+    return cfg
+
+
+def token(cfg):
+    if cfg.get("HA_TOKEN"):
+        return cfg["HA_TOKEN"]
+    if not cfg.get("HA_TOKEN_CMD"):
+        return ""
+    # Asking 1Password every few seconds would be slow (and may prompt): keep the answer in the runtime dir
+    try:
+        return open(TOKEN_CACHE).read().strip()
+    except FileNotFoundError:
+        pass
+    t = subprocess.run(["bash", "-c", cfg["HA_TOKEN_CMD"]], capture_output=True, text=True).stdout.strip()
+    if t:
+        fd = os.open(TOKEN_CACHE, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        os.write(fd, t.encode())
+        os.close(fd)
+    return t
+
+
+def request(base, tok, method, path, body=None, timeout=TIMEOUT):
+    data = json.dumps(body).encode() if body is not None else None
+    req = urllib.request.Request(base.rstrip("/") + path, data=data, method=method,
+                                 headers={"Authorization": "Bearer " + tok, "Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        raw = r.read().decode()
+    return json.loads(raw) if raw.strip().startswith(("{", "[")) else raw
+
+
+def reachable(base, tok):
+    try:
+        request(base, tok, "GET", "/api/", timeout=PROBE_TIMEOUT)
+        return True
+    except urllib.error.HTTPError as e:
+        if e.code == 401:
+            die("Home Assistant refused the token (401): make a new one in HA › Profile › Security")
+        return False
+    except Exception:
+        return False
+
+
+class Client:
+    """The first address in HA_URLS that answers. The choice is remembered; a fallback (say Tailscale while away) is
+    re-checked after RECHECK seconds, so the local address comes back when you're home."""
+
+    def __init__(self):
+        cfg = load_config()
+        self.urls = cfg.get("HA_URLS", "").split()
+        self.tok = token(cfg)
+        if not self.urls or not self.tok:
+            die("Home Assistant isn't set up: run install-home-assistant.sh", 3)
+        self.base = None
+
+    def pick(self):
+        try:
+            cached = open(CACHE).read().strip()
+            age = time.time() - os.path.getmtime(CACHE)
+        except FileNotFoundError:
+            cached, age = "", 0
+        if cached in self.urls and (cached == self.urls[0] or age < RECHECK):
+            return cached
+        for u in self.urls:
+            if reachable(u, self.tok):
+                os.makedirs(os.path.dirname(CACHE), exist_ok=True)
+                with open(CACHE, "w") as f:
+                    f.write(u)
+                return u
+        die("Home Assistant doesn't answer at " + ", ".join(self.urls), 4)
+
+    def call(self, method, path, body=None):
+        self.base = self.base or self.pick()
+        try:
+            return request(self.base, self.tok, method, path, body)
+        except urllib.error.HTTPError as e:
+            if e.code == 401:
+                die("Home Assistant refused the token (401): make a new one in HA › Profile › Security")
+            raise
+        except (urllib.error.URLError, TimeoutError, OSError):
+            # The remembered address stopped answering (left home, Wi-Fi changed): look again once
+            try:
+                os.remove(CACHE)
+            except FileNotFoundError:
+                pass
+            self.base = self.pick()
+            return request(self.base, self.tok, method, path, body)
+
+
+def favorites():
+    try:
+        return [l.strip() for l in open(FAVS) if l.strip()]
+    except FileNotFoundError:
+        return []
+
+
+# Area names in one request (the REST API's states don't have them); empty if the template fails
+AREAS_TEMPLATE = ("{% set ns = namespace(o={}) %}{% for s in states %}{% set a = area_name(s.entity_id) %}"
+                  "{% if a %}{% set ns.o = dict(ns.o, **{s.entity_id: a}) %}{% endif %}{% endfor %}{{ ns.o | tojson }}")
+
+
+def detail(domain, s):
+    a = s.get("attributes", {})
+    st = s.get("state", "")
+    if st in ("unavailable", "unknown"):
+        return st
+    if domain == "light" and st == "on" and a.get("brightness") is not None:
+        return f"{round(a['brightness'] / 2.55)}%"
+    if domain == "climate":
+        cur = a.get("current_temperature")
+        return f"{st} · {cur}°" if cur is not None else st
+    if domain == "cover" and a.get("current_position") is not None:
+        return f"{st} · {a['current_position']}%"
+    if domain == "media_player" and st == "playing" and a.get("media_title"):
+        return a["media_title"]
+    if domain in ONE_SHOT:
+        return ""
+    return st
+
+
+def is_on(domain, st):
+    if domain == "cover":
+        return st in ("open", "opening")
+    if domain == "lock":
+        return st == "unlocked"
+    if domain == "climate":
+        return st not in ("off", "unavailable", "unknown")
+    if domain == "media_player":
+        return st in ("playing", "on", "idle", "paused", "buffering")
+    return st == "on"
+
+
+def states(c):
+    raw = c.call("GET", "/api/states")
+    try:
+        areas = c.call("POST", "/api/template", {"template": AREAS_TEMPLATE})   # rendered text, which request() parses
+        areas = json.loads(areas) if isinstance(areas, str) else areas
+    except Exception:
+        areas = {}
+    favs = favorites()
+    out = []
+    for s in raw:
+        eid = s["entity_id"]
+        domain = eid.split(".", 1)[0]
+        if domain not in DOMAINS:
+            continue
+        name = s.get("attributes", {}).get("friendly_name") or eid
+        area = areas.get(eid, "") if isinstance(areas, dict) else ""
+        # "Olohuone Olohuoneen valo" reads badly: drop the area from the name's start when it's there
+        if area and name.lower().startswith(area.lower() + " "):
+            name = name[len(area) + 1:]
+        out.append({"id": eid, "name": name, "domain": domain, "state": s.get("state", ""),
+                    "on": is_on(domain, s.get("state", "")), "area": area, "fav": eid in favs,
+                    "detail": detail(domain, s)})
+    out.sort(key=lambda e: (DOMAINS.index(e["domain"]), e["area"].lower(), e["name"].lower()))
+    return out
+
+
+def toggle(c, eid):
+    domain = eid.split(".", 1)[0]
+    if domain in ("scene", "script"):
+        svc = (domain, "turn_on")
+    elif domain in ("button", "input_button"):
+        svc = (domain, "press")
+    elif domain == "lock":
+        st = c.call("GET", "/api/states/" + eid).get("state")
+        svc = ("lock", "lock" if st == "unlocked" else "unlock")
+    elif domain == "media_player":
+        svc = ("media_player", "media_play_pause")
+    else:
+        svc = ("homeassistant", "toggle")
+    c.call("POST", f"/api/services/{svc[0]}/{svc[1]}", {"entity_id": eid})
+
+
+def set_fav(eid, on):
+    favs = favorites()
+    if on is None:
+        on = eid not in favs
+    favs = [f for f in favs if f != eid] + ([eid] if on else [])
+    os.makedirs(os.path.dirname(FAVS), exist_ok=True)
+    with open(FAVS, "w") as f:
+        f.write("".join(x + "\n" for x in favs))
+    print("on" if on else "off")
+
+
+def bar():
+    cfg = load_config()
+    if not cfg.get("HA_URLS"):
+        print(json.dumps({"icon": "", "text": ""}))   # not set up: the module stays hidden
+        return
+    try:
+        Client().call("GET", "/api/")
+        print(json.dumps({"icon": "house", "text": ""}))
+    except (SystemExit, Exception):
+        print(json.dumps({"icon": "house", "text": "", "class": "stale"}))   # doesn't answer: faded
+
+
+def open_webapp():
+    desktop = f"{HOME}/.local/share/applications/webapp-{WEBAPP}.desktop"
+    if not os.path.exists(desktop):
+        die("No Home Assistant webapp: run install-home-assistant.sh")
+    wmclass = next((l.split("=", 1)[1].strip() for l in open(desktop) if l.startswith("StartupWMClass=")), "")
+    os.execv(f"{HOME}/.config/hypr/scripts/launch-or-focus", ["launch-or-focus", "^" + wmclass + "$", "gtk-launch", f"webapp-{WEBAPP}"])
+
+
+def main():
+    a = sys.argv[1:]
+    cmd = a[0] if a else ""
+    if cmd == "configured":
+        cfg = load_config()
+        sys.exit(0 if cfg.get("HA_URLS") and (cfg.get("HA_TOKEN") or cfg.get("HA_TOKEN_CMD")) else 1)
+    elif cmd == "states":
+        print(json.dumps(states(Client()), ensure_ascii=False))
+    elif cmd == "toggle" and len(a) == 2:
+        toggle(Client(), a[1])
+    elif cmd == "fav" and len(a) in (2, 3):
+        set_fav(a[1], None if len(a) == 2 else a[2] == "on")
+    elif cmd == "bar":
+        bar()
+    elif cmd == "open":
+        open_webapp()
+    elif cmd == "test" and len(a) == 3:
+        try:
+            r = request(a[1], a[2], "GET", "/api/config", timeout=5)
+            print(r.get("location_name", "Home Assistant"), r.get("version", ""))
+        except urllib.error.HTTPError as e:
+            die(f"{a[1]}: HTTP {e.code}" + (" (the token was refused)" if e.code == 401 else ""))
+        except Exception as e:
+            die(f"{a[1]}: no answer ({getattr(e, 'reason', e)})")
+    else:
+        die(__doc__.split("\n\n")[1], 2)
+
+
+if __name__ == "__main__":
+    main()

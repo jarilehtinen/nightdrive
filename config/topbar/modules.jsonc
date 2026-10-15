@@ -17,6 +17,8 @@
 //   class  optional: off (dimmed), warning (orange), critical (red), active (highlighted background), stale (faded)
 // No icon and no text hides the module.
 [
+  { "name": "home",          "interval": 30, "status": "~/.config/hypr/scripts/home-assistant bar 2>/dev/null",
+                             "right": "~/.config/hypr/scripts/home-assistant open" },
   { "name": "deck",          "interval": 2,  "right": "~/.config/hypr/scripts/deck-open" },
   { "name": "claude",        "interval": 60, "middle": "xdg-open https://claude.ai/settings/usage" },
   { "name": "system",        "interval": 3 },

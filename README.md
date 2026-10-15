@@ -104,6 +104,7 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
 | Messaging | [Telegram Desktop](https://desktop.telegram.org) (Flatpak) | native Wayland app |
 | Web apps | Chromium app windows | WhatsApp, Slack, Teams and YouTube by default; add your own |
 | Lock and idle | hyprlock, hypridle | screensaver after 10 min, lock after 30 min (screensaver and screen-off times: Settings › Screensaver) |
+| Smart home (optional) | [Home Assistant](https://www.home-assistant.io) (`install-home-assistant.sh`) | Home in the launcher: rooms and their devices (Enter turns one on/off or runs a scene, "olohuone kattovalo" finds it from the search), pinned devices in the top bar's Home menu, the webapp; local, Tailscale and Nabu Casa addresses tried in order |
 | Optional | VS Code, Jottacloud | `install-vscode.sh`, `install-jotta.sh` |
 
 ## Requirements

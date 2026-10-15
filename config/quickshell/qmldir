@@ -25,4 +25,6 @@ MenuSection 1.0 MenuSection.qml
 TouchScroll 1.0 TouchScroll.qml
 AppIcon 1.0 AppIcon.qml
 SystemLevels 1.0 SystemLevels.qml
+HomeLevels 1.0 HomeLevels.qml
+singleton Home 1.0 Home.qml
 SharePicker 1.0 SharePicker.qml
