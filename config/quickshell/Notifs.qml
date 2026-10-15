@@ -9,7 +9,7 @@ import Quickshell.Wayland
 // NotificationsMenu.qml the history. The app's icon comes from its .desktop file, so every notification shows one.
 // Like mako's ignore-timeout: every popup goes after `timeout` whatever the app asks (Chromium and nm-applet ask for never);
 // critical ones stay until clicked. Do not disturb hides the popups, the history keeps them.
-// A new notification plays a sound (hypr/scripts/sounds; Settings › Notification sounds): regular or urgent by its urgency,
+// A new notification plays a sound (hypr/scripts/sounds; Settings › Notifications): regular or urgent by its urgency,
 // none for low ones, in do not disturb, for an update of one already shown, when its app is the focused window (you are
 // looking at it), or when the same app chimed under `soundGap` ago (a burst of messages chimes once).
 //   qs ipc call notifications toggleDnd     → "true" when do not disturb is now on (hypr/scripts/dnd, F6)

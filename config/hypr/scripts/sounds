@@ -1,5 +1,5 @@
 #!/bin/bash
-# Notification sounds (launcher Settings › Notification sounds; quickshell/Notifs.qml plays them). The files are in
+# Notification sounds (launcher Settings › Notifications; quickshell/Notifs.qml plays them). The files are in
 # ~/.local/share/nightdrive/sounds/<kind>/<name>.wav (the repo's sounds/, made by sounds/generate.py).
 # Choice: ~/.local/state/nightdrive/sounds, lines "<kind> <name>"; "none" = no sound.
 #

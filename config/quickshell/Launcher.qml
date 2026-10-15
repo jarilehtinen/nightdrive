@@ -90,7 +90,7 @@ PanelWindow {
     property int idleSaver: -1                // Settings › Screensaver: minutes until the screensaver / screen off, 0 = never,
     property int idleOff: -1                  // -1 = not read yet (hypr/scripts/idle)
     property string idleStyle: ""             // which screensaver: random | saver | rain | clock
-    // Settings › Notification sounds (hypr/scripts/sounds): file name, shown name, icon
+    // Settings › Notifications (hypr/scripts/sounds): file name, shown name, icon
     property string soundRegular: ""
     property string soundUrgent: ""
     readonly property var soundChoices: ({
@@ -234,19 +234,25 @@ PanelWindow {
             { kind: "nav", name: "Name and address here", glyph: "keyboard", target: "webname" },
             { kind: "action", name: "In a terminal", glyph: "terminal", cmd: webappTerm() }
         ],
+        // In groups like macOS's System Settings: the often used first (connections, hardware), then the look, then
+        // what is set once (behaviour)
         settings: [
+            { kind: "header", name: "Connections" },
             { kind: "nav", name: "Wi-Fi", glyph: "wifi", target: "wifi" },
             { kind: "nav", name: "Bluetooth", glyph: "bluetooth", target: "bluetooth" },
-            { kind: "nav", name: "Sound", glyph: "volume-2", target: "sound" },
-            { kind: "nav", name: "Notification sounds", glyph: "bell-ring", target: "sounds" },
-            { kind: "nav", name: "Battery", glyph: "battery-medium", target: "battery" },
-            { kind: "nav", name: "Display", glyph: "monitor", target: "display" },
-            { kind: "nav", name: "Launcher", glyph: "text-search", target: "launcherprefs" },
-            { kind: "nav", name: "Screensaver", glyph: "monitor-pause", target: "screensaver" },
-            { kind: "nav", name: "Startup", glyph: "rocket", target: "startup" },
             { kind: "nav", name: "Tailscale", glyph: "shield-check", target: "tailscale" },
+            { kind: "header", name: "Hardware" },
+            { kind: "nav", name: "Sound", glyph: "volume-2", target: "sound" },
+            { kind: "nav", name: "Display", glyph: "monitor", target: "display" },
+            { kind: "nav", name: "Battery", glyph: "battery-medium", target: "battery" },
+            { kind: "header", name: "Appearance" },
             { kind: "nav", name: "Theme", glyph: "palette", target: "theme" },
-            { kind: "nav", name: "Top bar", glyph: "panel-top", target: "topbar" }   // its look and what it shows
+            { kind: "nav", name: "Top bar", glyph: "panel-top", target: "topbar" },   // its look and what it shows
+            { kind: "nav", name: "Screensaver", glyph: "monitor-pause", target: "screensaver" },
+            { kind: "header", name: "Behaviour" },
+            { kind: "nav", name: "Launcher", glyph: "text-search", target: "launcherprefs" },
+            { kind: "nav", name: "Notifications", glyph: "bell-ring", target: "sounds" },
+            { kind: "nav", name: "Startup", glyph: "rocket", target: "startup" }
         ],
         power: [
             { kind: "action", name: "Lock", glyph: "lock", cmd: ["loginctl", "lock-session"] },
@@ -259,7 +265,7 @@ PanelWindow {
 
     readonly property var settingsAliases: ({ "Wi-Fi": "wifi wlan network internet", "Sound": "audio volume output speakers", "Battery": "power charge charging health cycles",
                                               "Display": "brightness night light warm scale scaling resolution monitor screen retina hidpi zoom size bigger smaller",
-                                              "Notification sounds": "alert chime beep ping tone urgent critical",
+                                              "Notifications": "notification sounds alert chime beep ping tone urgent critical",
                                               "Tailscale": "vpn", "Theme": "appearance style look colors",
                                               "Color": "theme accent violet purple blue teal green amber rose graphite gray",
                                               "Background": "wallpaper desktop image picture",
@@ -291,11 +297,11 @@ PanelWindow {
             { kind: "action", name: "Preview", glyph: "monitor-play", cmd: ["bash", "-c", "sleep 0.4; \"$HOME/.config/screensaver/start\""] }
         ]
     }
-    // Settings › Notification sounds: the two choices with their current sound
+    // Settings › Notifications: the two choices with their current sound
     function soundsItems() {
         return [
-            { kind: "nav", name: "Regular", glyph: "bell", target: "soundregular", summary: soundName("regular", soundRegular) },
-            { kind: "nav", name: "Urgent", glyph: "bell-ring", target: "soundurgent", summary: soundName("urgent", soundUrgent) }
+            { kind: "nav", name: "Regular sound", glyph: "bell", target: "soundregular", summary: soundName("regular", soundRegular) },
+            { kind: "nav", name: "Urgent sound", glyph: "bell-ring", target: "soundurgent", summary: soundName("urgent", soundUrgent) }
         ]
     }
     // Settings › Display for the root search: the brightness slider row itself (←/→ work there too), the night light toggle
@@ -424,7 +430,7 @@ PanelWindow {
                 // Screenshot actions ("region", "screenshot", "capture")
                 statics.screenshot.map(t => ({ item: Object.assign({}, t, { from: "Screenshot" }), text: t.name, extra: "screenshot capture screen" })),
                 // Settings items ("wallpaper" → Background, "wifi" → Wi-Fi) plus Theme and Top bar sub-items ("opacity")
-                statics.settings.map(t => ({ item: Object.assign({}, t, { from: "Settings" }), text: t.name, extra: "settings " + (settingsAliases[t.name] || "") })),
+                statics.settings.filter(t => t.kind !== "header").map(t => ({ item: Object.assign({}, t, { from: "Settings" }), text: t.name, extra: "settings " + (settingsAliases[t.name] || "") })),
                 themeItems().map(t => ({ item: Object.assign({}, t, { from: "Theme", summary: undefined }), text: t.name, extra: "theme " + (settingsAliases[t.name] || "") })),
                 topbarItems().map(t => ({ item: Object.assign({}, t, { from: "Top bar", summary: undefined }), text: t.name, extra: settingsAliases[t.name] || "" })),
                 // Display and Screensaver sub-items ("night" → Night light, "dim" → Brightness, "saver" → Start after)
@@ -630,7 +636,7 @@ PanelWindow {
             if (!removeLoaded) return [{ kind: "hint", name: "Loading packages…" }]
             all = removeList.map(p => ({ item: p, text: p.name, extra: p.summary }))
         } else {
-            all = (statics[level] || []).map(r => ({ item: r, text: r.name }))
+            all = (statics[level] || []).map(r => ({ item: r, text: r.kind === "header" ? "" : r.name }))   // a search drops the headers
         }
         if (q === "") return level === "keys" ? grouped(all.map(x => x.item)) : all.map(x => x.item)
         const scored = []
@@ -1256,7 +1262,7 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
         if (item.value === "none") { shake.restart(); return }
         Quickshell.execDetached([scripts + "/sounds", "play", item.which, item.value])
     }
-    // Settings › Notification sounds: the current sounds; select the current one
+    // Settings › Notifications: the current sounds; select the current one
     Sh {
         id: soundsProc
         script: 's="$HOME/.config/hypr/scripts/sounds"; "$s" regular; "$s" urgent'
@@ -1384,6 +1390,7 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                                               "clipboard": "clipboard history", "emoji": "emoji picker", "keybindings": "this help" })
     function shortcutFor(it) {
         if (!it || !it.name || (it.kind !== "app" && it.kind !== "nav")) return ""
+        if (it.kind === "nav" && parents[it.target] === "settings") return ""   // settings pages: "Notifications" is not the ⌘Esc panel
         const n = it.name.toLowerCase()
         return keyIndex[n] || keyIndex[shortcutAliases[n] || ""] || ""
     }

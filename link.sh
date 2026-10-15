@@ -63,7 +63,7 @@ mkdir -p "$HOME/.local/bin"
 for f in "$repo"/bin/*; do link "$f" "$HOME/.local/bin/$(basename "$f")"; done
 
 link "$repo/wallpapers" "$HOME/.local/share/wallpapers"   # wallpapers (chosen via: launcher › Settings › Background, hypr/scripts/wallpaper)
-link "$repo/sounds" "$HOME/.local/share/nightdrive/sounds"   # notification sounds (launcher › Settings › Notification sounds, hypr/scripts/sounds)
+link "$repo/sounds" "$HOME/.local/share/nightdrive/sounds"   # notification sounds (launcher › Settings › Notifications, hypr/scripts/sounds)
 # Fedora Asahi's steam package installs a steam locomotive as the hicolor "steam" icon (the launcher and the bar fall back
 # to hicolor): Papirus's Steam logo goes in front of it in the user's hicolor
 papirus_steam=/usr/share/icons/Papirus/32x32/apps/steam.svg
