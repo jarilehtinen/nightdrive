@@ -302,13 +302,32 @@ PanelWindow {
                                              "Plugins": "plugin extension addon optional home assistant jottacloud deck vscode airplay" })
     readonly property var powerAliases: ({ "Lock": "screen", "Sleep": "suspend", "Log out": "logout sign out exit", "Restart": "reboot", "Shut down": "shutdown poweroff power off" })
 
-    // 0 = starts with query, 1 = word start, 2 = contains, -1 = no match
+    // Lower case without diacritics: "keittio" finds Keittiö, "ylavalo" Ylävalo
+    function fold(s) { return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "") }
+    // 0 = starts with query, 1 = word start, 2 = contains, -1 = no match (q folded)
     function score(text, q) {
-        const t = text.toLowerCase()
+        const t = fold(text)
         if (t.startsWith(q)) return 0
         if (t.split(/[\s\-_.\/]+/).some(w => w.startsWith(q))) return 1
         if (t.includes(q)) return 2
         return -1
+    }
+    // The last tier: q's letters in order, but not just anywhere (that would match nearly everything). Each letter is at a
+    // word start, right after the previous match, or a letter or two after it in the same word: "vsc" → Visual Studio
+    // Code, "kattovlo" → Kattovalo. Both folded.
+    function fuzzy(t, q) {
+        const start = i => i === 0 || /[\s\-_.\/›:]/.test(t[i - 1])
+        const from = (qi, ti) => {        // q[qi..] matches from t[ti..]; prev match at ti - 1
+            if (qi === q.length) return true
+            for (let i = ti; i < t.length; i++) {
+                if (t[i] !== q[qi]) continue
+                const gap = i - ti
+                const ok = qi === 0 ? start(i) : gap === 0 || start(i) || (gap <= 2 && !/[\s\-_.\/›:]/.test(t.slice(ti, i)))
+                if (ok && from(qi + 1, i + 1)) return true
+            }
+            return false
+        }
+        return q.length >= 2 && from(0, 0)
     }
 
     // Groups keybindings by section (sections in file order) and adds header rows
@@ -589,14 +608,20 @@ PanelWindow {
         if (q === "") return level === "keys" ? grouped(all.map(x => x.item)) : all.map(x => x.item)
         const scored = []
         // Several words: each may hit the name or the search words ("olohuone kattovalo" → the room is in extra, the name in text)
-        const words = q.split(/\s+/).filter(w => w !== "")
+        const fq = fold(q)
+        const words = fq.split(/\s+/).filter(w => w !== "")
+        const fuzzyOk = level !== "emoji"   // thousands of short names: letters in order would hit too many
         all.forEach((x, i) => {
-            let s = score(x.text, q)
-            if (s < 0 && x.extra && x.extra.toLowerCase().includes(q)) s = 3
+            let s = score(x.text, fq)
+            const extra = x.extra ? fold(x.extra) : ""
+            if (s < 0 && extra.includes(fq)) s = 3
             if (s < 0 && words.length > 1) {
-                const hay = (x.text + " " + (x.extra || "")).toLowerCase()
+                const hay = fold(x.text) + " " + extra
                 if (words.every(w => hay.includes(w))) s = 4
+                // 5: the same with typos and shortcuts, each word fuzzy ("olohuone kattovlo")
+                else if (fuzzyOk && words.every(w => hay.includes(w) || fuzzy(hay, w))) s = 5
             }
+            if (s < 0 && fuzzyOk && words.length === 1 && fuzzy(fold(x.text), fq)) s = 5
             if (s >= 0) scored.push({ x: x, s: s, i: i })
         })
         scored.sort((a, b) => (a.s - b.s) || (level === "apps" ? a.x.text.localeCompare(b.x.text) : level === "emoji" ? (a.x.text.length - b.x.text.length) || (a.i - b.i) : a.i - b.i))
