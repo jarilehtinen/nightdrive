@@ -106,7 +106,8 @@ Singleton {
         return cls === (row.app || "").toLowerCase() || (id !== "" && (cls === id || cls === id.split(".").pop()))
     }
     function chime(row, n) {
-        if (n.urgency === NotificationUrgency.Low || appFocused(row)) return
+        // suppress-sound: the standard hint for a sender that plays its own sound
+        if (n.urgency === NotificationUrgency.Low || appFocused(row) || (n.hints || {})["suppress-sound"]) return
         const key = row.app || row.entry
         const now = Date.now()
         if (now - (lastChime[key] || 0) < soundGap) return
