@@ -28,7 +28,7 @@ PanelWindow {
         Text {
             id: label
             anchors.centerIn: parent
-            text: parent.glyph !== "" ? Icons.g(parent.glyph) : parent.key.toLowerCase()
+            text: parent.glyph !== "" ? Icons.g(parent.glyph) : parent.key.length === 1 ? parent.key : parent.key.toLowerCase()   // a letter (⌘C) stays a capital
             color: Theme.dim
             font { family: parent.glyph !== "" ? Icons.family : Theme.font; pixelSize: parent.glyph !== "" ? 12 : 11 }
         }
@@ -80,6 +80,12 @@ PanelWindow {
     property string barHl: ""                 // Settings › Top bar › Highlight: theme | white | black
     property int updates: 0                   // Update: new Nightdrive commits waiting (nightdrive update check, every 6 h)
     property var displays: null               // Settings › Display: [{ name, desc, scale, opts: [{ value, size }] }] (hypr/scripts/display list)
+    property real bright: -1                  // Settings › Display › Brightness: 0..1 (brightnessctl), -1 = no backlight (a VM) or not read yet
+    property real pendingBright: -1           // the slider's value waiting to be applied (throttled, like in BatteryMenu)
+    property string night: ""                 // Settings › Display › Night light: on | off (hypr/scripts/nightlight status)
+    property var batt: null                   // Settings › Battery: { percent, state, timeText } (upower)
+    property var battDetail: null             // and its details (topbar/scripts/sysinfo battery), null on a desktop
+    readonly property int brightStep: 5       // ←/→ on the brightness row, the same step as the brightness keys (hypr/scripts/brightness)
     property var themeList: []                // Settings › Theme › Color: [{ value, name, swatch, current }] (hypr/scripts/theme list)
     readonly property bool grid: level === "background"   // wallpapers as a grid, other levels as a list
     readonly property int gridCols: 2
@@ -90,8 +96,13 @@ PanelWindow {
     // It may add root items and whole levels; see the functions it is asked for below (extItems, activate, ...).
     property string extSource: ""             // shell.qml sets this when the file exists
     readonly property var ext: extLoader.item
-    readonly property bool extLevel: ext !== null && ext.levels.indexOf(level) >= 0
-    readonly property var parents: Object.assign({ shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", software: "install", webapp: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, ext ? ext.parents : {})
+    // Levels from other files: SystemLevels.qml (Wi-Fi, Bluetooth, Sound, Tailscale) and the private extension; they answer
+    // the same questions (items, activate, footer, entered)
+    function extOf(l) { return sys.levels.indexOf(l) >= 0 ? sys : ext !== null && ext.levels.indexOf(l) >= 0 ? ext : null }
+    readonly property bool extLevel: extOf(level) !== null
+    readonly property int selIndex: list.currentIndex
+    function shakeNow() { shake.restart() }
+    readonly property var parents: Object.assign({ shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", battery: "settings", install: "system", remove: "system", emoji: "tools", screenshot: "tools", software: "install", webapp: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, sys.parents, ext ? ext.parents : {})
     // Search found nothing: hint below ⌘⌥⏎ (icons) → send the text to Claude
     readonly property bool noHit: (level === "root" || level === "apps") && query.trim() !== "" && results.length === 0
     // The selected row is an app: ⌃Enter shows it in Apps (the list with an empty query) or hides it from there.
@@ -103,9 +114,11 @@ PanelWindow {
         : selApp ? "Enter: open  ·  Ctrl+Enter: " + (selApp.shown ? "hide from Apps" : "show in Apps")
                                               + "  ·  Alt+Enter: " + (autostartIds.indexOf(appId(selApp)) >= 0 ? "don’t start at login" : "start at login")
         : level === "startup" ? "Enter: start at login on/off  ·  background apps start hidden"
+        : (results[list.currentIndex] || {}).kind === "brightness" ? "Left+Right: brightness"
+        : (results[list.currentIndex] || {}).kind === "nightlight" ? "Enter: night light on/off"
         : level === "baritems" ? "Enter: show / hide  ·  Ctrl+Up+Down: reorder"
         : level === "passwords" && pwState === "ready" ? "Enter: password  ·  Shift+Enter: username  ·  Ctrl+Enter: one-time code"
-        : extLevel ? ext.footer(level, query)
+        : extOf(level) ? extOf(level).footer(level, query)   // not extLevel: it can lag a level change by one update
         : level === "clipboard" ? "Enter: paste  ·  Shift+Enter: copy only"
         : level === "shelf" || level === "curated" ? "Enter: play in Deck"
         : level === "emoji" ? "Enter: paste  ·  Shift+Enter: copy only  ·  search in English or Finnish"
@@ -114,10 +127,10 @@ PanelWindow {
     // The footer as key caps: "Ctrl+Enter: show in Apps  ·  Esc: back" → [{ keys: ["Ctrl", "Enter"], text: "show in Apps" }, ...].
     // "Enter creates …" (no colon) works too; a part that doesn't start with a key is plain text.
     readonly property var keyGlyphs: ({ Enter: "corner-down-left", Ctrl: "chevron-up", Shift: "arrow-big-up", Alt: "option", Cmd: "command",
-                                        Up: "arrow-up", Down: "arrow-down",
+                                        Up: "arrow-up", Down: "arrow-down", Left: "arrow-left", Right: "arrow-right",
                                         Backspace: "delete", Space: "space" })
     readonly property var footerParts: footer === "" ? [] : footer.split(/\s+·\s+/).map(part => {
-        const m = part.match(/^((?:Ctrl|Shift|Alt|Cmd|Enter|Esc|Tab|Space|Backspace|Up|Down)(?:\+(?:Ctrl|Shift|Alt|Cmd|Enter|Esc|Tab|Space|Backspace|Up|Down))*)(?::\s*|\s+)(.*)$/)
+        const m = part.match(/^((?:Ctrl|Shift|Alt|Cmd|Enter|Esc|Tab|Space|Backspace|Up|Down|Left|Right)(?:\+(?:Ctrl|Shift|Alt|Cmd|Enter|Esc|Tab|Space|Backspace|Up|Down|Left|Right|[A-Z]))*)(?::\s*|\s+)(.*)$/)
         return m ? { keys: m[1].split("+"), text: m[2] } : { keys: [], text: part }
     })
     property var lastMouse: null              // last mouse position (window coordinates); null = not seen yet since opening
@@ -128,10 +141,10 @@ PanelWindow {
     readonly property var deckLiked: deckOverride.liked !== undefined ? deckOverride.liked : (deckInfo ? deckInfo.liked : null)
     signal openMenu(string name)              // Settings: opens a Quickshell menu (wifi, bluetooth, ...)
 
-    readonly property var titles: Object.assign({ apps: "Apps", music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", musicsearch: "Music › Search", artist: "Music › " + artist.name, keys: "Keybindings", screenshot: "Screenshot", settings: "Settings", display: "Settings › Display", startup: "Settings › Startup", screensaver: "Settings › Screensaver", saverafter: "Screensaver › Start after", screenoff: "Screensaver › Screen off after", saverstyle: "Screensaver › Style", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
+    readonly property var titles: Object.assign({ apps: "Apps", music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", musicsearch: "Music › Search", artist: "Music › " + artist.name, keys: "Keybindings", screenshot: "Tools › Screenshot", settings: "Settings", display: "Settings › Display", battery: "Settings › Battery", startup: "Settings › Startup", screensaver: "Settings › Screensaver", saverafter: "Screensaver › Start after", screenoff: "Screensaver › Screen off after", saverstyle: "Screensaver › Style", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
                                      topbar: "Settings › Top bar", baropacity: "Top bar › Opacity", baricons: "Top bar › Icon colors", barhl: "Top bar › Highlight", baritems: "Top bar › Items",
-                                     install: "Install", emoji: "Emoji", software: "Install › Software", webapp: "Install › Webapp", webname: "Install › Webapp › Name", webaddr: "Install › Webapp › Address", remove: "Remove", power: "Power", passwords: "Passwords", clipboard: "Clipboard",
-                                     tools: "Tools" }, ext ? ext.titles : {})
+                                     system: "System", install: "System › Install", emoji: "Tools › Emoji", software: "Install › Software", webapp: "Install › Webapp", webname: "Install › Webapp › Name", webaddr: "Install › Webapp › Address", remove: "System › Remove", power: "Power", passwords: "Passwords", clipboard: "Clipboard",
+                                     tools: "Tools" }, sys.titles, ext ? ext.titles : {})
 
     // Reference at startup: the app list only loads on first reference
     property var apps: DesktopEntries.applications.values
@@ -150,23 +163,28 @@ PanelWindow {
         { kind: "nav", name: "Apps", glyph: "layout-grid", target: "apps" },
         { kind: "nav", name: "Passwords", glyph: "key-round", target: "passwords" },
         { kind: "nav", name: "Clipboard", glyph: "clipboard-list", target: "clipboard" },
-        { kind: "nav", name: "Emoji", glyph: "smile", target: "emoji" },
-        { kind: "nav", name: "Screenshot", glyph: "camera", target: "screenshot" },
         { kind: "nav", name: "Music", glyph: "disc-3", target: "music" },
     ].concat(ext ? ext.rootItems : [], [
         { kind: "nav", name: "Tools", glyph: "wrench", target: "tools" },
         { kind: "nav", name: "Keybindings", glyph: "keyboard", target: "keys" },
         { kind: "nav", name: "Settings", glyph: "settings", target: "settings" },
-        { kind: "nav", name: "Install", glyph: "package-plus", target: "install" },
-        { kind: "nav", name: "Remove", glyph: "package-minus", target: "remove" },
-        { kind: "action", name: "Update", glyph: "refresh-cw", confirm: true, cmd: term('"$HOME/.local/bin/nightdrive" update'),
-          summary: updates > 0 ? updates + " new" : undefined },
+        // System: Install, Remove, Update and Status (the update count shows here too)
+        { kind: "nav", name: "System", glyph: "monitor-cog", target: "system", summary: updates > 0 ? updates + " new" : undefined },
         { kind: "nav", name: "Power", glyph: "power", target: "power" }
     ])
 
     // Static sublevels
     readonly property var statics: ({
+        system: [
+            { kind: "nav", name: "Install", glyph: "package-plus", target: "install", extra: "software package app flatpak dnf" },
+            { kind: "nav", name: "Remove", glyph: "package-minus", target: "remove", extra: "uninstall delete package app" },
+            { kind: "action", name: "Update", glyph: "refresh-cw", confirm: true, cmd: term('"$HOME/.local/bin/nightdrive" update'),
+              summary: updates > 0 ? updates + " new" : undefined, extra: "upgrade dnf flatpak nightdrive" },
+            { kind: "nav", name: "Status", glyph: "activity", target: "status", extra: "cpu memory processes temperature claude usage" }
+        ],
         tools: [
+            { kind: "nav", name: "Screenshot", glyph: "camera", target: "screenshot" },
+            { kind: "nav", name: "Emoji", glyph: "smile", target: "emoji" },
             { kind: "action", name: "Color Picker", glyph: "pipette", cmd: ["bash", "-c", "sleep 0.4; \"$HOME/.config/hypr/scripts/color-picker\""] }
         ],
         screenshot: [
@@ -183,14 +201,14 @@ PanelWindow {
             { kind: "action", name: "In a terminal", glyph: "terminal", cmd: webappTerm() }
         ],
         settings: [
-            { kind: "menu", name: "Wi-Fi", glyph: "wifi", target: "wifi" },
-            { kind: "menu", name: "Bluetooth", glyph: "bluetooth", target: "bluetooth" },
-            { kind: "menu", name: "Sound", glyph: "volume-2", target: "volume" },
-            { kind: "menu", name: "Battery & display", glyph: "battery-medium", target: "battery" },
+            { kind: "nav", name: "Wi-Fi", glyph: "wifi", target: "wifi" },
+            { kind: "nav", name: "Bluetooth", glyph: "bluetooth", target: "bluetooth" },
+            { kind: "nav", name: "Sound", glyph: "volume-2", target: "sound" },
+            { kind: "nav", name: "Battery", glyph: "battery-medium", target: "battery" },
             { kind: "nav", name: "Display", glyph: "monitor", target: "display" },
             { kind: "nav", name: "Screensaver", glyph: "monitor-pause", target: "screensaver" },
             { kind: "nav", name: "Startup", glyph: "rocket", target: "startup" },
-            { kind: "menu", name: "Tailscale", glyph: "shield-check", target: "tailscale" },
+            { kind: "nav", name: "Tailscale", glyph: "shield-check", target: "tailscale" },
             { kind: "nav", name: "Theme", glyph: "palette", target: "theme" },
             { kind: "nav", name: "Top bar", glyph: "panel-top", target: "topbar" }   // its look and what it shows
         ],
@@ -203,8 +221,8 @@ PanelWindow {
         ]
     })
 
-    readonly property var settingsAliases: ({ "Wi-Fi": "wifi wlan network internet", "Sound": "audio volume output speakers", "Battery & display": "power brightness screen",
-                                              "Display": "scale scaling resolution monitor screen retina hidpi zoom size bigger smaller",
+    readonly property var settingsAliases: ({ "Wi-Fi": "wifi wlan network internet", "Sound": "audio volume output speakers", "Battery": "power charge charging health cycles",
+                                              "Display": "brightness night light warm scale scaling resolution monitor screen retina hidpi zoom size bigger smaller",
                                               "Tailscale": "vpn", "Theme": "appearance style look colors",
                                               "Color": "theme accent violet purple blue teal green amber rose graphite gray",
                                               "Background": "wallpaper desktop image picture",
@@ -212,7 +230,10 @@ PanelWindow {
                                               "Opacity": "top bar waybar panel transparency transparent",
                                               "Icon colors": "top bar waybar panel white black light dark text",
                                               "Highlight": "top bar waybar panel active workspace",
-                                              "Items": "top bar panel modules icons show hide clock date battery" })
+                                              "Items": "top bar panel modules icons show hide clock date battery",
+                                              "Brightness": "screen dim dimmer brighter backlight",
+                                              "Night light": "night shift warm yellow blue light evening",
+                                              "Scale": "scaling resolution monitor screen retina hidpi zoom size bigger smaller" })
     // Settings › Theme: sub-items (Color with its current value)
     function themeItems() {
         const cur = themeList.find(t => t.current)
@@ -230,6 +251,13 @@ PanelWindow {
             { kind: "nav", name: "Screen off after", glyph: "monitor-off", target: "screenoff", summary: minutes(idleOff) },
             { kind: "action", name: "Preview", glyph: "monitor-play", cmd: ["bash", "-c", "sleep 0.4; \"$HOME/.config/screensaver/start\""] }
         ]
+    }
+    // Settings › Display for the root search: the brightness slider row itself (←/→ work there too), the night light toggle
+    // and Scale (opens Display)
+    function displayItems() {
+        return (bright >= 0 ? [{ kind: "brightness", name: "Brightness", glyph: "sun" }] : [])
+            .concat([{ kind: "nightlight", name: "Night light", glyph: "moon" },
+                     { kind: "nav", name: "Scale", glyph: "monitor", target: "display" }])
     }
     // Settings › Top bar: sub-items with their current values
     function topbarItems() {
@@ -320,7 +348,7 @@ PanelWindow {
         const q = query.trim().toLowerCase()
         let all
         if (level === "root") {
-            all = rootItems.map(r => ({ item: r, text: r.name }))
+            all = rootItems.map(r => ({ item: r, text: r.name, extra: r.extra || "" }))
             // When searching, the root level also finds rows from the sublevels, so there's no need to open a menu first.
             // "from" tells which menu a row comes from; extra adds search words (aliases, alternative spellings).
             if (q !== "") for (const src of [
@@ -332,6 +360,11 @@ PanelWindow {
                 statics.settings.map(t => ({ item: Object.assign({}, t, { from: "Settings" }), text: t.name, extra: "settings " + (settingsAliases[t.name] || "") })),
                 themeItems().map(t => ({ item: Object.assign({}, t, { from: "Theme", summary: undefined }), text: t.name, extra: "theme " + (settingsAliases[t.name] || "") })),
                 topbarItems().map(t => ({ item: Object.assign({}, t, { from: "Top bar", summary: undefined }), text: t.name, extra: settingsAliases[t.name] || "" })),
+                // Display and Screensaver sub-items ("night" → Night light, "dim" → Brightness, "saver" → Start after)
+                displayItems().map(t => ({ item: Object.assign({}, t, { from: "Display" }), text: t.name, extra: "display " + (settingsAliases[t.name] || "") })),
+                screensaverItems().map(t => ({ item: Object.assign({}, t, { from: "Screensaver", summary: undefined }), text: t.name, extra: "screensaver idle lock" })),
+                // System's items ("upd" → Update, "cpu" → Status)
+                statics.system.map(t => ({ item: Object.assign({}, t, { from: "System", summary: undefined }), text: t.name, extra: t.extra || "" })),
                 // Install's sub-items ("flatpak", "webapp", "flathub" → Flatpak)
                 statics.install.map(t => ({ item: Object.assign({}, t, { from: "Install", summary: undefined }), text: t.name,
                                             extra: "install " + (installAliases[t.name] || "") })),
@@ -362,8 +395,8 @@ PanelWindow {
         } else if (level === "webaddr") {
             if (query.trim() === "") return hint("Type the address for “" + webName + "” (e.g. web.whatsapp.com)")
             return [{ kind: "wadd", name: "Add “" + webName + "”", summary: query.trim(), glyph: "app-window", value: query.trim() }]
-        } else if (extLevel) {
-            const r = ext.items(level, q)
+        } else if (extOf(level)) {
+            const r = extOf(level).items(level, q)
             if (!r.all) return r          // ready-made rows (hints, etc.)
             all = r.all                   // [{ item, text, extra }], filtered by the query below
         } else if (level === "music") {
@@ -410,11 +443,17 @@ PanelWindow {
             return vals.map(v => ({ kind: "baropacity", value: v, name: v + "%", glyph: v === barOpacity ? "check" : "panel-top",
                                     summary: v === barOpacity ? "current" : (v === 100 ? "opaque" : v === 0 ? "transparent" : undefined) }))
         } else if (level === "display") {
-            // Scales the panel divides evenly, shown as the resulting desktop size ("looks like" in macOS); current one marked
+            // Two sections: Brightness (a slider row, when there is a backlight) and Scale
             if (displays === null) return hint("Loading…")
-            const out = []
+            const out = bright < 0 ? [] : [{ kind: "header", name: "Brightness" },
+                                           { kind: "brightness", name: "Screen", glyph: "sun", summary: Math.round(bright * 100) + "%" }]
+            if (night !== "") {
+                if (bright < 0) out.push({ kind: "header", name: "Brightness" })
+                out.push({ kind: "nightlight", name: "Night light", glyph: "moon", summary: night })
+            }
+            // Scales the panel divides evenly, shown as the resulting desktop size ("looks like" in macOS); current one marked
             for (const d of displays) {
-                if (displays.length > 1) out.push({ kind: "header", name: d.name + (d.desc !== "-" ? "  " + d.desc : "") })
+                out.push({ kind: "header", name: "Scale" + (displays.length > 1 ? " · " + d.name + (d.desc !== "-" ? "  " + d.desc : "") : "") })
                 for (const o of d.opts) {
                     const cur = Math.abs(o.value - d.scale) < 0.01
                     out.push({ kind: "scale", output: d.name, value: o.value, name: o.size, glyph: cur ? "check" : "monitor",
@@ -422,6 +461,25 @@ PanelWindow {
                 }
             }
             return out
+        } else if (level === "battery") {
+            // The same as the top bar's battery menu: charge and state, then the details
+            if (batt === null) return hint("Loading…")
+            const b = battDetail
+            const stateText = { discharging: "Discharging", charging: "Charging", "fully-charged": "Fully charged", "pending-charge": "Not charging" }[batt.state] || batt.state
+            const rows = [{ kind: "stat", name: batt.percent + "%  " + stateText,
+                            glyph: batt.state === "charging" ? "battery-charging" : batt.percent < 40 ? "battery-low" : batt.percent < 60 ? "battery-medium" : "battery-full",
+                            summary: batt.timeText !== "" ? batt.timeText + (batt.state === "charging" ? " until full" : " remaining") : undefined }]
+            if (b) {
+                rows.push({ kind: "header", name: "Details" })
+                for (const r of [["zap", "Power", b.watts > 0 ? b.watts + " W" : ""],
+                                 ["thermometer", "Temperature", b.temp !== null ? b.temp + " °C" : ""],
+                                 ["heart-pulse", "Health", b.health !== null ? b.health + "% · " + b.fullWh + " / " + b.designWh + " Wh" : ""],
+                                 ["repeat", "Cycles", b.cycles !== null ? String(b.cycles) : ""],
+                                 ["activity", "Voltage", b.volts !== null ? b.volts.toFixed(2) + " V" : ""],
+                                 ["calendar", "Manufactured", b.made]])
+                    if (r[2] !== "") rows.push({ kind: "stat", glyph: r[0], name: r[1], summary: r[2] })
+            }
+            return rows
         } else if (level === "theme") {
             all = themeItems().map(t => ({ item: t, text: t.name, extra: settingsAliases[t.name] || "" }))
         } else if (level === "themecolor") {
@@ -506,9 +564,10 @@ PanelWindow {
         if (target === "background") wallProc.running = true
         if (target === "topbar" || target === "baropacity" || target === "baricons" || target === "barhl") barProc.running = true
         if (target === "theme" || target === "themecolor") themeProc.running = true
-        if (target === "display") displayProc.running = true
+        if (target === "display") { displayProc.running = true; brightProc.running = true; nightProc.running = true }
+        if (target === "battery") { battProc.running = true; battDetailProc.running = true }
         if (target === "screensaver" || target === "saverafter" || target === "screenoff" || target === "saverstyle") idleProc.running = true
-        if (ext && ext.levels.indexOf(target) >= 0) ext.entered(target)
+        if (extOf(target)) extOf(target).entered(target)
         if (target === "passwords") { pwState = pwItems.length ? "ready" : "loading"; pwProc.running = true }
     }
     // Background apps (⌘W hides them to special:bg, ⌘Q quits): app name -> window class regex, from hypr/background-apps(.local),
@@ -629,6 +688,12 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         }
         else if (item.kind === "decksearch") { win.open = false; Quickshell.execDetached([scripts + "/deck-ctl", "search", item.value]) }
         else if (item.kind === "emoji") emojiPick(item, true)
+        else if (item.kind === "brightness" || item.kind === "stat") shake.restart()   // brightness: ←/→ or the slider; stat: information only
+        else if (item.kind === "nightlight") {
+            keepSelection()
+            night = night === "on" ? "off" : "on"
+            Quickshell.execDetached([scripts + "/nightlight", night])
+        }
         else if (item.kind === "scale") {     // stays open like the theme rows; Hyprland reloads with the new scale
             keepSelection()
             displays = displays.map(d => d.name === item.output ? Object.assign({}, d, { scale: item.value }) : d)
@@ -657,6 +722,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                 'out=$("$HOME/.config/hypr/scripts/webapp-add" "$1" "$2" 2>&1) && notify-send -a Webapp "Webapp added" "$1" || notify-send -u critical -a Webapp "Adding webapp failed" "$out"',
                 "_", webName, item.value])
         }
+        else if (sys.activate(item)) {}
         else if (ext && ext.activate(item)) {}
         else if (item.kind === "pw") copyField(item, "password")
         else if (item.kind === "menu") { win.open = false; win.openMenu(item.target) }
@@ -705,7 +771,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
     function extShift(item) {
         if (item.armKey !== undefined && armed !== item.armKey) { armed = item.armKey; disarm.restart(); return }
         armed = ""
-        ext.shiftActivate(item)
+        (extOf(level) || ext).shiftActivate(item)
     }
     // ⌘⌫ in Background (bindings.lua → IPC deleteSelected): a second press moves your own image to the trash.
     // Only your own images (~/Pictures/Wallpapers, `own` from hypr/scripts/wallpaper list); bundled ones can't be deleted.
@@ -750,7 +816,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
 
     // Closing leaves the details right away (after the Behavior above has seen open = false), so the next open starts narrow
     onOpenChanged: if (!open) Qt.callLater(() => { if (!win.open) { win.detail = null; win.detailInfo = null } })
-    else { lastMouse = null; spotify = null; lastSel = ({}); if (ext) ext.opened(); go("root"); deckProc.running = true; musicProc.running = true; bgProc.running = true; bgAppsProc.running = true; autostartProc.running = true; updatesProc.running = true; input.forceActiveFocus() }
+    else { lastMouse = null; spotify = null; lastSel = ({}); if (ext) ext.opened(); go("root"); deckProc.running = true; musicProc.running = true; bgProc.running = true; bgAppsProc.running = true; autostartProc.running = true; updatesProc.running = true; brightProc.running = true; nightProc.running = true; input.forceActiveFocus() }
     Component.onCompleted: keysProc.running = true
 
     Timer { id: disarm; interval: 4000; onTriggered: win.armed = "" }
@@ -879,6 +945,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
             catch (e) { win.detailInfo = { name: win.detail.name, summary: win.detail.summary, installed: false, icon: "", screenshot: "", paragraphs: [], fields: [["Details", "not available"]] } }
         }
     }
+    SystemLevels { id: sys; launcher: win }
     Loader {
         id: extLoader
         source: win.extSource
@@ -963,11 +1030,78 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
         id: displayProc
         script: '"$HOME/.config/hypr/scripts/display" list'
         onResult: text => {
+            const first = win.displays === null
             win.displays = text.split("\n").map(l => l.split("\t")).filter(f => f.length >= 4).map(f => ({
                 name: f[0], desc: f[1], scale: parseFloat(f[2]),
                 opts: f.slice(3).map(o => { const [v, size] = o.split(":"); return { value: parseFloat(v), size: size.replace("×", " × ") } }) }))
-            if (win.level === "display" && win.query === "") win.selectWhere(r => r.kind === "scale" && r.summary.startsWith("current"))
+            if (first && win.level === "display" && win.query === "") list.currentIndex = win.firstSelectable()   // was the Loading… hint
         }
+    }
+    // Settings › Display › Brightness: read on entering and every 2 s while there (the brightness keys also work then),
+    // not while the slider is held or a value is waiting to be applied
+    Sh {
+        id: brightProc
+        // -c backlight: without a backlight brightnessctl would pick the first LED (a keyboard's Compose light)
+        command: ["brightnessctl", "-m", "-c", "backlight"]
+        onResult: text => {
+            if (win.pendingBright >= 0) return
+            const first = win.bright < 0
+            const f = text.trim().split(",")
+            const v = f.length >= 4 ? parseInt(f[3]) / 100 : -1
+            if (v !== win.bright && !first) win.keepSelection()   // changed elsewhere (the brightness keys)
+            win.bright = v
+            // The rows above the scales appear only now: select the first one (the brightness row)
+            if (first && win.bright >= 0 && win.level === "display" && win.query === "") list.currentIndex = win.firstSelectable()
+        }
+    }
+    Timer { interval: 2000; repeat: true; running: win.open && win.level === "display"; onTriggered: brightProc.running = true }
+    Sh {
+        id: nightProc
+        script: '"$HOME/.config/hypr/scripts/nightlight" status'
+        onResult: text => { win.night = text.trim() }
+    }
+    // Settings › Battery: the machine's own battery, found like in topbar/scripts/status (MacBook: macsmc-battery);
+    // read on entering and every 5 s while there
+    Sh {
+        id: battProc
+        script: 'for d in /sys/class/power_supply/*; do [ "$(cat "$d/type")" = Battery ] && [ "$(cat "$d/scope" 2>/dev/null)" != Device ] &&
+                 { upower -i "/org/freedesktop/UPower/devices/battery_$(basename "$d" | tr - _)"; break; }; done'
+        onResult: text => {
+            const g = re => { const r = text.match(re); return r ? r[1].trim() : "" }
+            const fmt = (v, unit) => {
+                const min = Math.round(parseFloat(v.replace(",", ".")) * (/hour/.test(unit) ? 60 : /second/.test(unit) ? 1 / 60 : 1))
+                return Math.floor(min / 60) > 0 ? Math.floor(min / 60) + " h " + (min % 60) + " min" : min + " min"
+            }
+            const st = g(/state:\s*(\S+)/)
+            const tte = text.match(/time to empty:\s*([\d.,]+)\s*(\w+)/)
+            const ttf = text.match(/time to full:\s*([\d.,]+)\s*(\w+)/)
+            if (st === "") { win.batt = null; return }
+            win.keepSelection()
+            win.batt = { percent: parseInt(g(/percentage:\s*(\d+)/)) || 0, state: st,
+                         timeText: st === "discharging" && tte ? fmt(tte[1], tte[2]) : st === "charging" && ttf ? fmt(ttf[1], ttf[2]) : "" }
+        }
+    }
+    Sh {
+        id: battDetailProc
+        command: ["bash", "-c", "~/.config/topbar/scripts/sysinfo battery"]
+        onResult: text => { try { win.battDetail = JSON.parse(text) } catch (e) { win.battDetail = null } }
+    }
+    Timer { interval: 5000; repeat: true; running: win.open && win.level === "battery"; onTriggered: { battProc.running = true; battDetailProc.running = true } }
+    Timer {
+        id: brightApply; interval: 60
+        onTriggered: {
+            if (win.pendingBright < 0) return
+            Quickshell.execDetached(["brightnessctl", "-c", "backlight", "-n2", "set", Math.round(win.pendingBright * 100) + "%"])
+            win.pendingBright = -1
+        }
+    }
+    // keepSelection: the new percentage rebuilds the rows, which would move the selection to the top
+    function setBright(v) { keepSelection(); bright = v; pendingBright = v; if (!brightApply.running) brightApply.start() }
+    // ←/→: to the next even step, like the brightness keys
+    function stepBright(dir) {
+        const p = Math.round(bright * 100)
+        const n = dir > 0 ? (Math.floor(p / brightStep) + 1) * brightStep : (p % brightStep === 0 ? p - brightStep : Math.floor(p / brightStep) * brightStep)
+        setBright(Math.max(0, Math.min(100, n)) / 100)
     }
     // Settings › Screensaver: current idle times; select the current one
     Sh {
@@ -1223,6 +1357,7 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                 }
                 TextInput {
                     id: input
+                    echoMode: win.level === "wifipw" ? TextInput.Password : TextInput.Normal   // Wi-Fi › Password
                     width: parent.width - (crumb.visible ? crumb.width : 0)
                     height: parent.height
                     verticalAlignment: TextInput.AlignVCenter
@@ -1237,6 +1372,12 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                     Keys.onPressed: event => {
                         const ctrl = event.modifiers & Qt.ControlModifier
                         if (win.playerFocused && win.handlePlayerKey(event)) { event.accepted = true; return }
+                        // ⌘C (Hyprland sends Ctrl+Insert; Ctrl+C too) on a row with a `copy` value, e.g. an IP address;
+                        // selected text in the search field is copied as usual
+                        const copyRow = win.results[list.currentIndex]
+                        if (ctrl && (event.key === Qt.Key_Insert || event.key === Qt.Key_C) && copyRow && copyRow.copy !== undefined && selectedText === "") {
+                            sys.copyText(copyRow.copy); event.accepted = true; return
+                        }
                         if (win.detail !== null) {         // details: Enter installs / removes, arrows scroll, typing does nothing
                             if (event.key === Qt.Key_Escape || event.key === Qt.Key_Backspace) win.back()
                             else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) win.detailConfirm()
@@ -1248,7 +1389,8 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                             event.accepted = true
                             return
                         }
-                        if (event.key === Qt.Key_Escape) { win.back(); event.accepted = true }
+                        // Esc with a search typed clears it first (on any level); with an empty one it goes back / closes
+                        if (event.key === Qt.Key_Escape) { if (text !== "") text = ""; else win.back(); event.accepted = true }
                         else if (ctrl && event.key === Qt.Key_Space) { win.deckPlayPress(); event.accepted = true }
                         else if (event.key === Qt.Key_Backspace && text === "" && win.level !== "root") { win.back(); event.accepted = true }
                         else if (win.grid && win.wallLoaded && (event.key === Qt.Key_Left || event.key === Qt.Key_Right)) {
@@ -1265,6 +1407,10 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                                 Qt.callLater(() => { list.currentIndex = j })
                             } else shake.restart()
                             event.accepted = true
+                        } else if ((event.key === Qt.Key_Left || event.key === Qt.Key_Right) && (win.results[list.currentIndex] || {}).kind === "brightness") {
+                            win.stepBright(event.key === Qt.Key_Left ? -1 : 1); event.accepted = true
+                        } else if ((event.key === Qt.Key_Left || event.key === Qt.Key_Right) && (win.results[list.currentIndex] || {}).kind === "slider") {
+                            sys.stepSlider(win.results[list.currentIndex].key, event.key === Qt.Key_Left ? -1 : 1); event.accepted = true
                         } else if (event.key === Qt.Key_Down || (ctrl && (event.key === Qt.Key_N || event.key === Qt.Key_J))) {
                             win.step(1); event.accepted = true
                         } else if (event.key === Qt.Key_Up || (ctrl && (event.key === Qt.Key_P || event.key === Qt.Key_K))) {
@@ -1358,7 +1504,9 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                             verticalCenter: parent.verticalCenter; verticalCenterOffset: twoLines ? (row.modelData.sub ? -9 : -7) : 0
                         }
                         elide: Text.ElideRight
-                        text: row.isHeader ? row.modelData.name.toUpperCase()
+                        // liveName: a name that changes often (Status' processes), bound here instead of rebuilding the rows
+                        text: row.modelData.liveName !== undefined ? sys.liveText(row.modelData.liveName)
+                            : row.isHeader ? row.modelData.name.toUpperCase()
                             : (row.armedNow ? row.modelData.name + " — " + (row.modelData.armHint || "press Enter again to confirm") : row.modelData.name)
                         color: row.armedNow ? Theme.primary : (row.isHeader ? Theme.primary : row.modelData.kind === "hint" || row.modelData.dimmed ? Theme.dim : (row.current ? Theme.accent : Theme.text))
                         font { family: Theme.font; pixelSize: row.isHeader ? win.fontSize - 5 : row.modelData.sub ? win.fontSize - 2 : win.fontSize; weight: row.isHeader ? Font.Bold : win.fontWeight; letterSpacing: row.isHeader ? 1.5 : 0 }
@@ -1385,6 +1533,7 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                         readonly property bool glyphOnly: row.modelData.trailGlyph !== undefined
                             || (!tag && row.modelData.keys === undefined && !(row.modelData.summary !== undefined && row.modelData.summary !== "" && !row.armedNow) && row.chevron)
                         text: row.modelData.trailGlyph !== undefined ? Icons.g(row.modelData.trailGlyph)      // Top bar › Items: ✓ / – (hidden)
+                            : row.modelData.live !== undefined ? sys.liveText(row.modelData.live)   // updates without rebuilding the rows
                             : tag ? row.modelData.from.toUpperCase() : row.modelData.keys !== undefined ? row.modelData.keys
                             : (row.modelData.summary !== undefined && row.modelData.summary !== "" && !row.armedNow ? row.modelData.summary
                             : (row.chevron ? Icons.g("chevron-right") : ""))
@@ -1400,6 +1549,16 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                         anchors.verticalCenter: parent.verticalCenter
                         width: 9; height: 9; radius: 5
                         color: Theme.ok
+                    }
+                    Slider {         // Settings › Display › Brightness: above the row's MouseArea, so it gets the drag
+                        visible: row.modelData.kind === "brightness" || row.modelData.kind === "slider"
+                        z: 1
+                        // after the name ("Screen" in Display, "Brightness" in a search), lined up while the name is short
+                        anchors { left: slot.right; leftMargin: Math.max(120, 16 + nameText.implicitWidth + 28); right: trailing.left; rightMargin: 20; verticalCenter: parent.verticalCenter }
+                        value: row.modelData.kind === "slider" ? row.modelData.value : Math.max(0, win.bright)
+                        dimmed: !!row.modelData.dimmed
+                        trackColor: Qt.rgba(1, 1, 1, 0.1)   // the same on and off the selected row (Theme.border nearly matches Theme.sel)
+                        onMoved: v => { list.currentIndex = row.index; row.modelData.kind === "slider" ? sys.setSlider(row.modelData.key, v) : win.setBright(v) }
                     }
                     MouseArea {
                         id: rowArea

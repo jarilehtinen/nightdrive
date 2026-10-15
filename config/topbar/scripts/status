@@ -40,6 +40,9 @@ case $kind in
     # Shown only while Bluetooth headphones are connected, never dimmed (the EasyEffects EQ state is in the menu).
     pactl list short sinks 2>/dev/null | grep -q bluez_output || { emit "" ""; exit; }
     emit headphones "" ;;
+  display)
+    # Brightness, night light and scale are in the menu (DisplayMenu.qml); a dot on the monitor while the night light is on
+    if [[ $(~/.config/hypr/scripts/nightlight status) == on ]]; then emit monitor-dot ""; else emit monitor ""; fi ;;
   battery)
     dev=$(battery); [[ -z $dev ]] && { emit "" ""; exit; }
     info=$(upower -i "$dev" 2>/dev/null)

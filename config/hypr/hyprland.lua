@@ -289,11 +289,40 @@ local function corner_shader_path()
     return HOME .. "/.config/hypr/shaders/rounded-corners.frag"
 end
 local corner_shader = corner_shader_path()
+-- Night light (launcher › Settings › Display, hypr/scripts/nightlight): the same shader tints the screen warm, so it stays
+-- on under a fullscreen window too (with the corners off). The copies go to ~/.cache/hypr, rewritten only when they change.
+local NIGHT_TINT = "vec3(1.0, 0.80, 0.60)"   -- about 4000 K
+local function night_on()
+    local f = io.open(HOME .. "/.local/state/nightdrive/nightlight")
+    local v = f and f:read("l")
+    if f then f:close() end
+    return v == "on"
+end
+local night = night_on()
+local function night_shader(corners)
+    local f = io.open(corner_shader)
+    if not f then return "" end
+    local src = f:read("a")
+    f:close()
+    src = src:gsub("const float CORNERS = [%d.]+;", "const float CORNERS = " .. (corners and "1.0" or "0.0") .. ";")
+             :gsub("const vec3 WARM = [^;]+;", "const vec3 WARM = " .. NIGHT_TINT .. ";")
+    local p = HOME .. "/.cache/hypr/" .. corner_shader:match("([^/]+)%.frag$") .. (corners and "" or "-flat") .. "-night.frag"
+    local g = io.open(p)
+    local old = g and g:read("a")
+    if g then g:close() end
+    if old ~= src then
+        local w = io.open(p .. ".tmp", "w")      -- the directory: nightlight creates it
+        if not w then return "" end
+        w:write(src); w:close()
+        os.rename(p .. ".tmp", p)                 -- whole, never half-written while Hyprland compiles it
+    end
+    return p
+end
 local function update_corners()
     local ws = hl.get_active_workspace()
     local fullscreen = ws ~= nil and ws.has_fullscreen and ws.fullscreen_mode == 2
-    local corners = not (NIGHTDRIVE and NIGHTDRIVE.corners == false)      -- local.lua can turn the rounding off
-    hl.config({ decoration = { screen_shader = (fullscreen or not corners) and "" or corner_shader } })
+    local corners = not fullscreen and not (NIGHTDRIVE and NIGHTDRIVE.corners == false)   -- local.lua can turn the rounding off
+    hl.config({ decoration = { screen_shader = night and night_shader(corners) or (corners and corner_shader or "") } })
 end
 hl.on("window.fullscreen", update_corners)
 hl.on("workspace.active",  update_corners)

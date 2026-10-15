@@ -24,6 +24,7 @@
   { "name": "wifi",          "interval": 5,  "right": "nm-connection-editor" },
   { "name": "volume",        "interval": 2,  "right": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle", "middle": "pavucontrol" },
   { "name": "headphones",    "interval": 3,  "right": "~/.config/topbar/scripts/eq disconnect", "middle": "easyeffects" },
+  { "name": "display",       "interval": 30 },
   { "name": "battery",       "interval": 10 },
   { "name": "calendar",      "interval": 5 },
   { "name": "notifications", "interval": 60 }

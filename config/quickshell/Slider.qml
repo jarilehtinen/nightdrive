@@ -5,6 +5,7 @@ Item {
     id: s
     property real value: 0
     property bool dimmed: false
+    property color trackColor: Theme.border   // the unfilled part; on a selected row (Theme.sel) it needs to be darker
     readonly property bool pressed: area.pressed
     signal moved(real v)
 
@@ -13,7 +14,7 @@ Item {
         id: track
         anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter }
         height: 6; radius: 3
-        color: Theme.border
+        color: s.trackColor
         Rectangle {
             width: parent.width * Math.min(1, Math.max(0, s.value))
             height: parent.height; radius: 3

@@ -1,8 +1,9 @@
 import QtQuick
 import Quickshell
 
-// Battery and display: charging state and time remaining (upower), the battery's details (topbar/scripts/sysinfo battery:
-// power draw, temperature, health = capacity left of the original, cycles, voltage, age) and brightness levels (brightnessctl).
+// Battery: charging state and time remaining (upower), the battery's details (topbar/scripts/sysinfo battery:
+// power draw, temperature, health = capacity left of the original, cycles, voltage, age) and, for now, the keyboard
+// backlight (brightnessctl). Screen brightness is in DisplayMenu.
 Column {
     id: m
     width: parent ? parent.width : 300
@@ -12,9 +13,7 @@ Column {
     property string state: ""
     property string timeText: ""
     property var bat: null           // sysinfo battery
-    property real screen: -1         // -1 = no display backlight (a VM)
     property real keys: -1           // -1 = no keyboard backlight
-    property real pendingScreen: -1
     property real pendingKeys: -1
     signal close()
 
@@ -24,14 +23,13 @@ Column {
         const h = Math.floor(min / 60)
         return h > 0 ? h + " h " + (min % 60) + " min" : min + " min"
     }
-    function refresh() { battProc.running = true; detailProc.running = true; briProc.running = true; kbdProc.running = true }
+    function refresh() { battProc.running = true; detailProc.running = true; kbdProc.running = true }
     Component.onCompleted: refresh()
     Timer { interval: 3000; repeat: true; running: true; onTriggered: m.refresh() }
 
     Timer {
         id: apply; interval: 60
         onTriggered: {
-            if (m.pendingScreen >= 0) { Quickshell.execDetached(["brightnessctl", "-c", "backlight", "-n2", "set", Math.round(m.pendingScreen * 100) + "%"]); m.pendingScreen = -1 }
             if (m.pendingKeys >= 0) { Quickshell.execDetached(["brightnessctl", "-d", "kbd_backlight", "set", Math.round(m.pendingKeys * 100) + "%"]); m.pendingKeys = -1 }
         }
     }
@@ -57,16 +55,6 @@ Column {
         onResult: text => { try { m.bat = JSON.parse(text) } catch (e) { m.bat = null } }
     }
     Sh {
-        id: briProc
-        // -c backlight: without a backlight brightnessctl would pick the first LED (a keyboard's Compose light)
-        command: ["brightnessctl", "-m", "-c", "backlight"]
-        onResult: text => {
-            if (screenSlider.pressed || m.pendingScreen >= 0) return
-            const f = text.trim().split(",")
-            m.screen = f.length >= 4 ? parseInt(f[3]) / 100 : -1
-        }
-    }
-    Sh {
         id: kbdProc
         command: ["brightnessctl", "-m", "-d", "kbd_backlight"]
         onResult: text => {
@@ -76,7 +64,7 @@ Column {
         }
     }
 
-    MenuHeader { width: parent.width; title: "Battery & display" }
+    MenuHeader { width: parent.width; title: "Battery" }
 
     // ASCII battery: [█████████░░░░░░░░░░░] 47 % (the bar's colour shows charging / low; no icon, it would say the same)
     readonly property int cells: 26   // fills the menu width next to the percentage
@@ -148,38 +136,7 @@ Column {
         }
     }
 
-    Divider { visible: m.screen >= 0 || m.keys >= 0 }
-
-    Row {
-        visible: m.screen >= 0
-        width: parent.width
-        spacing: 12
-        Text {
-            id: sunIcon
-            width: 22
-            anchors.verticalCenter: parent.verticalCenter
-            horizontalAlignment: Text.AlignHCenter
-            text: Icons.g("sun")
-            color: Theme.text
-            font { family: Icons.family; pixelSize: 18 }
-        }
-        Slider {
-            id: screenSlider
-            width: parent.width - sunIcon.width - pctS.width - 24
-            anchors.verticalCenter: parent.verticalCenter
-            value: m.screen
-            onMoved: v => { m.screen = v; m.pendingScreen = v; if (!apply.running) apply.start() }
-        }
-        Text {
-            id: pctS
-            width: 44
-            anchors.verticalCenter: parent.verticalCenter
-            horizontalAlignment: Text.AlignRight
-            text: Math.round(m.screen * 100) + "%"
-            color: Theme.text
-            font { family: Theme.font; pixelSize: 13 }
-        }
-    }
+    Divider { visible: m.keys >= 0 }
 
     Row {
         visible: m.keys >= 0

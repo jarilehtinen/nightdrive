@@ -61,7 +61,7 @@ Singleton {
     // Names and glyphs for the launcher's list; a module can give its own "label" in modules.jsonc
     readonly property var moduleLabels: ({ deck: ["Music (Deck)", "music"], claude: ["Claude usage", "gauge"], system: ["CPU and memory", "cpu"],
                                            tailscale: ["Tailscale", "shield-check"], bluetooth: ["Bluetooth", "bluetooth"], wifi: ["Wi-Fi", "wifi"],
-                                           volume: ["Volume", "volume-2"], headphones: ["Headphones", "headphones"], battery: ["Battery", "battery-medium"],
+                                           volume: ["Volume", "volume-2"], headphones: ["Headphones", "headphones"], display: ["Display", "monitor"], battery: ["Battery", "battery-medium"],
                                            calendar: ["Date and time", "clock"], notifications: ["Notifications", "menu"] })
     function moduleLabel(m) { return m.label || (moduleLabels[m.name] || [])[0] || m.name.charAt(0).toUpperCase() + m.name.slice(1) }
     function moduleGlyph(m) { return (moduleLabels[m.name] || [])[1] || "panel-top" }

@@ -60,10 +60,12 @@ The top bar's opacity, icon colours and highlight colour are all settings in the
 
 - **Shelf**: drag a file to the top edge of the screen to park it, then drag it into another app (like Dropover / Yoink).
 - **Dictation**: hold F5 or Fn, speak, and let go. It runs fully offline with Voxtype and Parakeet ([setup](docs/dictation.md)).
+- **Night light**: a warm screen tint for the evening (Settings › Display, or the display icon in the bar). It works
+  through Hyprland's screen shader, since Asahi's display driver has no gamma tables for gammastep and the like.
 - **Screensavers**: a synthwave sunset and a falling-characters rain, both drawn in the terminal.
 - **Background apps**: ⌘W only hides chat apps and the music player, so they keep running. Their shortcut brings them straight back.
-- **Web apps**: turn any site into an app window from the launcher (Install › Webapp).
-- **Installing apps**: Install › Software searches Fedora's packages and Flathub's apps at once, one row per app (Fedora's
+- **Web apps**: turn any site into an app window from the launcher (System › Install › Webapp).
+- **Installing apps**: System › Install › Software searches Fedora's packages and Flathub's apps at once, one row per app (Fedora's
   when both have it, Tab in the details takes Flathub's), command-line tools below; details before installing. Remove lists both.
 - **Login apps**: you choose what starts at login in the launcher (Settings › Startup, or ⌥Enter on an app). Background
   apps start hidden. Only 1Password is on by default, because its SSH agent and the Passwords level need it.
