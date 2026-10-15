@@ -85,16 +85,30 @@ hl.bind(mod .. " + BACKSPACE", function ()
 end)
 
 -- ⌥← / ⌥→ move by word, like in macOS, in apps where Alt+arrows does something else: GtkSourceView editors swap
--- words with them. These get Ctrl+arrows (GTK's word move; ⇧ selects). Other apps get the keys as they were.
-local WORD_ARROW_APPS = { ["org.gnome.gitlab.somas.Apostrophe"] = true }
+-- words with them, Chromium and its web apps go back/forward. These get Ctrl+arrows (word move; ⇧ selects).
+-- Other apps get the keys as they were.
+local WORD_ARROW_APPS = { ["org.gnome.gitlab.somas.Apostrophe"] = true, chromium = true, ["chromium-browser"] = true }
+local function word_arrow_app(class)
+    return class and (WORD_ARROW_APPS[class] or class:match("^chrome%-.*%-Default$")) and true or false
+end
 for _, key in ipairs({ "left", "right" }) do
     for _, shift in ipairs({ "", " SHIFT" }) do
         hl.bind("ALT" .. (shift ~= "" and " +" .. shift or "") .. " + " .. key, function ()
             local w = hl.get_active_window()
-            local mods = (w and WORD_ARROW_APPS[w.class]) and "CTRL" or "ALT"
+            local mods = (w and word_arrow_app(w.class)) and "CTRL" or "ALT"
             hl.dispatch(hl.dsp.send_shortcut({ mods = mods .. shift, key = key }))
         end, { repeating = true })
     end
+end
+
+-- Back/forward ⌃⌘← / ⌃⌘→ (browsers, web apps, Nautilus: Alt+arrows). Not in terminals or GtkSourceView editors,
+-- where Alt+arrows edits text
+for _, key in ipairs({ "left", "right" }) do
+    hl.bind(mod .. " + CTRL + " .. key, function ()
+        local w = hl.get_active_window()
+        if w and (TERMINAL_CLASSES[w.class] or w.class == "org.gnome.gitlab.somas.Apostrophe") then return end
+        hl.dispatch(hl.dsp.send_shortcut({ mods = "ALT", key = key }))
+    end)
 end
 
 -- Next/previous tab ⌘⌥← / ⌘⌥→ in every app (Firefox, Chromium, Nautilus, Thunderbird: Ctrl+PageUp/PageDown)

@@ -38,6 +38,8 @@
   ⌘ ⇧ arrows         Move window
   ⌘ + mouse drag     Move window / right button: resize
   ⌘ ⌥ ← / →         Previous / next tab (any app: sends Ctrl+PageUp/PageDown)
+  ⌃ ⌘ ← / →         Back / forward (browsers, web apps, Nautilus)
+  ⌥ ← / →           Move by word (⇧ selects)
 
 ## Workspaces (like macOS Spaces)
   ⌘ 1 … ⌘ 0          Go to workspace
