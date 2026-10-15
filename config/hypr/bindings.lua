@@ -10,6 +10,18 @@ local browser     = "firefox"
 local fileManager = "nautilus"
 local scripts     = os.getenv("HOME") .. "/.config/hypr/scripts"
 
+-- Optional parts that are installed (plugins.txt): a part's keys are bound only when it is there. `nightdrive plugins
+-- installed` writes the list and reloads Hyprland when it changes (an installer from launcher › Install › Plugins).
+local plugins = {}
+do
+    local f = io.open(os.getenv("HOME") .. "/.cache/nightdrive/plugins")
+        or (io.popen and io.popen(os.getenv("HOME") .. "/.local/bin/nightdrive plugins installed 2>/dev/null"))
+    if f then
+        for id in f:lines() do plugins[id] = true end
+        f:close()
+    end
+end
+
 
 ------------------------
 ---- KEYBINDINGS ----
@@ -38,23 +50,29 @@ hl.bind("XF86Fn", hl.dsp.exec_cmd(scripts .. "/dictate fn-down"), { locked = tru
 hl.bind("XF86Fn", hl.dsp.exec_cmd(scripts .. "/dictate fn-up"),   { locked = true, release = true })
 hl.bind(mod .. " + SHIFT + B",   hl.dsp.exec_cmd(browser))
 hl.bind(mod .. " + SHIFT + RETURN", hl.dsp.exec_cmd(browser))
-hl.bind(mod .. " + SHIFT + P",   hl.dsp.exec_cmd(scripts .. "/launch-or-focus '^(1[pP]assword|com\\.onepassword\\.OnePassword)$' 1password"))
-hl.bind(mod .. " + SHIFT + W",   hl.dsp.exec_cmd(scripts .. "/launch-or-focus '^chrome-web\\.whatsapp\\.com' gtk-launch webapp-whatsapp"))  -- WhatsApp webapp
-hl.bind(mod .. " + SHIFT + S",   hl.dsp.exec_cmd(scripts .. "/launch-or-focus '^chrome-app\\.slack\\.com' gtk-launch webapp-slack"))  -- Slack webapp
-hl.bind(mod .. " + SHIFT + Y",   hl.dsp.exec_cmd(scripts .. "/launch-or-focus '^chrome-www\\.youtube\\.com' gtk-launch webapp-youtube"))  -- YouTube webapp
-hl.bind(mod .. " + SHIFT + I",   hl.dsp.exec_cmd(scripts .. "/launch-or-focus '^(net\\.thunderbird\\.Thunderbird|thunderbird)$' thunderbird"))  -- Email (Thunderbird)
-hl.bind(mod .. " + SHIFT + C",   hl.dsp.exec_cmd(scripts .. "/launch-or-focus '^(code|Code)$' code"))  -- VS Code
+-- Optional parts' apps (plugins.txt ids; SHORTCUTS.md tags the same lines with {id})
+local optional = {
+    { "1password",   "P", "'^(1[pP]assword|com\\.onepassword\\.OnePassword)$' 1password" },
+    { "whatsapp",    "W", "'^chrome-web\\.whatsapp\\.com' gtk-launch webapp-whatsapp" },   -- WhatsApp webapp
+    { "slack",       "S", "'^chrome-app\\.slack\\.com' gtk-launch webapp-slack" },         -- Slack webapp
+    { "youtube",     "Y", "'^chrome-www\\.youtube\\.com' gtk-launch webapp-youtube" },     -- YouTube webapp
+    { "thunderbird", "I", "'^(net\\.thunderbird\\.Thunderbird|thunderbird)$' thunderbird" },   -- Email (Thunderbird)
+    { "vscode",      "C", "'^(code|Code)$' code" },                                         -- VS Code
+}
+for _, o in ipairs(optional) do
+    if plugins[o[1]] then hl.bind(mod .. " + SHIFT + " .. o[2], hl.dsp.exec_cmd(scripts .. "/launch-or-focus " .. o[3])) end
+end
 hl.bind(mod .. " + SHIFT + F",   hl.dsp.exec_cmd(fileManager))
 hl.bind(mod .. " + SHIFT + E",   hl.dsp.exec_cmd("qs ipc call launcher openLevel emoji"))   -- emoji picker
 hl.bind(mod .. " + SHIFT + V",   hl.dsp.exec_cmd("qs ipc call launcher openLevel clipboard"))   -- clipboard history
 hl.bind(mod .. " + SHIFT + T",   hl.dsp.exec_cmd("qs ipc call shelf toggle"))   -- Shelf: file shelf (dragging to the top edge of the screen also opens it)
 hl.bind(mod .. " + ESCAPE",      hl.dsp.exec_cmd("qs ipc call menu toggle notifications"))
 hl.bind(mod .. " + CTRL + L",    hl.dsp.exec_cmd("loginctl lock-session"))
-hl.bind(mod .. " + SHIFT + M",   hl.dsp.exec_cmd(scripts .. "/deck-open"))   -- Deck (Spotify)
+if plugins.deck then hl.bind(mod .. " + SHIFT + M", hl.dsp.exec_cmd(scripts .. "/deck-open")) end   -- Deck (Spotify)
 hl.bind(mod .. " + R",           hl.dsp.exec_cmd(scripts .. "/screenshot clip"))   -- region screenshot to clipboard
 hl.bind(mod .. " + SHIFT + R",   hl.dsp.exec_cmd(scripts .. "/screenshot winclip"))   -- window screenshot to clipboard
 hl.bind(mod .. " + SHIFT + SPACE", hl.dsp.exec_cmd("qs ipc call menu nav"))   -- top bar via keyboard: ←/→ menu, ↑/↓ row, Enter, Esc
-hl.bind(mod .. " + SHIFT + K",     hl.dsp.exec_cmd("kitty --class floating-help -e sh -c 'cat ~/.config/hypr/SHORTCUTS.md ~/.config/hypr/SHORTCUTS.local.md 2>/dev/null | less'"))
+hl.bind(mod .. " + SHIFT + K",     hl.dsp.exec_cmd("kitty --class floating-help -e sh -c '" .. scripts .. "/shortcuts | less'"))   -- SHORTCUTS.md for the installed parts
 
 -- Universal copy/paste/cut ⌘C/⌘V/⌘X in every app (the Omarchy way)
 hl.bind(mod .. " + C", hl.dsp.send_shortcut({ mods = "CTRL",  key = "Insert" }))
@@ -283,7 +301,7 @@ hl.bind("XF86PowerOff", hl.dsp.exec_cmd("qs ipc call power toggle"))   -- power 
 hl.bind("XF86Sleep", hl.dsp.exec_cmd(scripts .. "/dnd"), { locked = true })   -- F6 (Apple keyboard sends KEY_SLEEP): do not disturb (Quickshell notifications + toast); logind must be set to ignore the key, see config/system/logind-ignore-sleep-key.conf
 hl.bind("XF86AudioNext",  hl.dsp.exec_cmd("playerctl next"),       { locked = true })
 hl.bind("XF86AudioPause", hl.dsp.exec_cmd("playerctl pause"),      { locked = true })   -- always pause, never toggle: Bluetooth headphones send PAUSE when taken off
-hl.bind("XF86AudioPlay",  hl.dsp.exec_cmd(scripts .. "/media-play"), { locked = true })   -- F8: play/pause, or starts Deck if no player is open
+hl.bind("XF86AudioPlay",  hl.dsp.exec_cmd(scripts .. "/media-play"), { locked = true })   -- F8: play/pause, or starts Deck (if installed) if no player is open
 hl.bind("XF86AudioPrev",  hl.dsp.exec_cmd("playerctl previous"),   { locked = true })
 
 -- Top bar menu opened by clicking: keys are routed to Quickshell via a submap (no keyboard focus -> a second click on the bar

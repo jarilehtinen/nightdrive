@@ -5,8 +5,9 @@
 #   autostart              start the listed apps (hyprland.lua runs this at login)
 #   autostart list         print the ids
 #   autostart toggle ID    add the id, or remove it if it's there
+#   autostart add ID       add the id if it isn't there (an installer: install-1password.sh)
 f=$HOME/.local/state/nightdrive/autostart
-# On by default: 1Password's SSH agent, `op` and the launcher's Passwords level need it running
+# On by default when installed: 1Password's SSH agent, `op` and the launcher's Passwords level need it running
 DEFAULT=com.onepassword.OnePassword.desktop
 
 desktop_file() {
@@ -28,6 +29,9 @@ case $1 in
   toggle)
     [[ -n $2 ]] || exit 1
     if grep -qxF "$2" "$f"; then grep -vxF "$2" "$f" > "$f.tmp"; mv "$f.tmp" "$f"; else echo "$2" >> "$f"; fi ;;
+  add)
+    [[ -n $2 ]] || exit 1
+    grep -qxF "$2" "$f" || echo "$2" >> "$f" ;;
   "")
     # At login Hyprland may not answer yet when this starts
     for _ in $(seq 20); do hyprctl -j version >/dev/null 2>&1 && break; sleep 0.25; done

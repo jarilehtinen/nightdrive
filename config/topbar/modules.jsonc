@@ -8,6 +8,7 @@
 //   menu      optional: the menu to open on a left click, if not <Name>Menu.qml ("" = none)
 //   right, middle  optional: shell commands for a right / middle click (the module updates right after)
 //   spacing   optional: letter spacing of its text in px (- = tighter)
+//   needs     optional: an optional part's id (plugins.txt); without it installed the module isn't run or listed
 //
 // A status command prints one line of JSON:  {"icon": "wifi", "text": "95%", "class": "off"}
 //   icon   a Lucide name (lucide.dev/icons), or pack:name from any Iconify set (mdi:wifi, tabler:cpu…); see scripts/icon.
@@ -17,12 +18,12 @@
 //   class  optional: off (dimmed), warning (orange), critical (red), active (highlighted background), stale (faded)
 // No icon and no text hides the module.
 [
-  { "name": "home",          "interval": 30, "status": "~/.config/hypr/scripts/home-assistant bar 2>/dev/null",
+  { "name": "home",          "interval": 30, "needs": "home-assistant", "status": "~/.config/hypr/scripts/home-assistant bar 2>/dev/null",
                              "right": "~/.config/hypr/scripts/home-assistant open" },
-  { "name": "deck",          "interval": 2,  "right": "~/.config/hypr/scripts/deck-open" },
+  { "name": "deck",          "interval": 2,  "needs": "deck", "right": "~/.config/hypr/scripts/deck-open" },
   { "name": "claude",        "interval": 60, "middle": "xdg-open https://claude.ai/settings/usage" },
   { "name": "system",        "interval": 3 },
-  { "name": "tailscale",     "interval": 5,  "right": "~/.config/topbar/scripts/tailscale toggle" },
+  { "name": "tailscale",     "interval": 5,  "needs": "tailscale", "right": "~/.config/topbar/scripts/tailscale toggle" },
   { "name": "bluetooth",     "interval": 5,  "right": "blueman-manager" },
   { "name": "wifi",          "interval": 5,  "right": "nm-connection-editor" },
   { "name": "volume",        "interval": 2,  "right": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle", "middle": "pavucontrol" },

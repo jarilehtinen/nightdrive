@@ -77,7 +77,7 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
 - **Installing apps**: System › Install › Software searches Fedora's packages and Flathub's apps at once, one row per app (Fedora's
   when both have it, Tab in the details takes Flathub's), command-line tools below; details before installing. Remove lists both.
 - **Login apps**: you choose what starts at login in the launcher (Settings › Startup, or ⌥Enter on an app). Background
-  apps start hidden. Only 1Password is on by default, because its SSH agent and the Passwords level need it.
+  apps start hidden. Only 1Password (if installed) is on by default, because its SSH agent and the Passwords level need it.
 - **Login screen**: a password-only greeter that matches the theme (`--no-greeter` keeps the distribution's own).
 
 ![Screensavers: synthwave sunset and rain](docs/screenshots/screensavers.jpg)
@@ -90,22 +90,22 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
 | Bar, menus, launcher | [Quickshell](https://quickshell.org) | one themed shell for the top bar, its menus, launcher, OSD and shelf |
 | Terminal | [kitty](https://sw.kovidgoyal.net/kitty/) | ⌘Enter; Mac copy and paste |
 | Browser | Firefox | tabs below the address bar, themed UI |
-| Mail | Thunderbird | themed, with a minimal toolbar ([details](docs/thunderbird.md)) |
-| Music | [Deck](https://github.com/jarilehtinen/deck) (Spotify in the terminal) | bar icon, music menu, player row in the launcher, media keys |
-| Passwords | 1Password + `op` CLI | Passwords level in the launcher, SSH agent |
+| Mail (optional) | Thunderbird | themed, with a minimal toolbar ([details](docs/thunderbird.md)) |
+| Music (optional) | [Deck](https://github.com/jarilehtinen/deck) (Spotify in the terminal, needs Spotify Premium) | bar icon, music menu, player row in the launcher, media keys |
+| Passwords (optional) | 1Password + `op` CLI | Passwords level in the launcher, SSH agent |
 | AI | [Claude Code](https://claude.com/claude-code) | ⌘⌥Enter, ask from the launcher, usage limits in the bar |
 | Dictation | [Voxtype](https://github.com/peteonrails/voxtype) (Parakeet) | F5 / Fn push-to-talk, recording card on screen |
-| Network | NetworkManager, BlueZ, [Tailscale](https://tailscale.com) | Wi-Fi, Bluetooth and Tailscale menus |
+| Network | NetworkManager, BlueZ, [Tailscale](https://tailscale.com) (optional) | Wi-Fi, Bluetooth and Tailscale menus |
 | Audio | PipeWire, [EasyEffects](https://github.com/wwmm/easyeffects) | output switching (AirPlay speakers too), EQ presets for headphones |
-| Screen Mirroring | [doubletake](https://github.com/omarroth/doubletake) (AirPlay, built by `install-doubletake.sh`) | Settings › Display; experimental, picture limited to 1080p (no hardware encoder on Asahi) |
+| Screen Mirroring (optional) | [doubletake](https://github.com/omarroth/doubletake) (AirPlay, built by `install-doubletake.sh`) | Settings › Display; experimental, picture limited to 1080p (no hardware encoder on Asahi) |
 | Notifications | Quickshell | app icon and time on every notification, history and do not disturb in the bar |
 | Files and images | Nautilus, Loupe | images open in Loupe, a simple viewer like Preview |
-| Markdown | [Apostrophe](https://apps.gnome.org/Apostrophe/) (Flatpak) | `.md` files open in it, themed editor |
-| Messaging | [Telegram Desktop](https://desktop.telegram.org) (Flatpak) | native Wayland app |
-| Web apps | Chromium app windows | WhatsApp, Slack, Teams and YouTube by default; add your own |
+| Markdown (optional) | [Apostrophe](https://apps.gnome.org/Apostrophe/) (Flatpak) | `.md` files open in it, themed editor |
+| Messaging (optional) | [Telegram Desktop](https://desktop.telegram.org) (Flatpak) | native Wayland app |
+| Web apps | Chromium app windows | WhatsApp, Slack, Teams and YouTube to choose from (optional); add your own |
 | Lock and idle | hyprlock, hypridle | screensaver after 10 min, lock after 30 min (screensaver and screen-off times: Settings › Screensaver) |
 | Smart home (optional) | [Home Assistant](https://www.home-assistant.io) (`install-home-assistant.sh`) | Home in the launcher: rooms and their devices (Enter turns one on/off or runs a scene, a light that's on has a yellow bulb and a ring around it showing the brightness: ←/→ or a sideways drag sets it, "olohuone kattovalo" finds it from the search), pinned devices in the top bar's Home menu (the scroll wheel sets a light's brightness), the webapp; local, Tailscale and Nabu Casa addresses tried in order |
-| Plugins | Home Assistant, Deck, Screen Mirroring, Jottacloud, VS Code | optional parts with their own installers (`plugins.txt`): launcher › Install › Plugins or `nightdrive plugins` |
+| Optional parts | everything marked optional above, Jottacloud, VS Code | chosen when installing; the rest later in launcher › Install › Plugins or `nightdrive plugins` (`plugins.txt`). A part that isn't installed doesn't show anywhere: no launcher level, bar icon or keybinding |
 
 ## Requirements
 
@@ -121,9 +121,24 @@ On a fresh Fedora Asahi Remix 44 with a network connection:
 sudo dnf install -y git   # not in a fresh install
 git clone https://github.com/jarilehtinen/nightdrive.git ~/dotfiles
 cd ~/dotfiles
-./install.sh              # system update, packages, fonts, 1Password, the notch setting, config links, Deck, login screen,
-                          # and removes the KDE apps and services Nightdrive doesn't use (packages-remove.txt)
+./install.sh              # asks which optional parts to install, then: system update, packages, fonts, the notch setting,
+                          # config links, login screen, the optional parts, and removes the KDE apps and services
+                          # Nightdrive doesn't use (packages-remove.txt)
 ```
+
+It asks first which optional parts you want (number toggles one, Enter continues):
+
+```
+   1 [ ] 1Password         Password manager: launcher › Passwords, op CLI, SSH agent
+   2 [x] Tailscale         VPN, in the top bar (log in afterwards: sudo tailscale up)
+   …
+   6 [x] Deck              Spotify player (needs Premium), launcher and top bar; compiled
+   …
+```
+
+After that it runs unattended (sudo asks for the password once at the start); the system update and compiling Deck take a
+while. Home Assistant, if chosen, asks for its address and token at the very end. Anything you skip can be added later from
+the launcher (System › Install › Plugins) or with `nightdrive plugins install ID`.
 
 Then **reboot**. The Nightdrive login screen (greetd + Quickshell) starts Hyprland; KDE stays installed as a fallback. If the
 login screen fails, press Ctrl+Alt+F3, log in and run `config/greeter/switch.sh off`.
@@ -134,16 +149,20 @@ login screen fails, press Ctrl+Alt+F3, log in and run `config/greeter/switch.sh 
 | `--keep-apps` | Keeps the KDE apps, printing, network shares, accessibility tools and other packages listed in `packages-remove.txt` (comment a line out to keep just that one) |
 | `--no-kde` | Removes Plasma completely (experimental) |
 | `--vm` | For trying Nightdrive in a Fedora 44 VM instead of an Asahi Mac ([docs/vm.md](docs/vm.md)) |
+| `--with deck,1password` | These optional parts on top of the defaults, without asking (`--dry-run` lists the ids) |
+| `--without youtube` | The defaults without these, without asking; combines with `--with` |
+| `--all` / `--none` / `--defaults` | Every optional part / none / the defaults (Tailscale, Deck, YouTube), without asking |
+| `--dry-run` | Shows the optional parts and what would be installed, then stops |
 
-A few things stay manual:
-- `sudo tailscale up`
-- In 1Password › Settings › Developer, turn on *SSH agent* and *Integrate with 1Password CLI*. The launcher's Passwords level
+A few things stay manual (the install lists the ones for the parts you chose):
+- Tailscale: `sudo tailscale up`
+- 1Password: in Settings › Developer, turn on *SSH agent* and *Integrate with 1Password CLI*. The launcher's Passwords level
   needs the CLI integration.
-- Sign in to Spotify in Deck.
-- Open Firefox and Thunderbird once and run `./link.sh` again: it themes their profiles, which don't exist before the first start.
+- Deck: sign in to Spotify (needs Premium and the Client ID of your own Spotify app, see Deck's README).
+- Open Firefox (and Thunderbird) once and run `./link.sh` again: it themes their profiles, which don't exist before the first start.
 - Optionally, set up dictation ([docs/dictation.md](docs/dictation.md)).
-- Optional parts (Home Assistant, Deck, Screen Mirroring, Jottacloud, VS Code): launcher › Install › Plugins, or
-  `nightdrive plugins`. Each opens its installer in a terminal; running one again is safe.
+- More optional parts: launcher › Install › Plugins, or `nightdrive plugins`. Each opens its installer in a terminal; running
+  one again is safe.
 
 `./link.sh` on its own just (re)links the config files and is safe to run again. The repo can live anywhere; `~/dotfiles` is
 only a convention.
@@ -171,7 +190,7 @@ The same `nightdrive` command reaches the settings from a terminal (`nightdrive`
 | `nightdrive display list` | Each screen's even scales; `nightdrive display scale eDP-1 2` sets one |
 | `nightdrive bar-style opacity 80` | Top bar opacity; also `icons`, `icon-opacity` and `highlight` |
 | `nightdrive topbar adjust` | Top bar icon sizes and positions, a pixel at a time, live |
-| `nightdrive plugins` | Optional parts and whether each is installed; `nightdrive plugins install "Home Assistant"` runs one's installer |
+| `nightdrive plugins` | Optional parts and whether each is installed; `nightdrive plugins install home-assistant` runs one's installer |
 
 ## Keys
 
@@ -203,7 +222,8 @@ The full list is in [`config/hypr/SHORTCUTS.md`](config/hypr/SHORTCUTS.md).
   launcher (Settings › Display) wins over the default.
 - **Per-machine overrides** go to `config/hypr/local.lua`, which git ignores.
 - **Keybindings** are all in [`config/hypr/bindings.lua`](config/hypr/bindings.lua).
-- **Web apps** are listed in [`config/webapps.txt`](config/webapps.txt). Apps that ⌘W should only hide are in
+- **Optional parts** (apps, web apps, plugins) are listed in [`plugins.txt`](plugins.txt): a new one is a line there, its
+  keybinding goes in `bindings.lua`'s `optional` list and SHORTCUTS.md (with an `{id}` tag). Apps that ⌘W should only hide are in
   [`config/hypr/background-apps`](config/hypr/background-apps).
 - **Launcher apps**: only the apps in [`config/fuzzel/apps-allow.txt`](config/fuzzel/apps-allow.txt) are listed. Search finds
   the rest.

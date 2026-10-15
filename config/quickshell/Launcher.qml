@@ -76,7 +76,7 @@ PanelWindow {
         Quickshell.execDetached(["bash", "-c", 'mkdir -p "$(dirname "$2")" && printf "%s\\n" "$1" > "$2.tmp" && mv "$2.tmp" "$2"',
                                  "_", JSON.stringify(n), prefsFile])
     }
-    property var pluginList: null             // Install › Plugins: [{ name, icon, desc, installed }] (nightdrive plugins), null = loading
+    property var pluginList: null             // Install › Plugins: [{ id, name, icon, desc, installed }] (nightdrive plugins), null = loading
     property var pwItems: []                  // Passwords: 1Password items (op item list)
     property string pwState: "idle"           // idle | loading | ready | error
     property string pwError: ""
@@ -117,6 +117,7 @@ PanelWindow {
     property var themeList: []                // Settings › Theme › Color: [{ value, name, swatch, current }] (hypr/scripts/theme list)
     readonly property bool grid: level === "background"   // wallpapers as a grid, other levels as a list
     readonly property int gridCols: 2
+    readonly property bool hasDeck: Plugins.has("deck")   // Deck (an optional part): the player row, Music, Ctrl+Space
     property var deckInfo: null               // Deck playback state (state.json): null = not playing / not running
     property bool deckAlive: false            // Deck's helper process is running
     property bool playerFocused: false        // player row is selected (up arrow from the first list row)
@@ -193,12 +194,12 @@ PanelWindow {
     }
     function shot(mode) { return ["bash", "-c", "sleep 0.4; \"$HOME/.config/hypr/scripts/screenshot\" \"$1\"", "_", mode] }
 
+    // Passwords and Music only with their optional part (1Password, Deck)
     readonly property var rootItems: [
         { kind: "nav", name: "Apps", glyph: "layout-grid", target: "apps" },
-        { kind: "nav", name: "Passwords", glyph: "key-round", target: "passwords" },
+    ].concat(Plugins.has("1password") ? [{ kind: "nav", name: "Passwords", glyph: "key-round", target: "passwords" }] : [], [
         { kind: "nav", name: "Clipboard", glyph: "clipboard-list", target: "clipboard" },
-        { kind: "nav", name: "Music", glyph: "disc-3", target: "music" },
-    ].concat(home.rootItems, ext ? ext.rootItems : [], [
+    ], hasDeck ? [{ kind: "nav", name: "Music", glyph: "disc-3", target: "music" }] : [], home.rootItems, ext ? ext.rootItems : [], [
         { kind: "nav", name: "Tools", glyph: "wrench", target: "tools" },
         { kind: "nav", name: "Keybindings", glyph: "keyboard", target: "keys" },
         { kind: "nav", name: "Settings", glyph: "settings", target: "settings" },
@@ -240,8 +241,8 @@ PanelWindow {
         settings: [
             { kind: "header", name: "Connections" },
             { kind: "nav", name: "Wi-Fi", glyph: "wifi", target: "wifi" },
-            { kind: "nav", name: "Bluetooth", glyph: "bluetooth", target: "bluetooth" },
-            { kind: "nav", name: "Tailscale", glyph: "shield-check", target: "tailscale" },
+            { kind: "nav", name: "Bluetooth", glyph: "bluetooth", target: "bluetooth" }
+        ].concat(Plugins.has("tailscale") ? [{ kind: "nav", name: "Tailscale", glyph: "shield-check", target: "tailscale" }] : [], [
             { kind: "header", name: "Hardware" },
             { kind: "nav", name: "Sound", glyph: "volume-2", target: "sound" },
             { kind: "nav", name: "Display", glyph: "monitor", target: "display" },
@@ -252,7 +253,7 @@ PanelWindow {
             { kind: "nav", name: "Screensaver", glyph: "monitor-pause", target: "screensaver" },
             { kind: "header", name: "Behaviour" },
             { kind: "nav", name: "Launcher", glyph: "text-search", target: "launcherprefs" }
-        ].concat(home.settingsItems, [   // Home: only while Home Assistant is set up
+        ], home.settingsItems, [   // Home: only while Home Assistant is set up
             { kind: "nav", name: "Notifications", glyph: "bell-ring", target: "sounds" },
             { kind: "nav", name: "Startup", glyph: "rocket", target: "startup" }
         ]),
@@ -329,7 +330,7 @@ PanelWindow {
     }
     readonly property var installAliases: ({ "Software": "package dnf rpm flatpak flathub app apps program store",
                                              "Webapp": "web app website site pwa url",
-                                             "Plugins": "plugin extension addon optional home assistant jottacloud deck vscode airplay" })
+                                             "Plugins": "plugin extension addon optional home assistant jottacloud deck vscode airplay 1password tailscale thunderbird apostrophe telegram slack teams whatsapp youtube" })
     readonly property var powerAliases: ({ "Lock": "screen", "Sleep": "suspend", "Log out": "logout sign out exit", "Restart": "reboot", "Shut down": "shutdown poweroff power off" })
 
     // Lower case without diacritics: "keittio" finds Keittiö, "ylavalo" Ylävalo
@@ -382,7 +383,7 @@ PanelWindow {
     function step(dir) {
         let i = list.currentIndex + dir
         while (i >= 0 && i < results.length && results[i].kind === "header") i += dir
-        if (i < 0 && dir < 0) { playerFocused = true; return }       // up from the top of the list: player row
+        if (i < 0 && dir < 0) { playerFocused = hasDeck; return }    // up from the top of the list: player row
         if (i >= 0 && i < results.length) {
             list.currentIndex = i
             // Up onto a section's first row: its header comes into view too (the list only scrolls to the row itself)
@@ -460,7 +461,7 @@ PanelWindow {
                 home.rootRows(),
                 // Deck's albums ("fm-84" → Atlas)
                 // (the MUSIC tag on the right instead of the year)
-                musicAlbums.map(a => ({ item: Object.assign(albumItem(a), { summary: undefined, from: "Music" }), text: a.name, extra: a.artist }))
+                (hasDeck ? musicAlbums : []).map(a => ({ item: Object.assign(albumItem(a), { summary: undefined, from: "Music" }), text: a.name, extra: a.artist }))
             ]) all = all.concat(src)
         } else if (level === "apps") {
             all = appEntries(q)
@@ -633,7 +634,7 @@ PanelWindow {
             if (pluginList === null) return hint("Loading…")
             all = pluginList.map(p => ({ item: { kind: "action", name: p.name, glyph: p.icon, sub: p.desc, installed: p.installed,
                                                  summary: p.installed ? "installed" : undefined,
-                                                 cmd: term('"$HOME/.local/bin/nightdrive" plugins install "$1"', p.name) },
+                                                 cmd: term('"$HOME/.local/bin/nightdrive" plugins install "$1"', p.id) },
                                          text: p.name, extra: p.desc }))
         } else if (level === "remove") {
             if (!removeLoaded) return [{ kind: "hint", name: "Loading packages…" }]
@@ -963,7 +964,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
 
     // Closing leaves the details right away (after the Behavior above has seen open = false), so the next open starts narrow
     onOpenChanged: if (!open) Qt.callLater(() => { if (!win.open) { win.detail = null; win.detailInfo = null } })
-    else { lastMouse = null; spotify = null; lastSel = ({}); if (ext) ext.opened(); home.opened(); go("root"); deckProc.running = true; musicProc.running = true; bgProc.running = true; bgAppsProc.running = true; autostartProc.running = true; updatesProc.running = true; brightProc.running = true; nightProc.running = true; sys.entered("display"); sys.soundRefresh(); input.forceActiveFocus() }
+    else { lastMouse = null; spotify = null; lastSel = ({}); if (ext) ext.opened(); home.opened(); Plugins.check(); go("root"); deckProc.running = hasDeck; musicProc.running = hasDeck; bgProc.running = true; bgAppsProc.running = true; autostartProc.running = true; updatesProc.running = true; brightProc.running = true; nightProc.running = true; sys.entered("display"); sys.soundRefresh(); input.forceActiveFocus() }
     Component.onCompleted: keysProc.running = true
 
     Timer { id: disarm; interval: 4000; onTriggered: win.armed = "" }
@@ -996,7 +997,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         deckSettle.restart()
     }
     Timer { id: deckSettle; interval: 1000; onTriggered: { win.deckOverride = ({}); deckProc.running = true } }
-    Timer { interval: 1500; repeat: true; running: win.open; onTriggered: deckProc.running = true }
+    Timer { interval: 1500; repeat: true; running: win.open && win.hasDeck; onTriggered: deckProc.running = true }
     Sh {
         id: deckProc
         script: 'f="$XDG_RUNTIME_DIR/deck/state.json"; [ -s "$f" ] || exit 3; pid=$(jq -r .pid "$f"); [ -d "/proc/$pid" ] || exit 4; cat "$f"'
@@ -1356,13 +1357,13 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
             win.emojiLoaded = true
         }
     }
-    // Install › Plugins: plugins.txt via `nightdrive plugins` (name, icon, description, installer, installed 1/0)
+    // Install › Plugins: plugins.txt via `nightdrive plugins` (id, name, icon, description, default, installer, installed 1/0)
     Sh {
         id: pluginsProc
         command: [Quickshell.env("HOME") + "/.local/bin/nightdrive", "plugins"]
         onResult: text => {
-            win.pluginList = text.split("\n").map(l => l.split("\t")).filter(f => f.length >= 5)
-                .map(f => ({ name: f[0], icon: f[1], desc: f[2], installed: f[4] === "1" }))
+            win.pluginList = text.split("\n").map(l => l.split("\t")).filter(f => f.length >= 7)
+                .map(f => ({ id: f[0], name: f[1], icon: f[2], desc: f[3], installed: f[6] === "1" }))
         }
     }
     // Remove: packages the user installed, then the user's Flatpak apps (after a "--flatpak--" line, tab-separated)
@@ -1426,10 +1427,12 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
         return [name, sub.charAt(0).toUpperCase() + sub.slice(1)]
     }
 
-    // SHORTCUTS.md → [{ name, sub, keys, section }]
+    // SHORTCUTS.md → [{ name, sub, keys, section }], without the lines of optional parts that aren't installed (read again
+    // when that list changes)
+    Connections { target: Plugins; function onIdsChanged() { keysProc.running = true } }
     Sh {
         id: keysProc
-        script: 'cd "$HOME/.config/hypr" && cat SHORTCUTS.md SHORTCUTS.local.md 2>/dev/null'
+        script: '"$HOME/.config/hypr/scripts/shortcuts"'
         onResult: text => {
             const out = []
             let section = ""
@@ -1528,8 +1531,9 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
             anchors { top: parent.top; left: parent.left; right: parent.right; margins: 18 }
             spacing: 12
 
-            // Deck player row (always visible): play/pause, track, next, like. Not playing → play starts Deck
+            // Deck player row (when Deck is installed): play/pause, track, next, like. Not playing → play starts Deck
             Rectangle {
+                visible: win.hasDeck
                 width: parent.width
                 height: 40
                 radius: 10
@@ -1622,14 +1626,14 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                         }
                         // Esc with a search typed clears it first (on any level); with an empty one it goes back / closes
                         if (event.key === Qt.Key_Escape) { if (text !== "") text = ""; else win.back(); event.accepted = true }
-                        else if (ctrl && event.key === Qt.Key_Space) { win.deckPlayPress(); event.accepted = true }
+                        else if (ctrl && event.key === Qt.Key_Space) { if (win.hasDeck) win.deckPlayPress(); event.accepted = true }
                         else if (event.key === Qt.Key_Backspace && text === "" && win.level !== "root") { win.back(); event.accepted = true }
                         else if (win.grid && win.wallLoaded && (event.key === Qt.Key_Left || event.key === Qt.Key_Right)) {
                             win.step(event.key === Qt.Key_Left ? -1 : 1); event.accepted = true
                         } else if (win.grid && win.wallLoaded && (event.key === Qt.Key_Down || event.key === Qt.Key_Up)) {
                             const i = list.currentIndex + (event.key === Qt.Key_Down ? win.gridCols : -win.gridCols)
                             if (i >= 0 && i < win.results.length) list.currentIndex = i
-                            else if (i < 0) win.playerFocused = true
+                            else if (i < 0) win.playerFocused = win.hasDeck
                             event.accepted = true
                         } else if (win.level === "baritems" && ctrl && (event.key === Qt.Key_Up || event.key === Qt.Key_Down)) {
                             const cur = win.results[list.currentIndex]     // Items: the selected module moves, the selection with it

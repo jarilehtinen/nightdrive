@@ -7,7 +7,8 @@
 #   nightdrive topbar adjust     top bar icon and text sizes / positions a pixel at a time, live (config/topbar/adjust.conf)
 #   nightdrive topbar date [auto|dmy|mdy|iso]   the clock's date: auto = the locale's order (15.10. / 15/10 / 10/15 / 10-15)
 #   nightdrive plugins [list]   optional parts (plugins.txt) and whether each is installed; launcher › Install › Plugins
-#   nightdrive plugins install NAME   runs a plugin's installer (e.g. `nightdrive plugins install "Home Assistant"`)
+#   nightdrive plugins install ID|NAME   runs a plugin's installer (e.g. `nightdrive plugins install deck`)
+#   nightdrive plugins installed   the installed ones' ids (also to ~/.cache/nightdrive/plugins: the desktop hides the rest)
 #   nightdrive agent-warn ["what"]   for coding agents: warns that the launcher or a menu opens in 5 s (AGENTS.md)
 #   nightdrive theme|display|wallpaper|bar-style …   the desktop's own scripts (hypr/scripts), e.g. `nightdrive theme color teal`
 #   nightdrive sandbox up|check|shot|ipc|vnc|down …   Nightdrive in a headless container, for checks and screenshots (docs/sandbox.md)
@@ -16,7 +17,7 @@ set -uo pipefail
 repo=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)
 scripts="$repo/config/hypr/scripts"
 cache="$HOME/.cache/nightdrive"
-usage() { echo "Usage:"; sed -n '3,13p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { echo "Usage:"; sed -n '3,14p' "$0" | sed 's/^# \{0,1\}//'; }
 
 # Repos to update: Nightdrive, the repos the git-ignored local slots link into (a private overlay), Deck's source
 repos() {
@@ -77,13 +78,14 @@ update() {
   missing=$(for p in $want; do rpm -q --whatprovides "$p" >/dev/null 2>&1 || echo "$p"; done)
   if [[ -n $missing ]]; then echo "    $(echo $missing)"; sudo dnf install -y $missing; else echo "    none"; fi
 
-  # doubletake (Screen Mirroring, install-doubletake.sh): installed when missing (an install from before 15.10.2026), and
-  # built again when the tested commit in install-doubletake.sh changes
-  echo "==> doubletake (Screen Mirroring)"
-  dt_want=$(sed -nE 's/^ref=\$\{DOUBLETAKE_REF:-([0-9a-f]+)\}.*/\1/p' "$repo/install-doubletake.sh")
-  dt_have=$(git -C "$HOME/.local/src/doubletake" rev-parse HEAD 2>/dev/null || true)
-  if [[ ! -x $HOME/.local/bin/doubletake || -z $dt_want || $dt_have != "$dt_want"* ]]; then "$repo/install-doubletake.sh"
-  else echo "    up to date"; fi
+  # doubletake (Screen Mirroring, an optional part): built again when the tested commit in install-doubletake.sh changes.
+  # Not installed when missing: it was left out at install time (or not added in Install › Plugins).
+  if [[ -x $HOME/.local/bin/doubletake ]]; then
+    echo "==> doubletake (Screen Mirroring)"
+    dt_want=$(sed -nE 's/^ref=\$\{DOUBLETAKE_REF:-([0-9a-f]+)\}.*/\1/p' "$repo/install-doubletake.sh")
+    dt_have=$(git -C "$HOME/.local/src/doubletake" rev-parse HEAD 2>/dev/null || true)
+    if [[ -z $dt_want || $dt_have != "$dt_want"* ]]; then "$repo/install-doubletake.sh"; else echo "    up to date"; fi
+  fi
 
   # The system files install.sh puts in place: copied again when the repo's version differs (or is missing), so an
   # install from before a file was added gets it too (e.g. the power key, 14.10.2026)
@@ -104,8 +106,8 @@ LIST
   echo "==> System update"
   sudo dnf upgrade --refresh -y
 
-  echo "==> Flatpak apps (flatpaks.txt)"
-  flatpaks=$(grep -vE '^\s*(#|$)' "$repo/flatpaks.txt" 2>/dev/null)
+  echo "==> Flatpak apps"
+  flatpaks=$(grep -vE '^\s*(#|$)' "$repo/flatpaks.txt" 2>/dev/null)   # the core ones; optional apps are plugins
   # Added by install.sh; an install from before Flatpak support (13.10.2026) doesn't have it yet
   flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
   [[ -n $flatpaks ]] && flatpak install --user -y --noninteractive flathub $flatpaks   # already installed ones are skipped
@@ -113,6 +115,7 @@ LIST
 
   (( deck )) && { echo "==> Deck (rebuild)"; DECK_SRC=${DECK_SRC:-$HOME/.local/src/deck} "$repo/install-deck.sh"; }
 
+  plugins_installed >/dev/null     # the optional parts' list, before the reload reads it (hypr/bindings.lua)
   if [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
     echo "==> Reloading the desktop"
     hyprctl reload >/dev/null
@@ -132,20 +135,57 @@ LIST
   echo "Nightdrive is up to date. If a change mentions install.sh, re-run it for that step (it's safe to re-run)."
 }
 
-# Plugins (plugins.txt): one tab-separated line each, name, icon, description, installer, installed (1/0)
+# Plugins (plugins.txt, its format is explained there): one tab-separated line each, id, name, icon, description,
+# default (on/off), installer, installed (1/0). The tests run side by side: `flatpak info` takes a moment.
+plugin_rows() { grep -vE '^\s*(#|$)' "$repo/plugins.txt"; }
 plugins() {
-  local name icon desc script test
-  while IFS='|' read -r name icon desc script test; do
-    [[ -z $name || $name == \#* ]] && continue
-    (cd "$repo" && bash -c "$test" >/dev/null 2>&1) && i=1 || i=0
-    printf '%s\t%s\t%s\t%s\t%s\n' "$name" "$icon" "$desc" "$script" "$i"
-  done < "$repo/plugins.txt"
+  local tmp id name icon desc def inst test i=0
+  tmp=$(mktemp -d)
+  while IFS='|' read -r id name icon desc def inst test; do
+    (cd "$repo" && bash -c "$test" >/dev/null 2>&1 && touch "$tmp/$i") &
+    i=$((i + 1))
+  done < <(plugin_rows)
+  wait
+  i=0
+  while IFS='|' read -r id name icon desc def inst test; do
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$id" "$name" "$icon" "$desc" "$def" "$inst" "$([[ -e $tmp/$i ]] && echo 1 || echo 0)"
+    i=$((i + 1))
+  done < <(plugin_rows)
+  rm -rf "$tmp"
 }
+# The installed ones' ids, also to ~/.cache/nightdrive/plugins (Plugins.qml watches it, hypr/bindings.lua reads it).
+# When the list changes, Hyprland reloads: the keybindings of an added or removed part.
+plugins_installed() {
+  local ids old
+  ids=$(plugins | awk -F'\t' '$7 == 1 { print $1 }')
+  mkdir -p "$cache"
+  old=$(cat "$cache/plugins" 2>/dev/null) || old=__none__
+  if [[ $ids != "$old" ]]; then
+    printf '%s\n' "$ids" > "$cache/plugins.tmp" && mv "$cache/plugins.tmp" "$cache/plugins"
+    [[ $old != __none__ && -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]] && hyprctl reload >/dev/null 2>&1
+  fi
+  printf '%s\n' "$ids" | sed '/^$/d'
+}
+# Runs a plugin's installer (by id or name), then refreshes the list
 plugin_install() {
-  local script
-  script=$(plugins | awk -F'\t' -v n="$1" 'tolower($1) == tolower(n) || $4 == n { print $4; exit }')
-  [[ -n $script ]] || { echo "Unknown plugin: ${1:-} (see: nightdrive plugins)" >&2; exit 1; }
-  exec "$repo/$script"
+  local id name inst rc
+  IFS=$'\t' read -r id name inst < <(plugins | awk -F'\t' -v n="$1" 'tolower($1) == tolower(n) || tolower($2) == tolower(n) { print $1 "\t" $2 "\t" $6; exit }')
+  [[ -n ${id:-} ]] || { echo "Unknown plugin: ${1:-} (see: nightdrive plugins)" >&2; exit 1; }
+  echo "==> $name"
+  case $inst in
+    "flatpak "*)
+      flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+      flatpak install --user -y --noninteractive flathub ${inst#flatpak } && { "$repo/config/fuzzel/sync-apps" >/dev/null 2>&1 || true; } ;;
+    "webapp "*)
+      "$scripts/webapp-add" "$name" "${inst#webapp }" && { "$repo/config/fuzzel/sync-apps" >/dev/null 2>&1 || true; } ;;
+    *)
+      [[ -f $repo/${inst%% *} ]] && inst="./$inst"      # install-<name>.sh in the repo root
+      (cd "$repo" && bash -c "$inst") ;;
+  esac
+  rc=$?
+  plugins_installed >/dev/null
+  qs ipc call bar refresh >/dev/null 2>&1 || true
+  return $rc
 }
 
 case ${1:-} in
@@ -157,6 +197,7 @@ case ${1:-} in
           esac ;;
   plugins) case ${2:-list} in
              list) plugins ;;
+             installed) plugins_installed ;;
              install) plugin_install "${3:-}" ;;
              *) usage >&2; exit 1 ;;
            esac ;;

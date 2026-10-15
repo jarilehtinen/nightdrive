@@ -23,8 +23,10 @@ quirks apply: it doesn't watch `shell.qml` once that file has been replaced by a
 `qmldir` keep their old version until a restart). The container gets its own `config/hypr/local.lua` and `xdph.conf`
 mounted over the repo's, so your own `local.lua` doesn't apply there.
 
-The container matches a MacBook Pro 14" as far as Hyprland goes, not the hardware: battery, Bluetooth, Wi-Fi, sound, Home
-Assistant and 1Password stay empty.
+The container matches a MacBook Pro 14" as far as Hyprland goes, not the hardware: battery, Bluetooth, Wi-Fi and sound stay
+empty. None of the optional parts (`plugins.txt`) is installed, so the desktop is the one you get with `install.sh --none`.
+To see a part's rows, bar module and keys, fake its installed test: e.g. `nightdrive sandbox exec sh -c 'printf
+"#!/bin/sh\n" > ~/.local/bin/deck && chmod +x ~/.local/bin/deck && nightdrive plugins installed'`.
 
 ## Display and VNC
 

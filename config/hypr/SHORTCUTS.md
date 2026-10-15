@@ -6,14 +6,15 @@
   ⌘ Space            App launcher (↑↓ select, Enter open, Esc close; on an app ⌃Enter adds/removes it in Apps, ⌥Enter starts it at login)
   ⌘ ⇧ Enter / ⌘ ⇧ B  Browser
   ⌘ ⇧ F              Files
-  ⌘ ⇧ P              1Password
-  ⌘ ⇧ M              Music (Deck, Spotify): floating window in the centre
-  F8 (play)          Play/pause; starts Deck if no player is running
-  ⌘ ⇧ W              WhatsApp
-  ⌘ ⇧ S              Slack
-  ⌘ ⇧ Y              YouTube
-  ⌘ ⇧ I              Email (Thunderbird, inbox)
-  ⌘ ⇧ C              VS Code
+  ⌘ ⇧ P              1Password {1password}
+  ⌘ ⇧ M              Music (Deck, Spotify): floating window in the centre {deck}
+  F8 (play)          Play/pause; starts Deck if no player is running {deck}
+  F8 (play)          Play/pause {!deck}
+  ⌘ ⇧ W              WhatsApp {whatsapp}
+  ⌘ ⇧ S              Slack {slack}
+  ⌘ ⇧ Y              YouTube {youtube}
+  ⌘ ⇧ I              Email (Thunderbird, inbox) {thunderbird}
+  ⌘ ⇧ C              VS Code {vscode}
   ⌘ ⇧ T              Shelf (file shelf; dragging a file to the top edge opens it too)
   ⌘ Esc / F3         Notifications (history, do not disturb)
   ⌘ Ctrl L           Lock screen

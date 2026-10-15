@@ -18,9 +18,10 @@ Singleton {
     // --- Modules ---
     property var publicModules: []
     property var localModules: []
-    // In your order (Items: Ctrl+arrows), then modules not in it in the files' order (a new one goes to the right end)
+    // In your order (Items: Ctrl+arrows), then modules not in it in the files' order (a new one goes to the right end).
+    // A module whose optional part isn't installed ("needs") isn't listed at all.
     readonly property var allModules: {
-        const def = localModules.concat(publicModules)
+        const def = localModules.concat(publicModules).filter(m => !m.needs || Plugins.has(m.needs))
         const key = m => { const i = items.order.indexOf(m.name); return i >= 0 ? i : items.order.length + def.indexOf(m) }
         return def.slice().sort((a, b) => key(a) - key(b))
     }

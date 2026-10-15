@@ -1,7 +1,7 @@
-# Fedora packages (from the official repos). Hyprland packages come from a COPR repo, see install.sh.
+# Fedora packages (from the official repos). Hyprland packages come from a COPR repo, see install.sh. Optional apps
+# (Tailscale, Thunderbird…) are plugins: plugins.txt.
 kitty
 firefox
-tailscale
 quickshell
 fuzzel
 swaybg
@@ -30,7 +30,6 @@ fzf
 nautilus
 loupe
 sushi
-thunderbird
 chromium
 gh
 breeze-cursor-theme

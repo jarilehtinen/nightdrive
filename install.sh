@@ -1,29 +1,107 @@
 #!/bin/bash
 # Sets up this environment on a fresh Fedora Asahi Remix 44 install (aarch64, MacBook).
-#   ./install.sh               updates the system, installs packages, fonts, 1Password, the notch setting, links the configs
-#                              and installs the Nightdrive login screen (greetd, password only), active from the next boot
+#   ./install.sh               asks which optional parts to install (1Password, Deck, web apps…, plugins.txt), then runs
+#                              unattended: updates the system, installs packages, fonts, the notch setting, links the
+#                              configs, installs the Nightdrive login screen (greetd, password only, active from the next
+#                              boot) and the chosen parts. Home Assistant, if chosen, asks for its address at the end.
+#   ./install.sh --with deck,1password   these parts on top of the defaults, without asking (ids: --dry-run lists them)
+#   ./install.sh --without youtube       the defaults without these, without asking (--with and --without combine)
+#   ./install.sh --all / --none / --defaults   every optional part / none / the defaults (Default on in plugins.txt)
+#   ./install.sh --dry-run     shows the optional parts and which would be installed, and stops
 #   ./install.sh --no-greeter  keeps the distribution's own login screen (pick "Hyprland" there)
 #   ./install.sh --keep-apps   keeps the KDE apps and system services that are otherwise removed (packages-remove*.txt)
 #   ./install.sh --no-kde      removes Plasma entirely (needs the greeter); experimental, see config/greeter/
 #   ./install.sh --vm          for trying it on a non-Asahi machine (e.g. a Fedora 44 VM): skips the notch setting
-# Run as a regular user; sudo asks for the password when needed.
+# Without a terminal (or with any of --with/--without/--all/--none/--defaults) nothing is asked. What was skipped can be
+# added later: launcher › Install › Plugins, or `nightdrive plugins install ID`.
+# Run as a regular user; sudo asks for the password once at the start.
 set -euo pipefail
 repo=$(cd "$(dirname "$0")" && pwd)
-debloat=1; vm=0; greeter=1; nokde=0
-for arg in "$@"; do
-  case $arg in
+debloat=1; vm=0; greeter=1; nokde=0; dry=0
+base=""; with=""; without=""     # base: all | none | defaults, "" = ask
+usage() { sed -n '3,19p' "$0" | sed 's/^# \{0,1\}//'; }
+while (( $# )); do
+  case $1 in
     --debloat) ;;              # the default now; still accepted
     --keep-apps) debloat=0 ;;
     --vm) vm=1 ;;
     --greeter) ;;              # the default now; still accepted
     --no-greeter) greeter=0 ;;
     --no-kde) nokde=1 ;;
-    *) echo "unknown option: $arg (available: --no-greeter, --keep-apps, --no-kde, --vm)" >&2; exit 2 ;;
+    --all) base=all ;;
+    --none) base=none ;;
+    --defaults) base=defaults ;;
+    --with=*) with+=,${1#*=} ;;
+    --without=*) without+=,${1#*=} ;;
+    --with|--without) [[ -n ${2:-} ]] || { echo "$1 needs a list of ids, e.g. $1 deck,youtube" >&2; exit 2; }
+                      if [[ $1 == --with ]]; then with+=,$2; else without+=,$2; fi; shift ;;
+    --dry-run) dry=1 ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "unknown option: $1 (see ./install.sh --help)" >&2; exit 2 ;;
   esac
+  shift
 done
 (( nokde && !greeter )) && { echo "--no-kde removes the KDE login screen, so it can't be combined with --no-greeter" >&2; exit 2; }
 pkgs() { grep -vE '^\s*(#|$)' "$1" | tr '\n' ' '; }
-tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT   # downloads (1Password, Nerd Fonts)
+
+# --- Optional parts (plugins.txt): chosen now, installed at the end ---
+ids=(); names=(); descs=(); on=()
+while IFS='|' read -r id name _ desc def _; do
+  ids+=("$id"); names+=("$name"); descs+=("$desc"); on+=("$([[ $def == on ]] && echo 1 || echo 0)")
+done < <(grep -vE '^\s*(#|$)' "$repo/plugins.txt")
+case $base in
+  all) on=("${on[@]/*/1}") ;;
+  none) on=("${on[@]/*/0}") ;;
+esac
+# --with/--without: ids (or names) separated by commas
+toggle_listed() {  # toggle_listed LIST 0|1
+  local list w i found
+  IFS=, read -ra list <<<"$1"
+  for w in "${list[@]}"; do
+    [[ -n $w ]] || continue
+    found=0
+    for i in "${!ids[@]}"; do
+      [[ ${ids[i],,} == "${w,,}" || ${names[i],,} == "${w,,}" ]] && { on[i]=$2; found=1; }
+    done
+    (( found )) || { echo "unknown optional part: $w (available: ${ids[*]})" >&2; exit 2; }
+  done
+}
+toggle_listed "$with" 1
+toggle_listed "$without" 0
+show_parts() {
+  local i w=$(( $(tput cols 2>/dev/null || echo 100) - 28 ))
+  for i in "${!ids[@]}"; do
+    printf '  %2d [%s] %-17s %s\n' $((i + 1)) "$([[ ${on[i]} == 1 ]] && echo x || echo ' ')" "${names[i]}" "${descs[i]:0:w}"
+  done
+}
+if [[ -z $base$with$without && -t 0 ]]; then
+  echo "Optional parts. Everything else is the same on every install; these can also be added later (launcher ›"
+  echo "Install › Plugins). Type numbers to tick or untick (e.g. 2 5), a = all, n = none, Enter installs the ticked ones."
+  while true; do
+    echo; show_parts; echo
+    read -rp "Toggle (Enter to continue): " ans
+    [[ -z $ans ]] && break
+    for a in $ans; do
+      case $a in
+        a) on=("${on[@]/*/1}") ;;
+        n) on=("${on[@]/*/0}") ;;
+        *) if [[ $a =~ ^[0-9]+$ ]] && (( a >= 1 && a <= ${#ids[@]} )); then on[a-1]=$(( 1 - on[a-1] ))
+           else echo "  not a number from the list: $a"; fi ;;
+      esac
+    done
+  done
+fi
+chosen=(); for i in "${!ids[@]}"; do [[ ${on[i]} == 1 ]] && chosen+=("${ids[i]}"); done
+if (( dry )); then show_parts; echo; echo "Would install: ${chosen[*]:-(no optional parts)}"; exit 0; fi
+echo "Optional parts: ${chosen[*]:-none}"
+has() { [[ " ${chosen[*]} " == *" $1 "* ]]; }
+
+# sudo once: the system update and the compiling take long, and the password asked again halfway would stop the
+# install. Kept alive until the script exits.
+sudo -v
+while sleep 50; do kill -0 $$ 2>/dev/null || exit; sudo -n -v 2>/dev/null; done &
+keepalive=$!
+tmp=$(mktemp -d); trap 'kill $keepalive 2>/dev/null; rm -rf "$tmp"' EXIT   # downloads (Nerd Fonts)
 
 echo "==> System update (a fresh install from an older image would otherwise get a half-updated KDE: file conflicts)"
 sudo dnf upgrade --refresh -y
@@ -58,33 +136,6 @@ else
   sudo grubby --update-kernel=ALL --args="appledrm.show_notch=1"
 fi
 
-echo "==> 1Password (ARM64 tarball, signature verified; op CLI from the 1Password RPM repo)"
-if [[ ! -x /opt/1Password/1password ]]; then
-  url=https://downloads.1password.com/linux/tar/stable/aarch64/1password-latest.tar.gz
-  curl -fsSL -o "$tmp/1p.tar.gz" "$url"
-  curl -fsSL -o "$tmp/1p.tar.gz.sig" "$url.sig"
-  curl -fsSL -o "$tmp/key.asc" https://downloads.1password.com/linux/keys/1password.asc
-  export GNUPGHOME="$tmp/gnupg"; mkdir -m700 "$GNUPGHOME"
-  gpg -q --import "$tmp/key.asc"
-  gpg --fingerprint 2>/dev/null | grep -q '3FEF 9748 469A DBE1 5DA7  CA80 AC2D 6274 2012 EA22' \
-    || { echo "1Password key fingerprint does not match, aborting"; exit 1; }
-  gpg --verify "$tmp/1p.tar.gz.sig" "$tmp/1p.tar.gz"
-  mkdir "$tmp/x"; tar xzf "$tmp/1p.tar.gz" -C "$tmp/x"
-  sudo rm -rf /opt/1Password
-  sudo cp -a "$tmp"/x/1password-* /opt/1Password
-  sudo chown -R root:root /opt/1Password
-  sudo sh /opt/1Password/after-install.sh
-fi
-sudo tee /etc/yum.repos.d/1password.repo >/dev/null <<'REPO'
-[1password]
-name=1Password Stable Channel
-baseurl=https://downloads.1password.com/linux/rpm/stable/$basearch
-enabled=1
-gpgcheck=1
-gpgkey=https://downloads.1password.com/linux/keys/1password.asc
-REPO
-sudo dnf install -y 1password-cli
-
 echo "==> Nerd Fonts symbols (icons for the top bar and menus)"
 fonts=$HOME/.local/share/fonts; mkdir -p "$fonts"
 if ! ls "$fonts"/SymbolsNerdFont-Regular.ttf >/dev/null 2>&1; then
@@ -104,12 +155,6 @@ blesh_src=$HOME/.local/src/ble.sh
 [[ -d $blesh_src/.git ]] || git clone -q --recursive --depth 1 --shallow-submodules https://github.com/akinomyoga/ble.sh.git "$blesh_src"
 make -C "$blesh_src" -s install PREFIX="$HOME/.local"
 
-echo "==> Deck (Spotify player: fetched from GitHub and compiled, takes a few minutes; dependencies are installed)"
-"$repo/install-deck.sh"
-
-echo "==> doubletake (AirPlay screen mirroring: fetched from GitHub and compiled)"
-"$repo/install-doubletake.sh"
-
 echo "==> GTK: no KDE 1.7x text scaling, Papirus icons"
 for v in 3.0 4.0; do
   f=$HOME/.config/gtk-$v/settings.ini
@@ -126,13 +171,10 @@ gsettings set org.gnome.desktop.wm.preferences button-layout ':' 2>/dev/null || 
 
 echo "==> Flatpak apps (flatpaks.txt, from Flathub, per user)"
 flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-flatpak install --user -y --noninteractive flathub $(pkgs "$repo/flatpaks.txt")
-# Apostrophe's theme is a link into the repo (link.sh), which the sandbox can't see otherwise
-flatpak override --user --filesystem="$repo/config/gtk-4.0:ro" org.gnome.gitlab.somas.Apostrophe
+[[ -z $(pkgs "$repo/flatpaks.txt") ]] || flatpak install --user -y --noninteractive flathub $(pkgs "$repo/flatpaks.txt")
 
-echo "==> Default apps: images open in Loupe (instead of the browser), Markdown in Apostrophe"
+echo "==> Default apps: images open in Loupe (instead of the browser); Markdown in Apostrophe, if chosen (its installer)"
 xdg-mime default org.gnome.Loupe.desktop image/png image/jpeg image/gif image/webp image/bmp image/tiff image/svg+xml image/avif image/heic
-xdg-mime default org.gnome.gitlab.somas.Apostrophe.desktop text/markdown text/x-markdown
 
 echo "==> Sleep hook (Wi-Fi and Bluetooth off during sleep, battery drain logging)"
 sudo install -m 0755 "$repo/config/system/nightdrive-sleep" /usr/lib/systemd/system-sleep/nightdrive-sleep
@@ -141,15 +183,6 @@ echo "==> logind: F6 (KEY_SLEEP) is do not disturb, the power button opens the p
 sudo install -Dm644 "$repo/config/system/logind-ignore-sleep-key.conf" /etc/systemd/logind.conf.d/50-ignore-sleep-key.conf
 sudo install -Dm644 "$repo/config/system/logind-power-key.conf" /etc/systemd/logind.conf.d/50-power-key.conf
 sudo systemctl kill -s HUP systemd-logind
-
-echo "==> Web apps (config/webapps.txt)"
-grep -vE '^\s*(#|$)' "$repo/config/webapps.txt" | while IFS='|' read -r name url; do
-  "$repo/config/hypr/scripts/webapp-add" "$name" "$url" >/dev/null && echo "  $name"
-done
-"$repo/config/fuzzel/sync-apps"
-
-echo "==> Tailscale"
-sudo systemctl enable --now tailscaled
 
 if (( greeter )); then
   echo "==> Login screen (greetd + Quickshell); takes effect from the next boot"
@@ -168,6 +201,15 @@ if (( debloat )); then
   fi
 fi
 
+# Last of the unattended part. One that fails doesn't stop the rest: it's listed at the end, and can be run again from
+# the launcher (Install › Plugins) or with `nightdrive plugins install ID`.
+failed=()
+for id in "${chosen[@]}"; do
+  "$repo/bin/nightdrive" plugins install "$id" || failed+=("$id")
+done
+"$repo/bin/nightdrive" plugins installed >/dev/null
+"$repo/config/fuzzel/sync-apps"
+
 if (( nokde )); then
   echo "==> Removing Plasma (experimental). Keeping the cursor theme, GTK fonts and power profiles."
   sudo dnf mark user breeze-cursor-theme google-noto-sans-fonts google-noto-sans-mono-fonts google-noto-serif-fonts tuned tuned-ppd vulkan-tools xdg-user-dirs
@@ -180,15 +222,20 @@ if (( nokde )); then
 fi
 
 echo
+(( ${#failed[@]} )) && echo "Not installed (an error, see above): ${failed[*]}. Run again: nightdrive plugins install ID" && echo
 echo "Done. Still to do by hand:"
-cat <<'MSG'
-  sudo tailscale up                          # log in
-  sudo tailscale set --operator=$USER        # lets the top bar Tailscale click work without a password
-  Deck: needs Spotify Premium and the Client ID of your own Spotify app (~/.config/deck/config.toml), see Deck's README.
-  Firefox and Thunderbird: open each once, then run ./link.sh again (it themes their profiles, which don't exist yet).
-  Firefox: the 1Password extension from addons.mozilla.org.
-  Optional parts (Home Assistant, Jottacloud, VS Code…): launcher › Install › Plugins, or `nightdrive plugins`.
-MSG
+if has tailscale; then
+  echo '  sudo tailscale up                          # log in'
+  echo '  sudo tailscale set --operator=$USER        # lets the top bar Tailscale click work without a password'
+fi
+has deck && echo "  Deck: needs Spotify Premium and the Client ID of your own Spotify app (~/.config/deck/config.toml), see Deck's README."
+if has thunderbird; then
+  echo "  Firefox and Thunderbird: open each once, then run ./link.sh again (it themes their profiles, which don't exist yet)."
+else
+  echo "  Firefox: open it once, then run ./link.sh again (it themes its profile, which doesn't exist yet)."
+fi
+has 1password && echo "  Firefox: the 1Password extension from addons.mozilla.org."
+echo "  Optional parts you skipped: launcher › Install › Plugins, or \`nightdrive plugins\`."
 if (( greeter )); then
   echo "  Reboot: the Nightdrive login screen starts Hyprland (if it breaks: ctrl+alt+F3, log in and run config/greeter/switch.sh off)."
 else

@@ -1,8 +1,23 @@
-# Plugins: optional parts with their own installer, outside install.sh. The launcher lists them in Install › Plugins,
-# `nightdrive plugins` in a terminal. A new plugin: an install-<name>.sh in the repo root and a line here.
-# Name|Lucide icon|One-line description|Installer|Installed when this shell test succeeds
-Home Assistant|house|Smart home: devices on/off in the launcher and the top bar, the webapp|install-home-assistant.sh|config/hypr/scripts/home-assistant configured
-Deck|disc-3|Spotify player in the launcher and the top bar (Premium)|install-deck.sh|test -x ~/.local/bin/deck
-Screen Mirroring|screen-share|AirPlay to an Apple TV or AirPlay TV (doubletake, experimental)|install-doubletake.sh|test -x ~/.local/bin/doubletake
-Jottacloud|cloud|Jottacloud sync to ~/Jotta (jotta-cli)|install-jotta.sh|command -v jotta-cli
-VS Code|code|Visual Studio Code with Wayland flags (Microsoft's repo)|install-vscode.sh|command -v code
+# Optional parts. install.sh asks at the start which to install (pre-ticked: Default on; --with/--without/--all/--none),
+# the launcher lists them in Install › Plugins and `nightdrive plugins` in a terminal, so what was skipped can be added
+# later. The desktop hides a part that isn't installed: the launcher (Plugins.has), the top bar ("needs" in
+# topbar/modules.jsonc), the keybindings (hypr/bindings.lua) and their lines in SHORTCUTS.md (an {id} at the end).
+#
+# id|Name|Lucide icon|One-line description|Default (on/off)|Installer|Installed when this shell test succeeds
+#   Installer: a script in the repo root (install-<name>.sh), `flatpak APP-ID` (Flathub, per user), `webapp URL` (a
+#   Chromium app window named after the Name column), or any other shell command; run in the repo root.
+# install.sh installs them in this order after everything else: Home Assistant asks for its addresses, so it is last.
+1password|1Password|key-round|Password manager: launcher › Passwords, op CLI, SSH agent|off|install-1password.sh|test -x /opt/1Password/1password
+tailscale|Tailscale|shield-check|VPN, in the top bar (log in afterwards: sudo tailscale up)|on|sudo dnf install -y tailscale && sudo systemctl enable --now tailscaled|command -v tailscale
+thunderbird|Thunderbird|mail|Email (⌘⇧I)|off|sudo dnf install -y thunderbird|command -v thunderbird
+apostrophe|Apostrophe|file-text|Markdown editor (Flatpak), opens .md files|off|install-apostrophe.sh|flatpak info --user org.gnome.gitlab.somas.Apostrophe
+telegram|Telegram|send|Messaging app (Flatpak)|off|flatpak org.telegram.desktop|flatpak info --user org.telegram.desktop
+deck|Deck|disc-3|Spotify player (needs Premium), launcher and top bar; compiled|on|install-deck.sh|test -x ~/.local/bin/deck
+mirroring|Screen Mirroring|screen-share|AirPlay to an Apple TV (doubletake, experimental; compiled)|off|install-doubletake.sh|test -x ~/.local/bin/doubletake
+vscode|VS Code|code|Visual Studio Code from Microsoft's repo (⌘⇧C)|off|install-vscode.sh|command -v code
+jotta|Jottacloud|cloud|Jottacloud sync to ~/Jotta (jotta-cli)|off|install-jotta.sh|command -v jotta-cli
+slack|Slack|message-square|Slack as a web app (⌘⇧S)|off|webapp https://app.slack.com/client|test -f ~/.local/share/applications/webapp-slack.desktop
+teams|Teams|users|Microsoft Teams as a web app|off|webapp https://teams.microsoft.com|test -f ~/.local/share/applications/webapp-teams.desktop
+whatsapp|WhatsApp|message-circle|WhatsApp as a web app (⌘⇧W)|off|webapp https://web.whatsapp.com|test -f ~/.local/share/applications/webapp-whatsapp.desktop
+youtube|YouTube|monitor-play|YouTube as a web app (⌘⇧Y)|on|webapp https://www.youtube.com|test -f ~/.local/share/applications/webapp-youtube.desktop
+home-assistant|Home Assistant|house|Smart home in the launcher and top bar (asks address and token)|off|install-home-assistant.sh|config/hypr/scripts/home-assistant configured
