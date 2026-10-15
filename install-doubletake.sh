@@ -19,4 +19,6 @@ mkdir -p "$HOME/.local/bin"
 # Go's module and build caches under ~/.cache instead of ~/go
 export GOPATH=$HOME/.cache/go GOCACHE=$HOME/.cache/go-build
 (cd "$src" && go build -o "$HOME/.local/bin/doubletake" ./cmd/doubletake && go build -o "$HOME/.local/bin/doubletake-ctl" ./cmd/doubletake-ctl)
-echo "doubletake installed: $HOME/.local/bin/doubletake  (Settings › Display › Screen Mirroring; the daemon starts at login)"
+echo "doubletake installed: ~/.local/bin/doubletake"
+echo "Use it in Settings › Display › Screen Mirroring."
+echo "Its daemon starts at login."

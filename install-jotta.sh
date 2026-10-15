@@ -17,8 +17,8 @@ run_jottad
 cat <<'MSG'
 
 Done. Still to do by hand (interactive):
-  jotta-cli login                          # one-time token: Jottacloud › Settings › Security
-  jotta-cli sync setup --root ~/Jotta      # reporting: off / stackonly
+  jotta-cli login                  # token: Jottacloud › Settings › Security
+  jotta-cli sync setup --root ~/Jotta   # reporting: off / stackonly
   jotta-cli sync start
   jotta-cli status
 MSG

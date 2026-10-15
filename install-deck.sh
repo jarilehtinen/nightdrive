@@ -27,4 +27,5 @@ Categories=AudioVideo;Audio;Player;
 StartupWMClass=deck
 DESK
 "$HOME/.config/fuzzel/sync-apps" >/dev/null 2>&1 || true     # visibility in the launcher
-echo "Deck installed: $HOME/.local/bin/deck  (launch: ⌘M or from the launcher)"
+echo "Deck installed: ~/.local/bin/deck"
+echo "Open it with ⌘M or from the launcher."
