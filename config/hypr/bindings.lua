@@ -72,6 +72,19 @@ hl.bind(mod .. " + BACKSPACE", function ()
     end
 end)
 
+-- ⌥← / ⌥→ move by word, like in macOS, in apps where Alt+arrows does something else: GtkSourceView editors swap
+-- words with them. These get Ctrl+arrows (GTK's word move; ⇧ selects). Other apps get the keys as they were.
+local WORD_ARROW_APPS = { ["org.gnome.gitlab.somas.Apostrophe"] = true }
+for _, key in ipairs({ "left", "right" }) do
+    for _, shift in ipairs({ "", " SHIFT" }) do
+        hl.bind("ALT" .. (shift ~= "" and " +" .. shift or "") .. " + " .. key, function ()
+            local w = hl.get_active_window()
+            local mods = (w and WORD_ARROW_APPS[w.class]) and "CTRL" or "ALT"
+            hl.dispatch(hl.dsp.send_shortcut({ mods = mods .. shift, key = key }))
+        end, { repeating = true })
+    end
+end
+
 -- Next/previous tab ⌘⌥← / ⌘⌥→ in every app (Firefox, Chromium, Nautilus, Thunderbird: Ctrl+PageUp/PageDown)
 hl.bind(mod .. " + ALT + left",  hl.dsp.send_shortcut({ mods = "CTRL", key = "Prior" }))
 hl.bind(mod .. " + ALT + right", hl.dsp.send_shortcut({ mods = "CTRL", key = "Next" }))
