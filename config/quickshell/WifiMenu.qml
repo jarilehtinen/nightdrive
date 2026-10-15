@@ -198,6 +198,46 @@ done; true'
         onResult: text => { m.connecting = ""; m.refresh(); TopBar.refresh("wifi") }
     }
 
+    // An IP line under the network's name: a click copies the address (wl-copy). Under the mouse a faint background and a
+    // copy icon after it; a check for a moment once copied.
+    component CopyLine: Rectangle {
+        id: cl
+        property string icon
+        property string text
+        property string value                     // what a click copies; "" = nothing to copy yet
+        property bool copied: false
+        visible: m.wifiOn && m.activeNet !== null
+        x: 27                                     // the text stays under the network's name (33) with 6 px padding
+        width: line.width + 12
+        height: line.height + 4
+        radius: 4
+        color: area.containsMouse && value !== "" ? Theme.hover : "transparent"
+        Row {
+            id: line
+            x: 6
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 6
+            Text { text: Icons.g(cl.icon); color: Theme.accent; font { family: Icons.family; pixelSize: 13 } anchors.verticalCenter: parent.verticalCenter }
+            Text { text: cl.text; color: cl.value !== "" ? Theme.text : Theme.dim; font { family: Theme.font; pixelSize: 12 } }
+            Text {
+                text: Icons.g(cl.copied ? "check" : "copy")
+                opacity: cl.copied || (area.containsMouse && cl.value !== "") ? 1 : 0
+                Behavior on opacity { NumberAnimation { duration: 120 } }
+                color: cl.copied ? Theme.accent : Theme.dim
+                font { family: Icons.family; pixelSize: 12 }
+                anchors.verticalCenter: parent.verticalCenter
+            }
+        }
+        MouseArea {
+            id: area
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: cl.value !== "" ? Qt.PointingHandCursor : Qt.ArrowCursor
+            onClicked: { if (cl.value === "") return; Quickshell.execDetached(["wl-copy", cl.value]); cl.copied = true; copiedTimer.restart() }
+        }
+        Timer { id: copiedTimer; interval: 1500; onTriggered: cl.copied = false }
+    }
+
     MenuHeader {
         width: parent.width
         title: "Wi-Fi"
@@ -236,19 +276,15 @@ done; true'
             Text { text: m.fmtRate(m.txShown); color: Theme.text; font { family: Theme.font; pixelSize: 12 } }
         }
     }
-    Row {
-        visible: m.wifiOn && m.activeNet !== null
-        leftPadding: 33   // under the network's name (circle inset 3 + icon 20 + gap 10)
-        spacing: 6
-        Text { text: Icons.g("globe"); color: Theme.accent; font { family: Icons.family; pixelSize: 13 } anchors.verticalCenter: parent.verticalCenter }
-        Text { text: m.publicIp !== "" ? m.publicIp : (m.ipFailed ? "public IP unavailable" : "…"); color: m.publicIp !== "" ? Theme.text : Theme.dim; font { family: Theme.font; pixelSize: 12 } }
+    CopyLine {
+        icon: "globe"
+        text: m.publicIp !== "" ? m.publicIp : (m.ipFailed ? "public IP unavailable" : "…")
+        value: m.publicIp
     }
-    Row {      // local IP and how long the router takes to answer (slow here = the Wi-Fi, not the internet)
-        visible: m.wifiOn && m.activeNet !== null
-        leftPadding: 33
-        spacing: 6
-        Text { text: Icons.g("router"); color: Theme.accent; font { family: Icons.family; pixelSize: 13 } anchors.verticalCenter: parent.verticalCenter }
-        Text { text: m.localLine; color: Theme.text; font { family: Theme.font; pixelSize: 12 } }
+    CopyLine {     // local IP and how long the router takes to answer (slow here = the Wi-Fi, not the internet)
+        icon: "router"
+        text: m.localLine
+        value: m.link.ip || ""
     }
     Row {      // the link: 6 GHz · Wi-Fi 6E · 1.9 Gb/s
         visible: m.wifiOn && m.activeNet !== null
