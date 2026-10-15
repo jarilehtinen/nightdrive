@@ -37,10 +37,18 @@ Column {
             shown.push([c, c.mapToItem(fallLayer.contentItem, 0, 0)])
         }
         const bg = Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0.96)   // no blur behind them there
+        // Which screw gives: half the cards each way (a coin per card often sends them all the same way), in a
+        // shuffled order; an odd one out goes either way
+        const sides = shown.map((_, i) => i % 2 ? 1 : -1)
+        if (sides.length % 2 && Math.random() < 0.5) sides[sides.length - 1] = 1
+        for (let i = sides.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1))
+            const t = sides[i]; sides[i] = sides[j]; sides[j] = t
+        }
         let n = 0
         for (const [c, p] of shown) {
             c.detachTo(fallLayer.contentItem, p.x, p.y, bg)
-            c.fall(n * 60 + Math.random() * 40, Math.random() < 0.5 ? 1 : -1, 0.35 + Math.random() * 0.25)
+            c.fall(n * 60 + Math.random() * 40, sides[n], 0.35 + Math.random() * 0.25)
             n++
         }
         falling = n
