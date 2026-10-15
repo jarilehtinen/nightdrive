@@ -1,5 +1,5 @@
 #!/usr/bin/python3 -I
-"""Makes the notification sounds (regular/*.wav, urgent/*.wav) from scratch: no samples, so no licences to track.
+"""Makes the notification sounds (regular/*.wav, urgent/*.wav) and agent-warn's (agent/*.wav) from scratch: no samples, so no licences to track.
 
   python3 sounds/generate.py      rewrites the .wav files next to this script
 
@@ -86,8 +86,21 @@ URGENT = {
     "pulse": lambda: reverb(mix(*[note(B5, .18, "detune", .14 * k, decay=.05) for k in range(3)])),
 }
 
+C5, E5b, G5b, C6 = 523.25, 659.25, 783.99, 1046.5
+G6 = 1567.98
+# hypr/scripts/agent-warn: a coding agent is about to open the launcher or a menu, which takes the keyboard. A rising
+# chord unlike the notification sounds ("hands off the keyboard"), a countdown tick, and "now". Name → (sound, peak dBFS)
+AGENT = {
+    "attention": (lambda: reverb(mix(*[note(f, .5, start=.11 * k, decay=.18) for k, f in enumerate((C5, E5b, G5b, C6))])), -14),
+    "tick": (lambda: note(E6, .12, decay=.03), -20),
+    "go": (lambda: reverb(mix(note(C6, .3, start=0, decay=.08), note(G6, .3, start=.07, decay=.1))), -16),
+}
+
 if __name__ == "__main__":
     for kind, sounds, peak in (("regular", REGULAR, -18), ("urgent", URGENT, -12)):
         for name, make in sounds.items():
             write(os.path.join(HERE, kind, name + ".wav"), make(), peak)
             print(f"{kind}/{name}.wav")
+    for name, (make, peak) in AGENT.items():
+        write(os.path.join(HERE, "agent", name + ".wav"), make(), peak)
+        print(f"agent/{name}.wav")

@@ -1,0 +1,18 @@
+#!/bin/bash
+# A coding agent is about to open the launcher or a menu over IPC (they take the keyboard), and you may be typing.
+# Usage: agent-warn ["what is opened"]   returns ~5 s later, when opening is fine. Also `nightdrive agent-warn`.
+# A notification without the usual chime (suppress-sound), then its own sounds: a rising chord, a 3–2–1 countdown and
+# "now" (sounds/agent, made by sounds/generate.py). AGENTS.md asks agents to run this.
+# Own look: AGENT_NAME=Claude (the notification's app name), and an icon at ~/.config/nightdrive/agent-icon.svg|png.
+sounds="$HOME/.local/share/nightdrive/sounds/agent"
+name=${AGENT_NAME:-Agent}
+icon=lucide:bot
+for f in "$HOME"/.config/nightdrive/agent-icon.{svg,png}; do [[ -f $f ]] && { icon=$f; break; }; done
+play() { pw-play --media-role=Notification "$sounds/$1.wav" >/dev/null 2>&1 & }
+
+notify-send -a "$name" -i "$icon" -h boolean:suppress-sound:true -t 6000 \
+  "⚠️ $name is opening ${1:-the launcher}" "Stop typing: it opens in 5 seconds"
+play attention
+sleep 2
+for _ in 3 2 1; do play tick; sleep 1; done
+play go
