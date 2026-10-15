@@ -815,7 +815,8 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
     function extShift(item) {
         if (item.armKey !== undefined && armed !== item.armKey) { armed = item.armKey; disarm.restart(); return }
         armed = ""
-        (extOf(level) || ext).shiftActivate(item)
+        const target = extOf(level) || ext   // not "armed = ''\n(…)": that would parse as a call of ""
+        target.shiftActivate(item)
     }
     // ⌘⌫ / ⌥⌫ in the query: a selection goes first, otherwise to the line start (word = only the word before the cursor)
     function deleteBack(word) {
