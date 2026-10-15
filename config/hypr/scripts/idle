@@ -3,7 +3,7 @@
 
   idle saver [MIN]   prints / sets when the screensaver starts
   idle off [MIN]     prints / sets when the screen turns off
-  idle style [NAME]  prints / sets which screensaver runs: random, saver (synthwave) or rain (screensaver/start reads it)
+  idle style [NAME]  prints / sets which screensaver runs: random, saver (synthwave), rain or clock (screensaver/start reads it)
   idle start         writes the config and runs hypridle (Hyprland autostart runs this instead of plain hypridle)
 
 hypr/hypridle.conf is the template: the listener that starts the screensaver and the one that turns the screen off get
@@ -17,7 +17,7 @@ STATE = f"{HOME}/.local/state/nightdrive/idle"
 TEMPLATE = f"{HOME}/.config/hypr/hypridle.conf"
 OUT = f"{HOME}/.cache/nightdrive/hypridle.conf"
 DEFAULTS = {"saver": 10, "off": 30, "style": "random"}
-STYLES = ("random", "saver", "rain")
+STYLES = ("random", "saver", "rain", "clock")
 # Which template listener each setting drives, by its on-timeout command
 MATCH = {"saver": "screensaver/start", "off": "dpms"}
 # The screen turns off this many seconds after the minute, so at the lock time (30 min) the lock screen shows first

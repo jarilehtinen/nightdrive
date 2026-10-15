@@ -91,6 +91,10 @@ if ! ls "$fonts"/SymbolsNerdFont-Regular.ttf >/dev/null 2>&1; then
   curl -fsSL -o "$tmp/nf.zip" https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/NerdFontsSymbolsOnly.zip
   unzip -o -q "$tmp/nf.zip" -d "$tmp/nf" && cp "$tmp"/nf/*.ttf "$fonts"/
 fi
+echo "==> Six Caps (the clock screensaver's font, Google Fonts)"
+if ! ls "$fonts"/SixCaps.ttf >/dev/null 2>&1; then
+  curl -fsSL -o "$fonts/SixCaps.ttf" https://raw.githubusercontent.com/google/fonts/main/ofl/sixcaps/SixCaps.ttf && fc-cache -f "$fonts"
+fi
 
 echo "==> Configs (links into ~/.config, fonts)"
 "$repo/link.sh"

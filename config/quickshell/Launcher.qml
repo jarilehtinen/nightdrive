@@ -72,8 +72,8 @@ PanelWindow {
     property string wallCurrent: ""           // current wallpaper
     property int idleSaver: -1                // Settings › Screensaver: minutes until the screensaver / screen off, 0 = never,
     property int idleOff: -1                  // -1 = not read yet (hypr/scripts/idle)
-    property string idleStyle: ""             // which screensaver: random | saver | rain
-    readonly property var saverStyles: [["random", "Random", "shuffle"], ["saver", "Synthwave", "sunset"], ["rain", "Rain", "cloud-rain"]]
+    property string idleStyle: ""             // which screensaver: random | saver | rain | clock
+    readonly property var saverStyles: [["random", "Random", "shuffle"], ["saver", "Synthwave", "sunset"], ["rain", "Rain", "cloud-rain"], ["clock", "Clock", "clock"]]
     property int barOpacity: -1               // Settings › Top bar opacity: current value (hypr/scripts/bar-style), -1 = not read yet
     property string barIcons: ""              // Settings › Top bar icons: light | dark
     property int barIconOp: -1                // icon and text opacity
