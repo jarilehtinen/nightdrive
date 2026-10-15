@@ -57,6 +57,7 @@ PanelWindow {
     property var detailInfo: null             // its details from pkg-info (null = still loading)
     readonly property int detailWidth: 860    // the card's width while showing them
     property bool removeLoaded: false
+    property var pluginList: null             // Install › Plugins: [{ name, icon, desc, installed }] (nightdrive plugins), null = loading
     property var pwItems: []                  // Passwords: 1Password items (op item list)
     property string pwState: "idle"           // idle | loading | ready | error
     property string pwError: ""
@@ -111,7 +112,7 @@ PanelWindow {
     readonly property bool extLevel: extOf(level) !== null
     readonly property int selIndex: list.currentIndex
     function shakeNow() { shake.restart() }
-    readonly property var parents: Object.assign({ shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", battery: "settings", install: "system", remove: "system", emoji: "tools", screenshot: "tools", software: "install", webapp: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", sounds: "settings", soundregular: "sounds", soundurgent: "sounds", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, sys.parents, home.parents, ext ? ext.parents : {})
+    readonly property var parents: Object.assign({ shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", battery: "settings", install: "system", remove: "system", emoji: "tools", screenshot: "tools", software: "install", webapp: "install", plugins: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", sounds: "settings", soundregular: "sounds", soundurgent: "sounds", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, sys.parents, home.parents, ext ? ext.parents : {})
     // Search found nothing: hint below ⌘⌥⏎ (icons) → send the text to Claude
     readonly property bool noHit: (level === "root" || level === "apps") && query.trim() !== "" && results.length === 0
     // The selected row is an app: ⌃Enter shows it in Apps (the list with an empty query) or hides it from there.
@@ -134,6 +135,7 @@ PanelWindow {
         : level === "clipboard" ? "Enter: paste  ·  Shift+Enter: copy only"
         : level === "shelf" || level === "curated" ? "Enter: play in Deck"
         : level === "emoji" ? "Enter: paste  ·  Shift+Enter: copy only  ·  search in English or Finnish"
+        : level === "plugins" && (results[list.currentIndex] || {}).kind === "action" ? ((results[list.currentIndex] || {}).installed ? "Enter: run the installer again" : "Enter: install in a terminal")
         : level === "webname" && query.trim() !== "" ? "Enter: continue to the address"
         : level === "webaddr" && query.trim() !== "" ? "Enter: create the webapp" : ""
     // The footer as key caps: "Ctrl+Enter: show in Apps  ·  Esc: back" → [{ keys: ["Ctrl", "Enter"], text: "show in Apps" }, ...].
@@ -155,7 +157,7 @@ PanelWindow {
 
     readonly property var titles: Object.assign({ apps: "Apps", music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", musicsearch: "Music › Search", artist: "Music › " + artist.name, keys: "Keybindings", screenshot: "Tools › Screenshot", settings: "Settings", display: "Settings › Display", battery: "Settings › Battery", startup: "Settings › Startup", screensaver: "Settings › Screensaver", saverafter: "Screensaver › Start after", screenoff: "Screensaver › Screen off after", saverstyle: "Screensaver › Style", sounds: "Settings › Notification sounds", soundregular: "Notification sounds › Regular", soundurgent: "Notification sounds › Urgent", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
                                      topbar: "Settings › Top bar", baropacity: "Top bar › Opacity", baricons: "Top bar › Icon colors", barhl: "Top bar › Highlight", baritems: "Top bar › Items",
-                                     system: "System", install: "System › Install", emoji: "Tools › Emoji", software: "Install › Software", webapp: "Install › Webapp", webname: "Install › Webapp › Name", webaddr: "Install › Webapp › Address", remove: "System › Remove", power: "Power", passwords: "Passwords", clipboard: "Clipboard",
+                                     system: "System", install: "System › Install", emoji: "Tools › Emoji", software: "Install › Software", webapp: "Install › Webapp", plugins: "Install › Plugins", webname: "Install › Webapp › Name", webaddr: "Install › Webapp › Address", remove: "System › Remove", power: "Power", passwords: "Passwords", clipboard: "Clipboard",
                                      tools: "Tools" }, sys.titles, home.titles, ext ? ext.titles : {})
 
     // Reference at startup: the app list only loads on first reference
@@ -206,7 +208,8 @@ PanelWindow {
         ],
         install: [
             { kind: "nav", name: "Software", glyph: "package-plus", target: "software", summary: "dnf + Flatpak" },
-            { kind: "nav", name: "Webapp", glyph: "app-window", target: "webapp", summary: "website as an app" }
+            { kind: "nav", name: "Webapp", glyph: "app-window", target: "webapp", summary: "website as an app" },
+            { kind: "nav", name: "Plugins", glyph: "puzzle", target: "plugins", summary: "optional parts" }
         ],
         webapp: [
             { kind: "nav", name: "Name and address here", glyph: "keyboard", target: "webname" },
@@ -295,7 +298,8 @@ PanelWindow {
         ]
     }
     readonly property var installAliases: ({ "Software": "package dnf rpm flatpak flathub app apps program store",
-                                             "Webapp": "web app website site pwa url" })
+                                             "Webapp": "web app website site pwa url",
+                                             "Plugins": "plugin extension addon optional home assistant jottacloud deck vscode airplay" })
     readonly property var powerAliases: ({ "Lock": "screen", "Sleep": "suspend", "Log out": "logout sign out exit", "Restart": "reboot", "Shut down": "shutdown poweroff power off" })
 
     // 0 = starts with query, 1 = word start, 2 = contains, -1 = no match
@@ -569,6 +573,13 @@ PanelWindow {
                 return Object.assign({}, a, { item: Object.assign({}, a.item, { summary: on ? (bgApps[a.item.name] !== undefined ? "at login, hidden" : "at login") : undefined }) })
             })
             if (q === "") return all.sort((a, b) => a.text.localeCompare(b.text)).map(x => x.item)   // a fixed order: toggling doesn't move rows
+        } else if (level === "plugins") {
+            // Enter runs the installer in a terminal (they ask things: sudo, tokens, logins); an installed one can be run again
+            if (pluginList === null) return hint("Loading…")
+            all = pluginList.map(p => ({ item: { kind: "action", name: p.name, glyph: p.icon, sub: p.desc, installed: p.installed,
+                                                 summary: p.installed ? "installed" : undefined,
+                                                 cmd: term('"$HOME/.local/bin/nightdrive" plugins install "$1"', p.name) },
+                                         text: p.name, extra: p.desc }))
         } else if (level === "remove") {
             if (!removeLoaded) return [{ kind: "hint", name: "Loading packages…" }]
             all = removeList.map(p => ({ item: p, text: p.name, extra: p.summary }))
@@ -606,6 +617,7 @@ PanelWindow {
         list.currentIndex = firstSelectable()
         installResults = []
         if (target === "remove") removeProc.running = true
+        if (target === "plugins") pluginsProc.running = true
         if (target === "emoji" && !emojiLoaded) emojiProc.running = true
         if (target === "clipboard") { clipLoaded = false; clipProc.running = true }
         if (target === "background") wallProc.running = true
@@ -1275,6 +1287,15 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
             }
             win.emojiList = out
             win.emojiLoaded = true
+        }
+    }
+    // Install › Plugins: plugins.txt via `nightdrive plugins` (name, icon, description, installer, installed 1/0)
+    Sh {
+        id: pluginsProc
+        command: [Quickshell.env("HOME") + "/.local/bin/nightdrive", "plugins"]
+        onResult: text => {
+            win.pluginList = text.split("\n").map(l => l.split("\t")).filter(f => f.length >= 5)
+                .map(f => ({ name: f[0], icon: f[1], desc: f[2], installed: f[4] === "1" }))
         }
     }
     // Remove: packages the user installed, then the user's Flatpak apps (after a "--flatpak--" line, tab-separated)

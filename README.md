@@ -105,7 +105,7 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
 | Web apps | Chromium app windows | WhatsApp, Slack, Teams and YouTube by default; add your own |
 | Lock and idle | hyprlock, hypridle | screensaver after 10 min, lock after 30 min (screensaver and screen-off times: Settings › Screensaver) |
 | Smart home (optional) | [Home Assistant](https://www.home-assistant.io) (`install-home-assistant.sh`) | Home in the launcher: rooms and their devices (Enter turns one on/off or runs a scene, "olohuone kattovalo" finds it from the search), pinned devices in the top bar's Home menu, the webapp; local, Tailscale and Nabu Casa addresses tried in order |
-| Optional | VS Code, Jottacloud | `install-vscode.sh`, `install-jotta.sh` |
+| Plugins | Home Assistant, Deck, Screen Mirroring, Jottacloud, VS Code | optional parts with their own installers (`plugins.txt`): launcher › Install › Plugins or `nightdrive plugins` |
 
 ## Requirements
 
@@ -142,6 +142,8 @@ A few things stay manual:
 - Sign in to Spotify in Deck.
 - Open Firefox and Thunderbird once and run `./link.sh` again: it themes their profiles, which don't exist before the first start.
 - Optionally, set up dictation ([docs/dictation.md](docs/dictation.md)).
+- Optional parts (Home Assistant, Deck, Screen Mirroring, Jottacloud, VS Code): launcher › Install › Plugins, or
+  `nightdrive plugins`. Each opens its installer in a terminal; running one again is safe.
 
 `./link.sh` on its own just (re)links the config files and is safe to run again. The repo can live anywhere; `~/dotfiles` is
 only a convention.
@@ -169,6 +171,7 @@ The same `nightdrive` command reaches the settings from a terminal (`nightdrive`
 | `nightdrive display list` | Each screen's even scales; `nightdrive display scale eDP-1 2` sets one |
 | `nightdrive bar-style opacity 80` | Top bar opacity; also `icons`, `icon-opacity` and `highlight` |
 | `nightdrive topbar adjust` | Top bar icon sizes and positions, a pixel at a time, live |
+| `nightdrive plugins` | Optional parts and whether each is installed; `nightdrive plugins install "Home Assistant"` runs one's installer |
 
 ## Keys
 

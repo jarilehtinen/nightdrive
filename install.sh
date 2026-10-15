@@ -187,7 +187,7 @@ cat <<'MSG'
   Deck: needs Spotify Premium and the Client ID of your own Spotify app (~/.config/deck/config.toml), see Deck's README.
   Firefox and Thunderbird: open each once, then run ./link.sh again (it themes their profiles, which don't exist yet).
   Firefox: the 1Password extension from addons.mozilla.org.
-  Optional: install-jotta.sh (Jottacloud sync).
+  Optional parts (Home Assistant, Jottacloud, VS Code…): launcher › Install › Plugins, or `nightdrive plugins`.
 MSG
 if (( greeter )); then
   echo "  Reboot: the Nightdrive login screen starts Hyprland (if it breaks: ctrl+alt+F3, log in and run config/greeter/switch.sh off)."

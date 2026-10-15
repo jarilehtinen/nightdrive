@@ -6,13 +6,15 @@
 #                              Update button runs the update in a terminal (nightdrive-update-check.timer, every 6 h)
 #   nightdrive topbar adjust     top bar icon and text sizes / positions a pixel at a time, live (config/topbar/adjust.conf)
 #   nightdrive topbar date [auto|dmy|mdy|iso]   the clock's date: auto = the locale's order (15.10. / 15/10 / 10/15 / 10-15)
+#   nightdrive plugins [list]   optional parts (plugins.txt) and whether each is installed; launcher › Install › Plugins
+#   nightdrive plugins install NAME   runs a plugin's installer (e.g. `nightdrive plugins install "Home Assistant"`)
 #   nightdrive theme|display|wallpaper|bar-style …   the desktop's own scripts (hypr/scripts), e.g. `nightdrive theme color teal`
 # update never pulls over local changes: a repo with uncommitted work or its own commits is skipped with a note.
 set -uo pipefail
 repo=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)
 scripts="$repo/config/hypr/scripts"
 cache="$HOME/.cache/nightdrive"
-usage() { echo "Usage:"; sed -n '3,9p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { echo "Usage:"; sed -n '3,11p' "$0" | sed 's/^# \{0,1\}//'; }
 
 # Repos to update: Nightdrive, the repos the git-ignored local slots link into (a private overlay), Deck's source
 repos() {
@@ -128,6 +130,22 @@ LIST
   echo "Nightdrive is up to date. If a change mentions install.sh, re-run it for that step (it's safe to re-run)."
 }
 
+# Plugins (plugins.txt): one tab-separated line each, name, icon, description, installer, installed (1/0)
+plugins() {
+  local name icon desc script test
+  while IFS='|' read -r name icon desc script test; do
+    [[ -z $name || $name == \#* ]] && continue
+    (cd "$repo" && bash -c "$test" >/dev/null 2>&1) && i=1 || i=0
+    printf '%s\t%s\t%s\t%s\t%s\n' "$name" "$icon" "$desc" "$script" "$i"
+  done < "$repo/plugins.txt"
+}
+plugin_install() {
+  local script
+  script=$(plugins | awk -F'\t' -v n="$1" 'tolower($1) == tolower(n) || $4 == n { print $4; exit }')
+  [[ -n $script ]] || { echo "Unknown plugin: ${1:-} (see: nightdrive plugins)" >&2; exit 1; }
+  exec "$repo/$script"
+}
+
 case ${1:-} in
   update) if [[ ${2:-} == check ]]; then check; else update; fi ;;
   topbar) case ${2:-} in
@@ -135,6 +153,11 @@ case ${1:-} in
             date) exec "$repo/config/topbar/scripts/clock" style "${@:3}" ;;
             *) usage >&2; exit 1 ;;
           esac ;;
+  plugins) case ${2:-list} in
+             list) plugins ;;
+             install) plugin_install "${3:-}" ;;
+             *) usage >&2; exit 1 ;;
+           esac ;;
   theme|display|wallpaper|bar-style) exec "$scripts/$1" "${@:2}" ;;
   ""|help|-h|--help) usage ;;
   *) usage >&2; exit 1 ;;
