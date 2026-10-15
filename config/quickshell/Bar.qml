@@ -73,7 +73,7 @@ Variants {
                     }
                 }
             }
-            // The drawer (⌘D, hypr/bindings.lua) after the workspaces, as an icon: highlighted while open on this screen, dimmed when empty
+            // The drawer (⌘D, hypr/bindings.lua) after the workspaces, as a dot: highlighted while open on this screen, dimmed when empty
             Rectangle {
                 id: drawer
                 property bool open: false
@@ -86,13 +86,14 @@ Variants {
                         if (mon === win.modelData.name) drawer.open = ws === "special:drawer"
                     }
                 }
-                width: icon.implicitWidth + 20; height: 27; radius: 8
+                width: dot.implicitWidth + 20; height: 27; radius: 8
                 color: open ? TopBar.c("wsBg") : "transparent"
-                Text {
-                    id: icon
-                    anchors.centerIn: parent
-                    text: Icons.g(drawer.open ? "panel-top-open" : "panel-top-close")
-                    font { family: Icons.family; pixelSize: 15 }
+                BarText {
+                    id: dot
+                    element: "workspaces"
+                    dpr: win.dpr
+                    x: Math.round((parent.width - implicitWidth) / 2 * win.dpr) / win.dpr
+                    text: "•"
                     color: drawer.open ? TopBar.c("hlFg") : drawer.full ? TopBar.c("dim") : TopBar.c("off")
                 }
                 MouseArea {
