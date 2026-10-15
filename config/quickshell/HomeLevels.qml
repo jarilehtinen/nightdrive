@@ -22,7 +22,7 @@ Item {
         if (cur.kind === "haroom") return "Enter: open"
         if (cur.kind !== "haent") return ""
         const e = cur.ent
-        const what = Home.canToggle(e) || e.domain === "climate" ? "on/off" : e.domain === "scene" ? "activate" : e.domain.indexOf("button") >= 0 ? "press" : "run"
+        const what = Home.canToggle(e) || e.domain === "climate" ? "on/off" : e.domain === "scene" ? "activate" : e.domain.indexOf("button") >= 0 ? "press" : "run now"
         return "Enter: " + what + (level !== "root" ? "  ·  Shift+Enter: " + (e.fav ? "unpin from" : "pin to") + " the top bar" : "")
     }
     function opened() { Home.check() }

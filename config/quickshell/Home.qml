@@ -22,7 +22,7 @@ QtObject {
     function refresh() { if (!statesProc.running) statesProc.running = true }
 
     function isOn(e) { return pending[e.id] !== undefined ? pending[e.id] : e.on }
-    readonly property var oneShot: ["scene", "script", "button", "input_button"]
+    readonly property var oneShot: ["scene", "script", "automation", "button", "input_button"]   // Enter runs / presses
     function canToggle(e) { return oneShot.indexOf(e.domain) < 0 && e.domain !== "climate" }
 
     function toggle(e) {
