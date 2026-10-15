@@ -1653,15 +1653,22 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                         font { family: Theme.font; pixelSize: row.modelData.sub ? win.fontSize - 5 : win.fontSize - 6; weight: row.modelData.sub ? win.fontWeight : Font.Normal
                                letterSpacing: row.modelData.sub ? 0 : 1 }
                     }
-                    Text {      // the row's shortcut (shortcutFor), dim, before the › of a submenu; not where the right side is taken
-                        id: shortcut
+                    Rectangle {      // the row's shortcut (shortcutFor) in a key frame like the footer's, before the › of a submenu;
+                        id: shortcut     // not where the right side is taken
                         readonly property string keys: trailing.tag || row.modelData.keys !== undefined || row.armedNow
                             || (row.modelData.summary !== undefined && row.modelData.summary !== "") ? "" : win.shortcutFor(row.modelData)
                         visible: keys !== ""
-                        anchors { right: trailing.left; rightMargin: trailing.text !== "" ? 12 : 0; verticalCenter: parent.verticalCenter }
-                        text: keys
-                        color: Theme.dim
-                        font { family: Theme.font; pixelSize: win.fontSize - 3 }
+                        anchors { right: trailing.left; rightMargin: trailing.text !== "" ? 18 : 0; verticalCenter: parent.verticalCenter }
+                        width: shortcutText.implicitWidth + 14; height: 24; radius: 6
+                        color: "transparent"
+                        border { width: 1; color: Theme.dim }
+                        Text {
+                            id: shortcutText
+                            anchors.centerIn: parent
+                            text: shortcut.keys
+                            color: Theme.dim
+                            font { family: Theme.font; pixelSize: win.fontSize - 5 }
+                        }
                     }
                     Text {
                         id: trailing
