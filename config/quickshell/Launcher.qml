@@ -1637,7 +1637,7 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                         readonly property bool twoLines: !!row.modelData.artist || !!row.modelData.sub
                         anchors {
                             left: row.noIcon ? parent.left : slot.right; leftMargin: 16
-                            right: shortcut.visible ? shortcut.left : trailing.left; rightMargin: (row.modelData.kind === "key" ? 36 : 12) + (dot.visible ? 19 : 0)   // keybindings get more room before the keys (description is elided with …)
+                            right: shortcut.visible ? shortcut.left : trailing.left; rightMargin: (row.modelData.kind === "key" ? 36 : 12) + (dot.visible ? 19 : 0) + (badge.visible ? badge.implicitWidth + 10 : 0)   // keybindings get more room before the keys (description is elided with …)
                             verticalCenter: parent.verticalCenter; verticalCenterOffset: twoLines ? (row.modelData.sub ? -9 : -7) : 0
                         }
                         elide: Text.ElideRight
@@ -1703,6 +1703,15 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                         anchors.verticalCenter: parent.verticalCenter
                         width: 9; height: 9; radius: 5
                         color: Theme.ok
+                    }
+                    Text {           // a small mark after the name (and the dot): row.modelData.badge, a Lucide name (Home: "pin")
+                        id: badge
+                        visible: row.modelData.badge !== undefined
+                        x: nameText.x + Math.min(nameText.contentWidth, nameText.width) + 10 + (dot.visible ? 19 : 0)
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: visible ? Icons.g(row.modelData.badge) : ""
+                        color: Theme.primary   // the theme colour, like section headers: it has to stand out
+                        font { family: Icons.family; pixelSize: win.fontSize - 2 }
                     }
                     Slider {         // Settings › Display › Brightness: above the row's MouseArea, so it gets the drag
                         visible: row.modelData.kind === "brightness" || row.modelData.kind === "slider"
