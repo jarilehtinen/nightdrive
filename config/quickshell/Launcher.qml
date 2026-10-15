@@ -726,6 +726,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         }
         else if (item.kind === "decksearch") { win.open = false; Quickshell.execDetached([scripts + "/deck-ctl", "search", item.value]) }
         else if (item.kind === "emoji") emojiPick(item, true)
+        else if (item.kind === "stat" && item.copy !== undefined) sys.copyText(item.copy)   // Public IP, Local IP, Router: as ⌘C
         else if (item.kind === "brightness" || item.kind === "stat") shake.restart()   // brightness: ←/→ or the slider; stat: information only
         else if (item.kind === "nightlight") {
             keepSelection()

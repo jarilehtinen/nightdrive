@@ -30,7 +30,7 @@ Item {
         if (cur.kind === "btdev") return "Enter: " + (cur.connected ? "disconnect" : cur.paired ? "connect" : "pair and connect")
         if (cur.kind === "sounddev") return "Enter: use this"
         if (cur.kind === "tsmachine") return "Enter: copy IP address  ·  Cmd+C: copy"
-        if (cur.copy !== undefined) return "Cmd+C: copy"
+        if (cur.copy !== undefined) return "Enter: copy  ·  Cmd+C: copy"
         if (level === "wifipw") return query !== "" ? "Enter: connect  ·  Esc: back" : ""
         if (level === "mirrorpin") return query !== "" ? "Enter: pair" : ""
         if (cur.kind === "mirrordev") return "Enter: " + (cur.ip === mirrorIp && mirrorState !== "idle" ? "stop mirroring" : "mirror the screen here")
