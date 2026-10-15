@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Question
+    url: https://github.com/jarilehtinen/nightdrive/discussions/categories/q-a
+    about: How do I…? Ask in Discussions › Q&A.
+  - name: Idea or feature wish
+    url: https://github.com/jarilehtinen/nightdrive/discussions/categories/ideas
+    about: Share it in Discussions › Ideas.
