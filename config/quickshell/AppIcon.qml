@@ -14,7 +14,9 @@ Image {
         if (n === "") return []
         if (n.indexOf("://") > 0) return [n]
         if (n.startsWith("/")) return ["file://" + n]
-        const out = []
+        // An icon of your own in ~/.local/share/icons/hicolor wins: Qt's lookup finds the system's first (link.sh puts
+        // Steam's logo there over Fedora Asahi's locomotive). One failed load for every other icon.
+        const out = ["file://" + home + "/.local/share/icons/hicolor/scalable/apps/" + n + ".svg"]
         const themed = Quickshell.iconPath(n, true)
         if (themed !== "") out.push(themed)
         for (const base of ["/usr/share/icons/hicolor", home + "/.local/share/flatpak/exports/share/icons/hicolor",
