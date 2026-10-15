@@ -2,8 +2,10 @@
 """Home Assistant for the launcher (Home), the top bar's Home menu and the bar icon. Set up with ./install-home-assistant.sh.
 
   home-assistant configured        exit status 0 when set up (the launcher and the bar show Home only then)
-  home-assistant states            the controllable devices as JSON: [{id, name, domain, state, on, area, fav, detail}]
+  home-assistant states            the controllable devices as JSON: [{id, name, domain, state, on, area, fav, detail,
+                                   dimmable, bright}] (bright 0..1, 0 when off; dimmable: a light with brightness)
   home-assistant toggle ID         turns a device on/off, runs a scene / script / automation, presses a button
+  home-assistant brightness ID PCT sets a light's brightness, 0–100 (0 turns it off)
   home-assistant fav ID [on|off]   pins a device to the top bar's Home menu (no on/off: flips it)
   home-assistant bar               the top bar module's state line (modules.jsonc format)
   home-assistant open              opens the Home Assistant webapp (focuses it if already open)
@@ -171,6 +173,15 @@ def detail(domain, s):
     return st
 
 
+def dimmable(domain, a):
+    if domain != "light":
+        return False
+    modes = a.get("supported_color_modes")
+    if modes:
+        return any(m != "onoff" for m in modes)
+    return a.get("brightness") is not None   # older integrations: no color modes, brightness only while on
+
+
 def is_on(domain, st):
     if domain == "cover":
         return st in ("open", "opening")
@@ -202,9 +213,12 @@ def states(c):
         # "Olohuone Olohuoneen valo" reads badly: drop the area from the name's start when it's there
         if area and name.lower().startswith(area.lower() + " "):
             name = name[len(area) + 1:]
+        attrs = s.get("attributes", {})
+        on = is_on(domain, s.get("state", ""))
         out.append({"id": eid, "name": name, "domain": domain, "state": s.get("state", ""),
-                    "on": is_on(domain, s.get("state", "")), "area": area, "fav": eid in favs,
-                    "detail": detail(domain, s)})
+                    "on": on, "area": area, "fav": eid in favs, "detail": detail(domain, s),
+                    "dimmable": dimmable(domain, attrs),
+                    "bright": round((attrs.get("brightness") or 0) / 255, 3) if on and domain == "light" else 0})
     out.sort(key=lambda e: (DOMAINS.index(e["domain"]), e["area"].lower(), e["name"].lower()))
     return out
 
@@ -225,6 +239,14 @@ def toggle(c, eid):
     else:
         svc = ("homeassistant", "toggle")
     c.call("POST", f"/api/services/{svc[0]}/{svc[1]}", {"entity_id": eid})
+
+
+def brightness(c, eid, pct):
+    pct = max(0, min(100, round(float(pct))))
+    if pct == 0:
+        c.call("POST", "/api/services/light/turn_off", {"entity_id": eid})
+    else:
+        c.call("POST", "/api/services/light/turn_on", {"entity_id": eid, "brightness_pct": pct})
 
 
 def set_fav(eid, on):
@@ -268,6 +290,8 @@ def main():
         print(json.dumps(states(Client()), ensure_ascii=False))
     elif cmd == "toggle" and len(a) == 2:
         toggle(Client(), a[1])
+    elif cmd == "brightness" and len(a) == 3:
+        brightness(Client(), a[1], a[2])
     elif cmd == "fav" and len(a) in (2, 3):
         set_fav(a[1], None if len(a) == 2 else a[2] == "on")
     elif cmd == "bar":

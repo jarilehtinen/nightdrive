@@ -28,3 +28,4 @@ SystemLevels 1.0 SystemLevels.qml
 HomeLevels 1.0 HomeLevels.qml
 singleton Home 1.0 Home.qml
 SharePicker 1.0 SharePicker.qml
+LevelRing 1.0 LevelRing.qml

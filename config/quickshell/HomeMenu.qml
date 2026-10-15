@@ -1,7 +1,8 @@
 import QtQuick
 import Quickshell
 
-// Home Assistant: the pinned devices (a click turns one on/off or runs a scene), and the webapp. Devices are pinned in
+// Home Assistant: the pinned devices (a click turns one on/off or runs a scene; a light that's on is yellow, a dimmable one
+// shows its brightness as a ring around the bulb and takes the scroll wheel), and the webapp. Devices are pinned in
 // the launcher: ⌘Space › Home, Shift+Enter. Data: Home.qml (hypr/scripts/home-assistant).
 Column {
     id: m
@@ -30,15 +31,40 @@ Column {
         spacing: 2
         Repeater {
             model: Home.favorites
-            delegate: MenuRow {
+            // A dimmable light: its brightness as a ring around the bulb; the scroll wheel over it sets it
+            delegate: Column {
+                id: fav
                 required property var modelData
+                readonly property bool dimmable: modelData.dimmable && modelData.state !== "unavailable" && modelData.state !== "unknown"
                 width: m.width
-                icon: Home.icon(modelData)
-                iconFilled: Home.canToggle(modelData) && Home.isOn(modelData)
-                label: modelData.name
-                detail: [modelData.area, Home.detail(modelData)].filter(x => x).join(" · ")
-                opacity: modelData.state === "unavailable" ? 0.5 : 1
-                onClicked: Home.toggle(modelData)
+                MenuRow {
+                    width: parent.width
+                    icon: Home.icon(fav.modelData)
+                    // a light: a yellow bulb (and the ring) instead of the filled circle
+                    readonly property bool light: fav.modelData.domain === "light"
+                    iconFilled: !light && Home.canToggle(fav.modelData) && Home.isOn(fav.modelData)
+                    iconColor: light && Home.isOn(fav.modelData) ? Theme.caution : "transparent"
+                    label: fav.modelData.name
+                    // a dimmable light: the brightness is the ring, not a percentage
+                    detail: [fav.modelData.area, fav.dimmable && /%$/.test(Home.detail(fav.modelData)) ? "" : Home.detail(fav.modelData)].filter(x => x).join(" · ")
+                    level: fav.dimmable ? Home.bright(fav.modelData) : -1
+                    opacity: fav.modelData.state === "unavailable" ? 0.5 : 1
+                    onClicked: Home.toggle(fav.modelData)
+                }
+                // One wheel notch = 5 %; a touchpad's small deltas add up to that
+                property real wheelAcc: 0
+                WheelHandler {
+                    enabled: fav.dimmable
+                    acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                    onWheel: ev => {
+                        fav.wheelAcc += ev.angleDelta.y || -ev.angleDelta.x
+                        while (Math.abs(fav.wheelAcc) >= 120) {
+                            const dir = fav.wheelAcc > 0 ? 1 : -1
+                            Home.stepBright(fav.modelData, dir, 5)
+                            fav.wheelAcc -= dir * 120
+                        }
+                    }
+                }
             }
         }
     }

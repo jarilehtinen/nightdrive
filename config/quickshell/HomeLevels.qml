@@ -5,7 +5,8 @@ import Quickshell
 // (Home › Olohuone), grouped by kind. Devices without a room are grouped into their own rows (Scenes, Scripts, Automations,
 // Other devices). Searching on Home finds rooms and devices at once.
 // Enter turns a device on/off or runs a scene / script, and the launcher stays open; Shift+Enter pins it to the top bar's
-// Home menu. Shown only when Home Assistant is set up (install-home-assistant.sh). Data: Home.qml.
+// Home menu. A light that's on has a yellow icon; a dimmable one shows its brightness as a ring around it: ←/→ steps 10 %, a sideways drag sets it.
+// Shown only when Home Assistant is set up (install-home-assistant.sh). Data: Home.qml.
 // Launcher.qml asks it like SystemLevels (levels, titles, parents, items, activate, footer, entered).
 Item {
     id: x
@@ -26,7 +27,7 @@ Item {
         if (cur.kind !== "haent") return ""
         const e = cur.ent
         const what = Home.canToggle(e) || e.domain === "climate" ? "on/off" : e.domain === "scene" ? "activate" : e.domain.indexOf("button") >= 0 ? "press" : "run now"
-        return "Enter: " + what + (level !== "root" ? "  ·  Shift+Enter: " + (e.fav ? "unpin from" : "pin to") + " the top bar" : "")
+        return "Enter: " + what + (cur.slider !== undefined ? "  ·  ←/→: brightness" : "") + (level !== "root" ? "  ·  Shift+Enter: " + (e.fav ? "unpin from" : "pin to") + " the top bar" : "")
     }
     function opened() { Home.check() }
     function entered(level) { Home.refresh() }
@@ -64,11 +65,14 @@ Item {
         const o = opts || {}
         // In the root search the room goes in the name (the HOME tag takes the summary's place): "Olohuone › Katto"
         // A device that turns on/off gets a switch; "on" / "off" then drop from the text (80 %, open… stay)
-        const sw = !o.from && Home.canToggle(e) && e.state !== "unavailable" && e.state !== "unknown"
-        const detail = Home.detail(e)
+        // (also in the root search, where the HOME tag sits left of it)
+        const sw = Home.canToggle(e) && e.state !== "unavailable" && e.state !== "unknown"
+        const slider = e.dimmable && sw ? Home.bright(e) : undefined
+        const detail = slider !== undefined && /%$/.test(Home.detail(e)) ? "" : Home.detail(e)   // the ring shows the brightness
         return { kind: "haent", ent: e, name: o.from && e.area ? e.area + " › " + e.name : e.name, glyph: Home.icon(e), from: o.from,
                  summary: o.from ? undefined : [o.noArea ? "" : e.area, sw && (detail === "on" || detail === "off") ? "" : detail].filter(t => t).join(" · ") || undefined,
-                 switchOn: sw ? Home.isOn(e) : undefined, badge: e.fav && !o.from ? "pin" : undefined, dimmed: e.state === "unavailable" }
+                 switchOn: sw ? Home.isOn(e) : undefined, slider: slider,
+                 glyphColor: e.domain === "light" && Home.isOn(e) ? Theme.caution : undefined, badge: e.fav && !o.from ? "pin" : undefined, dimmed: e.state === "unavailable" }
     }
     function searchRow(e, from) {
         return { item: row(e, { from: from }), text: e.name,
@@ -128,6 +132,9 @@ Item {
         Home.toggle(it.ent)
         return true
     }
+    // The row's brightness ring (Launcher.qml calls these for rows with `slider`: ←/→ and a sideways drag)
+    function slide(it, v) { if (it.kind !== "haent") return; launcher.keepSelection(); Home.setBright(it.ent, v) }
+    function stepSlide(it, dir) { if (it.kind !== "haent") return; launcher.keepSelection(); Home.stepBright(it.ent, dir) }
     function shiftActivate(it) {
         if (it.kind !== "haent") return
         launcher.keepSelection()

@@ -34,6 +34,16 @@ Rectangle {
 
     readonly property color fg: danger ? Theme.danger : (active ? Theme.accent : Theme.text)
 
+    // level 0..1: a ring around the icon (Home: a light's brightness); -1 = none. iconColor: the icon's own colour
+    property real level: -1
+    property color iconColor: "transparent"
+    LevelRing {
+        visible: row.level >= 0 && ic.visible
+        anchors.centerIn: ic
+        size: 28
+        value: Math.max(0, row.level)
+    }
+
     Rectangle {
         visible: row.iconFilled && ic.visible
         anchors.centerIn: ic
@@ -48,7 +58,7 @@ Rectangle {
         width: 20
         horizontalAlignment: Text.AlignHCenter
         text: Icons.g(row.icon)
-        color: row.iconFilled ? Theme.bg : (row.active || row.danger ? row.fg : Theme.dim)
+        color: row.iconFilled ? Theme.bg : row.iconColor.a > 0 ? row.iconColor : (row.active || row.danger ? row.fg : Theme.dim)
         font { family: Icons.family; pixelSize: row.iconFilled ? 17 : 16 }
     }
     Text {

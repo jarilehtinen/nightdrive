@@ -34,6 +34,7 @@ PanelWindow {
     // --- Tunables ---
     readonly property int iconSize: 28        // icon size (px)
     readonly property int rowHeight: 52       // row height (px)
+    readonly property int rowGap: 2           // space under every row, so neighbouring highlights / fills don't merge
     readonly property int maxRows: 10         // how many rows are visible at once
     readonly property int cardWidth: 660
     readonly property int fontSize: 17
@@ -390,10 +391,10 @@ PanelWindow {
     }
     readonly property int headerHeight: 40
     function listHeight() {
-        const cap = maxRows * rowHeight
+        const cap = maxRows * (rowHeight + rowGap)
         let h = 0
         for (const it of results) {
-            h += it.kind === "header" ? headerHeight : rowHeight
+            h += (it.kind === "header" ? headerHeight : rowHeight) + rowGap
             if (h >= cap) return cap
         }
         return h
@@ -1641,6 +1642,8 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                             win.stepBright(event.key === Qt.Key_Left ? -1 : 1); event.accepted = true
                         } else if ((event.key === Qt.Key_Left || event.key === Qt.Key_Right) && (win.results[list.currentIndex] || {}).kind === "slider") {
                             sys.stepSlider(win.results[list.currentIndex].key, event.key === Qt.Key_Left ? -1 : 1); event.accepted = true
+                        } else if ((event.key === Qt.Key_Left || event.key === Qt.Key_Right) && (win.results[list.currentIndex] || {}).slider !== undefined) {
+                            home.stepSlide(win.results[list.currentIndex], event.key === Qt.Key_Left ? -1 : 1); event.accepted = true
                         } else if (event.key === Qt.Key_Down || (ctrl && (event.key === Qt.Key_N || event.key === Qt.Key_J))) {
                             win.step(1); event.accepted = true
                         } else if (event.key === Qt.Key_Up || (ctrl && (event.key === Qt.Key_P || event.key === Qt.Key_K))) {
@@ -1674,7 +1677,8 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                 currentIndex: 0
                 highlightMoveDuration: 0
                 boundsBehavior: Flickable.StopAtBounds
-                TouchScroll { view: list; step: win.rowHeight }
+                spacing: win.rowGap
+                TouchScroll { view: list; step: win.rowHeight + win.rowGap }
                 delegate: Rectangle {
                     id: row
                     required property var modelData
@@ -1696,6 +1700,15 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                         visible: !row.noIcon
                         anchors { left: parent.left; leftMargin: 14; verticalCenter: parent.verticalCenter }
                         width: win.iconSize; height: win.iconSize
+                        LevelRing {      // row.slider (Home's lights): the brightness as a ring around the bulb
+                            id: brightRing
+                            anchors.centerIn: parent
+                            visible: row.modelData.slider !== undefined
+                            size: win.iconSize + 12
+                            // while dragged the rows aren't rebuilt (Home.holdBright), so the ring follows the mouse itself
+                            value: rowArea.sliding ? rowArea.dragV : row.modelData.slider || 0
+                            strength: row.current ? 1 : 0.7
+                        }
                         AppIcon {
                             anchors.fill: parent
                             visible: (row.modelData.kind === "app" || row.modelData.iconFile !== undefined) && row.modelData.glyph === undefined && source !== ""
@@ -1721,7 +1734,8 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                             anchors.centerIn: parent
                             visible: row.modelData.glyph !== undefined
                             text: row.modelData.glyph !== undefined ? Icons.g(row.modelData.glyph) : ""
-                            color: row.modelData.dimmed ? Theme.dim : row.current ? Theme.accent : Theme.text
+                            color: row.modelData.glyphColor !== undefined ? row.modelData.glyphColor   // Home: a light that's on is yellow
+                                 : row.modelData.dimmed ? Theme.dim : row.current ? Theme.accent : Theme.text
                             font { family: Icons.family; pixelSize: win.iconSize - 2 }
                         }
                     }
@@ -1830,7 +1844,7 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                         color: Theme.primary   // the theme colour, like section headers: it has to stand out
                         font { family: Icons.family; pixelSize: win.fontSize - 2 }
                     }
-                    Slider {         // Settings › Display › Brightness: above the row's MouseArea, so it gets the drag
+                    Slider {         // Settings › Display › Brightness, Sound: above the row's MouseArea, so it gets the drag
                         visible: row.modelData.kind === "brightness" || row.modelData.kind === "slider"
                         z: 1
                         // after the name ("Screen" in Display, "Brightness" in a search), lined up while the name is short
@@ -1846,8 +1860,24 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                         anchors.fill: parent
                         hoverEnabled: true
                         enabled: !row.isHeader
-                        onPositionChanged: mouse => win.hover(rowArea, mouse, row.index)
-                        onClicked: win.activate(row.modelData)
+                        // row.slider (Home's lights): a sideways drag sets the brightness, a click still turns it on/off
+                        property real pressX: -1
+                        property bool sliding: false
+                        property real dragV: 0
+                        onPressed: mouse => { pressX = mouse.x; sliding = false }
+                        onPositionChanged: mouse => {
+                            if (pressed && row.modelData.slider !== undefined && (sliding || Math.abs(mouse.x - pressX) > 8)) {
+                                if (!sliding) { sliding = true; list.currentIndex = row.index; Home.holdBright(true) }
+                                // the drag spans from the name to the right edge (the ring shows it)
+                                dragV = Math.max(0, Math.min(1, (mouse.x - nameText.x) / (row.width - 16 - nameText.x)))
+                                home.slide(row.modelData, dragV)
+                                return
+                            }
+                            win.hover(rowArea, mouse, row.index)
+                        }
+                        onReleased: if (sliding) Home.holdBright(false)
+                        onCanceled: if (sliding) { sliding = false; Home.holdBright(false) }
+                        onClicked: { if (sliding) { sliding = false; return } win.activate(row.modelData) }
                     }
                 }
             }
