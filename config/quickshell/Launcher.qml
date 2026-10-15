@@ -57,6 +57,24 @@ PanelWindow {
     property var detailInfo: null             // its details from pkg-info (null = still loading)
     readonly property int detailWidth: 860    // the card's width while showing them
     property bool removeLoaded: false
+    // Settings › Launcher: { fuzzy, shortcuts } in ~/.local/state/nightdrive/launcher.json (missing = on)
+    property var prefs: ({ fuzzy: true, shortcuts: true })
+    readonly property string prefsFile: Quickshell.env("HOME") + "/.local/state/nightdrive/launcher.json"
+    FileView {
+        path: win.prefsFile; watchChanges: true; onFileChanged: reload(); printErrors: false
+        onLoaded: {
+            let v = {}
+            try { v = JSON.parse(text()) || {} } catch (e) {}
+            const n = { fuzzy: v.fuzzy !== false, shortcuts: v.shortcuts !== false }
+            if (JSON.stringify(n) !== JSON.stringify(win.prefs)) win.prefs = n
+        }
+    }
+    function setPref(key, on) {
+        const n = Object.assign({}, prefs); n[key] = on
+        prefs = n
+        Quickshell.execDetached(["bash", "-c", 'mkdir -p "$(dirname "$2")" && printf "%s\\n" "$1" > "$2.tmp" && mv "$2.tmp" "$2"',
+                                 "_", JSON.stringify(n), prefsFile])
+    }
     property var pluginList: null             // Install › Plugins: [{ name, icon, desc, installed }] (nightdrive plugins), null = loading
     property var pwItems: []                  // Passwords: 1Password items (op item list)
     property string pwState: "idle"           // idle | loading | ready | error
@@ -112,7 +130,7 @@ PanelWindow {
     readonly property bool extLevel: extOf(level) !== null
     readonly property int selIndex: list.currentIndex
     function shakeNow() { shake.restart() }
-    readonly property var parents: Object.assign({ shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", battery: "settings", install: "system", remove: "system", emoji: "tools", screenshot: "tools", software: "install", webapp: "install", plugins: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", sounds: "settings", soundregular: "sounds", soundurgent: "sounds", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, sys.parents, home.parents, ext ? ext.parents : {})
+    readonly property var parents: Object.assign({ launcherprefs: "settings", shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", battery: "settings", install: "system", remove: "system", emoji: "tools", screenshot: "tools", software: "install", webapp: "install", plugins: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", sounds: "settings", soundregular: "sounds", soundurgent: "sounds", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, sys.parents, home.parents, ext ? ext.parents : {})
     // Search found nothing: hint below ⌘⌥⏎ (icons) → send the text to Claude
     readonly property bool noHit: (level === "root" || level === "apps") && query.trim() !== "" && results.length === 0
     // The selected row is an app: ⌃Enter shows it in Apps (the list with an empty query) or hides it from there.
@@ -123,6 +141,7 @@ PanelWindow {
                                                        + "  ·  Esc: back"
         : selApp ? "Enter: open  ·  Ctrl+Enter: " + (selApp.shown ? "hide from Apps" : "show in Apps")
                                               + "  ·  Alt+Enter: " + (autostartIds.indexOf(appId(selApp)) >= 0 ? "don’t start at login" : "start at login")
+        : level === "launcherprefs" ? "Enter: on/off"
         : level === "startup" ? "Enter: start at login on/off  ·  background apps start hidden"
         : (results[list.currentIndex] || {}).kind === "brightness" ? "Left+Right: brightness"
         : (results[list.currentIndex] || {}).kind === "mirrordev" ? sys.footer(level, query)
@@ -155,8 +174,8 @@ PanelWindow {
     readonly property var deckLiked: deckOverride.liked !== undefined ? deckOverride.liked : (deckInfo ? deckInfo.liked : null)
     signal openMenu(string name)              // Settings: opens a Quickshell menu (wifi, bluetooth, ...)
 
-    readonly property var titles: Object.assign({ apps: "Apps", music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", musicsearch: "Music › Search", artist: "Music › " + artist.name, keys: "Keybindings", screenshot: "Tools › Screenshot", settings: "Settings", display: "Settings › Display", battery: "Settings › Battery", startup: "Settings › Startup", screensaver: "Settings › Screensaver", saverafter: "Screensaver › Start after", screenoff: "Screensaver › Screen off after", saverstyle: "Screensaver › Style", sounds: "Settings › Notification sounds", soundregular: "Notification sounds › Regular", soundurgent: "Notification sounds › Urgent", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
-                                     topbar: "Settings › Top bar", baropacity: "Top bar › Opacity", baricons: "Top bar › Icon colors", barhl: "Top bar › Highlight", baritems: "Top bar › Items",
+    readonly property var titles: Object.assign({ apps: "Apps", music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", musicsearch: "Music › Search", artist: "Music › " + artist.name, keys: "Keybindings", screenshot: "Tools › Screenshot", settings: "Settings", display: "Settings › Display", battery: "Settings › Battery", startup: "Settings › Startup", screensaver: "Settings › Screensaver", saverafter: "Screensaver › Start after", screenoff: "Screensaver › Screen off after", saverstyle: "Screensaver › Style", sounds: "Settings › Notifications", soundregular: "Notifications › Regular sound", soundurgent: "Notifications › Urgent sound", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
+                                     launcherprefs: "Settings › Launcher", topbar: "Settings › Top bar", baropacity: "Top bar › Opacity", baricons: "Top bar › Icon colors", barhl: "Top bar › Highlight", baritems: "Top bar › Items",
                                      system: "System", install: "System › Install", emoji: "Tools › Emoji", software: "Install › Software", webapp: "Install › Webapp", plugins: "Install › Plugins", webname: "Install › Webapp › Name", webaddr: "Install › Webapp › Address", remove: "System › Remove", power: "Power", passwords: "Passwords", clipboard: "Clipboard",
                                      tools: "Tools" }, sys.titles, home.titles, ext ? ext.titles : {})
 
@@ -222,6 +241,7 @@ PanelWindow {
             { kind: "nav", name: "Notification sounds", glyph: "bell-ring", target: "sounds" },
             { kind: "nav", name: "Battery", glyph: "battery-medium", target: "battery" },
             { kind: "nav", name: "Display", glyph: "monitor", target: "display" },
+            { kind: "nav", name: "Launcher", glyph: "text-search", target: "launcherprefs" },
             { kind: "nav", name: "Screensaver", glyph: "monitor-pause", target: "screensaver" },
             { kind: "nav", name: "Startup", glyph: "rocket", target: "startup" },
             { kind: "nav", name: "Tailscale", glyph: "shield-check", target: "tailscale" },
@@ -244,6 +264,7 @@ PanelWindow {
                                               "Color": "theme accent violet purple blue teal green amber rose graphite gray",
                                               "Background": "wallpaper desktop image picture",
                                               "Top bar": "waybar panel menu bar",
+                                              "Launcher": "search fuzzy typos shortcuts hints spotlight",
                                               "Opacity": "top bar waybar panel transparency transparent",
                                               "Icon colors": "top bar waybar panel white black light dark text",
                                               "Highlight": "top bar waybar panel active workspace",
@@ -592,6 +613,12 @@ PanelWindow {
                 return Object.assign({}, a, { item: Object.assign({}, a.item, { summary: on ? (bgApps[a.item.name] !== undefined ? "at login, hidden" : "at login") : undefined }) })
             })
             if (q === "") return all.sort((a, b) => a.text.localeCompare(b.text)).map(x => x.item)   // a fixed order: toggling doesn't move rows
+        } else if (level === "launcherprefs") {
+            // The footer's key hints always show; these are the extras
+            return [{ kind: "lpref", key: "fuzzy", name: "Fuzzy search", glyph: prefs.fuzzy ? "toggle-right" : "toggle-left",
+                      sub: "Typos and initials also match: firefx, vsc", summary: prefs.fuzzy ? "on" : "off" },
+                    { kind: "lpref", key: "shortcuts", name: "Shortcut hints", glyph: prefs.shortcuts ? "toggle-right" : "toggle-left",
+                      sub: "An app’s or menu’s keys on its row (⌘⇧P)", summary: prefs.shortcuts ? "on" : "off" }]
         } else if (level === "plugins") {
             // Enter runs the installer in a terminal (they ask things: sudo, tokens, logins); an installed one can be run again
             if (pluginList === null) return hint("Loading…")
@@ -610,7 +637,7 @@ PanelWindow {
         // Several words: each may hit the name or the search words ("olohuone kattovalo" → the room is in extra, the name in text)
         const fq = fold(q)
         const words = fq.split(/\s+/).filter(w => w !== "")
-        const fuzzyOk = level !== "emoji"   // thousands of short names: letters in order would hit too many
+        const fuzzyOk = prefs.fuzzy && level !== "emoji"   // thousands of short names: letters in order would hit too many
         all.forEach((x, i) => {
             let s = score(x.text, fq)
             const extra = x.extra ? fold(x.extra) : ""
@@ -775,6 +802,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         else if (item.kind === "emoji") emojiPick(item, true)
         else if (item.kind === "stat" && item.copy !== undefined) sys.copyText(item.copy)   // Public IP, Local IP, Router: as ⌘C
         else if (item.kind === "brightness" || item.kind === "stat") shake.restart()   // brightness: ←/→ or the slider; stat: information only
+        else if (item.kind === "lpref") { keepSelection(); setPref(item.key, !prefs[item.key]) }
         else if (item.kind === "nightlight") {
             keepSelection()
             night = night === "on" ? "off" : "on"
@@ -1713,7 +1741,7 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                     }
                     Rectangle {      // the row's shortcut (shortcutFor) in a key frame like the footer's, before the › of a submenu;
                         id: shortcut     // not where the right side is taken
-                        readonly property string keys: trailing.tag || row.modelData.keys !== undefined || row.armedNow
+                        readonly property string keys: !win.prefs.shortcuts || trailing.tag || row.modelData.keys !== undefined || row.armedNow
                             || (row.modelData.summary !== undefined && row.modelData.summary !== "") ? "" : win.shortcutFor(row.modelData)
                         visible: keys !== ""
                         anchors { right: trailing.left; rightMargin: trailing.text !== "" ? 18 : 0; verticalCenter: parent.verticalCenter }
