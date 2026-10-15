@@ -146,10 +146,15 @@ for _, dir in ipairs({ "left", "right", "up", "down" }) do
     hl.bind(mod .. " + SHIFT + " .. dir,     function() NIGHTDRIVE_SWAP(dir) end)   -- slides (hyprland.lua)
 end
 
--- Workspaces ⌘1–⌘0, move window ⌘⇧1–⌘⇧0
+-- Workspaces ⌘1–⌘0, move window ⌘⇧1–⌘⇧0. With the drawer open ⌘1–⌘0 closes it first, otherwise it stays over the
+-- new workspace
 for i = 1, 10 do
     local key = i % 10
-    hl.bind(mod .. " + " .. key,         hl.dsp.focus({ workspace = i }))
+    hl.bind(mod .. " + " .. key, function()
+        local special = hl.get_active_special_workspace()
+        if special and special.name == "special:drawer" then hl.dispatch(hl.dsp.workspace.toggle_special("drawer")) end
+        hl.dispatch(hl.dsp.focus({ workspace = i }))
+    end)
     hl.bind(mod .. " + SHIFT + " .. key, hl.dsp.window.move({ workspace = i }))
 end
 hl.bind(mod .. " + TAB",         hl.dsp.focus({ workspace = "e+1" }))
