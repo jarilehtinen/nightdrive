@@ -199,14 +199,15 @@ Rectangle {
                 id: appIcon
                 width: card.iconSize; height: card.iconSize
                 anchors.verticalCenter: parent.verticalCenter
-                name: card.row.icon || ""
+                readonly property string glyph: (card.row.icon || "").startsWith("lucide:") ? card.row.icon.slice(7) : ""
+                name: glyph ? "" : card.row.icon || ""
                 sourceSize: Qt.size(card.iconSize * 2, card.iconSize * 2)
                 visible: status === Image.Ready
             }
-            Text {      // no icon anywhere: a bell
+            Text {      // a Lucide glyph as the icon (app_icon lucide:<name>, e.g. screenshots), or no icon anywhere: a bell
                 anchors.centerIn: appIcon
                 visible: !appIcon.visible
-                text: Icons.g("bell")
+                text: Icons.g(appIcon.glyph || "bell")
                 color: Theme.dim
                 font { family: Icons.family; pixelSize: card.iconSize - 4 }
             }

@@ -53,6 +53,7 @@ Singleton {
     readonly property var ownIconNames: ["audio-headphones", "audio-headset"]
     function iconPath(name) {
         if (!name) return ""
+        if (name.startsWith("lucide:")) return name   // a Lucide glyph (NotificationCard.qml draws it from the font)
         if (name.startsWith("/")) return "file://" + name
         if (name.indexOf("://") > 0) return name
         if (ownIconNames.indexOf(name) >= 0) return "file://" + ownIcons + name + ".svg"

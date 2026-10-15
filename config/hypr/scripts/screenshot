@@ -18,27 +18,35 @@ pick_window() {
     | slurp -r
 }
 
-# The notification shows the picture small under its text (category x-nightdrive.preview: quickshell/NotificationCard.qml)
-notify() { notify-send -c x-nightdrive.preview -h "string:image-path:file://$1" "Screenshot" "$2"; }   # file://: a bare path would be taken as an icon name
+# The notification: "Screenshot" with the launcher's glyph for the kind (Tools › Screenshot: crop, app-window, monitor),
+# the picture under the text (category x-nightdrive.preview: quickshell/NotificationCard.qml). Straight over D-Bus:
+# notify-send -i sets the picture, not the app's icon. The picture is a file:// URI (a bare path is taken as an icon name).
+# Usage: notify <picture> <text> <glyph>
+notify() {
+  gdbus call --session --dest org.freedesktop.Notifications --object-path /org/freedesktop/Notifications \
+    --method org.freedesktop.Notifications.Notify Screenshot 0 "lucide:$3" \
+    "$2" "" "[]" "{'category': <'x-nightdrive.preview'>, 'image-path': <'file://$1'>}" 'int32 -1' >/dev/null   # (as text: a bare -1 would be an option)
+}
 
 # Clipboard only: the picture for the notification's preview in the runtime dir (gone at logout)
 clip=${XDG_RUNTIME_DIR:-/tmp}/screenshots
 case "$mode" in
   clip|winclip)
-    if [[ $mode == clip ]]; then geom=$(slurp) || exit 0; what=Region; else geom=$(pick_window) || exit 0; what=Window; fi
+    if [[ $mode == clip ]]; then geom=$(slurp) || exit 0; what=Region; glyph=crop
+    else geom=$(pick_window) || exit 0; what=Window; glyph=app-window; fi
     mkdir -p "$clip"; find "$clip" -name '*.png' -mmin +60 -delete 2>/dev/null
     f=$clip/$(date +%H-%M-%S-%N).png
     grim -g "$geom" "$f" && wl-copy --type image/png < "$f"
-    notify "$f" "$what copied to clipboard"; exit 0 ;;
+    notify "$f" "$what copied to clipboard" "$glyph"; exit 0 ;;
 esac
 
 dir="$(xdg-user-dir PICTURES)/Screenshots"   # e.g. ~/Kuvat on a Finnish system
 mkdir -p "$dir"
 file=$dir/$(date +%Y-%m-%d_%H-%M-%S).png
 case "$mode" in
-  region) geom=$(slurp) || exit 0;        grim -g "$geom" "$file" ;;
-  window) geom=$(pick_window) || exit 0;  grim -g "$geom" "$file" ;;
-  *)      grim "$file" ;;
+  region) geom=$(slurp) || exit 0;        grim -g "$geom" "$file"; glyph=crop ;;
+  window) geom=$(pick_window) || exit 0;  grim -g "$geom" "$file"; glyph=app-window ;;
+  *)      grim "$file"; glyph=monitor ;;
 esac
 wl-copy < "$file"
-notify "$file" "Saved and copied to clipboard"
+notify "$file" "Saved and copied to clipboard" "$glyph"
