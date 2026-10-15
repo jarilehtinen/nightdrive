@@ -1,0 +1,3 @@
+# Apps that ⌘Q asks to quit with their own command instead of closing their windows (hypr/scripts/quit-app).
+# For apps that a closed window leaves running in the tray and whose process ⌘Q can't safely stop itself.
+# Format: window class regex = command (run with bash). Personal additions go to quit-commands.local (not in the repo).

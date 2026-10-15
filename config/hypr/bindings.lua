@@ -103,7 +103,7 @@ hl.bind(mod .. " + ALT + right", hl.dsp.send_shortcut({ mods = "CTRL", key = "Ne
 
 -- Windows
 hl.bind(mod .. " + W",          hl.dsp.exec_cmd(scripts .. "/close-or-hide"))   -- closes; background apps (hypr/background-apps) are hidden in the background instead
-hl.bind(mod .. " + Q",           hl.dsp.window.close())   -- always really closes, background apps too (Deck, WhatsApp…); ⌘W hides them
+hl.bind(mod .. " + Q",           hl.dsp.exec_cmd(scripts .. "/quit-app"))   -- quits the app for real, background apps too (Deck, WhatsApp…); ⌘W hides them
 hl.bind(mod .. " + F",           hl.dsp.window.fullscreen())
 -- ⌘T: toggle floating. For Deck: tiled -> floating at its default size, centred; floating but moved/resized ->
 -- back to default size, centred; floating already at default position -> tiled. (Size: DECK_SIZE in hyprland.lua)

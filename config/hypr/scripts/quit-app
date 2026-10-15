@@ -1,0 +1,60 @@
+#!/bin/bash
+# ⌘Q: quits the active app for real, like on a Mac (⌘W only closes the window, or hides a background app).
+# Safely, step by step:
+#  1. An app with its own quit command (hypr/quit-commands) is asked to quit with that.
+#  2. Otherwise all the app's windows (same process and class, also ones hidden to special:bg) are closed the normal
+#     way, so the app can still ask about unsaved work.
+#  3. If the process is still running a moment later but has no window left (it went to the tray), it gets SIGTERM:
+#     a polite quit request it can clean up after. Never SIGKILL.
+# The process is left alone when it still has a window (a save dialog, a cancelled quit, another app's window in a
+# shared process), when the window is XWayland (its pid comes from the app and can't be trusted: muvm's Steam reports
+# a pid from inside its VM) and when the pid isn't an ordinary process of this user.
+d=$HOME/.config/hypr
+note() { notify-send -a Nightdrive "$@"; }
+# A field of /proc/<pid>/stat after "pid (comm)" (comm may contain spaces): 2 = ppid, 20 = start time
+stat_field() { sed 's/.*) //' "/proc/$1/stat" 2>/dev/null | awk -v f="$2" '{print $f}'; }
+
+read -r addr class pid xw < <(hyprctl -j activewindow | jq -r '"\(.address // "") \(.class // "") \(.pid // 0) \(.xwayland // false)"')
+[[ -n $addr ]] || exit 0
+
+# 1. Own quit command: "class regex = command"
+while IFS= read -r line; do
+  [[ $line =~ ^[[:space:]]*(#|$) ]] && continue
+  re=${line%%=*}; cmd=${line#*=}
+  re=$(sed 's/^ *//; s/ *$//' <<<"$re"); cmd=$(sed 's/^ *//' <<<"$cmd")
+  if [[ -n $re && -n $cmd && $class =~ $re ]]; then
+    setsid bash -c "$cmd" >/dev/null 2>&1 &
+    exit 0
+  fi
+done < <(cat "$d/quit-commands" "$d/quit-commands.local" 2>/dev/null)
+
+# 2. Close the app's windows. A pid shared with other apps' windows (one Chromium for several webapps) only loses
+# the windows of this class.
+wins() { hyprctl -j clients | jq -r --argjson p "$pid" '.[] | select(.pid == $p) | "\(.address) \(.class)"'; }
+while read -r a c; do
+  [[ $c == "$class" ]] && hyprctl dispatch "hl.dsp.window.close({ window = \"address:$a\" })" >/dev/null
+done < <(wins)
+
+# 3. A process left running without windows gets SIGTERM
+(( pid > 1 )) || exit 0
+start=$(stat_field "$pid" 20); [[ -n $start ]] || exit 0
+for _ in $(seq 12); do
+  sleep 0.25
+  [[ -d /proc/$pid ]] || exit 0                       # quit by itself
+done
+[[ -n $(wins) ]] && exit 0                            # still has a window: a dialog, a cancelled quit, a shared process
+name=$(cat "/proc/$pid/comm" 2>/dev/null)
+if [[ $xw == true ]]; then
+  note "$class is still running" "Quit it from its own menu (in the tray)."
+  exit 0
+fi
+# Only an ordinary process of this user, the same one (pid not reused), and not Hyprland, the shell or this script's parents
+[[ $(stat -c %u "/proc/$pid") == "$UID" ]] || exit 0
+[[ $(stat_field "$pid" 20) == "$start" ]] || exit 0
+case $name in Hyprland|start-hyprland|qs|quickshell|systemd|dbus-daemon|dbus-broker) exit 0 ;; esac
+p=$$
+while (( p > 1 )); do
+  (( p == pid )) && exit 0
+  p=$(stat_field "$p" 2); [[ -n $p ]] || break
+done
+kill -TERM "$pid" 2>/dev/null
