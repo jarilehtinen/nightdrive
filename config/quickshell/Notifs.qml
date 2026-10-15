@@ -86,6 +86,15 @@ Singleton {
 
     function remove(uid) { popups = popups.filter(p => p.uid !== uid) }
 
+    // nm-applet calls itself "NetworkManager Applet" and sends a signal-strength picture: shown as Wi-Fi with its glyph, or
+    // as Network when it isn't about Wi-Fi (a cable, VPN; untested so far)
+    function relabel(row, n) {
+        if (!/^(networkmanager applet|nm-applet)$/i.test(n.appName || "")) return
+        const wifi = /wireless|signal|wifi/i.test(n.appIcon || "") || /wi-?fi/i.test(n.summary + " " + n.body)
+        row.app = wifi ? "Wi-Fi" : "Network"
+        row.icon = "lucide:" + (wifi ? (/disconnect/i.test(n.summary) ? "wifi-off" : "wifi") : "network")
+    }
+
     property var lastChime: ({})              // app → time of its last sound
     // The focused window belongs to the notification's app: its class is the app's name or (the last part of) its desktop id
     // (firefox ↔ org.mozilla.firefox, Slack ↔ com.slack.Slack)
@@ -142,6 +151,7 @@ Singleton {
                 time: same ? prev.time : Date.now(),
                 critical: n.urgency === NotificationUrgency.Critical
             }
+            s.relabel(row, n)
             s.history = [row].concat(s.history.filter(h => h.uid !== row.uid)).slice(0, s.maxHistory)
             if (!s.dnd && !old && !prev) s.chime(row, n)
             if (s.dnd || s.menuOpen) { n.expire(); return }
