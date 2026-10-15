@@ -573,9 +573,15 @@ PanelWindow {
         }
         if (q === "") return level === "keys" ? grouped(all.map(x => x.item)) : all.map(x => x.item)
         const scored = []
+        // Several words: each may hit the name or the search words ("olohuone kattovalo" → the room is in extra, the name in text)
+        const words = q.split(/\s+/).filter(w => w !== "")
         all.forEach((x, i) => {
             let s = score(x.text, q)
             if (s < 0 && x.extra && x.extra.toLowerCase().includes(q)) s = 3
+            if (s < 0 && words.length > 1) {
+                const hay = (x.text + " " + (x.extra || "")).toLowerCase()
+                if (words.every(w => hay.includes(w))) s = 4
+            }
             if (s >= 0) scored.push({ x: x, s: s, i: i })
         })
         scored.sort((a, b) => (a.s - b.s) || (level === "apps" ? a.x.text.localeCompare(b.x.text) : level === "emoji" ? (a.x.text.length - b.x.text.length) || (a.i - b.i) : a.i - b.i))
