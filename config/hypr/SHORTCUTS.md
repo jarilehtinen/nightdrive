@@ -46,6 +46,7 @@
   3-finger swipe     Switch workspace
   4-finger swipe     Move window in the swipe direction
   ⌘ D                Drawer: show / hide (slides up over the windows)
+  3-finger swipe ↑ ↓ Drawer: show / hide
   ⌘ S                Put the window in the drawer / take it back out
 
 ## Screenshots

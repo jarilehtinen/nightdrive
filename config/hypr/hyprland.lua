@@ -181,6 +181,15 @@ for _, dir in ipairs({ "left", "right", "up", "down" }) do
         action = function() NIGHTDRIVE_SWAP(dir) end,
     })
 end
+-- Three-finger swipe up shows the drawer, down hides it (like ⌘D). Only toggles when that changes something, so a
+-- second swipe the same way doesn't undo the first
+local function drawer_gesture(show)
+    local special = hl.get_active_special_workspace()
+    local open = special ~= nil and special.name == "special:drawer"
+    if open ~= show then hl.dispatch(hl.dsp.workspace.toggle_special("drawer")) end
+end
+hl.gesture({ fingers = 3, direction = "up",   action = function() drawer_gesture(true) end })
+hl.gesture({ fingers = 3, direction = "down", action = function() drawer_gesture(false) end })
 
 ------------------------
 ---- KEYBINDINGS → bindings.lua ----
