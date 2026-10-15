@@ -17,14 +17,11 @@ import Quickshell.Widgets
 PanelWindow {
     id: win
 
-    // A key in the footer: Lucide glyph (Enter, Ctrl, ...) or its name (Esc) in a rounded frame
-    component Keycap: Rectangle {
+    // A key in the footer: Lucide glyph (Enter, Ctrl, ...) or its name (Esc). A footer part's keys share one frame (footer, below).
+    component Keycap: Item {
         property string key: ""
         readonly property string glyph: win.keyGlyphs[key] || ""
-        width: Math.max(22, label.implicitWidth + 10); height: 19; radius: 5
-        color: "transparent"
-        border.color: Theme.dim
-        border.width: 1
+        width: label.implicitWidth; height: 19
         Text {
             id: label
             anchors.centerIn: parent
@@ -1982,9 +1979,21 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                         id: part
                         required property var modelData
                         spacing: 4
-                        Repeater {
-                            model: part.modelData.keys
-                            Keycap { required property string modelData; key: modelData }
+                        Rectangle {      // one frame around the part's keys (⌃ ↵)
+                            visible: part.modelData.keys.length > 0
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: caps.implicitWidth + 12; height: 22; radius: 6
+                            color: "transparent"
+                            border { width: 1; color: Theme.dim }
+                            Row {
+                                id: caps
+                                anchors.centerIn: parent
+                                spacing: 4
+                                Repeater {
+                                    model: part.modelData.keys
+                                    Keycap { required property string modelData; key: modelData }
+                                }
+                            }
                         }
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
