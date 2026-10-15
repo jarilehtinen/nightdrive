@@ -116,12 +116,12 @@ function NIGHTDRIVE_SWAP(dir, window)
     hl.dispatch(hl.dsp.window.swap({ direction = dir, window = window }))
     hl.timer(function() hl.animation({ leaf = "windowsMove", enabled = false }) end, { timeout = 220, type = "oneshot" })
 end
--- Drawer (⌘D, bindings.lua): slides up from the bottom over the windows, 90 % of the screen high, the rest dimmed
+-- Drawer (⌘D, bindings.lua): slides up from the bottom over the windows, 95 % of the screen high, the rest dimmed
 hl.animation({ leaf = "specialWorkspace", enabled = true, speed = 3, bezier = "spaces", style = "slidevert" })
 hl.config({ decoration = { dim_special = 0.6, blur = { special = true } } })   -- dimmed and blurred behind the drawer
-local drawerTop = 98    -- 10 % of the screen height, so the drawer is 90 % high
+local drawerTop = 49    -- 5 % of the screen height, so the drawer is 95 % high
 local mon = hl.get_monitors()[1]
-if mon then drawerTop = math.floor(mon.height / mon.scale * 0.1) end
+if mon then drawerTop = math.floor(mon.height / mon.scale * 0.05) end
 hl.workspace_rule({ workspace = "special:drawer", gaps_out = { top = drawerTop, right = 10, bottom = 10, left = 10 } })   -- the same 10 px gaps as other windows
 
 hl.config({
