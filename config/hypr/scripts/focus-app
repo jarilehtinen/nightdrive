@@ -12,5 +12,5 @@ addr=$(hyprctl -j clients | jq -r --arg re "$pat" '[.[] | select((.class | test(
 if [[ -n $addr ]]; then
   exec ~/.config/hypr/scripts/launch-or-focus "$pat" true
 elif [[ -n $entry ]]; then
-  gtk-launch "$entry" >/dev/null 2>&1 &
+  gtk-launch "${entry%.desktop}.desktop" >/dev/null 2>&1 &  # full file name: an id that itself ends in .desktop (org.telegram.desktop) is otherwise not found
 fi

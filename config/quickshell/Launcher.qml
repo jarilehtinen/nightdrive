@@ -735,7 +735,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
             win.open = false
             // Background app: bring the hidden window back (no second instance)
             if (item.entry && bgApps[item.name] !== undefined)
-                Quickshell.execDetached([scripts + "/launch-or-focus", bgApps[item.name], "gtk-launch", item.entry.id])
+                Quickshell.execDetached([scripts + "/launch-or-focus", bgApps[item.name], "gtk-launch", item.entry.id + ".desktop"])
             else if (item.entry) item.entry.execute(); else Quickshell.execDetached(["gio", "launch", item.path])
         }
         else if (item.kind === "clip") clipPick(item, true)
