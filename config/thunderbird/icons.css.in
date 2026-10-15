@@ -16,4 +16,5 @@
   --icon-mail: url("file://@DIR@/icons/lucide/mail.svg") !important;
   --icon-mail-secure: url("file://@DIR@/icons/lucide/mail.svg") !important;
   --icon-app-menu: url("file://@DIR@/icons/lucide/menu.svg") !important;
+  --icon-cloud-download: url("file://@DIR@/icons/lucide/refresh-cw.svg") !important;   /* Get Messages */
 }

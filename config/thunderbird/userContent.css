@@ -4,3 +4,6 @@
   url-prefix("mid:"), url-prefix("about:blank"), url-prefix("about:message") {
   html { background-color: #1a1b26; }
 }
+/* Plain-text messages: more room around the text (HTML messages keep their own layout). Outside the block above: a
+   message's address is imap:// or mailbox://, and these classes are Thunderbird's own plain-text rendering anyway. */
+.moz-text-plain, .moz-text-flowed { padding: 14px 22px 14px 18px !important; }

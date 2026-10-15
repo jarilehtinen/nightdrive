@@ -94,10 +94,9 @@ li.unread .subject, .card-layout.unread .subject, .unread .subject {
 
 /* ===== Jokela Night: decluttering ===== */
 
-/* Top bar: thin divider below, evenly spaced action buttons */
-unified-toolbar, #unifiedToolbarContainer {
-  border-bottom: 1px solid #292e42 !important;
-}
+/* Top bar: thin divider below (on the container only: on both it was a double line), evenly spaced action buttons */
+#unifiedToolbarContainer { border-bottom: 1px solid #292e42 !important; }
+unified-toolbar { border-bottom: none !important; }
 unified-toolbar li[item-id] .unified-toolbar-button {
   color: #a9b1d6 !important;
   border-color: transparent !important;
@@ -108,8 +107,10 @@ unified-toolbar li[item-id] .unified-toolbar-button:not([disabled]):hover {
   background-color: #292e42 !important;
 }
 unified-toolbar li[item-id] .unified-toolbar-button[disabled] { opacity: 0.35 !important; }
-/* Grouping: reply/forward | archive/spam/delete */
-unified-toolbar li[item-id="archive"] { margin-inline-start: 14px !important; }
+/* Get Messages: Thunderbird draws its icon bigger than the others */
+unified-toolbar li[item-id="get-messages"] .button-icon { width: 16px !important; height: 16px !important; }
+/* Grouping: get messages | reply/forward | archive/spam/delete */
+unified-toolbar li[item-id="reply"], unified-toolbar li[item-id="archive"] { margin-inline-start: 14px !important; }
 
 /* Message list: senders in violet, read messages dimmer */
 #threadTree .card-container .sender { color: #9d7cd8 !important; }
@@ -117,6 +118,10 @@ unified-toolbar li[item-id="archive"] { margin-inline-start: 14px !important; }
 #threadTree .card-container .subject { color: #a9b1d6 !important; }
 #threadTree .card-layout[data-properties~="unread"] .card-container .subject { color: #c0caf5 !important; }
 #threadTree .card-container .date { color: #565f89 !important; opacity: 1 !important; }
+/* Sizes: sender and subject 1 px, time 2 px under Thunderbird's own (threadCard.css: sender and time 0.95rem; the subject 1rem) */
+#threadTree .card-container .sender { font-size: calc(0.95rem - 1px) !important; }
+#threadTree .card-container .subject { font-size: calc(1rem - 1px) !important; }
+#threadTree .card-container .date { font-size: calc(0.95rem - 2px) !important; }
 /* Unread dot blue instead of green, same for the "new" star */
 #threadTree .card-layout[data-properties~="unread"] {
   --read-status-fill: #7aa2f7 !important;
@@ -149,8 +154,10 @@ unified-toolbar li[item-id="archive"] { margin-inline-start: 14px !important; }
 
 /* Sender: name in violet, address dimmed below */
 #expandedfromBox .recipient-multi-line-name,
-#expandedfromBox .recipient-single-line { color: #bb9af7 !important; font-weight: 500 !important; }
+#expandedfromBox .recipient-single-line { color: #bb9af7 !important; font-weight: 500 !important; font-size: calc(1em - 1px) !important; }
 #expandedfromBox .recipient-multi-line-address { color: #565f89 !important; font-size: 0.9em !important; }
+/* The sender's avatar: 4 px bigger than Thunderbird's 26 px (messageHeader.css) */
+#expandedfromBox .recipient-avatar { --recipient-avatar-size: 30px !important; inline-size: 30px !important; block-size: 30px !important; }
 .recipient-avatar {
   background-color: #292e42 !important;
   color: #bb9af7 !important;
@@ -178,7 +185,7 @@ unified-toolbar li[item-id="archive"] { margin-inline-start: 14px !important; }
 #headerSubjectSecurityContainer { margin-top: 8px !important; }
 #expandedsubjectBox, #expandedsubjectBox * {
   color: #c0caf5 !important;
-  font-size: 1.25rem !important;
+  font-size: calc(1.25rem - 3px) !important;
   line-height: 1.35 !important;
 }
 
@@ -209,6 +216,8 @@ unified-toolbar li[item-id="archive"] { margin-inline-start: 14px !important; }
   --folderpane-unread-count-text: #1a1b26 !important;
 }
 #folderTree .unread-count { font-weight: 600 !important; }
+/* Folder pane (accounts, folders): 1 px under the rest of the UI */
+#folderTree { font-size: calc(1rem - 1px) !important; }
 
 /* Message area background (no message selected / behind the message): blue, not grey */
 #messagepane, #messageBrowser, #multimessage, #messagePaneBox, #messagePane { background-color: #1a1b26 !important; }

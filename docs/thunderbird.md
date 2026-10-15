@@ -8,7 +8,7 @@ shows up from the second start.
 Two things can't be linked and are set by hand in `xulstore.json`, with Thunderbird closed:
 
 - Toolbar buttons: `unifiedToolbar.state` =
-  `{"mail":["ext-folderpane-toggle@jokela-night","spacer","reply","reply-all","forward-inline","archive","junk","delete","spacer"]}`
+  `{"mail":["ext-folderpane-toggle@jokela-night","spacer","get-messages","reply","reply-all","forward-inline","archive","junk","delete","spacer"]}`
 - Message header: in `aboutMessage.xhtml` → `messageHeader.layout`, turn on `hideLabels`, `subjectLarge`, `showAvatar` and `showFullAddress`.
 
 A pitfall: if you change `mail.addressDisplayFormat` in `user.js`, also bump `mail.displayname.version` in `prefs.js`. Otherwise
