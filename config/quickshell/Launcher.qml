@@ -48,6 +48,7 @@ PanelWindow {
     property string query: ""
     property var syncHidden: []               // apps hidden by sync-apps: [{ path, name, icon, extra }]
     property var keyList: []                  // [{ name, sub, keys, section }]
+    property var keyIndex: ({})               // lower-case name → keys (shortcutFor)
     property string armed: ""                 // action awaiting confirmation
     property var installResults: []           // Install: search results
     property string installQ: ""              // the query the results belong to
@@ -1242,6 +1243,16 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
         }
     }
 
+    // A row's shortcut from SHORTCUTS.md ("" = none): apps and the launcher's own items, by name. Names that differ
+    // between the launcher and SHORTCUTS.md: shortcutAliases.
+    readonly property var shortcutAliases: ({ "kitty": "terminal", "firefox": "browser", "visual studio code": "vs code",
+                                              "clipboard": "clipboard history", "emoji": "emoji picker", "keybindings": "this help" })
+    function shortcutFor(it) {
+        if (!it || !it.name || (it.kind !== "app" && it.kind !== "nav")) return ""
+        const n = it.name.toLowerCase()
+        return keyIndex[n] || keyIndex[shortcutAliases[n] || ""] || ""
+    }
+
     // A keybinding's text → [name, second line]: the row has no room for long texts. A note in parentheses at the end goes
     // on the second line ("Emoji picker (Enter pastes…)"), and so does what a long name has after its first ": " or "; "
     // outside parentheses ("Play/pause; starts Deck if…").
@@ -1282,6 +1293,20 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                 out.push({ keys: m[1].trim(), name: t[0], sub: t[1], section: section })
             }
             win.keyList = out
+            // name → keys, for showing an app's or a launcher item's shortcut on its row: the row's name with and without
+            // its parentheses, the names in them ("Music (Deck, Spotify)" → deck) and in its note ("Email (Thunderbird,
+            // inbox)" → thunderbird). The first of alternatives ("⌘ ⇧ Enter / ⌘ ⇧ B").
+            const idx = {}
+            for (const k of out) {
+                const keys = k.keys.split(" / ")[0]
+                const inParens = (k.name.match(/\(([^()]*)\)/g) || []).map(p => p.slice(1, -1)).join(",")
+                const names = [k.name, k.name.replace(/\s*\([^()]*\)/g, "")]
+                for (const n of names.concat((inParens + "," + k.sub).split(/,\s*/))) {
+                    const key = n.trim().toLowerCase()
+                    if (key && idx[key] === undefined) idx[key] = keys
+                }
+            }
+            win.keyIndex = idx
         }
     }
 
@@ -1556,7 +1581,7 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                         readonly property bool twoLines: !!row.modelData.artist || !!row.modelData.sub
                         anchors {
                             left: row.noIcon ? parent.left : slot.right; leftMargin: 16
-                            right: trailing.left; rightMargin: (row.modelData.kind === "key" ? 36 : 12) + (dot.visible ? 19 : 0)   // keybindings get more room before the keys (description is elided with …)
+                            right: shortcut.visible ? shortcut.left : trailing.left; rightMargin: (row.modelData.kind === "key" ? 36 : 12) + (dot.visible ? 19 : 0)   // keybindings get more room before the keys (description is elided with …)
                             verticalCenter: parent.verticalCenter; verticalCenterOffset: twoLines ? (row.modelData.sub ? -9 : -7) : 0
                         }
                         elide: Text.ElideRight
@@ -1577,6 +1602,16 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                         color: row.modelData.sub ? Theme.dim : Theme.primary
                         font { family: Theme.font; pixelSize: row.modelData.sub ? win.fontSize - 5 : win.fontSize - 6; weight: row.modelData.sub ? win.fontWeight : Font.Normal
                                letterSpacing: row.modelData.sub ? 0 : 1 }
+                    }
+                    Text {      // the row's shortcut (shortcutFor), dim, before the › of a submenu; not where the right side is taken
+                        id: shortcut
+                        readonly property string keys: trailing.tag || row.modelData.keys !== undefined || row.armedNow
+                            || (row.modelData.summary !== undefined && row.modelData.summary !== "") ? "" : win.shortcutFor(row.modelData)
+                        visible: keys !== ""
+                        anchors { right: trailing.left; rightMargin: trailing.text !== "" ? 12 : 0; verticalCenter: parent.verticalCenter }
+                        text: keys
+                        color: Theme.dim
+                        font { family: Theme.font; pixelSize: win.fontSize - 3 }
                     }
                     Text {
                         id: trailing
