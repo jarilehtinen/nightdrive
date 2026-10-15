@@ -711,15 +711,30 @@ PanelWindow {
     property var runningClasses: []    // classes of all open windows (lowercase)
     // Whether an app has a window open (on any workspace, also in the background): background apps by their class list (bgApps),
     // others by the .desktop file's StartupWMClass or id
-    function appRunning(item) {
-        if (item.kind !== "app" || !item.entry) return false
+    function appRunning(item) { return item.kind === "app" && (item.entry !== undefined || item.path !== undefined) && appClassRe(item) !== "" }
+    // The window class regex of a running app (for quit-app --class), "" when it has no window open. A row hidden by
+    // sync-apps has only the .desktop file's path: its id is the file name.
+    function appClassRe(item) {
         const re = bgApps[item.name]
-        if (re !== undefined) return runningClasses.some(c => new RegExp(re, "i").test(c))
-        const e = item.entry
-        const wm = (e.startupClass || "").toLowerCase()
-        const id = (e.id || "").replace(/\.desktop$/, "").toLowerCase()
-        return runningClasses.some(c => (wm !== "" && c === wm) || (id !== "" && c === id))
+        if (re !== undefined) return runningClasses.some(c => new RegExp(re, "i").test(c)) ? re : ""
+        const wm = (item.entry && item.entry.startupClass || "").toLowerCase()
+        const id = appId(item).replace(/\.desktop$/, "").toLowerCase()
+        const c = [wm, id].find(c => c !== "" && runningClasses.includes(c))
+        return c ? "^" + c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$" : ""
     }
+    // Apps quit with ⌘Q: class regex -> when. Their green dot pulses until the app is gone (or 10 s: it asked about unsaved
+    // work or refused), the window list is re-read often meanwhile.
+    property var quitting: ({})
+    readonly property bool anyQuitting: Object.keys(quitting).length > 0
+    function quitPending(item) { const re = appClassRe(item); return re !== "" && quitting[re] !== undefined }
+    onRunningClassesChanged: {
+        if (!anyQuitting) return
+        const left = {}
+        for (const re in quitting)
+            if (Date.now() - quitting[re] < 10000 && runningClasses.some(c => new RegExp(re, "i").test(c))) left[re] = quitting[re]
+        quitting = left
+    }
+    Timer { interval: 300; repeat: true; running: win.anyQuitting; onTriggered: bgProc.running = true }
     Sh {
         id: bgProc
         script: 'hyprctl -j clients | jq -r \'.[].class\''
@@ -1486,6 +1501,17 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
             if (win.level === "background" && win.wallLoaded) win.deleteWall()
             else win.deleteBack(false)
         }
+        // ⌘Q (hypr/scripts/quit-app asks first): with the launcher open quits the selected app if it's running, otherwise
+        // shakes. Returns "ok" when the launcher is open, so the window under it is never quit; "" when it's closed.
+        function quitSelected(): string {
+            if (!win.open) return ""
+            const re = win.selApp ? win.appClassRe(win.selApp) : ""
+            if (re === "") { shake.restart(); return "ok" }
+            Quickshell.execDetached([win.scripts + "/quit-app", "--class", re])
+            win.quitting = Object.assign({}, win.quitting, { [re]: Date.now() })
+            bgProc.running = true
+            return "ok"
+        }
         // ⌥⌫: deletes the word to the cursor's left (Hyprland's binding takes the key, so the launcher does it here)
         function deleteWord(): void { if (win.open) win.deleteBack(true) }
         function stepUp(): void { win.detail !== null ? win.detailScroll(-win.rowHeight) : win.step(-1) }
@@ -1828,6 +1854,14 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                         anchors.verticalCenter: parent.verticalCenter
                         width: 9; height: 9; radius: 5
                         color: Theme.ok
+                        // ⌘Q pressed: pulses until the app is gone
+                        readonly property bool quitting: visible && win.anyQuitting && win.quitPending(row.modelData)
+                        SequentialAnimation on opacity {
+                            running: dot.quitting; loops: Animation.Infinite
+                            onRunningChanged: if (!running) dot.opacity = 1
+                            NumberAnimation { to: 0.15; duration: 350; easing.type: Easing.InOutSine }
+                            NumberAnimation { to: 1; duration: 350; easing.type: Easing.InOutSine }
+                        }
                     }
                     Text {           // row.modelData.note: small dim text after the name (Settings › Home: how many there are)
                         id: note
