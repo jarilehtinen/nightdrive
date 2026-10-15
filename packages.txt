@@ -32,6 +32,8 @@ loupe
 sushi
 chromium
 gh
+# dnf's actions plugin: config/system/nightdrive.actions tells the desktop after each dnf transaction (Plugins.qml)
+libdnf5-plugin-actions
 breeze-cursor-theme
 google-noto-sans-fonts
 google-noto-sans-mono-fonts

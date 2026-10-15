@@ -1,0 +1,4 @@
+# libdnf5-plugin-actions (install.sh puts this in /etc/dnf/libdnf5-plugins/actions.d/): after every dnf transaction,
+# touches a file that Quickshell watches (Plugins.qml), so a part installed or removed with dnf (sudo dnf install
+# tailscale) shows up or goes away in the launcher and the top bar at once. Runs as root: only touches the file.
+post_transaction:::enabled=host-only:/usr/bin/touch /var/lib/nightdrive/dnf-changed

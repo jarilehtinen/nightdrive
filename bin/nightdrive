@@ -99,7 +99,10 @@ update() {
 nightdrive-sleep /usr/lib/systemd/system-sleep/nightdrive-sleep 755
 logind-ignore-sleep-key.conf /etc/systemd/logind.conf.d/50-ignore-sleep-key.conf 644
 logind-power-key.conf /etc/systemd/logind.conf.d/50-power-key.conf 644
+nightdrive.actions /etc/dnf/libdnf5-plugins/actions.d/nightdrive.actions 644
 LIST
+  # The file the dnf hook touches; Quickshell watches it only if it exists when it starts (restarted below)
+  [[ -e /var/lib/nightdrive/dnf-changed ]] || sudo install -Dm644 /dev/null /var/lib/nightdrive/dnf-changed
   (( changed )) && sudo systemctl kill -s HUP systemd-logind
   (( copied )) || echo "    up to date"
 
