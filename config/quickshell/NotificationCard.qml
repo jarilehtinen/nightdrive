@@ -3,8 +3,9 @@ import Quickshell
 import Quickshell.Widgets
 
 // One notification as a card: the app's icon and name with the time (× while the mouse is over it), the title, the text,
-// the notification's own picture on the right, and the app's actions as buttons. The popups (NotificationPopups.qml) and
-// the notification menu (NotificationsMenu.qml) both draw these, so a notification looks the same in both.
+// the notification's own picture on the right (a preview, e.g. a screenshot: small under the text), and the app's
+// actions as buttons. The popups (NotificationPopups.qml) and the notification menu (NotificationsMenu.qml) both draw
+// these, so a notification looks the same in both.
 // row = a history row from Notifs.qml; n = the live Notification while it's shown as a popup (its actions, updates), else null.
 Rectangle {
     id: card
@@ -12,6 +13,7 @@ Rectangle {
     // --- Tunables ---
     readonly property int iconSize: 18         // the app's icon
     readonly property int imageSize: 40        // the notification's own picture
+    readonly property int previewHeight: 220   // at most: a preview picture under the text (row.preview: screenshots)
 
     property var row: ({})
     property var n: null
@@ -268,7 +270,7 @@ Rectangle {
             }
             ClippingRectangle {
                 id: pic
-                visible: picImg.status === Image.Ready
+                visible: !card.row.preview && picImg.status === Image.Ready
                 anchors { right: parent.right; top: parent.top }
                 width: card.imageSize; height: card.imageSize
                 radius: 8
@@ -279,6 +281,30 @@ Rectangle {
                     source: card.row.image || ""
                     sourceSize: Qt.size(card.imageSize * 2, card.imageSize * 2)
                     fillMode: Image.PreserveAspectCrop
+                }
+            }
+        }
+
+        // A preview picture (a screenshot) under the text, as wide as the card; a tall one at most previewHeight high and
+        // narrower then (the whole picture always shows)
+        Item { width: 1; height: shot.visible ? 10 : 0 }
+        Item {
+            id: shot
+            readonly property real ar: shotImg.implicitWidth > 0 ? shotImg.implicitHeight / shotImg.implicitWidth : 0
+            visible: !!card.row.preview && shotImg.status === Image.Ready && ar > 0
+            width: parent.width
+            height: visible ? Math.min(card.previewHeight, width * ar) : 0
+            ClippingRectangle {
+                width: Math.min(parent.width, parent.height / Math.max(shot.ar, 0.001)); height: parent.height
+                radius: 6
+                color: "transparent"
+                border { width: 1; color: Qt.rgba(1, 1, 1, 0.08) }
+                Image {
+                    id: shotImg
+                    anchors.fill: parent
+                    source: card.row.preview ? card.row.image : ""
+                    sourceSize.width: 600
+                    asynchronous: true
                 }
             }
         }

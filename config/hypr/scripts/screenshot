@@ -18,11 +18,18 @@ pick_window() {
     | slurp -r
 }
 
+# The notification shows the picture small under its text (category x-nightdrive.preview: quickshell/NotificationCard.qml)
+notify() { notify-send -c x-nightdrive.preview -h "string:image-path:file://$1" "Screenshot" "$2"; }   # file://: a bare path would be taken as an icon name
+
+# Clipboard only: the picture for the notification's preview in the runtime dir (gone at logout)
+clip=${XDG_RUNTIME_DIR:-/tmp}/screenshots
 case "$mode" in
-  clip)    geom=$(slurp) || exit 0;        grim -g "$geom" - | wl-copy --type image/png
-           notify-send "Screenshot" "Region copied to clipboard"; exit 0 ;;
-  winclip) geom=$(pick_window) || exit 0;  grim -g "$geom" - | wl-copy --type image/png
-           notify-send "Screenshot" "Window copied to clipboard"; exit 0 ;;
+  clip|winclip)
+    if [[ $mode == clip ]]; then geom=$(slurp) || exit 0; what=Region; else geom=$(pick_window) || exit 0; what=Window; fi
+    mkdir -p "$clip"; find "$clip" -name '*.png' -mmin +60 -delete 2>/dev/null
+    f=$clip/$(date +%H-%M-%S-%N).png
+    grim -g "$geom" "$f" && wl-copy --type image/png < "$f"
+    notify "$f" "$what copied to clipboard"; exit 0 ;;
 esac
 
 dir="$(xdg-user-dir PICTURES)/Screenshots"   # e.g. ~/Kuvat on a Finnish system
@@ -34,4 +41,4 @@ case "$mode" in
   *)      grim "$file" ;;
 esac
 wl-copy < "$file"
-notify-send -i "$file" "Screenshot" "Saved and copied to clipboard"
+notify "$file" "Saved and copied to clipboard"

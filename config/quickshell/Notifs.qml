@@ -18,7 +18,7 @@ Singleton {
     readonly property int maxPopups: 6
 
     property var popups: []                   // [{ uid, n (Notification), entry (history row) }], newest first
-    property var history: []                  // [{ uid, app, summary, body, icon, image, entry, time }], newest first
+    property var history: []                  // [{ uid, app, summary, body, icon, image, preview, entry, time }], newest first
     property alias dnd: persist.dnd
     property double now: Date.now()           // for "2 min ago": updated every 30 s
     // The notification menu is open (NotificationsMenu.qml): the popups go (the menu lists them) and new ones skip the
@@ -111,6 +111,8 @@ Singleton {
                 // a device icon (blueman's headphones). Any other app_icon is the app's own icon again: shown once.
                 icon: appIcon || own,
                 image: (n.image && !named ? n.image : "") || (appIcon && s.ownIconNames.indexOf(n.appIcon || named) >= 0 ? own : ""),
+                // A picture to show under the text, not as a square (screenshots: hypr/scripts/screenshot)
+                preview: !!n.image && !named && (n.hints || {}).category === "x-nightdrive.preview",
                 entry: n.desktopEntry || (e ? e.id : ""),
                 time: same ? prev.time : Date.now(),
                 critical: n.urgency === NotificationUrgency.Critical
