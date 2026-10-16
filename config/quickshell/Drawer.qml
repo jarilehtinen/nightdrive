@@ -49,7 +49,8 @@ PanelWindow {
             }
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: "⌘S sends a window here."
+                text: "Open windows right here,\nor send one in with ⌘S"
+                horizontalAlignment: Text.AlignHCenter
                 color: Theme.dim
                 font { family: Theme.font; pixelSize: 15 }
             }
