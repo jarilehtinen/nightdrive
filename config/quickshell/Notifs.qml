@@ -12,6 +12,15 @@ import Quickshell.Wayland
 // A new notification plays a sound (hypr/scripts/sounds; Settings › Notifications): regular or urgent by its urgency,
 // none for low ones, in do not disturb, for an update of one already shown, when its app is the focused window (you are
 // looking at it), or when the same app chimed under `soundGap` ago (a burst of messages chimes once).
+// The history keeps what still matters (stale rows are noise that buries the rest):
+// - Replaced: a notification with the same stack tag as an earlier one from its app (hints x-dunst-stack-tag or
+//   x-canonical-private-synchronous: `notify-send -h string:x-dunst-stack-tag:NAME`) takes its place without a sound,
+//   and one with the same text as an earlier one moves that row to the top instead of adding a second.
+// - Withdrawn: a notification stays open after its popup goes, so its app can still close it (a chat read on the phone,
+//   a reminder whose meeting began), and then its row goes too. Not when the app has no window left: apps close their
+//   notifications when they quit, and those rows stay.
+// - Expired: hint x-nightdrive-expires (int, seconds: `-h int:x-nightdrive-expires:3600`) removes the row that long after.
+// - Transient (`notify-send -e`, "Copied" and the like): only the popup, never a row.
 //   qs ipc call notifications toggleDnd     → "true" when do not disturb is now on (hypr/scripts/dnd, F6)
 //   qs ipc call notifications dismissAll | clear | count
 Singleton {
@@ -23,7 +32,9 @@ Singleton {
     readonly property int soundGap: 2000      // ms: an app's notifications closer together than this chime once
 
     property var popups: []                   // [{ uid, n (Notification), entry (history row) }], newest first
-    property var history: []                  // [{ uid, app, summary, body, icon, image, preview, entry, time }], newest first
+    property var history: []                  // [{ uid, app, summary, body, icon, image, preview, entry, time, tag, expires }], newest first
+    property var live: ({})                   // uid → its Notification, while it's open (popup shown or not)
+    property var shownAtReload: []            // uids that had a popup when Quickshell reloaded
     property alias dnd: persist.dnd
     property double now: Date.now()           // for "2 min ago": updated every 30 s
     // The notification menu is open (NotificationsMenu.qml): the popups go (the menu lists them) and new ones skip the
@@ -39,10 +50,27 @@ Singleton {
         property string historyJson: "[]"
         property bool dnd: false
         property int uid: 0
-        onLoaded: { try { s.history = JSON.parse(historyJson) } catch (e) { s.history = [] } }
+        // The server hands the open notifications over again after a reload: only these get their popup back
+        property string shownJson: "[]"
+        onLoaded: {
+            try { s.history = JSON.parse(historyJson) } catch (e) { s.history = [] }
+            try { s.shownAtReload = JSON.parse(shownJson) } catch (e) { s.shownAtReload = [] }
+        }
     }
-    onHistoryChanged: persist.historyJson = JSON.stringify(history)
-    Timer { interval: 30000; repeat: true; running: true; onTriggered: s.now = Date.now() }
+    onPopupsChanged: persist.shownJson = JSON.stringify(popups.map(p => p.uid))
+    onHistoryChanged: {
+        persist.historyJson = JSON.stringify(history)
+        // A row that went (×, Clear, pushed out, replaced, expired) closes its notification: the app may stop waiting on it
+        for (const u of Object.keys(live))
+            if (!live[u].transient && !history.some(h => String(h.uid) === u)) live[u].expire()
+    }
+    Timer {
+        interval: 30000; repeat: true; running: true
+        onTriggered: {
+            s.now = Date.now()
+            if (s.history.some(h => h.expires && h.expires <= s.now)) s.history = s.history.filter(h => !h.expires || h.expires > s.now)
+        }
+    }
 
     // "now", "5 min", "2 h", then the time of day
     function ago(t) {
@@ -85,6 +113,34 @@ Singleton {
     }
 
     function remove(uid) { popups = popups.filter(p => p.uid !== uid) }
+    // The popup goes; the notification stays open for the history unless it's transient
+    function hide(uid) {
+        const p = popups.find(p => p.uid === uid)
+        remove(uid)
+        if (p && p.n && p.n.transient) p.n.expire()
+    }
+
+    // The app closed its notification: the row goes after `withdrawWait` if the app still has a window (it withdrew it),
+    // stays if not (it quit). The window may close a moment after the notifications do.
+    readonly property int withdrawWait: 1500
+    property var withdrawn: []                // [uid]
+    function closed(uid, reason) {
+        delete live[uid]
+        remove(uid)
+        if (reason !== NotificationCloseReason.CloseRequested) return
+        withdrawn = withdrawn.concat([uid])
+        withdrawTimer.restart()
+    }
+    Timer {
+        id: withdrawTimer
+        interval: s.withdrawWait
+        onTriggered: {
+            const gone = s.withdrawn
+            s.withdrawn = []
+            const keep = s.history.filter(h => gone.indexOf(h.uid) < 0 || !s.appRunning(h))
+            if (keep.length !== s.history.length) s.history = keep
+        }
+    }
 
     // nm-applet calls itself "NetworkManager Applet" and sends a signal-strength picture: shown as Wi-Fi with its glyph, or
     // as Network when it isn't about Wi-Fi (a cable, VPN; untested so far)
@@ -98,13 +154,17 @@ Singleton {
     property var lastChime: ({})              // app → time of its last sound
     // The focused window belongs to the notification's app: its class is the app's name or (the last part of) its desktop id
     // (firefox ↔ org.mozilla.firefox, Slack ↔ com.slack.Slack)
-    function appFocused(row) {
-        const t = ToplevelManager.activeToplevel
-        const cls = t && t.activated ? (t.appId || "").toLowerCase() : ""
+    function isApp(appId, row) {
+        const cls = (appId || "").toLowerCase()
         if (cls === "") return false
         const id = (row.entry || "").replace(/\.desktop$/, "").toLowerCase()
         return cls === (row.app || "").toLowerCase() || (id !== "" && (cls === id || cls === id.split(".").pop()))
     }
+    function appFocused(row) {
+        const t = ToplevelManager.activeToplevel
+        return !!t && t.activated && isApp(t.appId, row)
+    }
+    function appRunning(row) { return ToplevelManager.toplevels.values.some(t => isApp(t.appId, row)) }
     function chime(row, n) {
         // suppress-sound: the standard hint for a sender that plays its own sound
         if (n.urgency === NotificationUrgency.Low || appFocused(row) || (n.hints || {})["suppress-sound"]) return
@@ -122,8 +182,10 @@ Singleton {
         bodyMarkupSupported: false
         persistenceSupported: true
         onNotification: n => {
-            // A replacement (same id) updates the Notification already shown: move it to the top as new
-            const old = s.popups.find(p => p.n === n)
+            // A replacement (same id) updates the Notification already open: move it to the top as new
+            const oldUid = Object.keys(s.live).find(u => s.live[u] === n)
+            const old = oldUid !== undefined
+            const hints = n.hints || {}
             const e = s.desktopEntry(n)
             // Quickshell hands an icon name sent as the notification's picture as image://icon/<name>: a name we look up
             // ourselves (the icon provider draws a checkerboard for one the theme doesn't have)
@@ -138,7 +200,7 @@ Singleton {
             const prev = s.history.find(h => h.nid === n.id)
             const same = prev && prev.summary === n.summary && prev.body === n.body
             const row = {
-                uid: old ? old.uid : prev ? prev.uid : ++persist.uid,
+                uid: old ? Number(oldUid) : prev ? prev.uid : ++persist.uid,
                 nid: n.id,
                 app: n.appName || (e ? e.name : ""),
                 summary: n.summary, body: n.body,
@@ -147,20 +209,39 @@ Singleton {
                 icon: appIcon || own,
                 image: (n.image && !named ? n.image : "") || (appIcon && s.ownIconNames.indexOf(n.appIcon || named) >= 0 ? own : ""),
                 // A picture to show under the text, not as a square (screenshots: hypr/scripts/screenshot)
-                preview: !!n.image && !named && (n.hints || {}).category === "x-nightdrive.preview",
+                preview: !!n.image && !named && hints.category === "x-nightdrive.preview",
                 entry: n.desktopEntry || (e ? e.id : ""),
                 time: same ? prev.time : Date.now(),
-                critical: n.urgency === NotificationUrgency.Critical
+                critical: n.urgency === NotificationUrgency.Critical,
+                tag: "",
+                expires: hints["x-nightdrive-expires"] > 0 ? Date.now() + hints["x-nightdrive-expires"] * 1000 : 0
             }
             s.relabel(row, n)
-            s.history = [row].concat(s.history.filter(h => h.uid !== row.uid)).slice(0, s.maxHistory)
-            if (!s.dnd && !old && !prev) s.chime(row, n)
-            if (s.dnd || s.menuOpen) { n.expire(); return }
+            const stack = hints["x-dunst-stack-tag"] || hints["x-canonical-private-synchronous"] || ""
+            if (stack) row.tag = row.app + "\n" + stack
+            // The earlier one this replaces: the same stack tag, or else the same text (in the history, or a transient popup)
+            const twin = s.history.concat(s.popups.map(p => p.entry)).find(h => h.uid !== row.uid && h.app === row.app
+                && (row.tag ? h.tag === row.tag : h.summary === row.summary && h.body === row.body))
+            const others = s.history.filter(h => h.uid !== row.uid && (!twin || h.uid !== twin.uid))
+            // (twin's notification closes as its row goes: onHistoryChanged)
+            s.history = n.transient ? others : [row].concat(others).slice(0, s.maxHistory)
+            if (twin && s.live[twin.uid] && s.live[twin.uid].transient) s.live[twin.uid].expire()
+            if (!s.dnd && !old && !prev && !(twin && row.tag)) s.chime(row, n)
             n.tracked = true
-            if (!old) n.closed.connect(() => s.remove(row.uid))
-            s.popups = [{ uid: row.uid, n: n, entry: row }].concat(s.popups.filter(p => p.uid !== row.uid))
+            if (!old) {
+                s.live[row.uid] = n
+                n.closed.connect(reason => s.closed(row.uid, reason))
+            }
+            // Handed over again after a reload: its popup comes back only if it was showing
+            const reloaded = !old && prev && same
+            if (s.dnd || s.menuOpen || (reloaded && s.shownAtReload.indexOf(row.uid) < 0)) {
+                if (n.transient) n.expire()
+                return
+            }
+            const all = [{ uid: row.uid, n: n, entry: row }].concat(s.popups.filter(p => p.uid !== row.uid))
             // Too many: the oldest go (into the history only)
-            for (const p of s.popups.slice(s.maxPopups)) p.n.expire()
+            s.popups = all.slice(0, s.maxPopups)
+            for (const p of all.slice(s.maxPopups)) if (p.n.transient) p.n.expire()
         }
     }
 
@@ -177,11 +258,11 @@ Singleton {
         Quickshell.execDetached([Quickshell.env("HOME") + "/.config/hypr/scripts/focus-app", row.app, row.entry])
     }
     function forget(uid) {
+        if (live[uid]) live[uid].dismiss()
         history = history.filter(h => h.uid !== uid)
-        const p = popups.find(p => p.uid === uid)
-        if (p) p.n.dismiss()
     }
-    function dismissAll() { for (const p of popups.slice()) p.n.dismiss() }
+    // The popups go (the menu opened, do not disturb); the notifications stay open for the history
+    function dismissAll() { for (const p of popups.slice()) hide(p.uid) }
 
     IpcHandler {
         target: "notifications"
@@ -191,5 +272,7 @@ Singleton {
         function dismissAll(): void { s.dismissAll() }
         function clear(): void { s.history = [] }
         function count(): int { return s.history.length }
+        // For testing: the rows as JSON (app, summary, body, tag, expires)
+        function rows(): string { return JSON.stringify(s.history.map(h => ({ app: h.app, summary: h.summary, body: h.body, tag: h.tag, expires: h.expires }))) }
     }
 }

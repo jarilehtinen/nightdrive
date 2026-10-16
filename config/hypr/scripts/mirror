@@ -8,7 +8,7 @@
 # Pairing is saved by doubletake (~/.config/doubletake), so the code is asked only once per receiver.
 ctl="$HOME/.local/bin/doubletake-ctl"
 [[ -x $ctl ]] || { echo "doubletake isn't installed (install-doubletake.sh)" >&2; exit 1; }
-note() { notify-send -a "Screen Mirroring" "$@"; }
+note() { notify-send -a "Screen Mirroring" -h string:x-dunst-stack-tag:mirror "$@"; }   # each replaces the last
 refresh() { qs ipc call bar refreshModule display >/dev/null 2>&1; }
 
 case ${1:-} in

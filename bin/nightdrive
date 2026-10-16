@@ -45,7 +45,7 @@ check() {
   if (( total > 0 && total != last )); then
     echo "$total" > "$cache/updates-notified"
     (( total == 1 )) && what="1 new change" || what="$total new changes"
-    action=$(notify-send -a Nightdrive -A update=Update "Nightdrive update" "$what waiting" 2>/dev/null)
+    action=$(notify-send -a Nightdrive -h string:x-dunst-stack-tag:update -A update=Update "Nightdrive update" "$what waiting" 2>/dev/null)
     # systemd-run: its own unit, so the terminal outlives this oneshot service (whose processes systemd ends)
     [[ $action == update ]] && systemd-run --user --collect -q kitty --class floating-tui -e bash -c \
       '"$1" update; echo; read -rp "Done. Press Enter to close…"' _ "$repo/bin/nightdrive"

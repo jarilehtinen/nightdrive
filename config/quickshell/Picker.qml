@@ -43,7 +43,7 @@ PanelWindow {
         cv.px = null
         cv.unloadImage(win.shot)
         if (color !== "")
-            Quickshell.execDetached(["bash", "-c", 'printf %s "$1" | wl-copy; notify-send "Color Picker" "$1 copied to clipboard"', "_", color])
+            Quickshell.execDetached(["bash", "-c", 'printf %s "$1" | wl-copy; notify-send -e "Color Picker" "$1 copied to clipboard"', "_", color])
     }
     onMxChanged: hex = colorAt(mx, my)
     onMyChanged: hex = colorAt(mx, my)

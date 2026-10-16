@@ -925,7 +925,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
     function emojiPick(item, paste) {
         win.open = false
         Quickshell.execDetached(["bash", "-c",
-            'printf %s "$1" | wl-copy; if [ "$3" = 1 ]; then ' + pasteCmd + '; else notify-send -a Emoji -t 1500 "Copied $1" "$2"; fi',
+            'printf %s "$1" | wl-copy; if [ "$3" = 1 ]; then ' + pasteCmd + '; else notify-send -e -a Emoji -t 1500 "Copied $1" "$2"; fi',
             "_", item.emoji, item.name, paste ? "1" : "0"])
     }
     // Passwords: field → [message when missing, message when copied, secret (1 = sensitive + cleared after 45 s), op item get options...]
@@ -940,9 +940,9 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         win.open = false
         const script = 'id=$1 missing=$2 copied=$3 secret=$4; shift 4; ' +
             'v=$(op item get "$id" "$@" 2>/dev/null); [ -z "$v" ] && { notify-send -u critical "1Password" "$missing"; exit; }; ' +
-            'if [ "$secret" = 1 ]; then printf %s "$v" | wl-copy --sensitive; notify-send -t 4000 "1Password" "$copied. Clears in 45 s"; sleep 45; ' +
+            'if [ "$secret" = 1 ]; then printf %s "$v" | wl-copy --sensitive; notify-send -e -t 4000 "1Password" "$copied. Clears in 45 s"; sleep 45; ' +
             '[ "$(wl-paste -n 2>/dev/null)" = "$v" ] && wl-copy --clear; ' +
-            'else printf %s "$v" | wl-copy; notify-send -t 3000 "1Password" "$copied"; fi'
+            'else printf %s "$v" | wl-copy; notify-send -e -t 3000 "1Password" "$copied"; fi'
         Quickshell.execDetached(["bash", "-c", script, "_", item.id].concat(pwFields[field] || pwFields.username))
     }
     // Shift+Enter on an extension row; rows with armKey need a second press to confirm

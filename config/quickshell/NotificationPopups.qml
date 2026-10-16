@@ -67,7 +67,7 @@ PanelWindow {
                     id: leave
                     NumberAnimation { target: card; property: "appear"; to: 0; duration: 180; easing.type: Easing.InCubic }
                     NumberAnimation { target: card; property: "enterX"; to: 40; duration: 180; easing.type: Easing.InCubic }
-                    onFinished: if (card.n) card.n.expire()
+                    onFinished: Notifs.hide(card.modelData.uid)
                 }
             }
         }
