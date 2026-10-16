@@ -260,11 +260,9 @@ class Receiver:
         """An announcement from another device: introduce ourselves over HTTP(S), or by multicast when that fails."""
         proto = msg.get("protocol") if msg.get("protocol") in ("http", "https") else "https"
         url = f"{proto}://{ip}:{int(msg.get('port') or PORT)}/api/localsend/v2/register"
-        ctx = ssl.create_default_context()
-        ctx.check_hostname, ctx.verify_mode = False, ssl.CERT_NONE   # LocalSend's certificates are self-signed
         req = urllib.request.Request(url, json.dumps(self.info()).encode(), {"Content-Type": "application/json"})
         try:
-            answer = json.loads(urllib.request.urlopen(req, timeout=3, context=ctx).read() or b"{}")
+            answer = json.loads(urllib.request.urlopen(req, timeout=3, context=insecure()).read() or b"{}")
             if isinstance(answer, dict):
                 remember(ip, dict(answer, port=msg.get("port"), protocol=proto), self.fingerprint)
         except Exception:
@@ -518,6 +516,7 @@ def run():
 def insecure():
     ctx = ssl.create_default_context()
     ctx.check_hostname, ctx.verify_mode = False, ssl.CERT_NONE   # LocalSend's certificates are self-signed
+    ctx.load_cert_chain(*certificate()[:2])   # the iPhone app wants ours too (TLS "certificate required")
     return ctx
 
 
