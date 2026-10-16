@@ -3,11 +3,15 @@
 # If a window (matching class) is already open, focus it (switching workspace if needed); otherwise launch the program.
 # This way a second press of the shortcut doesn't open a duplicate.
 # A window hidden in the background (special:bg: ⌘W on background apps, or a window rule that opens it straight in the background) is brought to the current workspace.
+# With the drawer open that is the drawer, as for a new window: activeworkspace names the workspace under it.
+# A window open on a workspace stays there: focusing it hides the drawer.
 pattern=$1; shift
 find_win() { hyprctl -j clients | jq -r --arg re "$pattern" '[.[] | select(.class | test($re))] | first | "\(.address // "") \(.workspace.name // "")"'; }
 show() {  # $1 = address, $2 = workspace
   if [[ $2 == special:bg ]]; then
-    hyprctl dispatch "hl.dsp.window.move({ workspace = $(hyprctl -j activeworkspace | jq .id), window = \"address:$1\" })" >/dev/null
+    local target
+    target=$(hyprctl -j monitors | jq -r '[.[] | select(.focused)] | first | if .specialWorkspace.name == "special:drawer" then "\"special:drawer\"" else .activeWorkspace.id end')
+    hyprctl dispatch "hl.dsp.window.move({ workspace = $target, window = \"address:$1\" })" >/dev/null
   fi
   hyprctl dispatch "hl.dsp.focus({ window = \"address:$1\" })" >/dev/null
 }
