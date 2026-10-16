@@ -1,0 +1,10869 @@
+{
+"generated": "2026-10-16",
+"categories": [
+{
+"key": "browsers",
+"name": "Browsers",
+"glyph": "globe"
+},
+{
+"key": "communication",
+"name": "Communication",
+"glyph": "message-circle"
+},
+{
+"key": "productivity",
+"name": "Productivity",
+"glyph": "briefcase"
+},
+{
+"key": "creative",
+"name": "Creative",
+"glyph": "palette"
+},
+{
+"key": "media",
+"name": "Media",
+"glyph": "clapperboard"
+},
+{
+"key": "development",
+"name": "Development",
+"glyph": "code"
+},
+{
+"key": "gaming",
+"name": "Gaming",
+"glyph": "gamepad-2"
+},
+{
+"key": "utilities",
+"name": "Utilities",
+"glyph": "wrench"
+}
+],
+"perCategory": 25,
+"popular": 100,
+"apps": [
+{
+"id": "org.mozilla.firefox",
+"name": "Firefox",
+"summary": "Fast, Private & Safe Web Browser",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 200482,
+"category": "browsers"
+},
+{
+"id": "org.vinegarhq.Sober",
+"name": "Sober",
+"summary": "Play, chat & explore on Roblox",
+"arches": [
+"x86_64"
+],
+"installs": 194222,
+"category": "gaming"
+},
+{
+"id": "com.google.Chrome",
+"name": "Google Chrome",
+"summary": "The browser built to be yours",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 168392,
+"category": "browsers"
+},
+{
+"id": "com.brave.Browser",
+"name": "Brave",
+"summary": "Fast Internet, AI, Adblock",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 165829,
+"category": "browsers"
+},
+{
+"id": "com.discordapp.Discord",
+"name": "Discord",
+"summary": "Talk, play, hang out",
+"arches": [
+"x86_64"
+],
+"installs": 165426,
+"category": "communication"
+},
+{
+"id": "com.usebottles.bottles",
+"name": "Bottles",
+"summary": "Run Windows software",
+"arches": [
+"x86_64"
+],
+"installs": 135662,
+"category": "gaming"
+},
+{
+"id": "com.spotify.Client",
+"name": "Spotify",
+"summary": "Online music streaming service",
+"arches": [
+"x86_64"
+],
+"installs": 110811,
+"category": "media"
+},
+{
+"id": "org.videolan.VLC",
+"name": "VLC",
+"summary": "VLC media player, the open-source multimedia player",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 106514,
+"category": "media"
+},
+{
+"id": "com.github.tchx84.Flatseal",
+"name": "Flatseal",
+"summary": "Manage Flatpak permissions",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 94772,
+"category": "utilities"
+},
+{
+"id": "com.valvesoftware.Steam",
+"name": "Steam",
+"summary": "Launcher for the Steam software distribution service",
+"arches": [
+"x86_64"
+],
+"installs": 93210,
+"category": "gaming"
+},
+{
+"id": "com.heroicgameslauncher.hgl",
+"name": "Heroic",
+"summary": "Play Epic, GOG and Amazon Games",
+"arches": [
+"x86_64"
+],
+"installs": 91484,
+"category": "gaming"
+},
+{
+"id": "org.telegram.desktop",
+"name": "Telegram",
+"summary": "New era of messaging",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 89781,
+"category": "communication"
+},
+{
+"id": "com.obsproject.Studio",
+"name": "OBS Studio",
+"summary": "Live stream and record videos",
+"arches": [
+"x86_64"
+],
+"installs": 87203,
+"category": "creative"
+},
+{
+"id": "org.onlyoffice.desktopeditors",
+"name": "ONLYOFFICE Desktop Editors",
+"summary": "Office productivity suite",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 84858,
+"category": "productivity"
+},
+{
+"id": "org.darktable.Darktable",
+"name": "darktable",
+"summary": "Organize and develop images from digital cameras",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 84582,
+"category": "creative"
+},
+{
+"id": "org.prismlauncher.PrismLauncher",
+"name": "Prism Launcher",
+"summary": "Custom Minecraft Launcher to easily manage multiple Minecraft installations at once",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 83553,
+"category": "gaming"
+},
+{
+"id": "md.obsidian.Obsidian",
+"name": "Obsidian",
+"summary": "Markdown-based knowledge base",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 73096,
+"category": "productivity"
+},
+{
+"id": "org.localsend.localsend_app",
+"name": "LocalSend",
+"summary": "Share files to nearby devices",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 68238,
+"category": "utilities"
+},
+{
+"id": "net.davidotek.pupgui2",
+"name": "ProtonUp-Qt",
+"summary": "Install Wine- and Proton-based compatibility tools",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 67097,
+"category": "gaming"
+},
+{
+"id": "org.libretro.RetroArch",
+"name": "RetroArch",
+"summary": "Frontend for emulators, game engines and media players",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 63742,
+"category": "gaming"
+},
+{
+"id": "it.mijorus.gearlever",
+"name": "Gear Lever",
+"summary": "Manage AppImages",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 63226,
+"category": "utilities"
+},
+{
+"id": "org.gimp.GIMP",
+"name": "GNU Image Manipulation Program",
+"summary": "High-end image creation and manipulation",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 60684,
+"category": "creative"
+},
+{
+"id": "app.zen_browser.zen",
+"name": "Zen",
+"summary": "Stay focused, browse faster",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 58039,
+"category": "browsers"
+},
+{
+"id": "org.libreoffice.LibreOffice",
+"name": "LibreOffice",
+"summary": "The LibreOffice productivity suite",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 57849,
+"category": "productivity"
+},
+{
+"id": "org.DolphinEmu.dolphin-emu",
+"name": "Dolphin Emulator",
+"summary": "GameCube / Wii / Triforce Emulator",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 57018,
+"category": "gaming"
+},
+{
+"id": "org.chromium.Chromium",
+"name": "Chromium Web Browser",
+"summary": "The web browser from Chromium project",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 55449,
+"category": "browsers"
+},
+{
+"id": "org.qbittorrent.qBittorrent",
+"name": "qBittorrent",
+"summary": "An open-source Bittorrent client",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 55368,
+"category": "utilities"
+},
+{
+"id": "com.visualstudio.code",
+"name": "Visual Studio Code",
+"summary": "Code editing. Redefined.",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 54149,
+"category": "development"
+},
+{
+"id": "org.kicad.KiCad",
+"name": "KiCad",
+"summary": "An EDA suite for schematic and circuit board design",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 53553,
+"category": "creative"
+},
+{
+"id": "net.lutris.Lutris",
+"name": "Lutris",
+"summary": "Video game preservation platform",
+"arches": [
+"x86_64"
+],
+"installs": 52861,
+"category": "gaming"
+},
+{
+"id": "org.ppsspp.PPSSPP",
+"name": "PPSSPP",
+"summary": "A PlayStation Portable emulator",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 51905,
+"category": "gaming"
+},
+{
+"id": "com.protonvpn.www",
+"name": "Proton VPN",
+"summary": "Secures your internet and protects your online privacy",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 49529,
+"category": "utilities"
+},
+{
+"id": "io.gitlab.librewolf-community",
+"name": "LibreWolf",
+"summary": "LibreWolf Web Browser",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 46386,
+"category": "browsers"
+},
+{
+"id": "io.github.kolunmi.Bazaar",
+"name": "Bazaar",
+"summary": "Discover and install apps",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 45563,
+"category": "utilities"
+},
+{
+"id": "com.vysp3r.ProtonPlus",
+"name": "ProtonPlus",
+"summary": "Manage Proton, Wine, DXVK, and VKD3D tools for Linux game launchers",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 45240,
+"category": "gaming"
+},
+{
+"id": "com.stremio.Stremio",
+"name": "Stremio",
+"summary": "Freedom to Stream",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 44237,
+"category": "media"
+},
+{
+"id": "io.missioncenter.MissionCenter",
+"name": "Mission Center",
+"summary": "Monitor system resource usage",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 42967,
+"category": "utilities"
+},
+{
+"id": "com.bitwarden.desktop",
+"name": "Bitwarden",
+"summary": "A secure and free password manager for all of your devices",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 42462,
+"category": "utilities"
+},
+{
+"id": "com.github.Matoking.protontricks",
+"name": "Protontricks",
+"summary": "Apps and fixes for Proton games",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 42200,
+"category": "utilities"
+},
+{
+"id": "net.kuribo64.melonDS",
+"name": "melonDS",
+"summary": "Nintendo DS and DSi emulator",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 41993,
+"category": "gaming"
+},
+{
+"id": "org.geogebra.GeoGebra",
+"name": "GeoGebra",
+"summary": "Dynamic mathematics software",
+"arches": [
+"x86_64"
+],
+"installs": 40464,
+"category": "productivity"
+},
+{
+"id": "app.xemu.xemu",
+"name": "xemu",
+"summary": "Original Xbox Emulator",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 39580,
+"category": "gaming"
+},
+{
+"id": "org.kde.kdenlive",
+"name": "Kdenlive",
+"summary": "Video editor",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 39396,
+"category": "creative"
+},
+{
+"id": "io.freetubeapp.FreeTube",
+"name": "FreeTube",
+"summary": "Watch YouTube privately",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 36508,
+"category": "media"
+},
+{
+"id": "com.ktechpit.whatsie",
+"name": "Whatsie",
+"summary": "Feature-rich WhatsApp Web client for the Linux desktop",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 35943,
+"category": "communication"
+},
+{
+"id": "org.kde.krita",
+"name": "Krita",
+"summary": "Digital Painting, Creative Freedom",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 35444,
+"category": "creative"
+},
+{
+"id": "org.fedoraproject.MediaWriter",
+"name": "Fedora Media Writer",
+"summary": "Create a Fedora live USB drive",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 35402,
+"category": "utilities"
+},
+{
+"id": "io.github.shiiion.primehack",
+"name": "PrimeHack",
+"summary": "Dolphin Emu fork for various Metroid Prime mods",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 33139,
+"category": "gaming"
+},
+{
+"id": "dev.vencord.Vesktop",
+"name": "Vesktop",
+"summary": "Customizable Discord client",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 33089,
+"category": "communication"
+},
+{
+"id": "com.rustdesk.RustDesk",
+"name": "RustDesk",
+"summary": "Secure remote desktop access",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 33017,
+"category": "utilities"
+},
+{
+"id": "org.scummvm.ScummVM",
+"name": "ScummVM",
+"summary": "Interpreter for numerous adventure games and role-playing games",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 32515,
+"category": "gaming"
+},
+{
+"id": "com.supermodel3.Supermodel",
+"name": "Supermodel",
+"summary": "A Sega Model 3 Arcade Emulator",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 32130,
+"category": "gaming"
+},
+{
+"id": "com.microsoft.Edge",
+"name": "Microsoft Edge",
+"summary": "Introducing the new Microsoft Edge web browser. It’s time to expect more. More privacy. More control. More productivity. More value.",
+"arches": [
+"x86_64"
+],
+"installs": 32124,
+"category": "browsers"
+},
+{
+"id": "org.freecad.FreeCAD",
+"name": "FreeCAD",
+"summary": "An open source parametric 3D CAD modeler",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 30674,
+"category": "creative"
+},
+{
+"id": "org.torproject.torbrowser-launcher",
+"name": "Tor Browser Launcher",
+"summary": "A program to help you download, keep updated, and run Tor Browser",
+"arches": [
+"x86_64"
+],
+"installs": 30625,
+"category": "browsers"
+},
+{
+"id": "io.github.peazip.PeaZip",
+"name": "PeaZip",
+"summary": "Free file archiver utility",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 30498,
+"category": "utilities"
+},
+{
+"id": "org.mozilla.thunderbird",
+"name": "Thunderbird",
+"summary": "Thunderbird is a free and open source email, newsfeed, chat, and calendaring client",
+"arches": [
+"x86_64"
+],
+"installs": 29349,
+"category": "communication"
+},
+{
+"id": "com.github.wwmm.easyeffects",
+"name": "Easy Effects",
+"summary": "Simple audio effects",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 28968,
+"category": "media"
+},
+{
+"id": "com.rtosta.zapzap",
+"name": "ZapZap",
+"summary": "Desktop client for web messaging",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 28263,
+"category": "communication"
+},
+{
+"id": "org.mozilla.thunderbird_esr",
+"name": "Thunderbird ESR",
+"summary": "Thunderbird is a free and open source email, newsfeed, chat, and calendaring client",
+"arches": [
+"x86_64"
+],
+"installs": 28083,
+"category": "communication"
+},
+{
+"id": "com.moonlight_stream.Moonlight",
+"name": "Moonlight",
+"summary": "Stream games and other applications from another PC running Sunshine or GeForce Experience",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 27904,
+"category": "gaming"
+},
+{
+"id": "io.mrarm.mcpelauncher",
+"name": "Minecraft Bedrock Launcher",
+"summary": "Download and play Minecraft Bedrock Edition on GNU/Linux",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 27729,
+"category": "gaming"
+},
+{
+"id": "com.github.unrud.VideoDownloader",
+"name": "Video Downloader",
+"summary": "Download web videos",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 26766,
+"category": "utilities"
+},
+{
+"id": "us.zoom.Zoom",
+"name": "Zoom",
+"summary": "Video Conferencing, Web Conferencing, Webinars, Screen Sharing",
+"arches": [
+"x86_64"
+],
+"installs": 26544,
+"category": "communication"
+},
+{
+"id": "com.bambulab.BambuStudio",
+"name": "Bambu Studio",
+"summary": "Get perfect 3D prints!",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 26351,
+"category": "creative"
+},
+{
+"id": "org.jellyfin.JellyfinDesktop",
+"name": "Jellyfin Desktop",
+"summary": "Jellyfin desktop client",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 26127,
+"category": "media"
+},
+{
+"id": "org.winehq.Wine",
+"name": "Wine",
+"summary": "Run Windows applications on Linux",
+"arches": [
+"x86_64"
+],
+"installs": 25258,
+"category": null
+},
+{
+"id": "org.signal.Signal",
+"name": "Signal Desktop",
+"summary": "Private messenger",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 25066,
+"category": "communication"
+},
+{
+"id": "com.mojang.Minecraft",
+"name": "Minecraft Launcher",
+"summary": "Create your own world in one of the most popular video games",
+"arches": [
+"x86_64"
+],
+"installs": 25012,
+"category": "gaming"
+},
+{
+"id": "com.orcaslicer.OrcaSlicer",
+"name": "OrcaSlicer",
+"summary": "Get even more perfect prints!",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 24235,
+"category": "creative"
+},
+{
+"id": "org.keepassxc.KeePassXC",
+"name": "KeePassXC",
+"summary": "Secure and Full-featured Password Manager",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 24126,
+"category": "utilities"
+},
+{
+"id": "fr.handbrake.ghb",
+"name": "HandBrake",
+"summary": "Video Transcoder",
+"arches": [
+"x86_64"
+],
+"installs": 23720,
+"category": "media"
+},
+{
+"id": "net.pcsx2.PCSX2",
+"name": "PCSX2",
+"summary": "PlayStation 2 emulator",
+"arches": [
+"x86_64"
+],
+"installs": 23208,
+"category": "gaming"
+},
+{
+"id": "com.vscodium.codium",
+"name": "VSCodium",
+"summary": "Telemetry-less code editing",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 22904,
+"category": "development"
+},
+{
+"id": "org.inkscape.Inkscape",
+"name": "Inkscape",
+"summary": "Vector Graphics Editor",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 22880,
+"category": "creative"
+},
+{
+"id": "org.blender.Blender",
+"name": "Blender",
+"summary": "Free and open source 3D creation suite",
+"arches": [
+"x86_64"
+],
+"installs": 22448,
+"category": "creative"
+},
+{
+"id": "org.vinegarhq.Vinegar",
+"name": "Vinegar",
+"summary": "Run Roblox Studio on Linux",
+"arches": [
+"x86_64"
+],
+"installs": 22332,
+"category": "gaming"
+},
+{
+"id": "dev.lizardbyte.app.Sunshine",
+"name": "Sunshine",
+"summary": "GameStream host for Moonlight",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 21990,
+"category": "utilities"
+},
+{
+"id": "io.github.jeffshee.Hidamari",
+"name": "Hidamari",
+"summary": "Video wallpaper for Linux",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 21668,
+"category": "utilities"
+},
+{
+"id": "com.wps.Office",
+"name": "WPS Office",
+"summary": "WPS Office Suite",
+"arches": [
+"x86_64"
+],
+"installs": 21139,
+"category": "productivity"
+},
+{
+"id": "ru.linux_gaming.PortProton",
+"name": "PortProton",
+"summary": "Run Windows games on Linux easily",
+"arches": [
+"x86_64"
+],
+"installs": 21136,
+"category": "gaming"
+},
+{
+"id": "io.gitlab.adhami3310.Impression",
+"name": "Impression",
+"summary": "Create bootable drives",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 21118,
+"category": "utilities"
+},
+{
+"id": "io.github.flattool.Warehouse",
+"name": "Warehouse",
+"summary": "Manage all things Flatpak",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 21070,
+"category": "utilities"
+},
+{
+"id": "com.modrinth.ModrinthApp",
+"name": "Modrinth App",
+"summary": "Play modded Minecraft with ease",
+"arches": [
+"x86_64"
+],
+"installs": 20780,
+"category": "gaming"
+},
+{
+"id": "net.nokyan.Resources",
+"name": "Resources",
+"summary": "Keep an eye on system resources",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 20462,
+"category": "utilities"
+},
+{
+"id": "org.audacityteam.Audacity",
+"name": "Audacity",
+"summary": "Audacity is the world's most popular audio editing and recording app",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 20071,
+"category": "creative"
+},
+{
+"id": "com.github.jeromerobert.pdfarranger",
+"name": "PDF Arranger",
+"summary": "Merge, shuffle, and crop PDFs",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 19831,
+"category": "productivity"
+},
+{
+"id": "io.github.ilya_zlobintsev.LACT",
+"name": "LACT",
+"summary": "Control your graphics cards",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 19762,
+"category": "utilities"
+},
+{
+"id": "de.haeckerfelix.Shortwave",
+"name": "Shortwave",
+"summary": "Listen to internet radio",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 19250,
+"category": "media"
+},
+{
+"id": "io.github.Faugus.faugus-launcher",
+"name": "Faugus",
+"summary": "A simple and lightweight app for running games using UMU-Launcher",
+"arches": [
+"x86_64"
+],
+"installs": 19243,
+"category": "gaming"
+},
+{
+"id": "com.github.IsmaelMartinez.teams_for_linux",
+"name": "Portal for Teams",
+"summary": "Unofficial Microsoft Teams client for Linux",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 18808,
+"category": "communication"
+},
+{
+"id": "com.vivaldi.Vivaldi",
+"name": "Vivaldi",
+"summary": "Feature-packed web browser",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 18510,
+"category": "browsers"
+},
+{
+"id": "org.remmina.Remmina",
+"name": "Remmina",
+"summary": "Remote Desktop Client",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 18241,
+"category": "utilities"
+},
+{
+"id": "org.openrgb.OpenRGB",
+"name": "OpenRGB",
+"summary": "Open source RGB lighting control that doesn't depend on manufacturer software",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 17973,
+"category": "utilities"
+},
+{
+"id": "io.github.ungoogled_software.ungoogled_chromium",
+"name": "Ungoogled Chromium",
+"summary": "Chromium without Google",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 17780,
+"category": "browsers"
+},
+{
+"id": "com.opera.opera-gx",
+"name": "Opera GX",
+"summary": "Opera GX: THE gaming browser",
+"arches": [
+"x86_64"
+],
+"installs": 17441,
+"category": "browsers"
+},
+{
+"id": "com.anydesk.Anydesk",
+"name": "AnyDesk",
+"summary": "Connect to a computer remotely",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 17309,
+"category": "utilities"
+},
+{
+"id": "com.logseq.Logseq",
+"name": "Logseq",
+"summary": "Connect your notes and knowledge",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 16673,
+"category": "productivity"
+},
+{
+"id": "org.gnome.Boxes",
+"name": "Boxes",
+"summary": "Virtualization made simple",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 16635,
+"category": "utilities"
+},
+{
+"id": "org.nickvision.tubeconverter",
+"name": "Parabolic",
+"summary": "Download web video and audio",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 16585,
+"category": "media"
+},
+{
+"id": "org.kde.konsole",
+"name": "Konsole",
+"summary": "Use the command line interface",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 16309,
+"category": "utilities"
+},
+{
+"id": "org.kde.okular",
+"name": "Okular",
+"summary": "View and annotate documents",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 16275,
+"category": "utilities"
+},
+{
+"id": "tv.kodi.Kodi",
+"name": "Kodi",
+"summary": "Ultimate entertainment center",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 16261,
+"category": "media"
+},
+{
+"id": "io.github.alainm23.planify",
+"name": "Planify",
+"summary": "Forget about forgetting things",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 16244,
+"category": "productivity"
+},
+{
+"id": "com.dec05eba.gpu_screen_recorder",
+"name": "GPU Screen Recorder",
+"summary": "A shadowplay-like screen recorder for Linux. The fastest screen recorder for Linux",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 15972,
+"category": "creative"
+},
+{
+"id": "net.retrodeck.retrodeck",
+"name": "RetroDECK",
+"summary": "All-in-one Retro Gaming Platform",
+"arches": [
+"x86_64"
+],
+"installs": 15854,
+"category": "gaming"
+},
+{
+"id": "org.shotcut.Shotcut",
+"name": "Shotcut",
+"summary": "Video editor",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 15850,
+"category": "creative"
+},
+{
+"id": "com.github.PintaProject.Pinta",
+"name": "Pinta",
+"summary": "Edit images and paint digitally",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 15841,
+"category": "creative"
+},
+{
+"id": "rocks.shy.VacuumTube",
+"name": "VacuumTube",
+"summary": "YouTube for TV, on your PC",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 15740,
+"category": "media"
+},
+{
+"id": "org.gnome.Snapshot",
+"name": "Camera",
+"summary": "Take pictures and videos",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 15379,
+"category": "creative"
+},
+{
+"id": "org.gnome.Calculator",
+"name": "Calculator",
+"summary": "Perform arithmetic, scientific or financial calculations",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 15267,
+"category": "utilities"
+},
+{
+"id": "org.jdownloader.JDownloader",
+"name": "JDownloader",
+"summary": "Download management tool",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 14902,
+"category": "utilities"
+},
+{
+"id": "io.dbeaver.DBeaverCommunity",
+"name": "DBeaver Community",
+"summary": "Free Universal Database Tool",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 14745,
+"category": "development"
+},
+{
+"id": "com.opera.Opera",
+"name": "Opera",
+"summary": "Your personal browser",
+"arches": [
+"x86_64"
+],
+"installs": 14585,
+"category": "browsers"
+},
+{
+"id": "org.kde.isoimagewriter",
+"name": "ISO Image Writer",
+"summary": "Write an ISO Image to a USB Disk",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 14162,
+"category": "utilities"
+},
+{
+"id": "org.kde.dolphin",
+"name": "Dolphin",
+"summary": "Manage your files",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 13964,
+"category": "utilities"
+},
+{
+"id": "com.github.johnfactotum.Foliate",
+"name": "Foliate",
+"summary": "Read e-books in style",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 13491,
+"category": "utilities"
+},
+{
+"id": "org.gnome.baobab",
+"name": "Disk Usage Analyzer",
+"summary": "Check folder sizes and available disk space",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 13454,
+"category": "utilities"
+},
+{
+"id": "com.github.k4zmu2a.spacecadetpinball",
+"name": "Space Cadet Pinball",
+"summary": "Game engine for Space Cadet Pinball",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 13382,
+"category": "gaming"
+},
+{
+"id": "me.proton.Mail",
+"name": "Proton Mail",
+"summary": "Secure email that protects your privacy",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 13349,
+"category": "communication"
+},
+{
+"id": "space.bigrat.mocktail",
+"name": "Mocktail",
+"summary": "Play Roblox on Linux",
+"arches": [
+"x86_64"
+],
+"installs": 13346,
+"category": "gaming"
+},
+{
+"id": "net.waterfox.waterfox",
+"name": "Waterfox",
+"summary": "Private web browser",
+"arches": [
+"x86_64"
+],
+"installs": 13307,
+"category": "browsers"
+},
+{
+"id": "io.github.linx_systems.ClamUI",
+"name": "ClamUI",
+"summary": "GUI for ClamAV",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 13082,
+"category": "utilities"
+},
+{
+"id": "org.freedownloadmanager.Manager",
+"name": "Free Download Manager",
+"summary": "FDM is a powerful modern download accelerator and organizer.",
+"arches": [
+"x86_64"
+],
+"installs": 13034,
+"category": "utilities"
+},
+{
+"id": "com.google.AndroidStudio",
+"name": "Android Studio",
+"summary": "IDE for Android app development",
+"arches": [
+"x86_64"
+],
+"installs": 12948,
+"category": "development"
+},
+{
+"id": "com.collaboraoffice.Office",
+"name": "Collabora Office",
+"summary": "The Collabora Office productivity suite",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 12889,
+"category": "productivity"
+},
+{
+"id": "io.github.thetumultuousunicornofdarkness.cpu-x",
+"name": "CPU-X",
+"summary": "Gathers information on CPU, motherboard and more",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 12824,
+"category": "utilities"
+},
+{
+"id": "cc.arduino.IDE2",
+"name": "Arduino IDE v2",
+"summary": "Open-source electronics prototyping platform",
+"arches": [
+"x86_64"
+],
+"installs": 12763,
+"category": "development"
+},
+{
+"id": "ai.lmstudio.lm-studio",
+"name": "LM Studio",
+"summary": "Run AI models, locally and privately",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 12659,
+"category": "development"
+},
+{
+"id": "io.podman_desktop.PodmanDesktop",
+"name": "Podman Desktop",
+"summary": "Manage Podman and other container engines from a single UI",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 12453,
+"category": "development"
+},
+{
+"id": "org.flameshot.Flameshot",
+"name": "Flameshot",
+"summary": "Take and annotate screenshots",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 12331,
+"category": "creative"
+},
+{
+"id": "org.gnome.Loupe",
+"name": "Image Viewer",
+"summary": "View and edit images",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 12228,
+"category": "utilities"
+},
+{
+"id": "org.filezillaproject.Filezilla",
+"name": "FileZilla",
+"summary": "Fast and reliable FTP client",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 11453,
+"category": "utilities"
+},
+{
+"id": "net.rpcs3.RPCS3",
+"name": "RPCS3",
+"summary": "Open-source Sony PlayStation 3 Emulator",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 11373,
+"category": "gaming"
+},
+{
+"id": "io.github.cosmic_utils.camera",
+"name": "Camera",
+"summary": "Camera for photos, videos and QR codes",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 11250,
+"category": "creative"
+},
+{
+"id": "io.github.giantpinkrobots.bootqt",
+"name": "Bootqt",
+"summary": "Create bootable drives",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 11247,
+"category": "utilities"
+},
+{
+"id": "org.gnome.NetworkDisplays",
+"name": "GNOME Network Displays",
+"summary": "Screencasting for GNOME",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 11179,
+"category": "media"
+},
+{
+"id": "net.ankiweb.Anki",
+"name": "Anki",
+"summary": "Powerful, intelligent flash cards",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 11163,
+"category": "productivity"
+},
+{
+"id": "org.gnome.SimpleScan",
+"name": "Document Scanner",
+"summary": "Make a digital copy of your photos and documents",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 11143,
+"category": "utilities"
+},
+{
+"id": "eu.betterbird.Betterbird",
+"name": "Betterbird",
+"summary": "A better version of Thunderbird",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 11142,
+"category": "communication"
+},
+{
+"id": "com.calibre_ebook.calibre",
+"name": "calibre",
+"summary": "The one stop solution to all your e-book needs",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 11124,
+"category": "productivity"
+},
+{
+"id": "org.gnome.TextEditor",
+"name": "Text Editor",
+"summary": "Edit text files",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 11098,
+"category": "productivity"
+},
+{
+"id": "com.prusa3d.PrusaSlicer",
+"name": "PrusaSlicer",
+"summary": "The Slicer for Every Maker",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 11037,
+"category": "creative"
+},
+{
+"id": "com.github.xournalpp.xournalpp",
+"name": "Xournal++",
+"summary": "Take handwritten notes",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 10734,
+"category": "productivity"
+},
+{
+"id": "com.jeffser.Alpaca",
+"name": "Alpaca",
+"summary": "Chat with AI models",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 10601,
+"category": "development"
+},
+{
+"id": "io.github.shiftey.Desktop",
+"name": "GitHub Desktop",
+"summary": "Simple collaboration from your desktop",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 10440,
+"category": "development"
+},
+{
+"id": "com.ranfdev.DistroShelf",
+"name": "DistroShelf",
+"summary": "Graphical interface for managing Distrobox containers",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 10373,
+"category": "utilities"
+},
+{
+"id": "com.getpostman.Postman",
+"name": "Postman",
+"summary": "Platform for building and using APIs",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 10359,
+"category": "development"
+},
+{
+"id": "net.cozic.joplin_desktop",
+"name": "Joplin",
+"summary": "open source note taking and to-do application",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 10327,
+"category": "productivity"
+},
+{
+"id": "com.slack.Slack",
+"name": "Slack",
+"summary": "Business communication",
+"arches": [
+"x86_64"
+],
+"installs": 10153,
+"category": "communication"
+},
+{
+"id": "org.virt_manager.virt-manager",
+"name": "Virtual Machine Manager",
+"summary": "Graphically manage KVM, Xen, or LXC via libvirt",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 10121,
+"category": "utilities"
+},
+{
+"id": "io.github.aandrew_me.ytdn",
+"name": "ytDownloader",
+"summary": "Download videos and audios from hundreds of sites",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 10065,
+"category": "utilities"
+},
+{
+"id": "org.kde.haruna",
+"name": "Haruna",
+"summary": "Media player",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 10060,
+"category": "media"
+},
+{
+"id": "dev.zed.Zed",
+"name": "Zed",
+"summary": "High-performance code editor",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 10047,
+"category": "development"
+},
+{
+"id": "com.ktechpit.ultimate-media-downloader",
+"name": "Ultimate Media Downloader",
+"summary": "Media Downloader for YouTube and 1500+ other websites",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 9817,
+"category": "media"
+},
+{
+"id": "com.fightcade.Fightcade",
+"name": "Fightcade",
+"summary": "Play arcade games online",
+"arches": [
+"x86_64"
+],
+"installs": 9788,
+"category": "gaming"
+},
+{
+"id": "one.ablaze.floorp",
+"name": "Floorp",
+"summary": "Customizable Firefox-based browser from Japan",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 9733,
+"category": "browsers"
+},
+{
+"id": "com.nextcloud.desktopclient.nextcloud",
+"name": "Nextcloud Desktop Client",
+"summary": "Sync and collaborate on your desktop or laptop",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 9684,
+"category": "utilities"
+},
+{
+"id": "org.azahar_emu.Azahar",
+"name": "Azahar",
+"summary": "Open-source 3DS emulator project based on Citra.",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 9667,
+"category": "gaming"
+},
+{
+"id": "me.proton.Pass",
+"name": "Proton Pass",
+"summary": "Encrypted password manager to keep your login credentials safe",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 9618,
+"category": "utilities"
+},
+{
+"id": "tv.plex.PlexDesktop",
+"name": "Plex",
+"summary": "Plex client for desktop computers",
+"arches": [
+"x86_64"
+],
+"installs": 9597,
+"category": "media"
+},
+{
+"id": "io.mpv.Mpv",
+"name": "mpv",
+"summary": "A free, open source, and cross-platform media player",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 9527,
+"category": "media"
+},
+{
+"id": "org.gnome.Showtime",
+"name": "Video Player",
+"summary": "Watch without distraction",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 9501,
+"category": "media"
+},
+{
+"id": "org.strawberrymusicplayer.strawberry",
+"name": "Strawberry Music Player",
+"summary": "A music player and collection organizer",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 9369,
+"category": "media"
+},
+{
+"id": "com.github.Rosalie241.RMG",
+"name": "Rosalie's Mupen GUI",
+"summary": "Play Nintendo 64 games easily",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 9367,
+"category": "gaming"
+},
+{
+"id": "net.mkiol.SpeechNote",
+"name": "Speech Note",
+"summary": "Notes with offline Speech to Text, Text to Speech and Machine Translation",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 9351,
+"category": "media"
+},
+{
+"id": "com.makemkv.MakeMKV",
+"name": "MakeMKV",
+"summary": "DVD and Blu-ray to MKV converter and network streamer",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 9256,
+"category": "media"
+},
+{
+"id": "org.gnome.Calendar",
+"name": "Calendar",
+"summary": "Manage your schedule",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 9250,
+"category": "productivity"
+},
+{
+"id": "org.gnome.clocks",
+"name": "Clocks",
+"summary": "Keep track of time",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 9248,
+"category": "utilities"
+},
+{
+"id": "org.flycast.Flycast",
+"name": "Flycast",
+"summary": "Sega Dreamcast, Naomi and Atomiswave emulator",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 9042,
+"category": "gaming"
+},
+{
+"id": "be.alexandervanhee.gradia",
+"name": "Gradia",
+"summary": "Annotate your screenshots",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 9018,
+"category": "creative"
+},
+{
+"id": "org.godotengine.Godot",
+"name": "Godot Engine",
+"summary": "Easily create 2D and 3D games",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 9014,
+"category": "development"
+},
+{
+"id": "org.upscayl.Upscayl",
+"name": "Upscayl",
+"summary": "Free and Open Source AI Image Upscaler",
+"arches": [
+"x86_64"
+],
+"installs": 9012,
+"category": "creative"
+},
+{
+"id": "org.gnome.Maps",
+"name": "Maps",
+"summary": "Find places around the world",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 8967,
+"category": "utilities"
+},
+{
+"id": "io.github.streetpea.Chiaki4deck",
+"name": "chiaki-ng",
+"summary": "Free and Open Source Client for PlayStation Remote Play",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 8939,
+"category": "gaming"
+},
+{
+"id": "io.github.ryubing.Ryujinx",
+"name": "Ryujinx (Ryubing)",
+"summary": "Nintendo Switch emulator",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 8808,
+"category": "gaming"
+},
+{
+"id": "org.jellyfin.JellyfinServer",
+"name": "Jellyfin Server",
+"summary": "Media Streaming System",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 8782,
+"category": "media"
+},
+{
+"id": "org.gnome.Papers",
+"name": "Document Viewer",
+"summary": "Read documents",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 8767,
+"category": "utilities"
+},
+{
+"id": "com.valvesoftware.SteamLink",
+"name": "Steam Link",
+"summary": "Stream games from another computer with Steam",
+"arches": [
+"x86_64"
+],
+"installs": 8749,
+"category": "gaming"
+},
+{
+"id": "org.gnome.Weather",
+"name": "Weather",
+"summary": "Show weather conditions and forecast",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 8734,
+"category": "utilities"
+},
+{
+"id": "com.warlordsoftwares.youtube-downloader-4ktube",
+"name": "4KTUBE",
+"summary": "4K YouTube Downloader – Download HD YouTube Videos, Playlists, and Music Instantly.",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 8727,
+"category": "media"
+},
+{
+"id": "dev.eden_emu.eden",
+"name": "Eden",
+"summary": "Nintendo Switch emulator",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 8714,
+"category": "gaming"
+},
+{
+"id": "sh.ppy.osu",
+"name": "osu!",
+"summary": "Rhythm is just a *click* away!",
+"arches": [
+"x86_64"
+],
+"installs": 8648,
+"category": "gaming"
+},
+{
+"id": "ai.jan.Jan",
+"name": "Jan",
+"summary": "Private offline AI assistant",
+"arches": [
+"x86_64"
+],
+"installs": 8592,
+"category": "communication"
+},
+{
+"id": "io.github.benjamimgois.goverlay",
+"name": "Goverlay",
+"summary": "Configure gaming overlays",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 8575,
+"category": "gaming"
+},
+{
+"id": "page.tesk.Refine",
+"name": "Refine",
+"summary": "Tweak various aspects of GNOME",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 8498,
+"category": "utilities"
+},
+{
+"id": "org.waywallen.waywallen",
+"name": "waywallen",
+"summary": "Wallpaper Manager for Linux",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 8484,
+"category": "creative"
+},
+{
+"id": "org.kde.filelight",
+"name": "Filelight",
+"summary": "Show disk usage and delete unused files",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 8440,
+"category": "utilities"
+},
+{
+"id": "com.jgraph.drawio.desktop",
+"name": "draw.io",
+"summary": "Create and share diagrams",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 8410,
+"category": "creative"
+},
+{
+"id": "org.gnome.Firmware",
+"name": "Firmware",
+"summary": "Install firmware on devices",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 8379,
+"category": "utilities"
+},
+{
+"id": "com.surfshark.Surfshark",
+"name": "Surfshark",
+"summary": "Connect to secure, private web!",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 8216,
+"category": "utilities"
+},
+{
+"id": "com.adobe.Reader",
+"name": "Adobe Reader",
+"summary": "PDF viewer",
+"arches": [
+"x86_64"
+],
+"installs": 8205,
+"category": "utilities"
+},
+{
+"id": "xyz.xclicker.xclicker",
+"name": "XClicker",
+"summary": "Fast gui autoclicker for x11 linux desktops",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 8200,
+"category": "utilities"
+},
+{
+"id": "com.xnview.XnViewMP",
+"name": "XnView MP",
+"summary": "View, convert and organize your images",
+"arches": [
+"x86_64"
+],
+"installs": 8186,
+"category": "utilities"
+},
+{
+"id": "ch.tlaun.TL",
+"name": "Legacy Launcher",
+"summary": "Play Minecraft in your own world!",
+"arches": [
+"x86_64"
+],
+"installs": 8105,
+"category": "gaming"
+},
+{
+"id": "org.kde.kate",
+"name": "Kate",
+"summary": "Advanced text editor",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 7937,
+"category": "development"
+},
+{
+"id": "org.kde.gwenview",
+"name": "Gwenview",
+"summary": "Image Viewer",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 7936,
+"category": "utilities"
+},
+{
+"id": "dev.deedles.Trayscale",
+"name": "Trayscale",
+"summary": "Unofficial GUI for Tailscale",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 7871,
+"category": "utilities"
+},
+{
+"id": "com.freerdp.FreeRDP",
+"name": "FreeRDP Client",
+"summary": "Remote Desktop Protocol Client",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 7838,
+"category": "utilities"
+},
+{
+"id": "org.deskflow.deskflow",
+"name": "Deskflow",
+"summary": "Software Keyboard and mouse sharing",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 7694,
+"category": "utilities"
+},
+{
+"id": "ru.yandex.Browser",
+"name": "Yandex Browser",
+"summary": "Web browser from Yandex",
+"arches": [
+"x86_64"
+],
+"installs": 7684,
+"category": "browsers"
+},
+{
+"id": "net.mullvad.MullvadBrowser",
+"name": "Mullvad Browser",
+"summary": "Free the internet from mass surveillance",
+"arches": [
+"x86_64"
+],
+"installs": 7669,
+"category": "browsers"
+},
+{
+"id": "com.geeks3d.furmark",
+"name": "FurMark",
+"summary": "OpenGL and Vulkan GPU stress test",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 7635,
+"category": "utilities"
+},
+{
+"id": "com.rafaelmardojai.Blanket",
+"name": "Blanket",
+"summary": "Listen to ambient sounds",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 7561,
+"category": "media"
+},
+{
+"id": "org.kde.kcalc",
+"name": "KCalc",
+"summary": "Scientific calculator",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 7539,
+"category": "utilities"
+},
+{
+"id": "com.system76.Popsicle",
+"name": "Popsicle",
+"summary": "Flash multiple USB devices in parallel",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 7470,
+"category": "utilities"
+},
+{
+"id": "io.github.seadve.Kooha",
+"name": "Kooha",
+"summary": "Elegantly record your screen",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 7469,
+"category": "creative"
+},
+{
+"id": "io.github.screwys.Rufin",
+"name": "Rufin",
+"summary": "Feel at home with your music",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 7462,
+"category": "media"
+},
+{
+"id": "im.riot.Riot",
+"name": "Element",
+"summary": "Secure communications platform built around you",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 7461,
+"category": "communication"
+},
+{
+"id": "io.gitlab.secu_design.usb-imager",
+"name": "USB Imager",
+"summary": "Write many USB drives at once",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 7332,
+"category": "utilities"
+},
+{
+"id": "com.belmoussaoui.Authenticator",
+"name": "Authenticator",
+"summary": "Generate two-factor codes",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 7291,
+"category": "utilities"
+},
+{
+"id": "org.gnome.World.PikaBackup",
+"name": "Pika Backup",
+"summary": "Keep your data safe",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 7277,
+"category": "utilities"
+},
+{
+"id": "com.transmissionbt.Transmission",
+"name": "Transmission",
+"summary": "Download and share files over BitTorrent",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 7138,
+"category": "utilities"
+},
+{
+"id": "io.github.pwr_solaar.solaar",
+"name": "Solaar",
+"summary": "Linux manager for Logitech keyboards, mice, and trackpads",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 7119,
+"category": "utilities"
+},
+{
+"id": "io.github.wiiznokes.fan-control",
+"name": "Fan Control",
+"summary": "Control your fans with different behaviors",
+"arches": [
+"x86_64"
+],
+"installs": 7094,
+"category": "utilities"
+},
+{
+"id": "io.github.diegopvlk.Cine",
+"name": "Cine",
+"summary": "Play your videos",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 7012,
+"category": "media"
+},
+{
+"id": "info.cemu.Cemu",
+"name": "Cemu",
+"summary": "Nintendo Wii U Emulator",
+"arches": [
+"x86_64"
+],
+"installs": 6980,
+"category": "gaming"
+},
+{
+"id": "me.timschneeberger.jdsp4linux",
+"name": "JamesDSP",
+"summary": "Open-source audio effect processor for Pipewire",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 6968,
+"category": "media"
+},
+{
+"id": "org.openshot.OpenShot",
+"name": "OpenShot Video Editor",
+"summary": "An easy to use, quick to learn, and surprisingly powerful video editor",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 6926,
+"category": "creative"
+},
+{
+"id": "org.zotero.Zotero",
+"name": "Zotero",
+"summary": "Collect, organize and cite research",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 6896,
+"category": "productivity"
+},
+{
+"id": "org.cutwire.Drift",
+"name": "Drift",
+"summary": "Edit and export videos easily",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 6896,
+"category": "creative"
+},
+{
+"id": "net.supertuxkart.SuperTuxKart",
+"name": "SuperTuxKart",
+"summary": "A 3D open-source kart racing game",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 6865,
+"category": "gaming"
+},
+{
+"id": "ai.opencode.opencode",
+"name": "OpenCode",
+"summary": "Open source AI coding agent",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 6810,
+"category": "development"
+},
+{
+"id": "org.mozilla.vpn",
+"name": "Mozilla VPN",
+"summary": "A fast, secure and easy to use VPN. Built by the makers of Firefox.",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 6807,
+"category": "utilities"
+},
+{
+"id": "io.github.wivrn.wivrn",
+"name": "WiVRn server",
+"summary": "Play your PC VR games on a standalone headset",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 6799,
+"category": "gaming"
+},
+{
+"id": "io.github.celluloid_player.Celluloid",
+"name": "Celluloid",
+"summary": "Plays videos",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 6751,
+"category": "media"
+},
+{
+"id": "org.raspberrypi.rpi-imager",
+"name": "Raspberry Pi Imager",
+"summary": "Raspberry Pi Imaging utility",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 6655,
+"category": "utilities"
+},
+{
+"id": "io.mgba.mGBA",
+"name": "mGBA",
+"summary": "Nintendo Game Boy Advance Emulator",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 6568,
+"category": "gaming"
+},
+{
+"id": "no.mifi.losslesscut",
+"name": "LosslessCut",
+"summary": "Losslessly trim audio and video",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 6561,
+"category": "creative"
+},
+{
+"id": "com.github.dail8859.NotepadNext",
+"name": "Notepad Next",
+"summary": "A cross-platform, reimplementation of Notepad++",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 6508,
+"category": "productivity"
+},
+{
+"id": "org.x.Warpinator",
+"name": "Warpinator",
+"summary": "Share files on your network",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 6499,
+"category": "utilities"
+},
+{
+"id": "dev.edfloreshz.CosmicTweaks",
+"name": "Tweaks",
+"summary": "Beyond the limits of your desktop",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 6481,
+"category": "utilities"
+},
+{
+"id": "com.vixalien.sticky",
+"name": "Sticky Notes",
+"summary": "Pin notes to your desktop",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 6437,
+"category": "utilities"
+},
+{
+"id": "io.github.tobagin.karere",
+"name": "Karere",
+"summary": "Chat on WhatsApp",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 6430,
+"category": "communication"
+},
+{
+"id": "org.kde.kolourpaint",
+"name": "KolourPaint",
+"summary": "Paint Program",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 6369,
+"category": "creative"
+},
+{
+"id": "dev.fredol.open-tv",
+"name": "Fred TV",
+"summary": "Fast And Powerful IPTV App",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 6308,
+"category": "media"
+},
+{
+"id": "org.gnome.font-viewer",
+"name": "Fonts",
+"summary": "View fonts on your system",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 6297,
+"category": "utilities"
+},
+{
+"id": "com.parsecgaming.parsec",
+"name": "Parsec",
+"summary": "Simple, low-latency game streaming",
+"arches": [
+"x86_64"
+],
+"installs": 6235,
+"category": "gaming"
+},
+{
+"id": "org.bleachbit.BleachBit",
+"name": "BleachBit",
+"summary": "Free space and maintain privacy",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 6209,
+"category": "utilities"
+},
+{
+"id": "org.gnome.Evolution",
+"name": "Evolution",
+"summary": "Manage your email, contacts and schedule",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 6095,
+"category": "communication"
+},
+{
+"id": "org.mamedev.MAME",
+"name": "MAME",
+"summary": "MAME is a multi-purpose emulation framework.",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 6059,
+"category": "gaming"
+},
+{
+"id": "org.gnome.DejaDup",
+"name": "Déjà Dup Backups",
+"summary": "Protect yourself from data loss",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 6024,
+"category": "utilities"
+},
+{
+"id": "hu.irl.cameractrls",
+"name": "Cameractrls",
+"summary": "Camera controls for Linux",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 5922,
+"category": "media"
+},
+{
+"id": "io.bassi.Amberol",
+"name": "Amberol",
+"summary": "Plays music, and nothing else",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 5920,
+"category": "creative"
+},
+{
+"id": "net.code_industry.MasterPDFEditor",
+"name": "Master PDF Editor",
+"summary": "Master PDF Editor is a full solution for work with PDF documents",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 5906,
+"category": "creative"
+},
+{
+"id": "org.dupot.easyflatpak",
+"name": "Easyflatpak",
+"summary": "Manage your flatpaks with a simple GUI.",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 5846,
+"category": "utilities"
+},
+{
+"id": "no.bragefuglseth.Keypunch",
+"name": "Keypunch",
+"summary": "Practice your typing skills",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 5836,
+"category": "productivity"
+},
+{
+"id": "org.kde.kpat",
+"name": "KPatience",
+"summary": "Solitaire card game",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 5802,
+"category": "gaming"
+},
+{
+"id": "com.overwolf.curseforge",
+"name": "CurseForge",
+"summary": "Discover, install, and manage mods and modpacks",
+"arches": [
+"x86_64"
+],
+"installs": 5787,
+"category": "gaming"
+},
+{
+"id": "org.polymc.PolyMC",
+"name": "PolyMC",
+"summary": "A custom launcher for Minecraft that allows you to easily manage multiple installations of Minecraft at once",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 5725,
+"category": "gaming"
+},
+{
+"id": "com.keepsolid.VpnUnlimited",
+"name": "VPN Unlimited",
+"summary": "Fast and private VPN",
+"arches": [
+"x86_64"
+],
+"installs": 5716,
+"category": "utilities"
+},
+{
+"id": "org.gnome.gitlab.YaLTeR.VideoTrimmer",
+"name": "Video Trimmer",
+"summary": "Trim videos quickly",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 5709,
+"category": "media"
+},
+{
+"id": "org.gnome.Contacts",
+"name": "Contacts",
+"summary": "Manage your contacts",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 5688,
+"category": "productivity"
+},
+{
+"id": "com.snes9x.Snes9x",
+"name": "Snes9x",
+"summary": "A Super Nintendo emulator",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 5642,
+"category": "gaming"
+},
+{
+"id": "de.schmidhuberj.DieBahn",
+"name": "Railway",
+"summary": "Find all your travel information",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 5639,
+"category": "utilities"
+},
+{
+"id": "org.gnome.gitlab.somas.Apostrophe",
+"name": "Apostrophe",
+"summary": "Edit Markdown in style",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 5583,
+"category": "productivity"
+},
+{
+"id": "org.gnome.Decibels",
+"name": "Audio Player",
+"summary": "Play audio files",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 5575,
+"category": "creative"
+},
+{
+"id": "net.donnybeelo.Convey",
+"name": "Convey",
+"summary": "Send and receive email",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 5458,
+"category": "communication"
+},
+{
+"id": "io.github.radiolamp.mangojuice",
+"name": "Mango Juice",
+"summary": "Customizable performance display",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 5448,
+"category": "utilities"
+},
+{
+"id": "io.github.maniacx.BudsLink",
+"name": "BudsLink",
+"summary": "Monitor and control Bluetooth earbuds",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 5438,
+"category": "media"
+},
+{
+"id": "io.github.fastrizwaan.WineZGUI",
+"name": "WineZGUI",
+"summary": "Wine GUI using Zenity",
+"arches": [
+"x86_64"
+],
+"installs": 5428,
+"category": "gaming"
+},
+{
+"id": "org.fkoehler.KTailctl",
+"name": "KTailctl",
+"summary": "Manage and monitor Tailscale",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 5391,
+"category": "utilities"
+},
+{
+"id": "com.bilingify.readest",
+"name": "Readest",
+"summary": "Modern, feature-rich ebook reader",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 5381,
+"category": "productivity"
+},
+{
+"id": "org.gnome.Logs",
+"name": "Logs",
+"summary": "View detailed event logs for the system",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 5380,
+"category": "utilities"
+},
+{
+"id": "com.github.qarmin.czkawka",
+"name": "Czkawka",
+"summary": "Multi functional app to find duplicates, empty folders, similar images, broken files etc.",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 5354,
+"category": "utilities"
+},
+{
+"id": "com.unity.UnityHub",
+"name": "Unity Hub",
+"summary": "Manage game engine installations",
+"arches": [
+"x86_64"
+],
+"installs": 5284,
+"category": "development"
+},
+{
+"id": "com.github.phase1geo.minder",
+"name": "Minder",
+"summary": "Create, develop and visualize your ideas",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 5270,
+"category": "development"
+},
+{
+"id": "org.pulseaudio.pavucontrol",
+"name": "Volume Control",
+"summary": "Adjust device and app volumes",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 5257,
+"category": "creative"
+},
+{
+"id": "app.fluxer.Fluxer",
+"name": "Fluxer",
+"summary": "A chat app that puts you first",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 5255,
+"category": "communication"
+},
+{
+"id": "com.github.zocker_160.SyncThingy",
+"name": "SyncThingy",
+"summary": "SyncThingy = Syncthing + simple tray indicator",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 5250,
+"category": "utilities"
+},
+{
+"id": "io.gitlab.theevilskeleton.Upscaler",
+"name": "Upscaler",
+"summary": "Upscale and enhance images",
+"arches": [
+"x86_64"
+],
+"installs": 5209,
+"category": "creative"
+},
+{
+"id": "com.jetbrains.IntelliJ-IDEA-Community",
+"name": "IntelliJ IDEA Open",
+"summary": "Leading Java and Kotlin editor",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 5204,
+"category": "development"
+},
+{
+"id": "org.gnome.Epiphany",
+"name": "Web",
+"summary": "Browse the web",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 5180,
+"category": "browsers"
+},
+{
+"id": "com.google.EarthPro",
+"name": "Google Earth Pro",
+"summary": "3D planet viewer",
+"arches": [
+"x86_64"
+],
+"installs": 5175,
+"category": "utilities"
+},
+{
+"id": "com.usebruno.Bruno",
+"name": "Bruno",
+"summary": "Fast and Git-Friendly API Client",
+"arches": [
+"x86_64"
+],
+"installs": 5155,
+"category": "development"
+},
+{
+"id": "xyz.z3ntu.razergenie",
+"name": "RazerGenie",
+"summary": "Configure and control your Razer devices",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 5140,
+"category": "utilities"
+},
+{
+"id": "org.luanti.luanti",
+"name": "Luanti",
+"summary": "Block-based multiplayer game platform",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 5128,
+"category": "gaming"
+},
+{
+"id": "org.gnome.Characters",
+"name": "Characters",
+"summary": "Character map application",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 5111,
+"category": "utilities"
+},
+{
+"id": "com.github.flxzt.rnote",
+"name": "Rnote",
+"summary": "Sketch and take handwritten notes",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 5109,
+"category": "creative"
+},
+{
+"id": "info.febvre.Komikku",
+"name": "Komikku",
+"summary": "Discover and read manga & comics",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 5099,
+"category": "utilities"
+},
+{
+"id": "com.viber.Viber",
+"name": "Viber",
+"summary": "Send free messages and make free calls",
+"arches": [
+"x86_64"
+],
+"installs": 5080,
+"category": "utilities"
+},
+{
+"id": "com.poweriso.PowerISO",
+"name": "PowerISO",
+"summary": "A all-in-one CD/DVD/Blu-Ray tool",
+"arches": [
+"x86_64"
+],
+"installs": 5069,
+"category": "media"
+},
+{
+"id": "io.github.flattool.Ignition",
+"name": "Ignition",
+"summary": "Manage startup apps and scripts",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4991,
+"category": "utilities"
+},
+{
+"id": "org.equicord.equibop",
+"name": "Equibop",
+"summary": "A snappy Discord desktop client",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4990,
+"category": "communication"
+},
+{
+"id": "org.gnome.FileRoller",
+"name": "File Roller",
+"summary": "Open, modify and create compressed archive files",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4979,
+"category": "utilities"
+},
+{
+"id": "app.xmcl.voxelum",
+"name": "X Minecraft Launcher",
+"summary": "Play and manage Minecraft",
+"arches": [
+"x86_64"
+],
+"installs": 4951,
+"category": "gaming"
+},
+{
+"id": "com.sublimehq.SublimeText",
+"name": "Sublime Text",
+"summary": "Text Editing, Done Right",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4919,
+"category": "development"
+},
+{
+"id": "org.freac.freac",
+"name": "fre:ac",
+"summary": "Audio converter and CD ripper",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4910,
+"category": "media"
+},
+{
+"id": "org.ardour.Ardour",
+"name": "Ardour",
+"summary": "Digital Audio Workstation",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4902,
+"category": "media"
+},
+{
+"id": "com.github.mtkennerly.ludusavi",
+"name": "Ludusavi",
+"summary": "Back up your PC video game save data",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4893,
+"category": "utilities"
+},
+{
+"id": "fm.reaper.Reaper",
+"name": "Reaper",
+"summary": "Digital Audio Workstation",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4888,
+"category": "creative"
+},
+{
+"id": "com.lunarclient.LunarClient",
+"name": "Lunar Client",
+"summary": "A modpack for all modern versions of Minecraft!",
+"arches": [
+"x86_64"
+],
+"installs": 4882,
+"category": "gaming"
+},
+{
+"id": "org.kde.ark",
+"name": "Ark",
+"summary": "Archiving Tool",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4875,
+"category": "utilities"
+},
+{
+"id": "com.github.KRTirtho.Spotube",
+"name": "Spotube",
+"summary": "Freedom of music",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4875,
+"category": "media"
+},
+{
+"id": "io.gitlab.news_flash.NewsFlash",
+"name": "Newsflash",
+"summary": "Keep up with your feeds",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4847,
+"category": "communication"
+},
+{
+"id": "io.gitlab.liferooter.TextPieces",
+"name": "Text Pieces",
+"summary": "Developer's scratchpad",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4833,
+"category": "utilities"
+},
+{
+"id": "org.kde.digikam",
+"name": "digiKam",
+"summary": "Photo Management Program",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4828,
+"category": "creative"
+},
+{
+"id": "org.freedesktop.Piper",
+"name": "Piper",
+"summary": "Gaming mouse configuration utility",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4822,
+"category": "utilities"
+},
+{
+"id": "io.github.fastrizwaan.WineCharm",
+"name": "WineCharm",
+"summary": "A Charming Wine GUI",
+"arches": [
+"x86_64"
+],
+"installs": 4788,
+"category": "utilities"
+},
+{
+"id": "com.super_productivity.SuperProductivity",
+"name": "Super Productivity",
+"summary": "To-do list and time tracker",
+"arches": [
+"x86_64"
+],
+"installs": 4778,
+"category": "productivity"
+},
+{
+"id": "org.cryptomator.Cryptomator",
+"name": "Cryptomator",
+"summary": "Encryption for your cloud made easy",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4763,
+"category": "productivity"
+},
+{
+"id": "io.github.mhogomchungu.media-downloader",
+"name": "Media Downloader",
+"summary": "A GUI to yt-dlp, gallery-dl and others",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4748,
+"category": "utilities"
+},
+{
+"id": "com.github.maoschanz.drawing",
+"name": "Drawing",
+"summary": "Edit screenshots or memes",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4744,
+"category": "creative"
+},
+{
+"id": "moe.launcher.an-anime-game-launcher",
+"name": "An Anime Game Launcher",
+"summary": "Play your favorite anime game on Linux",
+"arches": [
+"x86_64"
+],
+"installs": 4730,
+"category": "gaming"
+},
+{
+"id": "org.qgis.qgis",
+"name": "QGIS Desktop",
+"summary": "A Geographic Information System",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4722,
+"category": "productivity"
+},
+{
+"id": "org.angryip.ipscan",
+"name": "Angry IP Scanner",
+"summary": "Fast and friendly network scanner",
+"arches": [
+"x86_64"
+],
+"installs": 4714,
+"category": "utilities"
+},
+{
+"id": "org.triliumnotes.Trilium",
+"name": "Trilium Notes",
+"summary": "Build your personal knowledge base",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4704,
+"category": "productivity"
+},
+{
+"id": "io.github.db_mobile.resonance",
+"name": "Resonance",
+"summary": "Test and explore web services",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4662,
+"category": "development"
+},
+{
+"id": "io.github.jonmagon.kdiskmark",
+"name": "KDiskMark",
+"summary": "Disk benchmark tool",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4656,
+"category": "utilities"
+},
+{
+"id": "org.gnome.Aisleriot",
+"name": "Aisleriot Solitaire",
+"summary": "Play many different solitaire games",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4642,
+"category": "gaming"
+},
+{
+"id": "org.wireshark.Wireshark",
+"name": "Wireshark",
+"summary": "Network protocol analyzer (without capture support)",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4598,
+"category": "utilities"
+},
+{
+"id": "org.gnome.Connections",
+"name": "Connections",
+"summary": "View and use other desktops",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4569,
+"category": "utilities"
+},
+{
+"id": "info.smplayer.SMPlayer",
+"name": "SMPlayer",
+"summary": "A great media player",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4553,
+"category": "media"
+},
+{
+"id": "app.twintaillauncher.ttl",
+"name": "Twintail Launcher",
+"summary": "Run anime games hassle free",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4546,
+"category": "gaming"
+},
+{
+"id": "io.github.nozwock.Packet",
+"name": "Packet",
+"summary": "Share files easily",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4528,
+"category": "utilities"
+},
+{
+"id": "io.github.giantpinkrobots.flatsweep",
+"name": "Flatsweep",
+"summary": "Flatpak leftover cleaner",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4524,
+"category": "utilities"
+},
+{
+"id": "com.playonlinux.PlayOnLinux4",
+"name": "PlayOnLinux 4",
+"summary": "Graphical front-end for Wine",
+"arches": [
+"x86_64"
+],
+"installs": 4519,
+"category": "utilities"
+},
+{
+"id": "org.kde.falkon",
+"name": "Falkon",
+"summary": "Web Browser",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4498,
+"category": "browsers"
+},
+{
+"id": "org.mixxx.Mixxx",
+"name": "Mixxx DJ Software",
+"summary": "Everything you need to perform live DJ mixes",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4489,
+"category": "media"
+},
+{
+"id": "io.github.hmlendea.geforcenow-electron",
+"name": "GeForce NOW Electron",
+"summary": "Unofficial GeForce NOW application written in Electron",
+"arches": [
+"x86_64"
+],
+"installs": 4483,
+"category": "gaming"
+},
+{
+"id": "org.kde.gcompris",
+"name": "GCompris",
+"summary": "Educational game for children",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4480,
+"category": "gaming"
+},
+{
+"id": "app.ytmdesktop.ytmdesktop",
+"name": "YTMDesktop",
+"summary": "Free cross platform Desktop Player for YouTube Music",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4464,
+"category": "media"
+},
+{
+"id": "org.musicbrainz.Picard",
+"name": "MusicBrainz Picard",
+"summary": "Picard is a cross-platform music tagger powered by the MusicBrainz database",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4458,
+"category": "creative"
+},
+{
+"id": "app.organicmaps.desktop",
+"name": "Organic Maps",
+"summary": "Free offline maps for everyone",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4447,
+"category": "productivity"
+},
+{
+"id": "com.adamcake.Bolt",
+"name": "Bolt Launcher",
+"summary": "Third-party Jagex launcher",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4427,
+"category": "gaming"
+},
+{
+"id": "net.shadps4.shadPS4",
+"name": "shadPS4",
+"summary": "PS4 Emulator",
+"arches": [
+"x86_64"
+],
+"installs": 4398,
+"category": "gaming"
+},
+{
+"id": "org.turbowarp.TurboWarp",
+"name": "TurboWarp",
+"summary": "Make games, animations, and stories",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4380,
+"category": "development"
+},
+{
+"id": "com.onepassword.OnePassword",
+"name": "1Password",
+"summary": "Password manager and secure wallet",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4354,
+"category": "utilities"
+},
+{
+"id": "org.avidemux.Avidemux",
+"name": "Avidemux",
+"summary": "Multi-purpose video editing and processing software",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4346,
+"category": "creative"
+},
+{
+"id": "com.jetbrains.PyCharm-Professional",
+"name": "PyCharm-Professional",
+"summary": "The most intelligent Python IDE",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4343,
+"category": "development"
+},
+{
+"id": "org.atheme.audacious",
+"name": "Audacious",
+"summary": "Lightweight audio player",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4333,
+"category": "media"
+},
+{
+"id": "dev.goats.xivlauncher",
+"name": "XIVLauncher",
+"summary": "Custom 3rd-party launcher for a critically acclaimed MMO",
+"arches": [
+"x86_64"
+],
+"installs": 4330,
+"category": "gaming"
+},
+{
+"id": "com.play0ad.zeroad",
+"name": "0 A.D.",
+"summary": "Real-time strategy game",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4329,
+"category": "gaming"
+},
+{
+"id": "net.codelogistics.clicker",
+"name": "Clicker",
+"summary": "Simulate user input repeatedly",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4259,
+"category": "utilities"
+},
+{
+"id": "com.pokemmo.PokeMMO",
+"name": "PokeMMO",
+"summary": "Multiplayer Nintendo DS and GBA game emulator",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4252,
+"category": "gaming"
+},
+{
+"id": "io.github.totoshko88.RustConn",
+"name": "RustConn",
+"summary": "Manage SSH, RDP, and VNC connections",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4244,
+"category": "utilities"
+},
+{
+"id": "net.epson.epsonscan2",
+"name": "Epson Scan 2",
+"summary": "Software for Epson scanners & multifunction printer",
+"arches": [
+"x86_64"
+],
+"installs": 4231,
+"category": "utilities"
+},
+{
+"id": "com.tencent.WeChat",
+"name": "WeChat",
+"summary": "Free messaging and calling app",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4210,
+"category": "communication"
+},
+{
+"id": "com.indomitusgroup.indipdf",
+"name": "indiPDF",
+"summary": "A powerful PDF editor for Linux",
+"arches": [
+"x86_64"
+],
+"installs": 4180,
+"category": "utilities"
+},
+{
+"id": "io.github.antimicrox.antimicrox",
+"name": "AntiMicroX",
+"summary": "Graphical program used to map gamepad buttons to keyboard, mouse, scripts and macros",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4163,
+"category": "utilities"
+},
+{
+"id": "com.dropbox.Client",
+"name": "Dropbox",
+"summary": "Access your files from any computer",
+"arches": [
+"x86_64"
+],
+"installs": 4157,
+"category": "productivity"
+},
+{
+"id": "net.blockbench.Blockbench",
+"name": "Blockbench",
+"summary": "Blockbench - A boxy 3D model editor",
+"arches": [
+"x86_64"
+],
+"installs": 4151,
+"category": "creative"
+},
+{
+"id": "io.github.CyberTimon.RapidRAW",
+"name": "RapidRAW",
+"summary": "A non-destructive, and GPU-accelerated RAW image editor built with performance in mind",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4142,
+"category": "creative"
+},
+{
+"id": "io.github.prateekmedia.appimagepool",
+"name": "AppImage Pool",
+"summary": "A simple, modern AppImageHub Client.",
+"arches": [
+"x86_64"
+],
+"installs": 4128,
+"category": "utilities"
+},
+{
+"id": "app.polychromatic.controller",
+"name": "Polychromatic",
+"summary": "RGB lighting management software for OpenRazer",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4125,
+"category": "utilities"
+},
+{
+"id": "org.gnome.Mahjongg",
+"name": "Mahjongg",
+"summary": "Match tiles and clear the board",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4117,
+"category": "gaming"
+},
+{
+"id": "org.jeffvli.feishin",
+"name": "Feishin",
+"summary": "Jellyfin, Navidrome, and OpenSubsonic Compatible Music Player",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4097,
+"category": "media"
+},
+{
+"id": "org.stellarium.Stellarium",
+"name": "Stellarium",
+"summary": "Desktop Planetarium",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4089,
+"category": "productivity"
+},
+{
+"id": "top.akizip.akizip",
+"name": "Akizip",
+"summary": "A modern front-end for 7-Zip on GNOME",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4077,
+"category": "utilities"
+},
+{
+"id": "com.github.taiko2k.tauonmb",
+"name": "Tauon",
+"summary": "Play your music with style",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4058,
+"category": "media"
+},
+{
+"id": "org.eclipse.Java",
+"name": "Eclipse IDE for Java Developers",
+"summary": "The essential tools for any Java developer, including a Java IDE, a Git client, XML Editor, Maven and Gradle integration",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4047,
+"category": "development"
+},
+{
+"id": "org.srb2.SRB2",
+"name": "Sonic Robo Blast 2",
+"summary": "A 3D Sonic the Hedgehog fangame based on a modified version of Doom Legacy",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4033,
+"category": "gaming"
+},
+{
+"id": "io.github.arunsivaramanneo.GPUViewer",
+"name": "GPU-Viewer",
+"summary": "A front-end to glxinfo, vulkaninfo, clinfo and es2_info",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 4007,
+"category": "utilities"
+},
+{
+"id": "io.itch.itch",
+"name": "itch",
+"summary": "Install, update and play indie games",
+"arches": [
+"x86_64"
+],
+"installs": 4004,
+"category": "gaming"
+},
+{
+"id": "com.github.marhkb.Pods",
+"name": "Pods",
+"summary": "Manage your containers",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3990,
+"category": "development"
+},
+{
+"id": "com.jetbrains.IntelliJ-IDEA-Ultimate",
+"name": "IntelliJ IDEA",
+"summary": "Leading Java and Kotlin editor",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3984,
+"category": "development"
+},
+{
+"id": "com.warlordsoftwares.wallpaper-app-4kwall",
+"name": "4KWALL",
+"summary": "Set 4K, HD and live wallpapers for your desktop background",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3977,
+"category": "utilities"
+},
+{
+"id": "org.cubocore.CoreKeyboard",
+"name": "CoreKeyboard",
+"summary": "A simple virtual keyboard with word suggestions for x11 based systems",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3970,
+"category": "utilities"
+},
+{
+"id": "com.getmailspring.Mailspring",
+"name": "Mailspring",
+"summary": "The best email app for people and teams at work",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3965,
+"category": "communication"
+},
+{
+"id": "org.gnome.Brasero",
+"name": "Brasero",
+"summary": "Create and copy CDs and DVDs",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3965,
+"category": "media"
+},
+{
+"id": "org.gnome.Shotwell",
+"name": "Shotwell",
+"summary": "Digital photo organizer",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3934,
+"category": "creative"
+},
+{
+"id": "sh.cider.Cider",
+"name": "Cider",
+"summary": "An exquisitely crafted and customizable Apple Music app",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3919,
+"category": "creative"
+},
+{
+"id": "io.github.hakandundar34coding.system-monitoring-center",
+"name": "System Monitoring Center",
+"summary": "Multi-featured system monitor",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3898,
+"category": "utilities"
+},
+{
+"id": "io.github.alper_han.crossmacro",
+"name": "CrossMacro",
+"summary": "Mouse and keyboard macro automation",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3890,
+"category": "utilities"
+},
+{
+"id": "com.github.finefindus.eyedropper",
+"name": "Eyedropper",
+"summary": "Pick and format colors",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3878,
+"category": "development"
+},
+{
+"id": "me.iepure.devtoolbox",
+"name": "Dev Toolbox",
+"summary": "Dev tools at your fingertips",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3865,
+"category": "development"
+},
+{
+"id": "org.pgadmin.pgadmin4",
+"name": "pgAdmin 4",
+"summary": "Admin and development platform for PostgreSQL",
+"arches": [
+"x86_64"
+],
+"installs": 3850,
+"category": "development"
+},
+{
+"id": "io.github.TeamWheelWizard.WheelWizard",
+"name": "Wheel Wizard",
+"summary": "Mario Kart Wii Mod Manager & Retro Rewind Auto Updater",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3843,
+"category": "gaming"
+},
+{
+"id": "net.scribus.Scribus",
+"name": "Scribus",
+"summary": "Open Source Page Layout and Desktop Publishing (DTP)",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3840,
+"category": "creative"
+},
+{
+"id": "org.kde.kweather",
+"name": "Weather",
+"summary": "View real-time weather forecasts",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3839,
+"category": "utilities"
+},
+{
+"id": "org.kde.elisa",
+"name": "Elisa",
+"summary": "Play local music and listen to online radio",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3822,
+"category": "media"
+},
+{
+"id": "jp.nonbili.noutube",
+"name": "NouTube",
+"summary": "YouTube and YouTube Music in a single app",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3820,
+"category": "media"
+},
+{
+"id": "org.musescore.MuseScore",
+"name": "MuseScore",
+"summary": "Create, play and print beautiful sheet music",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3810,
+"category": "creative"
+},
+{
+"id": "io.gdevelop.ide",
+"name": "GDevelop",
+"summary": "Fast and Easy Game-Making",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3803,
+"category": "development"
+},
+{
+"id": "com.stremio.Service",
+"name": "Stremio Service",
+"summary": "Freedom to Stream",
+"arches": [
+"x86_64"
+],
+"installs": 3799,
+"category": "media"
+},
+{
+"id": "ua.org.brezblock.q4wine",
+"name": "q4wine",
+"summary": "Utility for Wine applications and prefixes management",
+"arches": [
+"x86_64"
+],
+"installs": 3774,
+"category": "utilities"
+},
+{
+"id": "org.kde.kclock",
+"name": "Clock",
+"summary": "Keep time and set alarms",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3771,
+"category": "utilities"
+},
+{
+"id": "de.haeckerfelix.Fragments",
+"name": "Fragments",
+"summary": "Manage torrents",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3749,
+"category": "utilities"
+},
+{
+"id": "io.github.chidiwilliams.Buzz",
+"name": "Buzz",
+"summary": "Transcribe and translate audio",
+"arches": [
+"x86_64"
+],
+"installs": 3744,
+"category": "media"
+},
+{
+"id": "ch.openboard.OpenBoard",
+"name": "OpenBoard",
+"summary": "Interactive whiteboard for schools and universities",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3739,
+"category": "productivity"
+},
+{
+"id": "com.notesnook.Notesnook",
+"name": "Notesnook",
+"summary": "A fully open source & end-to-end encrypted note taking alternative to Evernote",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3730,
+"category": "productivity"
+},
+{
+"id": "com.markopejic.downloader",
+"name": "Media Downloader",
+"summary": "Web video/audio downloader",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3715,
+"category": "media"
+},
+{
+"id": "com.github.neithern.g4music",
+"name": "Gapless",
+"summary": "Play your music elegantly",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3708,
+"category": "creative"
+},
+{
+"id": "com.bitwig.BitwigStudio",
+"name": "Bitwig Studio",
+"summary": "Modern music production and performance",
+"arches": [
+"x86_64"
+],
+"installs": 3698,
+"category": "media"
+},
+{
+"id": "com.mastermindzh.tidal-hifi",
+"name": "TIDAL Hi-Fi",
+"summary": "The web version of listen.tidal.com with Hi-Fi (High and Max) support",
+"arches": [
+"x86_64"
+],
+"installs": 3698,
+"category": "media"
+},
+{
+"id": "com.ultimaker.cura",
+"name": "UltiMaker Cura",
+"summary": "Slicer to prepare your 3D printing projects",
+"arches": [
+"x86_64"
+],
+"installs": 3677,
+"category": "utilities"
+},
+{
+"id": "com.ktechpit.red",
+"name": "Red",
+"summary": "YouTube client with TV mode, no ads",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3667,
+"category": "media"
+},
+{
+"id": "com.tomjwatson.Emote",
+"name": "Emote",
+"summary": "Modern popup emoji picker",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3659,
+"category": "utilities"
+},
+{
+"id": "io.github.debasish_patra_1987.linuxthemestore",
+"name": "Linux Theme Store",
+"summary": "Browse, preview, and install desktop themes",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3644,
+"category": "utilities"
+},
+{
+"id": "com.github.iwalton3.jellyfin-mpv-shim",
+"name": "Jellyfin MPV Shim",
+"summary": "MPV-Based Jellyfin Client with Offline Sync",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3639,
+"category": "media"
+},
+{
+"id": "app.drey.Warp",
+"name": "Warp",
+"summary": "Fast and secure file transfer",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3624,
+"category": "utilities"
+},
+{
+"id": "org.thonny.Thonny",
+"name": "Thonny",
+"summary": "Python IDE for beginners",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3597,
+"category": "development"
+},
+{
+"id": "com.github.d4nj1.tlpui",
+"name": "TLP-UI",
+"summary": "TLP configuration utility",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3586,
+"category": "utilities"
+},
+{
+"id": "io.github.mfat.sshpilot",
+"name": "SSH Pilot",
+"summary": "Manage your servers with ease",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3566,
+"category": "utilities"
+},
+{
+"id": "org.nicotine_plus.Nicotine",
+"name": "Nicotine+",
+"summary": "Browse the Soulseek network",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3562,
+"category": "utilities"
+},
+{
+"id": "org.fcitx.Fcitx5",
+"name": "Fcitx 5",
+"summary": "Input Method",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3560,
+"category": "utilities"
+},
+{
+"id": "org.librecad.librecad",
+"name": "LibreCAD",
+"summary": "2D Computer Aided Design (CAD)",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3550,
+"category": "creative"
+},
+{
+"id": "chat.simplex.simplex",
+"name": "SimpleX Chat",
+"summary": "A private & encrypted open-source messenger without any user IDs (not even random)!",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3549,
+"category": "communication"
+},
+{
+"id": "com.warlordsoftwares.media-downloader",
+"name": "Media Downloader",
+"summary": "Download 4k Videos from YouTube",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3546,
+"category": "utilities"
+},
+{
+"id": "io.lmms.LMMS",
+"name": "LMMS",
+"summary": "A music production application",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3532,
+"category": "creative"
+},
+{
+"id": "edu.mit.Scratch",
+"name": "Scratch",
+"summary": "Create stories, games, and animations, share with others around the world",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3514,
+"category": "development"
+},
+{
+"id": "org.tenacityaudio.Tenacity",
+"name": "Tenacity",
+"summary": "Record and edit audio files",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3493,
+"category": "media"
+},
+{
+"id": "com.nuclearplayer.Nuclear",
+"name": "Nuclear",
+"summary": "Search and play any song",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3474,
+"category": "media"
+},
+{
+"id": "com.github.marktext.marktext",
+"name": "MarkText",
+"summary": "Next generation markdown editor",
+"arches": [
+"x86_64"
+],
+"installs": 3468,
+"category": "productivity"
+},
+{
+"id": "at.vintagestory.VintageStory",
+"name": "Vintage Story",
+"summary": "Wilderness survival sandbox game",
+"arches": [
+"x86_64"
+],
+"installs": 3462,
+"category": "gaming"
+},
+{
+"id": "org.kde.yakuake",
+"name": "Yakuake",
+"summary": "Drop-down Terminal",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3460,
+"category": "utilities"
+},
+{
+"id": "com.github.hluk.copyq",
+"name": "CopyQ",
+"summary": "Advanced clipboard manager",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3454,
+"category": "utilities"
+},
+{
+"id": "io.github.hkdb.Aerion",
+"name": "Aerion",
+"summary": "Lightweight open-source email client for Linux",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3451,
+"category": "communication"
+},
+{
+"id": "io.ente.auth",
+"name": "Ente Auth",
+"summary": "FOSS, cross-platform 2FA app",
+"arches": [
+"x86_64"
+],
+"installs": 3439,
+"category": "utilities"
+},
+{
+"id": "com.yubico.yubioath",
+"name": "Yubico Authenticator",
+"summary": "Graphical interface for displaying OATH codes with a YubiKey",
+"arches": [
+"x86_64"
+],
+"installs": 3438,
+"category": "utilities"
+},
+{
+"id": "org.jamovi.jamovi",
+"name": "jamovi",
+"summary": "Real-time statistical spreadsheet",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3430,
+"category": "productivity"
+},
+{
+"id": "org.kde.audiotube",
+"name": "AudioTube",
+"summary": "YouTube Music app",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3414,
+"category": "media"
+},
+{
+"id": "org.ferdium.Ferdium",
+"name": "Ferdium",
+"summary": "Messenger for the desktop",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3410,
+"category": "communication"
+},
+{
+"id": "com.thincast.client",
+"name": "Thincast Remote Desktop Client",
+"summary": "A free RDP (Remote Desktop Protocol) Client for Linux, macOS and Windows",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3406,
+"category": "utilities"
+},
+{
+"id": "net.opentabletdriver.OpenTabletDriver",
+"name": "OpenTabletDriver",
+"summary": "Cross-platform tablet driver tool",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3382,
+"category": "utilities"
+},
+{
+"id": "org.fooyin.fooyin",
+"name": "fooyin",
+"summary": "Play your music your way",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3372,
+"category": "media"
+},
+{
+"id": "com.sweethome3d.Sweethome3d",
+"name": "Sweet Home 3D",
+"summary": "Interior Design Application",
+"arches": [
+"x86_64"
+],
+"installs": 3370,
+"category": "creative"
+},
+{
+"id": "com.github.tenderowl.frog",
+"name": "Frog",
+"summary": "Extract text from images",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3334,
+"category": "productivity"
+},
+{
+"id": "org.gnome.SoundRecorder",
+"name": "Sound Recorder",
+"summary": "A simple, modern sound recorder for GNOME",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3333,
+"category": "media"
+},
+{
+"id": "io.github.amit9838.mousam",
+"name": "Mousam",
+"summary": "Weather at a glance",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3333,
+"category": "utilities"
+},
+{
+"id": "org.gnome.Totem",
+"name": "Videos",
+"summary": "Play movies",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3316,
+"category": "media"
+},
+{
+"id": "xyz.ketok.Speedtest",
+"name": "Speedtest",
+"summary": "Measure your internet connection speed",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3310,
+"category": "utilities"
+},
+{
+"id": "org.gnome.Evince",
+"name": "Document Viewer",
+"summary": "Document viewer for popular document formats",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3303,
+"category": "utilities"
+},
+{
+"id": "io.github.Soundux",
+"name": "Soundux",
+"summary": "A cross-platform soundboard",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3297,
+"category": "media"
+},
+{
+"id": "com.github.jkotra.eovpn",
+"name": "eOVPN",
+"summary": "OpenVPN Configuration Manager",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3285,
+"category": "utilities"
+},
+{
+"id": "com.mikrotik.WinBox",
+"name": "WinBox",
+"summary": "RouterOS administration tool",
+"arches": [
+"x86_64"
+],
+"installs": 3256,
+"category": "utilities"
+},
+{
+"id": "io.github.zarestia_dev.rclone-manager",
+"name": "RClone Manager",
+"summary": "Browse and sync cloud storage",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3239,
+"category": "utilities"
+},
+{
+"id": "org.ghidra_sre.Ghidra",
+"name": "Ghidra",
+"summary": "Ghidra Reverse Engineering Suite",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3224,
+"category": "development"
+},
+{
+"id": "net.agalwood.Motrix",
+"name": "Motrix",
+"summary": "A full-featured download manager",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3206,
+"category": "utilities"
+},
+{
+"id": "rs.ruffle.Ruffle",
+"name": "Ruffle",
+"summary": "Play Flash games & movies",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3204,
+"category": "gaming"
+},
+{
+"id": "net.nymtech.NymVPN",
+"name": "NymVPN",
+"summary": "Decentralized, mixnet, and zero-knowledge VPN",
+"arches": [
+"x86_64"
+],
+"installs": 3204,
+"category": "utilities"
+},
+{
+"id": "io.github.astralvixen.geforce-infinity",
+"name": "GeForce Infinity",
+"summary": "Next-gen GeForce NOW application",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3204,
+"category": "gaming"
+},
+{
+"id": "io.github.dvlv.boxbuddyrs",
+"name": "BoxBuddy",
+"summary": "A Graphical Distrobox Manager",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3203,
+"category": "utilities"
+},
+{
+"id": "org.rncbc.qpwgraph",
+"name": "qpwgraph",
+"summary": "A PipeWire Graph Qt GUI Interface",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3191,
+"category": "creative"
+},
+{
+"id": "org.kde.kstars",
+"name": "KStars",
+"summary": "Desktop Planetarium",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3186,
+"category": "productivity"
+},
+{
+"id": "com.atlauncher.ATLauncher",
+"name": "ATLauncher",
+"summary": "A launcher for Minecraft which integrates multiple different modpacks to allow you to download and install modpacks easily and quickly",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3183,
+"category": "gaming"
+},
+{
+"id": "io.github.bhack.mini-eq",
+"name": "Mini EQ",
+"summary": "Tune your sound output",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3181,
+"category": "media"
+},
+{
+"id": "com.steamgriddb.SGDBoop",
+"name": "SGDBoop",
+"summary": "Apply SteamGridDB assets to Steam",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3163,
+"category": "gaming"
+},
+{
+"id": "io.github.edewin.corex",
+"name": "CoreX HW Monitor",
+"summary": "Real-time hardware monitoring",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3128,
+"category": "utilities"
+},
+{
+"id": "org.gnome.gThumb",
+"name": "gThumb Image Viewer",
+"summary": "View and organize your images",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3111,
+"category": "utilities"
+},
+{
+"id": "com.github.wwmm.pulseeffects",
+"name": "PulseEffects",
+"summary": "Audio Effects for PulseAudio Applications",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3103,
+"category": "media"
+},
+{
+"id": "org.apache.netbeans",
+"name": "NetBeans",
+"summary": "NetBeans - Apache Java IDE. Fits the Pieces Together",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3097,
+"category": "development"
+},
+{
+"id": "cc.arduino.arduinoide",
+"name": "Arduino IDE",
+"summary": "Open-source electronics prototyping platform",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3083,
+"category": "development"
+},
+{
+"id": "tv.plex.PlexHTPC",
+"name": "Plex HTPC",
+"summary": "Plex HTPC client for the big screen",
+"arches": [
+"x86_64"
+],
+"installs": 3078,
+"category": "media"
+},
+{
+"id": "org.gnome.World.Secrets",
+"name": "Secrets",
+"summary": "Manage your passwords",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3077,
+"category": "utilities"
+},
+{
+"id": "network.loki.Session",
+"name": "Session Desktop",
+"summary": "Private messenger",
+"arches": [
+"x86_64"
+],
+"installs": 3073,
+"category": "communication"
+},
+{
+"id": "org.kde.pix",
+"name": "Pix",
+"summary": "Image Gallery",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3069,
+"category": "utilities"
+},
+{
+"id": "io.github.unknownskl.greenlight",
+"name": "Greenlight",
+"summary": "Greenlight is an open-source client for xCloud and Xbox home streaming",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3068,
+"category": "gaming"
+},
+{
+"id": "app.comaps.comaps",
+"name": "CoMaps",
+"summary": "Free offline maps for everyone",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3044,
+"category": "productivity"
+},
+{
+"id": "io.gitlab.adhami3310.Converter",
+"name": "Switcheroo",
+"summary": "Convert and manipulate images",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3026,
+"category": "creative"
+},
+{
+"id": "page.codeberg.libre_menu_editor.LibreMenuEditor",
+"name": "Main Menu",
+"summary": "Customize the menu",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3026,
+"category": "utilities"
+},
+{
+"id": "com.jeffser.Nocturne",
+"name": "Nocturne",
+"summary": "Bring your music library together",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3023,
+"category": "media"
+},
+{
+"id": "page.codeberg.impromptux.ytdl-gui",
+"name": "Yt Downloader",
+"summary": "Download videos and music from various sources.",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3022,
+"category": "media"
+},
+{
+"id": "org.kde.minuet",
+"name": "Minuet",
+"summary": "Music Education Software",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3016,
+"category": "creative"
+},
+{
+"id": "io.github.giantpinkrobots.varia",
+"name": "Varia",
+"summary": "Download files, videos and torrents",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3015,
+"category": "utilities"
+},
+{
+"id": "org.gnome.gitlab.TitouanReal.Era",
+"name": "Era",
+"summary": "Manage your time",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3013,
+"category": "utilities"
+},
+{
+"id": "org.sqlitebrowser.sqlitebrowser",
+"name": "DB Browser for SQLite",
+"summary": "light GUI editor for SQLite databases",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3007,
+"category": "development"
+},
+{
+"id": "org.kde.kmahjongg",
+"name": "KMahjongg",
+"summary": "Mahjong Solitaire",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 3003,
+"category": "gaming"
+},
+{
+"id": "app.devsuite.Ptyxis",
+"name": "Ptyxis",
+"summary": "Container-oriented terminal",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2998,
+"category": "utilities"
+},
+{
+"id": "org.zdoom.UZDoom",
+"name": "UZDoom",
+"summary": "Game engine for Classic Doom",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2987,
+"category": "gaming"
+},
+{
+"id": "io.github.zaedus.spider",
+"name": "Spider",
+"summary": "Install web apps",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2985,
+"category": "browsers"
+},
+{
+"id": "org.gnome.Rhythmbox3",
+"name": "Rhythmbox",
+"summary": "Play and organize all your music",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2980,
+"category": "media"
+},
+{
+"id": "io.github.JakubMelka.Pdf4qt",
+"name": "PDF4QT",
+"summary": "Open Source PDF Editor",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2979,
+"category": "productivity"
+},
+{
+"id": "org.learningequality.Kolibri",
+"name": "Kolibri",
+"summary": "Offline learning platform",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2975,
+"category": "productivity"
+},
+{
+"id": "org.gnome.meld",
+"name": "Meld",
+"summary": "Compare and merge your files",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2952,
+"category": "development"
+},
+{
+"id": "org.supertuxproject.SuperTux",
+"name": "SuperTux",
+"summary": "A jump-and-run game starring Tux the Penguin",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2951,
+"category": "gaming"
+},
+{
+"id": "org.kde.ktorrent",
+"name": "KTorrent",
+"summary": "BitTorrent Client",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2945,
+"category": "utilities"
+},
+{
+"id": "org.kde.koko",
+"name": "Photos",
+"summary": "Image Gallery",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2944,
+"category": "utilities"
+},
+{
+"id": "io.github.focustimerhq.FocusTimer",
+"name": "Focus Timer",
+"summary": "Work with regular breaks",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2937,
+"category": "productivity"
+},
+{
+"id": "best.ellie.StartupConfiguration",
+"name": "Startup Configuration",
+"summary": "View and set startup scripts and applications",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2935,
+"category": "utilities"
+},
+{
+"id": "com.tutanota.Tutanota",
+"name": "Tuta (Experimental)",
+"summary": "Secure email, calendar & contacts",
+"arches": [
+"x86_64"
+],
+"installs": 2934,
+"category": "communication"
+},
+{
+"id": "io.github.qwersyk.Newelle",
+"name": "Newelle",
+"summary": "AI chatbot",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2918,
+"category": "utilities"
+},
+{
+"id": "org.gnome.gitlab.wwarner.Solitaire",
+"name": "Solitaire",
+"summary": "Play patience games",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2904,
+"category": "gaming"
+},
+{
+"id": "io.github.wartybix.Constrict",
+"name": "Constrict",
+"summary": "Compress videos to target sizes",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2901,
+"category": "media"
+},
+{
+"id": "cn.wps.wps_365",
+"name": "WPS 365",
+"summary": "WPS 365 Suite",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2885,
+"category": "productivity"
+},
+{
+"id": "com.dosbox_x.DOSBox-X",
+"name": "DOSBox-X",
+"summary": "x86/DOS emulator with sound and graphics",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2880,
+"category": "gaming"
+},
+{
+"id": "ca.parallel_launcher.ParallelLauncher",
+"name": "Parallel Launcher",
+"summary": "Modern N64 Emulator",
+"arches": [
+"x86_64"
+],
+"installs": 2878,
+"category": "gaming"
+},
+{
+"id": "org.freefilesync.FreeFileSync",
+"name": "FreeFileSync",
+"summary": "Visual folder comparison and synchronization",
+"arches": [
+"x86_64"
+],
+"installs": 2848,
+"category": "utilities"
+},
+{
+"id": "com.github.sdv43.whaler",
+"name": "Whaler",
+"summary": "Docker Container Management",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2829,
+"category": "development"
+},
+{
+"id": "com.teamspeak.TeamSpeak",
+"name": "TeamSpeak",
+"summary": "TeamSpeak VoIP application",
+"arches": [
+"x86_64"
+],
+"installs": 2828,
+"category": "communication"
+},
+{
+"id": "de.bund.ausweisapp.ausweisapp2",
+"name": "AusweisApp",
+"summary": "Official authentication app for German ID card and residence permit",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2821,
+"category": "utilities"
+},
+{
+"id": "io.github.gopher64.gopher64",
+"name": "Gopher64",
+"summary": "Highly compatible N64 emulator, built-in netplay",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2817,
+"category": "gaming"
+},
+{
+"id": "org.pvermeer.WebAppHub",
+"name": "Web App Hub",
+"summary": "Create web apps with ease",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2807,
+"category": "utilities"
+},
+{
+"id": "org.bunkus.mkvtoolnix-gui",
+"name": "MKVToolNix",
+"summary": "Matroska files creator and tools",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2795,
+"category": "creative"
+},
+{
+"id": "io.github.spacingbat3.webcord",
+"name": "WebCord",
+"summary": "Web-based Discord client",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2773,
+"category": "communication"
+},
+{
+"id": "dev.aunetx.deezer",
+"name": "Deezer",
+"summary": "Online music streaming service",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2767,
+"category": "media"
+},
+{
+"id": "io.github.shonebinu.Defuse",
+"name": "Defuse",
+"summary": "Remove image backgrounds locally",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2752,
+"category": "creative"
+},
+{
+"id": "org.gnome.Chess",
+"name": "GNOME Chess",
+"summary": "Play the classic two-player board game of chess",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2742,
+"category": "gaming"
+},
+{
+"id": "com.github.libresprite.LibreSprite",
+"name": "LibreSprite",
+"summary": "Animated sprite editor and pixel art tool",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2735,
+"category": "creative"
+},
+{
+"id": "app.eduroam.geteduroam",
+"name": "geteduroam",
+"summary": "A geteduroam client for Linux. Geteduroam simplifies the process of connecting to eduroam",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2727,
+"category": "utilities"
+},
+{
+"id": "re.fossplant.pbtk",
+"name": "pbtk",
+"summary": "Reverse engineering Protobuf apps",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2725,
+"category": "development"
+},
+{
+"id": "com.orama_interactive.Pixelorama",
+"name": "Pixelorama",
+"summary": "Pixel Art & Animation",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2724,
+"category": "creative"
+},
+{
+"id": "com.github.Darazaki.Spedread",
+"name": "Spedread",
+"summary": "GTK speed reading software: Read like a speedrunner!",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2724,
+"category": "utilities"
+},
+{
+"id": "dev.diegovsky.Riff",
+"name": "Riff",
+"summary": "Stream Spotify without distraction",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2724,
+"category": "creative"
+},
+{
+"id": "org.standardnotes.standardnotes",
+"name": "Standard Notes",
+"summary": "A simple and private place for your notes, thoughts, and life's work",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2699,
+"category": "productivity"
+},
+{
+"id": "app.drey.Dialect",
+"name": "Dialect",
+"summary": "Translate between languages",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2696,
+"category": "utilities"
+},
+{
+"id": "com.github.huluti.Curtail",
+"name": "Curtail",
+"summary": "Compress your images",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2691,
+"category": "creative"
+},
+{
+"id": "org.kde.skanpage",
+"name": "Skanpage",
+"summary": "Scan multi-page documents and images",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2688,
+"category": "utilities"
+},
+{
+"id": "org.openscad.OpenSCAD",
+"name": "OpenSCAD",
+"summary": "The Programmers Solid 3D CAD Modeller",
+"arches": [
+"x86_64"
+],
+"installs": 2681,
+"category": "creative"
+},
+{
+"id": "io.appflowy.AppFlowy",
+"name": "AppFlowy",
+"summary": "Open Source Notion Alternative",
+"arches": [
+"x86_64"
+],
+"installs": 2675,
+"category": "productivity"
+},
+{
+"id": "it.mijorus.smile",
+"name": "Smile",
+"summary": "An emoji picker",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2673,
+"category": "utilities"
+},
+{
+"id": "com.ktechpit.typingtutor",
+"name": "TypingTutor",
+"summary": "Touch typing tutor and speed test",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2659,
+"category": "productivity"
+},
+{
+"id": "org.clementine_player.Clementine",
+"name": "Clementine Music Player",
+"summary": "Plays music files and Internet radio",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2631,
+"category": "media"
+},
+{
+"id": "io.github.revisto.drum-machine",
+"name": "Drum Machine",
+"summary": "Create and play drum beats",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2626,
+"category": "creative"
+},
+{
+"id": "io.github.IshuSinghSE.aurynk",
+"name": "Aurynk",
+"summary": "Android Mirroring Tool for Linux",
+"arches": [
+"x86_64"
+],
+"installs": 2620,
+"category": "utilities"
+},
+{
+"id": "org.gnome.Solanum",
+"name": "Solanum",
+"summary": "Balance working time and break time",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2608,
+"category": "utilities"
+},
+{
+"id": "com.belmoussaoui.Decoder",
+"name": "Decoder",
+"summary": "Scan and generate QR codes",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2607,
+"category": "utilities"
+},
+{
+"id": "io.github.martchus.syncthingtray",
+"name": "Syncthing Tray",
+"summary": "Tray application for Syncthing",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2602,
+"category": "utilities"
+},
+{
+"id": "io.github.cboxdoerfer.FSearch",
+"name": "FSearch",
+"summary": "A graphical file search application",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2596,
+"category": "utilities"
+},
+{
+"id": "com.rcloneui.RcloneUI",
+"name": "Rclone UI",
+"summary": "The GUI for rclone.",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2595,
+"category": "utilities"
+},
+{
+"id": "org.gnome.Notes",
+"name": "Notes",
+"summary": "Notes for GNOME",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2594,
+"category": "utilities"
+},
+{
+"id": "org.openmw.OpenMW",
+"name": "OpenMW",
+"summary": "Reimplementation of The Elder Scrolls III: Morrowind",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2592,
+"category": "gaming"
+},
+{
+"id": "org.altlinux.Tailor",
+"name": "Tailor",
+"summary": "Create bootable drives",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2584,
+"category": "utilities"
+},
+{
+"id": "com.plexamp.Plexamp",
+"name": "Plexamp",
+"summary": "Beautiful music player for Plex",
+"arches": [
+"x86_64"
+],
+"installs": 2580,
+"category": "media"
+},
+{
+"id": "org.xonotic.Xonotic",
+"name": "Xonotic",
+"summary": "The Free and Fast Arena Shooter",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2573,
+"category": "gaming"
+},
+{
+"id": "io.github.lullabyX.sone",
+"name": "SONE",
+"summary": "Native TIDAL client for Linux — modern UI, bit-perfect lossless FLAC and Hi-Res audio",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2573,
+"category": "media"
+},
+{
+"id": "net.codelogistics.webapps",
+"name": "Web Apps",
+"summary": "Install websites as apps",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2568,
+"category": "utilities"
+},
+{
+"id": "org.kde.kamoso",
+"name": "Kamoso",
+"summary": "Use your webcam to take pictures and make videos",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2563,
+"category": "media"
+},
+{
+"id": "org.gnome.gedit",
+"name": "gedit",
+"summary": "Text editor",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2560,
+"category": "productivity"
+},
+{
+"id": "com.github.rafostar.Clapper",
+"name": "Clapper",
+"summary": "Lean back and enjoy videos",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2544,
+"category": "media"
+},
+{
+"id": "info.beyondallreason.bar",
+"name": "Beyond All Reason",
+"summary": "Total Annihilation Inspired RTS",
+"arches": [
+"x86_64"
+],
+"installs": 2527,
+"category": "gaming"
+},
+{
+"id": "org.ecosia.Browser",
+"name": "Ecosia Browser",
+"summary": "The greenest browser on Earth",
+"arches": [
+"x86_64"
+],
+"installs": 2519,
+"category": "utilities"
+},
+{
+"id": "org.opencpn.OpenCPN",
+"name": "OpenCPN",
+"summary": "Chartplotter and Navigation tool",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2518,
+"category": "creative"
+},
+{
+"id": "ch.protonmail.protonmail-bridge",
+"name": "Proton Mail Bridge",
+"summary": "Seamlessly encrypts and decrypts your mail as it enters and leaves your computer",
+"arches": [
+"x86_64"
+],
+"installs": 2511,
+"category": "communication"
+},
+{
+"id": "io.github.falldaemon.engplayer",
+"name": "EngPlayer",
+"summary": "Modern IPTV and Media Center",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2505,
+"category": "media"
+},
+{
+"id": "com.github.vkohaupt.vokoscreenNG",
+"name": "vokoscreenNG",
+"summary": "vokoscreenNG is the most popular and powerful screen recorder for Wayland, Linux-X11, and Windows",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2492,
+"category": "media"
+},
+{
+"id": "io.github.berarma.Oversteer",
+"name": "Oversteer",
+"summary": "A steering wheel manager",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2490,
+"category": "gaming"
+},
+{
+"id": "com.github.dynobo.normcap",
+"name": "NormCap",
+"summary": "Capture text from any screen area",
+"arches": [
+"x86_64"
+],
+"installs": 2486,
+"category": "productivity"
+},
+{
+"id": "com.fastmail.Fastmail",
+"name": "Fastmail",
+"summary": "Email made better",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2481,
+"category": "communication"
+},
+{
+"id": "io.github.tuner_labs.tuner",
+"name": "Tuner",
+"summary": "Internet Radio",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2480,
+"category": "media"
+},
+{
+"id": "io.github.webcamoid.Webcamoid",
+"name": "Webcamoid",
+"summary": "Take photos and record videos with your webcam",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2472,
+"category": "media"
+},
+{
+"id": "org.desktop_plus.desktop-plus",
+"name": "Desktop Plus",
+"summary": "Git client for power users",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2472,
+"category": "development"
+},
+{
+"id": "io.github.xyproto.zsnes",
+"name": "ZSNES",
+"summary": "Super Nintendo emulator",
+"arches": [
+"x86_64"
+],
+"installs": 2465,
+"category": "gaming"
+},
+{
+"id": "com.github.joseexposito.touche",
+"name": "Touché",
+"summary": "Multi-touch gestures",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2433,
+"category": "utilities"
+},
+{
+"id": "org.octave.Octave",
+"name": "GNU Octave",
+"summary": "Scientific Programming Language",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2430,
+"category": "productivity"
+},
+{
+"id": "io.gitlab.metadatacleaner.metadatacleaner",
+"name": "Metadata Cleaner",
+"summary": "View and clean metadata in files",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2412,
+"category": "utilities"
+},
+{
+"id": "sa.sy.bluerecorder",
+"name": "Blue Recorder",
+"summary": "A simple screen recorder for Linux desktop. Supports Wayland & Xorg",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2403,
+"category": "media"
+},
+{
+"id": "com.core447.StreamController",
+"name": "StreamController",
+"summary": "Control your Elgato Stream Decks with plugin support",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2392,
+"category": "utilities"
+},
+{
+"id": "net.audiorelay.AudioRelay",
+"name": "AudioRelay",
+"summary": "Stream audio between your devices",
+"arches": [
+"x86_64"
+],
+"installs": 2388,
+"category": "utilities"
+},
+{
+"id": "org.jaspstats.JASP",
+"name": "JASP",
+"summary": "Classical and Bayesian Statistics",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2383,
+"category": "productivity"
+},
+{
+"id": "uk.org.greenend.chiark.sgtatham.putty",
+"name": "PuTTY",
+"summary": "SSH, Telnet and Rlogin client",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2376,
+"category": "utilities"
+},
+{
+"id": "app.drey.EarTag",
+"name": "Ear Tag",
+"summary": "Edit audio file tags",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2373,
+"category": "creative"
+},
+{
+"id": "com.termius.Termius",
+"name": "Termius",
+"summary": "Modern SSH client for Linux",
+"arches": [
+"x86_64"
+],
+"installs": 2369,
+"category": "utilities"
+},
+{
+"id": "org.cloudcompare.CloudCompare",
+"name": "CloudCompare",
+"summary": "3D point cloud and mesh processing",
+"arches": [
+"x86_64"
+],
+"installs": 2363,
+"category": "creative"
+},
+{
+"id": "org.kde.kwrite",
+"name": "KWrite",
+"summary": "Text Editor",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2362,
+"category": "productivity"
+},
+{
+"id": "io.github.mpc_qt.mpc-qt",
+"name": "MPC-QT",
+"summary": "Media Player Classic reimplemented with Qt and libmpv",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2360,
+"category": "media"
+},
+{
+"id": "de.mediathekview.MediathekView",
+"name": "MediathekView",
+"summary": "Access public German TV Mediatheken",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2359,
+"category": "media"
+},
+{
+"id": "com.jetbrains.Rider",
+"name": "Rider",
+"summary": "Fast & powerful, cross platform .NET IDE",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2348,
+"category": "development"
+},
+{
+"id": "io.github.idescriptor.iDescriptor",
+"name": "iDescriptor",
+"summary": "Manage and interact with Apple mobile devices (iPhone, iPad, iPod...)",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2334,
+"category": "utilities"
+},
+{
+"id": "org.kde.kalk",
+"name": "Calculator",
+"summary": "A feature rich calculator",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2330,
+"category": "utilities"
+},
+{
+"id": "org.kiwix.desktop",
+"name": "Kiwix",
+"summary": "View offline content",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2329,
+"category": "productivity"
+},
+{
+"id": "net.openra.OpenRA",
+"name": "OpenRA",
+"summary": "Reimagining of early Westwood real-time strategy games",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2327,
+"category": "gaming"
+},
+{
+"id": "io.github.davidoc26.wallpaper_selector",
+"name": "Wallpaper Selector",
+"summary": "Downloads and applies wallpapers",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2304,
+"category": "utilities"
+},
+{
+"id": "org.gnome.Builder",
+"name": "Builder",
+"summary": "Create applications for GNOME",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2293,
+"category": "development"
+},
+{
+"id": "io.github.getnf.embellish",
+"name": "Embellish",
+"summary": "Install nerd fonts",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2287,
+"category": "utilities"
+},
+{
+"id": "com.jetbrains.CLion",
+"name": "CLion",
+"summary": "A cross-platform IDE for C and C++",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2282,
+"category": "development"
+},
+{
+"id": "com.synology.SynologyDrive",
+"name": "Synology Drive",
+"summary": "Powerful private cloud storage with no recurring fees",
+"arches": [
+"x86_64"
+],
+"installs": 2281,
+"category": "utilities"
+},
+{
+"id": "net.blix.BlueMail",
+"name": "BlueMail",
+"summary": "BlueMail is a free, secure, universal email app, capable of managing an unlimited number of mail accounts",
+"arches": [
+"x86_64"
+],
+"installs": 2278,
+"category": "productivity"
+},
+{
+"id": "net.mediaarea.MediaInfo",
+"name": "MediaInfo",
+"summary": "Convenient unified display of the most relevant technical and tag data for video and audio files",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2267,
+"category": "creative"
+},
+{
+"id": "com.yacreader.YACReader",
+"name": "YACReader",
+"summary": "Yet another comic reader",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2263,
+"category": "utilities"
+},
+{
+"id": "org.codeblocks.codeblocks",
+"name": "Code::Blocks",
+"summary": "IDE for C, C++ and Fortran",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2254,
+"category": "development"
+},
+{
+"id": "io.github.ebonjaeger.bluejay",
+"name": "Bluejay",
+"summary": "Bluetooth device manager",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2245,
+"category": "utilities"
+},
+{
+"id": "io.github.snesrev.Zelda3",
+"name": "zelda3",
+"summary": "Zelda3 is a reverse engineered clone of Zelda - A Link to the Past",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2244,
+"category": "gaming"
+},
+{
+"id": "re.fossplant.vmlinux-to-elf",
+"name": "vmlinux-to-elf",
+"summary": "Convert raw Linux kernel blobs to ELF files",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2239,
+"category": "development"
+},
+{
+"id": "nl.jknaapen.fladder",
+"name": "Fladder",
+"summary": "A cross-platform Jellyfin client",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2238,
+"category": "media"
+},
+{
+"id": "org.kde.drawy",
+"name": "Drawy",
+"summary": "Your handy, infinite brainstorming tool",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2237,
+"category": "creative"
+},
+{
+"id": "io.github.moooossee.Moose",
+"name": "Moose",
+"summary": "Chat with local and cloud AI",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2236,
+"category": "communication"
+},
+{
+"id": "fr.free.Homebank",
+"name": "HomeBank",
+"summary": "Personal accounting for everyone",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2233,
+"category": "productivity"
+},
+{
+"id": "me.amankhanna.opendeck",
+"name": "OpenDeck",
+"summary": "Use stream controllers",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2227,
+"category": "productivity"
+},
+{
+"id": "org.wezfurlong.wezterm",
+"name": "WezTerm",
+"summary": "Powerful terminal and multiplexer",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2225,
+"category": "utilities"
+},
+{
+"id": "org.pipewire.Helvum",
+"name": "Helvum",
+"summary": "Patchbay for PipeWire",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2224,
+"category": "creative"
+},
+{
+"id": "com.qq.QQ",
+"name": "Linux QQ",
+"summary": "Online instant messaging service",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2216,
+"category": "communication"
+},
+{
+"id": "org.gabmus.hydrapaper",
+"name": "HydraPaper",
+"summary": "Wallpaper manager with multi monitor support",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2215,
+"category": "utilities"
+},
+{
+"id": "com.cassidyjames.butler",
+"name": "Butler",
+"summary": "Companion for Home Assistant",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2205,
+"category": "utilities"
+},
+{
+"id": "org.soundconverter.SoundConverter",
+"name": "SoundConverter",
+"summary": "Convert audio files",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2203,
+"category": "creative"
+},
+{
+"id": "app.legcord.Legcord",
+"name": "Legcord",
+"summary": "Legcord is a custom client designed to enhance your Discord experience while keeping everything lightweight.",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2194,
+"category": "communication"
+},
+{
+"id": "com.rawtherapee.RawTherapee",
+"name": "RawTherapee",
+"summary": "An advanced raw photo development program",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2191,
+"category": "creative"
+},
+{
+"id": "io.github.swordpuffin.rewaita",
+"name": "Rewaita",
+"summary": "Bring color to Adwaita",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2190,
+"category": "utilities"
+},
+{
+"id": "org.sugarlabs.Paint",
+"name": "Paint",
+"summary": "A sweet painting tool",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2189,
+"category": "productivity"
+},
+{
+"id": "org.gnome.Podcasts",
+"name": "Podcasts",
+"summary": "Listen to your favorite shows",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2187,
+"category": "media"
+},
+{
+"id": "net.newpipe.NewPipe",
+"name": "NewPipe (unofficial port)",
+"summary": "Free and lightweight YouTube frontend for Android",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2175,
+"category": "media"
+},
+{
+"id": "org.kde.kid3",
+"name": "Kid3",
+"summary": "Edit audio file metadata",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2168,
+"category": "creative"
+},
+{
+"id": "io.neovim.nvim",
+"name": "Neovim",
+"summary": "Vim-fork focused on extensibility and usability",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2159,
+"category": "development"
+},
+{
+"id": "io.github.shundhammer.qdirstat",
+"name": "QDirStat",
+"summary": "File System Directory Statistics",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2158,
+"category": "utilities"
+},
+{
+"id": "org.nmap.Zenmap",
+"name": "Zenmap",
+"summary": "A cross-platform GUI for the Nmap Security Scanner",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2156,
+"category": "utilities"
+},
+{
+"id": "io.github.DenysMb.Kontainer",
+"name": "Kontainer",
+"summary": "Manage Distrobox containers",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2154,
+"category": "utilities"
+},
+{
+"id": "org.gnome.Music",
+"name": "Music",
+"summary": "Play and organize your music collection",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2149,
+"category": "media"
+},
+{
+"id": "io.github.dosbox-staging",
+"name": "DOSBox Staging",
+"summary": "DOS/x86 emulator with advanced features",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2148,
+"category": "utilities"
+},
+{
+"id": "com.todoist.Todoist",
+"name": "Todoist",
+"summary": "Planner & Calendar",
+"arches": [
+"x86_64"
+],
+"installs": 2147,
+"category": "productivity"
+},
+{
+"id": "com.github.ADBeveridge.Raider",
+"name": "File Shredder",
+"summary": "Permanently delete your files",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2147,
+"category": "utilities"
+},
+{
+"id": "app.grayjay.Grayjay",
+"name": "Grayjay",
+"summary": "Universal media aggregator",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2147,
+"category": "media"
+},
+{
+"id": "org.feichtmeier.Musicpod",
+"name": "musicpod",
+"summary": "Music, podcast and internet radio player",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2145,
+"category": "media"
+},
+{
+"id": "com.actualbudget.actual",
+"name": "Actual Budget",
+"summary": "Your Finances made simple",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2145,
+"category": "productivity"
+},
+{
+"id": "dev.qwery.AddWater",
+"name": "Add Water",
+"summary": "Keep Firefox in fashion",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2144,
+"category": "utilities"
+},
+{
+"id": "com.github.ryonakano.reco",
+"name": "Reco",
+"summary": "Focus on recording",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2143,
+"category": "creative"
+},
+{
+"id": "com.ktechpit.orion",
+"name": "Orion Torrent Client",
+"summary": "Modern, feature-rich BitTorrent client and streaming platform for Linux",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2142,
+"category": "utilities"
+},
+{
+"id": "org.kde.krdc",
+"name": "KRDC",
+"summary": "Connect with RDP or VNC to another computer",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2140,
+"category": "utilities"
+},
+{
+"id": "io.github.Foldex.AdwSteamGtk",
+"name": "AdwSteamGtk",
+"summary": "Give Steam the Adwaita treatment",
+"arches": [
+"x86_64"
+],
+"installs": 2138,
+"category": "gaming"
+},
+{
+"id": "com.warlordsoftwares.formatlab",
+"name": "FormatLab",
+"summary": "Convert Video, Audio and Images",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2137,
+"category": "media"
+},
+{
+"id": "io.github.congard.qnvsm",
+"name": "Nvidia System Monitor",
+"summary": "Nvidia System Monitor Qt",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2134,
+"category": "utilities"
+},
+{
+"id": "com.ktechpit.torrhunt",
+"name": "TorrHunt",
+"summary": "Browse and search torrents from one desktop app",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2133,
+"category": "utilities"
+},
+{
+"id": "rest.insomnia.Insomnia",
+"name": "Insomnia",
+"summary": "Open-source API client",
+"arches": [
+"x86_64"
+],
+"installs": 2128,
+"category": "development"
+},
+{
+"id": "io.github.Geocld.XStreamingDesktop",
+"name": "XStreamingDesktop",
+"summary": "XStreaming: Lets you stream Xbox games to your device, supporting Xbox streaming and Xbox Cloud Gaming (XCloud).",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2126,
+"category": "gaming"
+},
+{
+"id": "im.fluffychat.Fluffychat",
+"name": "FluffyChat Matrix Messenger",
+"summary": "Your communication should be yours.",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2114,
+"category": "communication"
+},
+{
+"id": "org.linux_hardware.hw-probe",
+"name": "Hardware Probe",
+"summary": "Check operability of computer hardware and find drivers",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2114,
+"category": "utilities"
+},
+{
+"id": "org.tuxpaint.Tuxpaint",
+"name": "Tux Paint",
+"summary": "A drawing program for children",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2111,
+"category": "gaming"
+},
+{
+"id": "com.hamrick.VueScan",
+"name": "VueScan",
+"summary": "Scanning software for 6000+ scanners",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2109,
+"category": "utilities"
+},
+{
+"id": "me.kozec.syncthingtk",
+"name": "Syncthing GTK",
+"summary": "GUI and notification area icon for Syncthing",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2100,
+"category": "utilities"
+},
+{
+"id": "io.github.tntwise.REAL-Video-Enhancer",
+"name": "REAL Video Enhancer",
+"summary": "Free and Open Source Video Enhancement Tool",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2097,
+"category": "media"
+},
+{
+"id": "rocks.koreader.KOReader",
+"name": "KOReader",
+"summary": "Ebook reader",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2086,
+"category": "utilities"
+},
+{
+"id": "com.sidevesh.Luminance",
+"name": "Luminance",
+"summary": "Control brightness of displays",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2078,
+"category": "utilities"
+},
+{
+"id": "com.raggesilver.BlackBox",
+"name": "Black Box",
+"summary": "A beautiful GTK 4 terminal",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2076,
+"category": "utilities"
+},
+{
+"id": "io.github.OpenToonz",
+"name": "OpenToonz",
+"summary": "2D animation",
+"arches": [
+"x86_64"
+],
+"installs": 2075,
+"category": "creative"
+},
+{
+"id": "io.anytype.anytype",
+"name": "Anytype",
+"summary": "The everything app for those who celebrate trust and autonomy",
+"arches": [
+"x86_64"
+],
+"installs": 2066,
+"category": "utilities"
+},
+{
+"id": "com.tradingview.tradingview",
+"name": "TradingView",
+"summary": "Where the world charts, chats and trades markets",
+"arches": [
+"x86_64"
+],
+"installs": 2061,
+"category": "productivity"
+},
+{
+"id": "ca.desrt.dconf-editor",
+"name": "Dconf Editor",
+"summary": "A graphical tool for editing the dconf database",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2059,
+"category": "utilities"
+},
+{
+"id": "com.github.huluti.Coulr",
+"name": "Coulr",
+"summary": "Enjoy colors and feel happy",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2054,
+"category": "creative"
+},
+{
+"id": "org.gnome.Lollypop",
+"name": "Lollypop",
+"summary": "Play and organize your music collection",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2053,
+"category": "media"
+},
+{
+"id": "dev.edfloreshz.Calculator",
+"name": "Calculator",
+"summary": "Beyond the equation",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2052,
+"category": "utilities"
+},
+{
+"id": "io.github.yairm210.unciv",
+"name": "Unciv",
+"summary": "Turn-based strategy game",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2045,
+"category": "gaming"
+},
+{
+"id": "org.gnome.Geary",
+"name": "Geary",
+"summary": "Send and receive email",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2044,
+"category": "communication"
+},
+{
+"id": "com.github.Anuken.Mindustry",
+"name": "Mindustry",
+"summary": "Mindustry: A sandbox tower-defense game",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2040,
+"category": "gaming"
+},
+{
+"id": "io.github.milkshiift.GoofCord",
+"name": "GoofCord",
+"summary": "A privacy minded and highly configurable Discord client",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2031,
+"category": "communication"
+},
+{
+"id": "page.codeberg.elly_code.jorts",
+"name": "Jorts",
+"summary": "Write on colourful little squares",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2028,
+"category": "productivity"
+},
+{
+"id": "io.github.nroduit.Weasis",
+"name": "Weasis",
+"summary": "Free medical DICOM viewer",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2024,
+"category": "creative"
+},
+{
+"id": "com.boxy_svg.BoxySVG",
+"name": "Boxy SVG",
+"summary": "Scalable Vector Graphics editor",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2020,
+"category": "development"
+},
+{
+"id": "org.pitivi.Pitivi",
+"name": "Pitivi",
+"summary": "Create and edit your own movies",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2019,
+"category": "creative"
+},
+{
+"id": "io.beekeeperstudio.Studio",
+"name": "Beekeeper Studio",
+"summary": "The SQL Editor and Database Manager Of Your Dreams",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2005,
+"category": "development"
+},
+{
+"id": "nl.andreasknoben.Laser",
+"name": "Laser",
+"summary": "Rip CDs with ease",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 2004,
+"category": "media"
+},
+{
+"id": "io.github.seinedkoda.kisel",
+"name": "Kisel",
+"summary": "Efficient launch of Windows programs",
+"arches": [
+"x86_64"
+],
+"installs": 2001,
+"category": "gaming"
+},
+{
+"id": "ca.littlesvr.asunder",
+"name": "Asunder",
+"summary": "Asunder is a graphical Audio CD ripper and encoder",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1998,
+"category": "media"
+},
+{
+"id": "com.steamgriddb.steam-rom-manager",
+"name": "Steam ROM Manager",
+"summary": "Steam bulk importer & art manager!",
+"arches": [
+"x86_64"
+],
+"installs": 1995,
+"category": "utilities"
+},
+{
+"id": "io.github.zingytomato.netpeek",
+"name": "NetPeek",
+"summary": "See what's on your network",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1987,
+"category": "utilities"
+},
+{
+"id": "org.gnucash.GnuCash",
+"name": "GnuCash",
+"summary": "Manage your finances, accounts, and investments",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1976,
+"category": "productivity"
+},
+{
+"id": "dev.ibrahimcetin.reins",
+"name": "Reins: Chat for Ollama",
+"summary": "Private AI Chat",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1974,
+"category": "development"
+},
+{
+"id": "com.zettlr.Zettlr",
+"name": "Zettlr",
+"summary": "A Markdown editor for the 21st century",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1965,
+"category": "productivity"
+},
+{
+"id": "org.garudalinux.firedragon",
+"name": "FireDragon",
+"summary": "FireDragon is a cross-platform, feature-rich and privacy-focused web browser",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1958,
+"category": "browsers"
+},
+{
+"id": "com.mattermost.Desktop",
+"name": "Mattermost",
+"summary": "An open source platform for developer collaboration",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1947,
+"category": "communication"
+},
+{
+"id": "net.werwolv.ImHex",
+"name": "ImHex",
+"summary": "Modern REing Hex Editor",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1946,
+"category": "development"
+},
+{
+"id": "org.texstudio.TeXstudio",
+"name": "TeXstudio",
+"summary": "Craft beautiful LaTeX documents",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1943,
+"category": "productivity"
+},
+{
+"id": "io.github.daniacosta_dev.AuroraMediaPlayer",
+"name": "Aurora Media Player",
+"summary": "Listen to music, watch local and online videos",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1931,
+"category": "media"
+},
+{
+"id": "com.teamspeak.TeamSpeak3",
+"name": "TeamSpeak 3",
+"summary": "TeamSpeak VoIP application",
+"arches": [
+"x86_64"
+],
+"installs": 1930,
+"category": "communication"
+},
+{
+"id": "com.notepadqq.Notepadqq",
+"name": "Notepadqq",
+"summary": "An advanced text editor",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1928,
+"category": "development"
+},
+{
+"id": "net.runelite.RuneLite",
+"name": "RuneLite",
+"summary": "RuneLite OSRS Client",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1921,
+"category": "gaming"
+},
+{
+"id": "com.thebrokenrail.MCPIReborn",
+"name": "Minecraft: Pi Edition: Reborn",
+"summary": "Fun with Blocks",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1915,
+"category": "gaming"
+},
+{
+"id": "com.ktechpit.formatfactory",
+"name": "FormatFactory",
+"summary": "Fast batch video, audio and image converter",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1895,
+"category": "creative"
+},
+{
+"id": "org.adishatz.Screenshot",
+"name": "Screenshot",
+"summary": "Take screenshots",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1886,
+"category": "utilities"
+},
+{
+"id": "moe.launcher.the-honkers-railway-launcher",
+"name": "The Honkers Railway Launcher",
+"summary": "Play your favorite Honkai Railway game on Linux",
+"arches": [
+"x86_64"
+],
+"installs": 1886,
+"category": "gaming"
+},
+{
+"id": "io.github.sugarycandybar.Crucible",
+"name": "Crucible",
+"summary": "View specs and stress test hardware",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1885,
+"category": "utilities"
+},
+{
+"id": "com.leinardi.gst",
+"name": "GtkStressTesting",
+"summary": "System utility designed to stress and monitor various hardware components",
+"arches": [
+"x86_64"
+],
+"installs": 1877,
+"category": "utilities"
+},
+{
+"id": "org.ksnip.ksnip",
+"name": "ksnip",
+"summary": "Cross-Platform Screenshot tool with annotation features",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1871,
+"category": "utilities"
+},
+{
+"id": "io.emeric.toolblex",
+"name": "toolBLEx",
+"summary": "Bluetooth device scanner and analyzer",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1870,
+"category": "utilities"
+},
+{
+"id": "com.openwebui.open-webui",
+"name": "Open WebUI",
+"summary": "The freedom AI stack",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1870,
+"category": "utilities"
+},
+{
+"id": "org.deluge_torrent.deluge",
+"name": "Deluge",
+"summary": "A fully-featured BitTorrent Client",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1857,
+"category": "utilities"
+},
+{
+"id": "io.github.Qalculate",
+"name": "Qalculate! (GTK UI)",
+"summary": "Powerful and easy to use calculator",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1853,
+"category": "utilities"
+},
+{
+"id": "io.github._66HEX.Frame",
+"name": "Frame",
+"summary": "Convert video, audio, images, subtitles, and metadata with FFmpeg",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1853,
+"category": "creative"
+},
+{
+"id": "org.kde.amarok",
+"name": "Amarok",
+"summary": "Rediscover your music",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1852,
+"category": "media"
+},
+{
+"id": "com.interversehq.qView",
+"name": "qView",
+"summary": "Practical and minimal image viewer",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1848,
+"category": "utilities"
+},
+{
+"id": "org.librepcb.LibrePCB",
+"name": "LibrePCB",
+"summary": "Design Schematics and PCBs",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1846,
+"category": "development"
+},
+{
+"id": "io.github.electronstudio.WeylusCommunityEdition",
+"name": "Weylus Community Edition",
+"summary": "Use your tablet as graphic tablet/touch screen on your computer",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1846,
+"category": "creative"
+},
+{
+"id": "io.github.jliljebl.Flowblade",
+"name": "Flowblade",
+"summary": "Video Editor - Fast, Precise, Stable",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1841,
+"category": "creative"
+},
+{
+"id": "com.kgurgul.cpuinfo",
+"name": "CPU Info",
+"summary": "Information about device hardware and software",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1840,
+"category": "utilities"
+},
+{
+"id": "org.gnome.Sudoku",
+"name": "GNOME Sudoku",
+"summary": "Test yourself in the classic puzzle",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1833,
+"category": "gaming"
+},
+{
+"id": "org.gnome.eog",
+"name": "Eye of GNOME",
+"summary": "Browse and rotate images",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1832,
+"category": "utilities"
+},
+{
+"id": "com.xnview.XnConvert",
+"name": "XnConvert",
+"summary": "Easily process images in batches",
+"arches": [
+"x86_64"
+],
+"installs": 1827,
+"category": "creative"
+},
+{
+"id": "com.github.ztefn.haguichi",
+"name": "Haguichi",
+"summary": "Manage your Hamachi networks",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1826,
+"category": "utilities"
+},
+{
+"id": "org.kde.ghostwriter",
+"name": "ghostwriter",
+"summary": "Distraction-free text editor for Markdown",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1826,
+"category": "productivity"
+},
+{
+"id": "io.github.input_leap.input-leap",
+"name": "InputLeap",
+"summary": "Share mouse and keyboard between multiple computers over the network",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1820,
+"category": "utilities"
+},
+{
+"id": "studio.planetpeanut.Bobby",
+"name": "Bobby",
+"summary": "View SQLite databases",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1812,
+"category": "development"
+},
+{
+"id": "it.mq1.TinyWiiBackupManager",
+"name": "TinyWiiBackupManager",
+"summary": "A tiny game backup and homebrew app manager for the Wii",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1807,
+"category": "gaming"
+},
+{
+"id": "com.adobe.Flash-Player-Projector",
+"name": "Adobe Flash Player",
+"summary": "Player for content created using Adobe Flash",
+"arches": [
+"x86_64"
+],
+"installs": 1805,
+"category": "utilities"
+},
+{
+"id": "io.gitlab.ilshat_apps.manuscript",
+"name": "Manuscript",
+"summary": "Read and edit Markdown files",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1795,
+"category": "productivity"
+},
+{
+"id": "io.github.vikdevelop.SaveDesktop",
+"name": "Save Desktop",
+"summary": "Save your desktop configuration",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1794,
+"category": "utilities"
+},
+{
+"id": "io.github.limo_app.limo",
+"name": "Limo",
+"summary": "Mod Manager",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1794,
+"category": "utilities"
+},
+{
+"id": "de.schmidhuberj.tubefeeder",
+"name": "Pipeline",
+"summary": "Follow video creators",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1793,
+"category": "media"
+},
+{
+"id": "io.github.nokse22.Exhibit",
+"name": "Exhibit",
+"summary": "Preview your 3D models",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1792,
+"category": "utilities"
+},
+{
+"id": "dev.ares.ares",
+"name": "ares",
+"summary": "Multi-system console emulation suite",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1781,
+"category": "gaming"
+},
+{
+"id": "org.desmume.DeSmuME",
+"name": "DeSmuME",
+"summary": "Nintendo DS emulator",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1780,
+"category": "gaming"
+},
+{
+"id": "org.getmonero.Monero",
+"name": "Monero GUI",
+"summary": "Monero: the secure, private, untraceable cryptocurrency",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1779,
+"category": "productivity"
+},
+{
+"id": "io.github.mrvladus.List",
+"name": "Errands",
+"summary": "Manage your tasks",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1778,
+"category": "utilities"
+},
+{
+"id": "org.gaphor.Gaphor",
+"name": "Gaphor",
+"summary": "Simple UML and SysML modeling tool",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1764,
+"category": "development"
+},
+{
+"id": "me.timschneeberger.GalaxyBudsClient",
+"name": "Earbud manager for Galaxy Buds",
+"summary": "An unofficial app to manage any Galaxy Buds device manufactured by Samsung",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1752,
+"category": "utilities"
+},
+{
+"id": "io.github.tanaybhomia.DeepDive",
+"name": "Deep Dive",
+"summary": "Stay focused with strict limits",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1748,
+"category": "utilities"
+},
+{
+"id": "io.github.plrigaux.sysd-manager",
+"name": "SysD Manager",
+"summary": "A user-friendly application to manage systemd's units",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1741,
+"category": "utilities"
+},
+{
+"id": "org._2009scape.Launcher",
+"name": "2009scape",
+"summary": "2009 Runescape Emulation",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1733,
+"category": "gaming"
+},
+{
+"id": "com.vba_m.visualboyadvance-m",
+"name": "VisualBoyAdvance-M",
+"summary": "VisualBoyAdvance-M, a high compatibility Gameboy Advance Emulator",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1730,
+"category": "gaming"
+},
+{
+"id": "org.flightgear.FlightGear",
+"name": "FlightGear",
+"summary": "Flight simulator",
+"arches": [
+"x86_64"
+],
+"installs": 1729,
+"category": "gaming"
+},
+{
+"id": "io.ente.photos",
+"name": "Ente Photos",
+"summary": "Safe home for your photos",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1729,
+"category": "creative"
+},
+{
+"id": "io.speedofsound.SpeedOfSound",
+"name": "Speed of Sound",
+"summary": "Voice typing for the Linux desktop",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1728,
+"category": "utilities"
+},
+{
+"id": "com.dekomote.vermouth",
+"name": "Vermouth",
+"summary": "Launch Windows games on KDE",
+"arches": [
+"x86_64"
+],
+"installs": 1718,
+"category": "gaming"
+},
+{
+"id": "org.kde.marknote",
+"name": "Marknote",
+"summary": "Write down your thoughts",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1715,
+"category": "productivity"
+},
+{
+"id": "com.github.vikdevelop.timer",
+"name": "Timer",
+"summary": "Simple countdown timer",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1705,
+"category": "utilities"
+},
+{
+"id": "me.ahola.aphototoollibre",
+"name": "A Photo Tool (Libre)",
+"summary": "Photo editor for Linux",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1696,
+"category": "creative"
+},
+{
+"id": "io.github.philipk.boilr",
+"name": "BoilR",
+"summary": "Add non-steam games to your steam library",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1695,
+"category": "utilities"
+},
+{
+"id": "io.github.faridjaff.StickyNotesCanvas",
+"name": "Sticky Notes",
+"summary": "Spatial sticky notes canvas for Linux",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1687,
+"category": "productivity"
+},
+{
+"id": "fr.quentium.acters",
+"name": "Acters",
+"summary": "Linux System Optimizer & Monitoring",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1684,
+"category": "utilities"
+},
+{
+"id": "chat.delta.desktop",
+"name": "Delta Chat",
+"summary": "Decentralized private messenger with chat-shared tools and games",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1667,
+"category": "communication"
+},
+{
+"id": "com.sindresorhus.Caprine",
+"name": "Caprine",
+"summary": "Elegant Facebook Messenger desktop app",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1656,
+"category": "communication"
+},
+{
+"id": "org.sabnzbd.sabnzbd",
+"name": "SABnzbd",
+"summary": "Free and easy binary newsreader",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1653,
+"category": "utilities"
+},
+{
+"id": "io.gpt4all.gpt4all",
+"name": "GPT4ALL",
+"summary": "Open-source assistant",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1652,
+"category": "productivity"
+},
+{
+"id": "com.saivert.pwvucontrol",
+"name": "pwvucontrol",
+"summary": "Volume control for pipewire",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1650,
+"category": "media"
+},
+{
+"id": "dev.bsnes.bsnes",
+"name": "bsnes",
+"summary": "Super Nintendo emulator",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1647,
+"category": "gaming"
+},
+{
+"id": "io.github.aggalex.Wineglass",
+"name": "Wineglass",
+"summary": "A GUI for Wine",
+"arches": [
+"x86_64"
+],
+"installs": 1647,
+"category": "utilities"
+},
+{
+"id": "com.fogpanther.FogPanther",
+"name": "Fog Panther",
+"summary": "Professional Image Editor",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1644,
+"category": "creative"
+},
+{
+"id": "com.simulide.simulide",
+"name": "SimulIDE",
+"summary": "Circuit simulator",
+"arches": [
+"x86_64"
+],
+"installs": 1642,
+"category": "creative"
+},
+{
+"id": "com.abisource.AbiWord",
+"name": "AbiWord",
+"summary": "A word processor",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1640,
+"category": "productivity"
+},
+{
+"id": "org.gnome.World.Iotas",
+"name": "Iotas",
+"summary": "Simple note taking",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1618,
+"category": "productivity"
+},
+{
+"id": "dev.ters.LocalTranslate",
+"name": "LocalTranslate",
+"summary": "Translate text offline",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1612,
+"category": "productivity"
+},
+{
+"id": "net.fasterland.converseen",
+"name": "Converseen",
+"summary": "Convert and resize images in batch",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1610,
+"category": "creative"
+},
+{
+"id": "io.github.pantheon_tweaks.pantheon-tweaks",
+"name": "Pantheon Tweaks",
+"summary": "Tweak Pantheon settings",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1610,
+"category": "utilities"
+},
+{
+"id": "com.daniel15.wcc",
+"name": "WebCamControl",
+"summary": "Control webcam pan/tilt/zoom settings and more",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1607,
+"category": "utilities"
+},
+{
+"id": "io.github.ecotubehq.player",
+"name": "EcoTubeHQ",
+"summary": "Hardware Accelerated Video Player",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1606,
+"category": "media"
+},
+{
+"id": "app.go2tv.go2tv",
+"name": "Go2TV",
+"summary": "Cast media files to Smart TVs and Chromecast devices",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1603,
+"category": "media"
+},
+{
+"id": "io.github.N3kosempai.klia-store",
+"name": "Klia Store",
+"summary": "Browse, install and manage your Flatpak applications",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1598,
+"category": "utilities"
+},
+{
+"id": "org.openttd.OpenTTD",
+"name": "OpenTTD",
+"summary": "Open source simulation game based upon Transport Tycoon Deluxe",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1591,
+"category": "gaming"
+},
+{
+"id": "com.odnoyko.valot",
+"name": "Valot",
+"summary": "Time tracking without the hassle",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1588,
+"category": "productivity"
+},
+{
+"id": "org.gnome.seahorse.Application",
+"name": "Passwords and Keys",
+"summary": "Manage your passwords and encryption keys",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1585,
+"category": "utilities"
+},
+{
+"id": "org.nomacs.ImageLounge",
+"name": "nomacs - Image Lounge",
+"summary": "nomacs is a free, open source image viewer",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1585,
+"category": "utilities"
+},
+{
+"id": "io.github.shonebinu.Brief",
+"name": "Brief",
+"summary": "Browse command-line cheatsheets",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1583,
+"category": "utilities"
+},
+{
+"id": "com.mongodb.Compass",
+"name": "MongoDB Compass",
+"summary": "The MongoDB GUI",
+"arches": [
+"x86_64"
+],
+"installs": 1583,
+"category": "development"
+},
+{
+"id": "io.github.libvibrant.vibrantLinux",
+"name": "vibrantLinux",
+"summary": "System utility to adjust color saturation of X11 screens",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1582,
+"category": "utilities"
+},
+{
+"id": "app.opencomic.OpenComic",
+"name": "OpenComic",
+"summary": "Comic and Manga reader",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1582,
+"category": "creative"
+},
+{
+"id": "io.openrct2.OpenRCT2",
+"name": "OpenRCT2",
+"summary": "Amusement park simulation",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1580,
+"category": "gaming"
+},
+{
+"id": "org.geany.Geany",
+"name": "Geany",
+"summary": "Fast and lightweight IDE",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1579,
+"category": "development"
+},
+{
+"id": "org.notepadng.Notepadng",
+"name": "Notepadng",
+"summary": "Notepad++-like editor",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1579,
+"category": "development"
+},
+{
+"id": "org.tigervnc.vncviewer",
+"name": "TigerVNC Viewer",
+"summary": "Connect to VNC server and display remote desktop",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1572,
+"category": "utilities"
+},
+{
+"id": "io.github.marco_calautti.DeltaPatcher",
+"name": "Delta Patcher",
+"summary": "Applies and creates patches in xdelta format",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1571,
+"category": "utilities"
+},
+{
+"id": "io.sourceforge.pysolfc.PySolFC",
+"name": "PySolFC",
+"summary": "Solitaire game compilation",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1570,
+"category": "gaming"
+},
+{
+"id": "org.mediaharbor.MediaHarbor",
+"name": "MediaHarbor",
+"summary": "Download and play lossless music",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1570,
+"category": "media"
+},
+{
+"id": "page.codeberg.elly_code.cherrypick",
+"name": "Cherrypick",
+"summary": "Pick colors on your screen",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1566,
+"category": "creative"
+},
+{
+"id": "com.danklinux.dankcalendar",
+"name": "DankCalendar",
+"summary": "Calendar from the Dank Linux Suite",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1555,
+"category": "productivity"
+},
+{
+"id": "org.kartkrew.RingRacers",
+"name": "Dr. Robotnik's Ring Racers",
+"summary": "Racing at the Next Level",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1555,
+"category": "gaming"
+},
+{
+"id": "net.puddletag.puddletag",
+"name": "Puddletag",
+"summary": "A powerful ID3 tag editor",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1546,
+"category": "media"
+},
+{
+"id": "org.kde.kdf",
+"name": "KDiskFree",
+"summary": "View Disk Usage",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1546,
+"category": "utilities"
+},
+{
+"id": "org.kde.krecorder",
+"name": "Recorder",
+"summary": "Audio recorder",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1537,
+"category": "creative"
+},
+{
+"id": "org.develz.Crawl",
+"name": "Dungeon Crawl Stone Soup",
+"summary": "Roguelike dungeon exploration game",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1530,
+"category": "gaming"
+},
+{
+"id": "io.gitlab.Goodvibes",
+"name": "Goodvibes",
+"summary": "Play web radios",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1526,
+"category": "media"
+},
+{
+"id": "org.gnome.Mines",
+"name": "Mines",
+"summary": "Clear hidden mines from a minefield",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1524,
+"category": "gaming"
+},
+{
+"id": "com.dosbox.DOSBox",
+"name": "DOSBox",
+"summary": "Run old DOS applications",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1523,
+"category": "gaming"
+},
+{
+"id": "org.gnome.Fractal",
+"name": "Fractal",
+"summary": "Chat on Matrix",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1521,
+"category": "communication"
+},
+{
+"id": "org.vanillaos.ApxGUI",
+"name": "Apx GUI",
+"summary": "Portable, reproducible development environments",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1515,
+"category": "development"
+},
+{
+"id": "org.wesnoth.Wesnoth",
+"name": "Battle for Wesnoth",
+"summary": "A turn-based strategy game with a high fantasy theme",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1514,
+"category": "gaming"
+},
+{
+"id": "in.cinny.Cinny",
+"name": "Cinny",
+"summary": "Yet another Matrix client with simple, elegant and secure interface.",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1509,
+"category": "communication"
+},
+{
+"id": "io.github.sigmasd.stimulator",
+"name": "Stimulator",
+"summary": "Keep your computer awake",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1509,
+"category": "utilities"
+},
+{
+"id": "net.sourceforge.Pdfedit",
+"name": "PDFedit",
+"summary": "PDF editor with ability to browse/edit the tree of raw pdf objects",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1506,
+"category": "productivity"
+},
+{
+"id": "page.codeberg.censor.Censor",
+"name": "Censor",
+"summary": "Redact PDF documents",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1499,
+"category": "productivity"
+},
+{
+"id": "com.github.geigi.cozy",
+"name": "Cozy",
+"summary": "Listen to audio books",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1493,
+"category": "media"
+},
+{
+"id": "ar.com.tuxguitar.TuxGuitar",
+"name": "TuxGuitar",
+"summary": "TuxGuitar is a free and open-source tablature editor",
+"arches": [
+"x86_64"
+],
+"installs": 1491,
+"category": "media"
+},
+{
+"id": "com.ozmartians.VidCutter",
+"name": "VidCutter",
+"summary": "Media Cutter + Joiner",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1487,
+"category": "creative"
+},
+{
+"id": "io.github.Predidit.Kazumi",
+"name": "Kazumi",
+"summary": "Watch Animes online with danmaku support",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1487,
+"category": "media"
+},
+{
+"id": "io.typora.Typora",
+"name": "Typora",
+"summary": "A minimal Markdown reading & writing app",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1486,
+"category": "productivity"
+},
+{
+"id": "us.materialio.Materialious",
+"name": "Materialious",
+"summary": "Watch and browse YouTube privately",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1485,
+"category": "media"
+},
+{
+"id": "io.github.brunofin.Cohesion",
+"name": "Cohesion",
+"summary": "Unofficial Notion Desktop client",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1477,
+"category": "development"
+},
+{
+"id": "de.leopoldluley.Clapgrep",
+"name": "Clapgrep",
+"summary": "Search through all your files",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1475,
+"category": "utilities"
+},
+{
+"id": "org.kde.skanlite",
+"name": "Skanlite",
+"summary": "Image Scanning Application",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1473,
+"category": "utilities"
+},
+{
+"id": "io.photoflare.photoflare",
+"name": "Photoflare",
+"summary": "Simple but powerful Cross Platform Image Editor",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1470,
+"category": "creative"
+},
+{
+"id": "dev.geopjr.Collision",
+"name": "Collision",
+"summary": "Check hashes for your files",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1470,
+"category": "utilities"
+},
+{
+"id": "fm.helio.Workstation",
+"name": "Helio",
+"summary": "Helio, free and cross-platform lightweight music sequencer",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1464,
+"category": "creative"
+},
+{
+"id": "fr.nytuo.cosmiccomics",
+"name": "Cosmic Comics",
+"summary": "Read Comics, Manga and Ebooks the easy way",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1464,
+"category": "utilities"
+},
+{
+"id": "io.github.alescdb.mailviewer",
+"name": "MailViewer",
+"summary": "EML and MSG file viewer",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1463,
+"category": "communication"
+},
+{
+"id": "io.github.sugarycandybar.Hosty",
+"name": "Hosty",
+"summary": "Host Minecraft servers",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1461,
+"category": "gaming"
+},
+{
+"id": "com.jetbrains.WebStorm",
+"name": "WebStorm",
+"summary": "JavaScript and TypeScript IDE",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1461,
+"category": "development"
+},
+{
+"id": "net.giuspen.cherrytree",
+"name": "CherryTree",
+"summary": "Hierarchical Note Taking",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1460,
+"category": "utilities"
+},
+{
+"id": "ru.max.MAX",
+"name": "MAX",
+"summary": "Fast and lightweight app for communication and everyday tasks",
+"arches": [
+"x86_64"
+],
+"installs": 1459,
+"category": "communication"
+},
+{
+"id": "ca._0ldsk00l.Nestopia",
+"name": "Nestopia",
+"summary": "Nintendo Entertainment System emulator",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1458,
+"category": "gaming"
+},
+{
+"id": "com.infinipaint.infinipaint",
+"name": "Infinipaint",
+"summary": "Draw on a big canvas",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1457,
+"category": "creative"
+},
+{
+"id": "info.mumble.Mumble",
+"name": "Mumble",
+"summary": "Low latency encrypted VoIP client",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1456,
+"category": "communication"
+},
+{
+"id": "re.sonny.Workbench",
+"name": "Workbench",
+"summary": "Prototype with GNOME technologies",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1449,
+"category": "development"
+},
+{
+"id": "com.albiononline.AlbionOnline",
+"name": "Albion Online",
+"summary": "MMORPG open medieval fantasy game",
+"arches": [
+"x86_64"
+],
+"installs": 1441,
+"category": "gaming"
+},
+{
+"id": "org.kde.kfind",
+"name": "KFind",
+"summary": "Find Files/Folders",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1441,
+"category": "utilities"
+},
+{
+"id": "io.github.swordpuffin.wardrobe",
+"name": "Wardrobe",
+"summary": "Prettify your desktop effortlessly",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1441,
+"category": "utilities"
+},
+{
+"id": "com.carpeludum.KegaFusion",
+"name": "Kega Fusion",
+"summary": "An emulator for Sega 8 and 16-bit consoles",
+"arches": [
+"x86_64"
+],
+"installs": 1436,
+"category": "gaming"
+},
+{
+"id": "com.shatteredpixel.shatteredpixeldungeon",
+"name": "Shattered Pixel Dungeon",
+"summary": "Roguelike RPG, with pixel art graphics and lots of variety and replayability",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1427,
+"category": "gaming"
+},
+{
+"id": "org.diasurgical.DevilutionX",
+"name": "DevilutionX",
+"summary": "Experience Diablo and Hellfire anew",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1427,
+"category": "gaming"
+},
+{
+"id": "org.kde.qrca",
+"name": "Qrca",
+"summary": "Scan and create QR-Codes",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1424,
+"category": "utilities"
+},
+{
+"id": "moe.kopuz.kopuz",
+"name": "Kopuz",
+"summary": "Hi-Res multi-backend music player",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1424,
+"category": "media"
+},
+{
+"id": "io.github.kukuruzka165.materialgram",
+"name": "materialgram",
+"summary": "Googlized Telegram",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1419,
+"category": "communication"
+},
+{
+"id": "org.gustavoperedo.FontDownloader",
+"name": "Font Downloader",
+"summary": "Install fonts from online sources",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1414,
+"category": "utilities"
+},
+{
+"id": "io.github.troyeguo.koodo-reader",
+"name": "Koodo Reader",
+"summary": "All-in-one ebook reader",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1414,
+"category": "utilities"
+},
+{
+"id": "com.github.reds.LogisimEvolution",
+"name": "Logisim-evolution",
+"summary": "Digital logic designer and simulator",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1413,
+"category": "creative"
+},
+{
+"id": "uk.co.easysmartapps.WeatherWidget",
+"name": "WeatherWidget",
+"summary": "Live weather and world clocks",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1412,
+"category": "utilities"
+},
+{
+"id": "dk.gqrx.gqrx",
+"name": "Gqrx",
+"summary": "Software defined radio receiver implemented using GNU Radio and the Qt GUI toolkit",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1411,
+"category": "media"
+},
+{
+"id": "com.ktechpit.wonderwall",
+"name": "WonderWall",
+"summary": "Browse, download, and set high quality wallpapers",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1408,
+"category": "creative"
+},
+{
+"id": "moe.sable.client",
+"name": "Sable",
+"summary": "Chat over the Matrix network",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1405,
+"category": "communication"
+},
+{
+"id": "io.github.seadve.Mousai",
+"name": "Mousai",
+"summary": "Identify songs in seconds",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1404,
+"category": "utilities"
+},
+{
+"id": "io.github.rfrench3.scopebuddy-gui",
+"name": "Scopebuddy GUI",
+"summary": "Configure Gamescope and more",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1404,
+"category": "utilities"
+},
+{
+"id": "nl.hjdskes.gcolor3",
+"name": "Color Picker",
+"summary": "Choose colors from the picker or the screen",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1389,
+"category": "creative"
+},
+{
+"id": "org.gnome.EasyTAG",
+"name": "EasyTAG",
+"summary": "Edit audio file metadata",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1389,
+"category": "creative"
+},
+{
+"id": "io.github.fabrialberio.pinapp",
+"name": "Pins",
+"summary": "Create and edit app shortcuts",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1385,
+"category": "utilities"
+},
+{
+"id": "com.borgbase.Vorta",
+"name": "Vorta",
+"summary": "Backup client",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1381,
+"category": "utilities"
+},
+{
+"id": "org.mypaint.MyPaint",
+"name": "MyPaint",
+"summary": "Painting program for digital artists",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1380,
+"category": "creative"
+},
+{
+"id": "gg.norisk.NoRiskClientLauncherV3",
+"name": "NoRisk Client Launcher",
+"summary": "A Launcher for the NoRisk Client",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1380,
+"category": "gaming"
+},
+{
+"id": "io.github.cosmic_utils.Examine",
+"name": "Examine",
+"summary": "View system information",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1380,
+"category": "utilities"
+},
+{
+"id": "com.geekbench.Geekbench6",
+"name": "Geekbench 6",
+"summary": "Cross-platform system benchmark",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1378,
+"category": "utilities"
+},
+{
+"id": "com.axosoft.GitKraken",
+"name": "GitKraken",
+"summary": "For repo management, in-app code editing & issue tracking",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1375,
+"category": "development"
+},
+{
+"id": "org.moneymanagerex.MMEX",
+"name": "MMEX Money Manager",
+"summary": "Organize finances and track cash flow",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1369,
+"category": "productivity"
+},
+{
+"id": "org.cosmic_utils.enroll",
+"name": "Enroll",
+"summary": "Fingerprint record management",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1368,
+"category": "utilities"
+},
+{
+"id": "com.simplenote.Simplenote",
+"name": "Simplenote",
+"summary": "The simplest way to keep notes",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1364,
+"category": "utilities"
+},
+{
+"id": "com.github.vladimiry.ElectronMail",
+"name": "ElectronMail",
+"summary": "Unofficial ProtonMail desktop app",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1363,
+"category": "productivity"
+},
+{
+"id": "org.kde.CrowTranslate",
+"name": "Crow Translate",
+"summary": "Application that allows you to translate and speak text using Mozhi",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1363,
+"category": "productivity"
+},
+{
+"id": "com.vscodium.codium-insiders",
+"name": "VSCodium - Insiders",
+"summary": "Telemetry-less code editing",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1357,
+"category": "development"
+},
+{
+"id": "org.gajim.Gajim",
+"name": "Gajim",
+"summary": "Fully-featured XMPP chat client",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1352,
+"category": "communication"
+},
+{
+"id": "org.gnome.Calls",
+"name": "Calls",
+"summary": "Make phone and SIP calls",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1349,
+"category": "communication"
+},
+{
+"id": "space.gaiasky.GaiaSky",
+"name": "Gaia Sky",
+"summary": "Explore the universe in 3D",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1345,
+"category": "productivity"
+},
+{
+"id": "nl.openoffice.bluefish",
+"name": "Bluefish",
+"summary": "Code and text editor with many web and software development extras",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1343,
+"category": "development"
+},
+{
+"id": "com.voxdsp.TuxFishing",
+"name": "Tux Fishing",
+"summary": "3D Fishing Game",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1343,
+"category": "gaming"
+},
+{
+"id": "org.kde.merkuro",
+"name": "Merkuro",
+"summary": "Manage your tasks, events and contacts with speed and ease",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1336,
+"category": "productivity"
+},
+{
+"id": "net.labymod.LabyMod",
+"name": "Laby Launcher",
+"summary": "All-in-one Minecraft client",
+"arches": [
+"x86_64"
+],
+"installs": 1336,
+"category": "gaming"
+},
+{
+"id": "net.xmind.XMind",
+"name": "Xmind (2026)",
+"summary": "Mind Mapping & Brainstorming",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1331,
+"category": "productivity"
+},
+{
+"id": "dev.geopjr.Tuba",
+"name": "Tuba",
+"summary": "Browse the Fediverse",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1330,
+"category": "utilities"
+},
+{
+"id": "org.zaproxy.ZAP",
+"name": "ZAP",
+"summary": "A popular free security tool",
+"arches": [
+"x86_64"
+],
+"installs": 1325,
+"category": "utilities"
+},
+{
+"id": "org.kde.kleopatra",
+"name": "Kleopatra",
+"summary": "Certificate manager and cryptography app",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1322,
+"category": "utilities"
+},
+{
+"id": "space.f1nn.chorus",
+"name": "Chorus",
+"summary": "Sing along to your music",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1321,
+"category": "creative"
+},
+{
+"id": "org.onionshare.OnionShare",
+"name": "OnionShare",
+"summary": "Securely and anonymously share files, host websites, and chat with friends",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1317,
+"category": "utilities"
+},
+{
+"id": "net.displaycal.DisplayCAL",
+"name": "DisplayCAL",
+"summary": "Display calibration and profiling with a focus on accuracy and versatility",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1317,
+"category": "creative"
+},
+{
+"id": "org.kde.kmines",
+"name": "KMines",
+"summary": "Minesweeper-like Game",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1312,
+"category": "gaming"
+},
+{
+"id": "com.ktechpit.colorwall",
+"name": "ColorWall",
+"summary": "The Ultimate Desktop Wallpaper Application",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1310,
+"category": "creative"
+},
+{
+"id": "com.belmoussaoui.Obfuscate",
+"name": "Obfuscate",
+"summary": "Censor private information",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1307,
+"category": "utilities"
+},
+{
+"id": "org.kde.krename",
+"name": "Krename",
+"summary": "A powerful batch file renamer",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1307,
+"category": "utilities"
+},
+{
+"id": "io.github.vireshwali.Bing-r",
+"name": "Bing-r",
+"summary": "A modern desktop IPTV and media player",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1305,
+"category": "media"
+},
+{
+"id": "io.github.endless_sky.endless_sky",
+"name": "Endless Sky",
+"summary": "Space exploration and combat game",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1303,
+"category": "gaming"
+},
+{
+"id": "it.belloworld.mercurygram",
+"name": "Mercurygram",
+"summary": "Privacy-focused Telegram fork",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1303,
+"category": "communication"
+},
+{
+"id": "org.kde.ktouch",
+"name": "KTouch",
+"summary": "Touch Typing Tutor",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1301,
+"category": "productivity"
+},
+{
+"id": "com.toolstack.Folio",
+"name": "Folio",
+"summary": "Beautiful markdown note-taking app",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1300,
+"category": "productivity"
+},
+{
+"id": "net.portswigger.BurpSuite-Community",
+"name": "Burp Suite Community",
+"summary": "The most widely used web application security testing software",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1296,
+"category": "development"
+},
+{
+"id": "io.github.lluciocc.Vish",
+"name": "Vish",
+"summary": "Visual Bash Editor",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1295,
+"category": "development"
+},
+{
+"id": "io.github.vmkspv.lenspect",
+"name": "Lenspect",
+"summary": "Scan files for threats",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1295,
+"category": "utilities"
+},
+{
+"id": "net.sourceforge.ExtremeTuxRacer",
+"name": "Extreme Tux Racer",
+"summary": "High speed arctic racing game based on Tux Racer",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1290,
+"category": "gaming"
+},
+{
+"id": "net.sapples.LiveCaptions",
+"name": "Live Captions",
+"summary": "Live Captioning for the desktop",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1290,
+"category": "utilities"
+},
+{
+"id": "io.frama.tractor.carburetor",
+"name": "Carburetor",
+"summary": "Browse anonymously",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1288,
+"category": "utilities"
+},
+{
+"id": "net.jami.Jami",
+"name": "Jami",
+"summary": "Share, freely and privately",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1287,
+"category": "utilities"
+},
+{
+"id": "io.gitlab.adhami3310.Footage",
+"name": "Footage",
+"summary": "Polish your videos",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1286,
+"category": "utilities"
+},
+{
+"id": "dev.overlayed.Overlayed",
+"name": "Overlayed",
+"summary": "A Discord overlay",
+"arches": [
+"x86_64"
+],
+"installs": 1285,
+"category": "utilities"
+},
+{
+"id": "net.pokerth.PokerTH",
+"name": "PokerTH",
+"summary": "Poker game with single and multiplayer support",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1283,
+"category": "gaming"
+},
+{
+"id": "net.blip.Blip",
+"name": "Blip",
+"summary": "Send files to people and devices around the world",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1279,
+"category": "utilities"
+},
+{
+"id": "net.trowell.typesetter",
+"name": "Typesetter",
+"summary": "Typst editor for focused writing",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1278,
+"category": "productivity"
+},
+{
+"id": "re.fossplant.songrec",
+"name": "SongRec",
+"summary": "Recognize songs from audio easily",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1275,
+"category": "media"
+},
+{
+"id": "org.freeplane.App",
+"name": "Freeplane",
+"summary": "Mind Mapping, Knowledge Management, Project Management. Develop, organize and communicate your ideas and knowledge in the most effective way",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1274,
+"category": "productivity"
+},
+{
+"id": "info.portfolio_performance.PortfolioPerformance",
+"name": "Portfolio Performance",
+"summary": "Track the performance of an investment portfolio",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1274,
+"category": "productivity"
+},
+{
+"id": "org.sonic3air.Sonic3AIR",
+"name": "Sonic 3: A.I.R",
+"summary": "Fan-made remaster of Sonic 3&K",
+"arches": [
+"x86_64"
+],
+"installs": 1272,
+"category": "gaming"
+},
+{
+"id": "com.github.junrrein.PDFSlicer",
+"name": "PDF Slicer",
+"summary": "A simple tool to extract, merge, rotate and reorder pages of PDF documents",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1268,
+"category": "productivity"
+},
+{
+"id": "com.jwestall.Forecast",
+"name": "Forecast",
+"summary": "View weather predictions",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1265,
+"category": "utilities"
+},
+{
+"id": "com.github.Murmele.Gittyup",
+"name": "Gittyup",
+"summary": "Graphical Git client designed to help you understand and manage your source code history",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1263,
+"category": "development"
+},
+{
+"id": "dev.bragefuglseth.Fretboard",
+"name": "Fretboard",
+"summary": "Look up guitar chords",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1258,
+"category": "productivity"
+},
+{
+"id": "com.authormore.penpotdesktop",
+"name": "Penpot Desktop",
+"summary": "Design and code beautiful products together",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1258,
+"category": "creative"
+},
+{
+"id": "chat.rocket.RocketChat",
+"name": "Rocket.Chat",
+"summary": "Open Source Team Communication",
+"arches": [
+"x86_64"
+],
+"installs": 1256,
+"category": "communication"
+},
+{
+"id": "vn.hoabinh.quan.CoBang",
+"name": "CoBang",
+"summary": "QR code scanner for Linux desktop",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1255,
+"category": "utilities"
+},
+{
+"id": "se.sjoerd.Graphs",
+"name": "Graphs",
+"summary": "Plot and manipulate data",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1253,
+"category": "productivity"
+},
+{
+"id": "com.github.muriloventuroso.pdftricks",
+"name": "PDF Tricks",
+"summary": "Tricks for PDF Files",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1252,
+"category": "productivity"
+},
+{
+"id": "so.libdb.dissent",
+"name": "Dissent",
+"summary": "Tiny native Discord app",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1251,
+"category": "communication"
+},
+{
+"id": "de.berny23.virtual_surround_manager",
+"name": "Virtual Surround",
+"summary": "3D sound for headphones",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1251,
+"category": "media"
+},
+{
+"id": "com.blitterstudio.amiberry",
+"name": "Amiberry",
+"summary": "Run classic Amiga software",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1249,
+"category": "gaming"
+},
+{
+"id": "io.github.hrkfdn.ncspot",
+"name": "ncspot",
+"summary": "Cross-platform ncurses Spotify client",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1247,
+"category": "media"
+},
+{
+"id": "net.wz2100.wz2100",
+"name": "Warzone 2100",
+"summary": "Command the forces of The Project in a battle to rebuild the world",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1246,
+"category": "gaming"
+},
+{
+"id": "net.meshlab.MeshLab",
+"name": "MeshLab",
+"summary": "Free and open source processing and editing 3D triangular meshes",
+"arches": [
+"x86_64"
+],
+"installs": 1244,
+"category": "utilities"
+},
+{
+"id": "com.icons8.Lunacy",
+"name": "Lunacy",
+"summary": "Free graphic design tool for UX/UI",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1242,
+"category": "creative"
+},
+{
+"id": "re.sonny.Eloquent",
+"name": "Eloquent",
+"summary": "Your proofreading assistant",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1240,
+"category": "productivity"
+},
+{
+"id": "eu.jumplink.Learn6502",
+"name": "Learn 6502 Assembly",
+"summary": "Program vintage game consoles",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1240,
+"category": "development"
+},
+{
+"id": "br.eng.silas.qpdftools",
+"name": "Qpdf Tools",
+"summary": "Manage and optimize PDF files",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1239,
+"category": "productivity"
+},
+{
+"id": "com.github.skylot.jadx",
+"name": "JADX",
+"summary": "Dex to Java decompiler",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1237,
+"category": "development"
+},
+{
+"id": "io.github.forkgram.tdesktop",
+"name": "Forkgram",
+"summary": "Enhanced twist on Telegram",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1236,
+"category": "communication"
+},
+{
+"id": "io.github.xfuentes.smart-video-processor",
+"name": "Smart Video Processor",
+"summary": "Automated video processing. Re-Organize, Re-encode, adds metadata and image.",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1235,
+"category": "media"
+},
+{
+"id": "com.ticktick.TickTick",
+"name": "TickTick",
+"summary": "Your wonderful to-do & task list to make all things done and get life well organized.",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1232,
+"category": "productivity"
+},
+{
+"id": "org.gtkhash.gtkhash",
+"name": "GtkHash",
+"summary": "Calculate message digests or checksums",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1229,
+"category": "utilities"
+},
+{
+"id": "us.pixls.art.ART",
+"name": "ART",
+"summary": "An advanced raw photo development program",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1227,
+"category": "creative"
+},
+{
+"id": "com.github.gabutakut.gabutdm",
+"name": "Gabut Download Manager",
+"summary": "Simple and Fast Download Manager",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1226,
+"category": "utilities"
+},
+{
+"id": "page.codeberg.sesivany.Meshy",
+"name": "Meshy",
+"summary": "MeshCore mesh network client",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1225,
+"category": "communication"
+},
+{
+"id": "ro.go.hmlendea.DL-Desktop",
+"name": "DL: language lessons",
+"summary": "Unofficial desktop client for the language-learning app Duolingo",
+"arches": [
+"x86_64"
+],
+"installs": 1222,
+"category": "productivity"
+},
+{
+"id": "dev.mufeed.Wordbook",
+"name": "Wordbook",
+"summary": "Look up definitions for words",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1221,
+"category": "productivity"
+},
+{
+"id": "de.z_ray.OptimusUI",
+"name": "OptimusUI",
+"summary": "Interface for nVidia Optimus",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1221,
+"category": "utilities"
+},
+{
+"id": "com.baidu.NetDisk",
+"name": "Baidu Netdisk",
+"summary": "Baidu Netdisk desktop client",
+"arches": [
+"x86_64"
+],
+"installs": 1221,
+"category": "utilities"
+},
+{
+"id": "com.adilhanney.saber",
+"name": "Saber",
+"summary": "The notes app built for handwriting",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1218,
+"category": "creative"
+},
+{
+"id": "page.codeberg.foolish.Flipbook",
+"name": "Flipbook",
+"summary": "Create hand-drawn animations",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1214,
+"category": "utilities"
+},
+{
+"id": "io.github.AshBuk.FingerGo",
+"name": "FingerGo",
+"summary": "Visual touch-typing trainer",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1208,
+"category": "productivity"
+},
+{
+"id": "org.kde.kontact",
+"name": "Kontact",
+"summary": "Handle all your emails, calendars, contacts and more within a single window",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1205,
+"category": "productivity"
+},
+{
+"id": "org.gnome.Quadrapassel",
+"name": "Quadrapassel",
+"summary": "Fit falling blocks together",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1203,
+"category": "gaming"
+},
+{
+"id": "io.github.bgrabitmap.LazPaint",
+"name": "LazPaint",
+"summary": "Fast raster image editor",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1201,
+"category": "creative"
+},
+{
+"id": "com.gitlab.adnan338.Nixwriter",
+"name": "Nixwriter",
+"summary": "Create bootable Linux images",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1200,
+"category": "utilities"
+},
+{
+"id": "cafe.avery.Delfin",
+"name": "Delfin",
+"summary": "Stream movies and TV shows from Jellyfin",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1199,
+"category": "media"
+},
+{
+"id": "com.neosubhamoy.neodlp",
+"name": "NeoDLP",
+"summary": "Modern feature-rich video/audio downloader based on yt-dlp",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1197,
+"category": "utilities"
+},
+{
+"id": "io.github.chnapy.pkvault",
+"name": "PKVault",
+"summary": "Pokémon hub for your games",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1197,
+"category": "gaming"
+},
+{
+"id": "de.wwwtech.gitte",
+"name": "Gitte",
+"summary": "Manage your code history",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1196,
+"category": "development"
+},
+{
+"id": "org.gramps_project.Gramps",
+"name": "Gramps",
+"summary": "Manage genealogical information, perform genealogical research and analysis",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1195,
+"category": "productivity"
+},
+{
+"id": "com.chirpmyradio.chirp",
+"name": "CHIRP",
+"summary": "A free, open-source tool for programming your radio",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1195,
+"category": "utilities"
+},
+{
+"id": "app.curocalc.calculator",
+"name": "Curo Calculator",
+"summary": "Financial calculations simplified",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1192,
+"category": "productivity"
+},
+{
+"id": "online.hatsune_miku.tachidesk-vaadinui",
+"name": "Suwayomi-VaadinUI",
+"summary": "Desktop client for Tachidesk",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1190,
+"category": "utilities"
+},
+{
+"id": "org.vim.Vim",
+"name": "Vim",
+"summary": "The ubiquitous text editor",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1187,
+"category": "productivity"
+},
+{
+"id": "net.sf.VICE",
+"name": "VICE",
+"summary": "Versatile Commodore Emulator",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1184,
+"category": "gaming"
+},
+{
+"id": "io.github.hakuneko.HakuNeko",
+"name": "HakuNeko",
+"summary": "A cross-platform downloader for manga and anime from various websites",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1181,
+"category": "utilities"
+},
+{
+"id": "camp.nook.nookdesktop",
+"name": "Nook Desktop",
+"summary": "Nook is an application that plays Animal Crossing hourly themes on the hour.",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1181,
+"category": "media"
+},
+{
+"id": "org.spyder_ide.spyder",
+"name": "Spyder",
+"summary": "The Scientific Python Development Environment",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1180,
+"category": "development"
+},
+{
+"id": "com.gopeed.Gopeed",
+"name": "Gopeed",
+"summary": "A modern download manager",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1175,
+"category": "utilities"
+},
+{
+"id": "io.github.lawstorant.boxflat",
+"name": "Boxflat",
+"summary": "Configure Moza Racing hardware",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1168,
+"category": "gaming"
+},
+{
+"id": "io.github.sofusa.qobine",
+"name": "Qobine",
+"summary": "Unofficial client for Qobuz",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1168,
+"category": "media"
+},
+{
+"id": "net.clonehero.CloneHero",
+"name": "Clone Hero",
+"summary": "Classic instrument based rhythm game",
+"arches": [
+"x86_64"
+],
+"installs": 1167,
+"category": "gaming"
+},
+{
+"id": "org.kde.kmymoney",
+"name": "KMyMoney",
+"summary": "Personal finance manager based on double-entry bookkeeping",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1166,
+"category": "productivity"
+},
+{
+"id": "eu.nokun.MirrorHall",
+"name": "Mirror Hall",
+"summary": "Use Linux devices as second screens",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1165,
+"category": "utilities"
+},
+{
+"id": "dev.creeperkatze.full-steam-ahead",
+"name": "Full Steam Ahead",
+"summary": "Import all your games into Steam",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1165,
+"category": "gaming"
+},
+{
+"id": "com.realm667.Wolfenstein_Blade_of_Agony",
+"name": "Wolfenstein: Blade of Agony",
+"summary": "Story-driven FPS inspired by WWII shooters from the 90's and early 2000's",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1163,
+"category": "gaming"
+},
+{
+"id": "com.chatterino.chatterino",
+"name": "Chatterino",
+"summary": "Chat client for twitch.tv",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1156,
+"category": "communication"
+},
+{
+"id": "app.bluebubbles.BlueBubbles",
+"name": "BlueBubbles",
+"summary": "BlueBubbles client for Linux",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1154,
+"category": "communication"
+},
+{
+"id": "com.hoptodesk.HopToDesk",
+"name": "HopToDesk",
+"summary": "Access your computers anywhere",
+"arches": [
+"x86_64"
+],
+"installs": 1150,
+"category": "utilities"
+},
+{
+"id": "org.kde.kalzium",
+"name": "Kalzium",
+"summary": "Periodic Table of Elements",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1149,
+"category": "productivity"
+},
+{
+"id": "dev.khcrysalis.PlumeImpactor",
+"name": "Impactor",
+"summary": "Easily sideload apps",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1148,
+"category": "utilities"
+},
+{
+"id": "net.fhannenheim.musicfetch",
+"name": "Musicfetch",
+"summary": "Download songs and tag them",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1146,
+"category": "media"
+},
+{
+"id": "io.github.strikerx3.ymir",
+"name": "Ymir",
+"summary": "Sega Saturn Emulator",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1145,
+"category": "gaming"
+},
+{
+"id": "io.github.mfat.jottr",
+"name": "Jottr",
+"summary": "Simple text and markdown editor mainly intended for writers, journalists and researchers",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1145,
+"category": "productivity"
+},
+{
+"id": "org.gnu.emacs",
+"name": "GNU Emacs",
+"summary": "An extensible text editor",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1144,
+"category": "development"
+},
+{
+"id": "org.gnome.design.IconLibrary",
+"name": "Icon Library",
+"summary": "Symbolic icons for your apps",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1144,
+"category": "utilities"
+},
+{
+"id": "org.xfce.mousepad",
+"name": "Mousepad",
+"summary": "Mousepad is a simple text editor for the Xfce desktop environment",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1143,
+"category": "productivity"
+},
+{
+"id": "org.qownnotes.QOwnNotes",
+"name": "QOwnNotes",
+"summary": "Markdown note-taking",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1141,
+"category": "productivity"
+},
+{
+"id": "org.jitsi.jitsi-meet",
+"name": "Jitsi Meet",
+"summary": "Jitsi Meet - Secure, Simple and Scalable Video Conferences",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1140,
+"category": "communication"
+},
+{
+"id": "jp.nonbili.meron",
+"name": "Meron",
+"summary": "Fast/secure mail client with kanban and chat views",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1139,
+"category": "communication"
+},
+{
+"id": "re.sonny.Junction",
+"name": "Junction",
+"summary": "Application chooser",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1135,
+"category": "utilities"
+},
+{
+"id": "com.jetbrains.RustRover",
+"name": "RustRover",
+"summary": "Powerful IDE for Rust",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1135,
+"category": "development"
+},
+{
+"id": "eu.scarpetta.PDFMixTool",
+"name": "PDF Mix Tool",
+"summary": "An application to perform common editing operations on PDF files",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1128,
+"category": "productivity"
+},
+{
+"id": "org.photoqt.PhotoQt",
+"name": "PhotoQt",
+"summary": "View and manage images and videos",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1127,
+"category": "utilities"
+},
+{
+"id": "com.expidusos.file_manager",
+"name": "File Manager",
+"summary": "ExpidusOS File Manager",
+"arches": [
+"x86_64"
+],
+"installs": 1125,
+"category": "utilities"
+},
+{
+"id": "dev.heppen.webapps",
+"name": "Quick Web Apps",
+"summary": "Web applications at your fingertips",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1124,
+"category": "utilities"
+},
+{
+"id": "dev.ftb.ftb-app",
+"name": "FTB Electron App",
+"summary": "Explore and manage FTB modpacks!",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1123,
+"category": "gaming"
+},
+{
+"id": "ca.edestcroix.Recordbox",
+"name": "Recordbox",
+"summary": "Browse and play your local music",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1120,
+"category": "creative"
+},
+{
+"id": "com.github.hugolabe.Wike",
+"name": "Wike",
+"summary": "Search and read Wikipedia articles",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1119,
+"category": "utilities"
+},
+{
+"id": "org.phoenicis.playonlinux",
+"name": "Phoenicis PlayOnLinux",
+"summary": "Install and run Windows software on Linux",
+"arches": [
+"x86_64"
+],
+"installs": 1118,
+"category": "gaming"
+},
+{
+"id": "io.m51.Gelly",
+"name": "Gelly",
+"summary": "Jellyfin and Subsonic music player",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1118,
+"category": "creative"
+},
+{
+"id": "org.pegasus_frontend.Pegasus",
+"name": "Pegasus",
+"summary": "Cross platform, customizable graphical frontend for launching emulators",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1113,
+"category": "gaming"
+},
+{
+"id": "org.cockpit_project.CockpitClient",
+"name": "Cockpit Client",
+"summary": "Web-based server interface via ssh",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1108,
+"category": "utilities"
+},
+{
+"id": "io.github.mpobaschnig.Vaults",
+"name": "Vaults",
+"summary": "Keep important files safe",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1096,
+"category": "utilities"
+},
+{
+"id": "io.github.tanaybhomia.Whisp",
+"name": "Whisp",
+"summary": "Minimalist note taking widget",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1096,
+"category": "productivity"
+},
+{
+"id": "org.gabmus.whatip",
+"name": "What IP",
+"summary": "Info on your IP",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1095,
+"category": "utilities"
+},
+{
+"id": "com.her01n.BatteryInfo",
+"name": "Battery Info",
+"summary": "Shows informations about the system battery.",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1094,
+"category": "utilities"
+},
+{
+"id": "net.sourceforge.VMPK",
+"name": "VMPK",
+"summary": "Virtual MIDI Piano Keyboard: a MIDI events generator and receiver",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1093,
+"category": "creative"
+},
+{
+"id": "org.chessmd.chessmd",
+"name": "ChessMD",
+"summary": "ChessMD is a Qt-based chess app to play, analysis, review chess game and browse chess opening database.",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1093,
+"category": "gaming"
+},
+{
+"id": "app.tintero.Tintero",
+"name": "Tintero",
+"summary": "Write and plan long-form projects",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1090,
+"category": "productivity"
+},
+{
+"id": "org.bluej.BlueJ",
+"name": "BlueJ",
+"summary": "Java IDE for beginners",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1088,
+"category": "development"
+},
+{
+"id": "com.jaquadro.NBTExplorer",
+"name": "NBTExplorer",
+"summary": "A graphical NBT editor for all Minecraft NBT data sources",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1085,
+"category": "gaming"
+},
+{
+"id": "io.github.trigg.discover_overlay",
+"name": "Discover Overlay",
+"summary": "A graphical overlay for Discord voice chat.",
+"arches": [
+"x86_64"
+],
+"installs": 1081,
+"category": "utilities"
+},
+{
+"id": "com.neatdecisions.Detwinner",
+"name": "Detwinner",
+"summary": "Find and remove duplicate files and similar images",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1076,
+"category": "utilities"
+},
+{
+"id": "net.mkiol.Jupii",
+"name": "Jupii",
+"summary": "Play media on UPnP/DLNA devices",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1075,
+"category": "media"
+},
+{
+"id": "io.github.dummerle.rare",
+"name": "Rare",
+"summary": "Games launcher for Epic Games Store",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1072,
+"category": "gaming"
+},
+{
+"id": "com.github.Bleuzen.FFaudioConverter",
+"name": "FFaudioConverter",
+"summary": "Batch audio converter and effects processor",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1071,
+"category": "media"
+},
+{
+"id": "com.retrodev.blastem",
+"name": "Blastem",
+"summary": "A Sega Mega Drive/Genesis and Master System emulator",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1071,
+"category": "gaming"
+},
+{
+"id": "de.haeckerfelix.AudioSharing",
+"name": "Audio Sharing",
+"summary": "Share your computer audio",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1070,
+"category": "media"
+},
+{
+"id": "org.widelands.Widelands",
+"name": "Widelands",
+"summary": "A real-time build-up strategy game",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1069,
+"category": "gaming"
+},
+{
+"id": "org.kde.marble",
+"name": "Marble",
+"summary": "Virtual Globe",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1068,
+"category": "productivity"
+},
+{
+"id": "cn.xfangfang.wiliwili",
+"name": "wiliwili",
+"summary": "Watch videos from Bilibili",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1067,
+"category": "media"
+},
+{
+"id": "io.github.sitraorg.sitra",
+"name": "Sitra",
+"summary": "Get fonts from online sources",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1064,
+"category": "utilities"
+},
+{
+"id": "org.meshtastic.MeshtasticDesktop",
+"name": "Meshtastic Desktop",
+"summary": "Communicate off-grid with Meshtastic mesh radio devices",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1063,
+"category": "communication"
+},
+{
+"id": "org.mpz_player.mpz",
+"name": "mpz Music Player",
+"summary": "Play local music by folder",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1060,
+"category": "media"
+},
+{
+"id": "org.bluesabre.MenuLibre",
+"name": "MenuLibre",
+"summary": "An advanced FreeDesktop.org compliant menu editor",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1059,
+"category": "utilities"
+},
+{
+"id": "page.codeberg.M23Snezhok.Vinyl",
+"name": "Vinyl",
+"summary": "Elegant music player",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1059,
+"category": "creative"
+},
+{
+"id": "dev.edfloreshz.Tasks",
+"name": "Tasks",
+"summary": "Get things done",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1059,
+"category": "utilities"
+},
+{
+"id": "io.github.everestapi.Olympus",
+"name": "Olympus",
+"summary": "Cross-platform Celeste Mod Manager",
+"arches": [
+"x86_64"
+],
+"installs": 1058,
+"category": "gaming"
+},
+{
+"id": "com.ulaa.Ulaa",
+"name": "Ulaa",
+"summary": "Private, Secure & Fast Browsing",
+"arches": [
+"x86_64"
+],
+"installs": 1054,
+"category": "browsers"
+},
+{
+"id": "io.qt.QtCreator",
+"name": "Qt Creator",
+"summary": "Cross-platform integrated development environment (IDE)",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1053,
+"category": "development"
+},
+{
+"id": "app.fotema.Fotema",
+"name": "Fotema",
+"summary": "Admire your photos",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1053,
+"category": "utilities"
+},
+{
+"id": "org.siril.Siril",
+"name": "Siril",
+"summary": "Astronomical image processor",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1053,
+"category": "productivity"
+},
+{
+"id": "moe.launcher.sleepy-launcher",
+"name": "Sleepy Launcher",
+"summary": "Play Zenless Zone Zero on Linux",
+"arches": [
+"x86_64"
+],
+"installs": 1053,
+"category": "gaming"
+},
+{
+"id": "org.jousse.vincent.Pomodorolm",
+"name": "pomodorolm",
+"summary": "A simple, good looking and configurable pomodoro tracker with tray icon.",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1052,
+"category": "utilities"
+},
+{
+"id": "com.warlordsoftwares.jpeg2pdf",
+"name": "JPEG2PDF",
+"summary": "Convert Images Into PDF File",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1051,
+"category": "utilities"
+},
+{
+"id": "io.github.Qalculate.qalculate-qt",
+"name": "Qalculate! (Qt UI)",
+"summary": "Powerful and easy to use calculator",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1047,
+"category": "utilities"
+},
+{
+"id": "org.musacad.MusaCAD",
+"name": "Musa CAD",
+"summary": "Fast, precise 2D drafting",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1042,
+"category": "creative"
+},
+{
+"id": "eu.ithz.umftpd",
+"name": "Usermode FTP Server",
+"summary": "Access your files from another device",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1040,
+"category": "utilities"
+},
+{
+"id": "io.kinvolk.Headlamp",
+"name": "Headlamp",
+"summary": "An easy-to-use and extensible web UI for Kubernetes",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1039,
+"category": "utilities"
+},
+{
+"id": "org.bino3d.bino",
+"name": "Bino",
+"summary": "3D Video Player",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1037,
+"category": "media"
+},
+{
+"id": "org.kde.plasmatube",
+"name": "PlasmaTube",
+"summary": "Watch YouTube videos",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1037,
+"category": "media"
+},
+{
+"id": "io.github.schwarzen.colormydesktop",
+"name": "Color My Desktop",
+"summary": "Personalize your desktop with custom generated themes using colors you choose",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1036,
+"category": "utilities"
+},
+{
+"id": "io.github.ferraridamiano.ConverterNOW",
+"name": "Unit Converter",
+"summary": "Simple unit and currency converter",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1030,
+"category": "utilities"
+},
+{
+"id": "space.rirusha.Cassette",
+"name": "Cassette",
+"summary": "Unofficial Yandex Music client",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1029,
+"category": "creative"
+},
+{
+"id": "org.kde.kasts",
+"name": "Kasts",
+"summary": "Podcast application",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1027,
+"category": "communication"
+},
+{
+"id": "io.github.BrisklyDev.Brisk",
+"name": "Brisk",
+"summary": "Ultra-fast, modern download manager",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1023,
+"category": "utilities"
+},
+{
+"id": "org.nickvision.tagger",
+"name": "Tagger",
+"summary": "Tag your music",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1022,
+"category": "media"
+},
+{
+"id": "io.github.N3kosempai.hetairos-ai",
+"name": "Hetairos AI",
+"summary": "Your AI Waifu Assistant with Voice and Animated Interactions",
+"arches": [
+"x86_64"
+],
+"installs": 1020,
+"category": "communication"
+},
+{
+"id": "com.ntrack.n-track",
+"name": "n-Track Studio",
+"summary": "Creative Music Making (DAW)",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1012,
+"category": "media"
+},
+{
+"id": "org.guitarix.Guitarix",
+"name": "guitarix",
+"summary": "virtual versatile amplification for Jack/Linux",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1011,
+"category": "creative"
+},
+{
+"id": "com.github.unrud.djpdf",
+"name": "Scans to PDF",
+"summary": "Create small, searchable PDFs from scanned documents",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1009,
+"category": "utilities"
+},
+{
+"id": "org.altlinux.Tuner",
+"name": "Tuner",
+"summary": "Extensible control center",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1009,
+"category": "utilities"
+},
+{
+"id": "io.gitlab.ForTheCommunity.torrentsdigger",
+"name": "Torrents Digger",
+"summary": "Digs Torrents From The Internet",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1006,
+"category": "utilities"
+},
+{
+"id": "io.github.TheWisker.Cavasik",
+"name": "Cavasik",
+"summary": "Audio visualizer based on CAVA",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1005,
+"category": "creative"
+},
+{
+"id": "com.cherry_ai.CherryStudio",
+"name": "Cherry Studio",
+"summary": "A powerful AI assistant for producer",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1004,
+"category": "utilities"
+},
+{
+"id": "com.github.artemanufrij.playmyvideos",
+"name": "Cinema",
+"summary": "A video player for watching local video files",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 1001,
+"category": "media"
+},
+{
+"id": "io.github.sepehr_rs.Sudoku",
+"name": "Sudoku",
+"summary": "Solve puzzles in style",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 999,
+"category": "gaming"
+},
+{
+"id": "dev.geopjr.Turntable",
+"name": "Turntable",
+"summary": "Scrobble your music",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 994,
+"category": "creative"
+},
+{
+"id": "com.pikatorrent.PikaTorrent",
+"name": "PikaTorrent",
+"summary": "Just pick a Torrent, stream and download",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 993,
+"category": "utilities"
+},
+{
+"id": "app.drey.Damask",
+"name": "Damask",
+"summary": "Automatic wallpapers from the web",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 992,
+"category": "utilities"
+},
+{
+"id": "io.github.xiaoyifang.goldendict_ng",
+"name": "GoldenDict-ng",
+"summary": "Advanced dictionary lookup program",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 991,
+"category": "productivity"
+},
+{
+"id": "com.ylsoftware.qmmp.Qmmp",
+"name": "Qmmp",
+"summary": "Qt-based Multimedia Player",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 989,
+"category": "media"
+},
+{
+"id": "com.github.debauchee.barrier",
+"name": "Barrier",
+"summary": "Barrier - Share mouse and keyboard over the local network",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 987,
+"category": "utilities"
+},
+{
+"id": "tech.dongdongbh.mindwtr",
+"name": "Mindwtr",
+"summary": "Get tasks out of your head",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 987,
+"category": "productivity"
+},
+{
+"id": "com.github.polymeilex.neothesia",
+"name": "Neothesia",
+"summary": "Learn how to play the piano",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 986,
+"category": "gaming"
+},
+{
+"id": "io.github.hedge_dev.hedgemodmanager",
+"name": "Hedge Mod Manager",
+"summary": "Manage mods for Sonic games",
+"arches": [
+"x86_64"
+],
+"installs": 986,
+"category": "gaming"
+},
+{
+"id": "io.github.meehow.Receiver",
+"name": "Receiver",
+"summary": "Discover radio stations worldwide",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 980,
+"category": "media"
+},
+{
+"id": "io.github.shonubot.Spruce",
+"name": "Spruce",
+"summary": "Reclaim disk space",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 980,
+"category": "utilities"
+},
+{
+"id": "page.codeberg.elly_code.inscriptions",
+"name": "Inscriptions",
+"summary": "Translate text elegantly",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 979,
+"category": "productivity"
+},
+{
+"id": "org.kde.kwalletmanager5",
+"name": "KWalletManager",
+"summary": "Wallet Management Tool",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 978,
+"category": "utilities"
+},
+{
+"id": "fr.natron.Natron",
+"name": "Natron",
+"summary": "Compose industry-grade VFX and Motion Graphics.",
+"arches": [
+"x86_64"
+],
+"installs": 977,
+"category": "creative"
+},
+{
+"id": "eu.vcmi.VCMI",
+"name": "VCMI",
+"summary": "Open-source game engine for Heroes of Might and Magic III",
+"arches": [
+"aarch64",
+"x86_64"
+],
+"installs": 977,
+"category": "gaming"
+}
+],
+"extra": [
+{
+"src": "dnf",
+"id": "steam",
+"name": "Steam",
+"summary": "Steam for Apple Silicon (x86 games through muvm and FEX)",
+"category": "gaming",
+"platform": "asahi",
+"glyph": "gamepad-2"
+}
+]
+}

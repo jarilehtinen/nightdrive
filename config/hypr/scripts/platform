@@ -1,0 +1,19 @@
+#!/bin/bash
+# What Nightdrive runs on, for scripts that differ between machines (e.g. Install › Software's lists).
+#   platform           "<arch> <platform>", e.g. "aarch64 asahi" or "x86_64 generic"
+#   platform arch      aarch64 | x86_64 | … (Flatpak's arch name: the one Flathub's builds use)
+#   platform name      asahi (Apple Silicon) | generic
+#   platform pagesize  memory page size in bytes (16384 on Asahi: some apps break on it)
+set -euo pipefail
+
+arch() { flatpak --default-arch 2>/dev/null || uname -m; }
+# The device tree names the hardware: Apple Silicon Macs have "apple,arm-platform" (x86 PCs have no device tree)
+name() { if tr '\0' '\n' < /proc/device-tree/compatible 2>/dev/null | grep -qx 'apple,arm-platform'; then echo asahi; else echo generic; fi; }
+
+case ${1:-} in
+  "") echo "$(arch) $(name)" ;;
+  arch) arch ;;
+  name) name ;;
+  pagesize) getconf PAGESIZE ;;
+  *) sed -n '3,6p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2 ;;
+esac

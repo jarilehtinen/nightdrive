@@ -74,8 +74,10 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
   digits slide up as the minutes change.
 - **Background apps**: ⌘W only hides chat apps and the music player, so they keep running. Their shortcut brings them straight back.
 - **Web apps**: turn any site into an app window from the launcher (System › Install › Webapp).
-- **Installing apps**: System › Install › Software searches Fedora's packages and Flathub's apps at once, one row per app (Fedora's
-  when both have it, Tab in the details takes Flathub's), command-line tools below; details before installing. Remove lists both.
+- **Installing apps**: System › Install › Software › Search searches Fedora's packages and Flathub's apps at once, one row per app
+  (Fedora's when both have it, Tab in the details takes Flathub's), command-line tools below; details before installing. Remove
+  lists both. Below Search, Browse has Popular (top 100) and categories: Flathub's most installed apps that your machine can run
+  (ARM or x86; `nightdrive software-catalog` refreshes the lists).
 - **Login apps**: you choose what starts at login in the launcher (Settings › Startup, or ⌥Enter on an app). Background
   apps start hidden. Only 1Password (if installed) is on by default, because its SSH agent and the Passwords level need it.
 - **Login screen**: a password-only greeter that matches the theme (`--no-greeter` keeps the distribution's own).

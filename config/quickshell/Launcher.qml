@@ -11,7 +11,10 @@ import Quickshell.Widgets
 // uninstalled (your choice, ~/.local/state/nightdrive/apps.json).
 // Keybindings: read from ~/.config/hypr/SHORTCUTS.md (the same file as the ⌘⇧K cheat sheet).
 // Install › Software: Fedora's packages and Flathub's apps in one search (hypr/scripts/pkg-search): apps first, one row per
-// app (Fedora's if both have it), then command-line tools. Install › Software and Remove: Enter on a row opens its details
+// app (Fedora's if both have it), then command-line tools. That search is its own level (Software › Search, level
+// swsearch); Software itself has Search and Browse: Popular and the categories, lists from data/software.json
+// (hypr/scripts/software-catalog) for this machine's architecture (pkg-search --list). Typing on Software filters those,
+// and the last row takes the words to Search. Install › Software and Remove: Enter on a row opens its details
 // in a wider card (hypr/scripts/pkg-info); there Enter installs or removes it, Tab takes the app from the other source,
 // Esc goes back to the results.
 PanelWindow {
@@ -50,6 +53,9 @@ PanelWindow {
     property string armed: ""                 // action awaiting confirmation
     property var installResults: []           // Install: search results
     property string installQ: ""              // the query the results belong to
+    property var swCats: []                   // Install › Software › Browse: [{ key, name, glyph }] (data/software.json)
+    property var swCat: ({ key: "", name: "" })   // the open category (level swcat)
+    property var swList: null                 // its rows (pkg-search --list), null = loading
     property string webName: ""               // Install › Webapp: the name, while asking for the address
     property var emojiList: []               // Emoji: [{ ch, name, kw }] (data/emoji.tsv, CLDR names in English and Finnish)
     property bool emojiLoaded: false
@@ -132,7 +138,7 @@ PanelWindow {
     readonly property bool extLevel: extOf(level) !== null
     readonly property int selIndex: list.currentIndex
     function shakeNow() { shake.restart() }
-    readonly property var parents: Object.assign({ launcherprefs: "settings", shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", battery: "settings", install: "system", remove: "system", emoji: "tools", screenshot: "tools", software: "install", webapp: "install", recommended: "install", plugins: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", sounds: "settings", soundregular: "sounds", soundurgent: "sounds", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, sys.parents, home.parents, ext ? ext.parents : {})
+    readonly property var parents: Object.assign({ launcherprefs: "settings", shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", battery: "settings", install: "system", remove: "system", emoji: "tools", screenshot: "tools", software: "install", swcat: "software", swsearch: "software", webapp: "install", recommended: "install", plugins: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", sounds: "settings", soundregular: "sounds", soundurgent: "sounds", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, sys.parents, home.parents, ext ? ext.parents : {})
     // Search found nothing: hint below ⌘⌥⏎ (icons) → send the text to Claude
     readonly property bool noHit: (level === "root" || level === "apps") && query.trim() !== "" && results.length === 0
     // The selected row is an app: ⌃Enter shows it in Apps (the list with an empty query) or hides it from there.
@@ -179,7 +185,7 @@ PanelWindow {
 
     readonly property var titles: Object.assign({ apps: "Apps", music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", musicsearch: "Music › Search", artist: "Music › " + artist.name, keys: "Keybindings", screenshot: "Tools › Screenshot", settings: "Settings", display: "Settings › Display", battery: "Settings › Battery", startup: "Settings › Startup", screensaver: "Settings › Screensaver", saverafter: "Screensaver › Start after", screenoff: "Screensaver › Screen off after", saverstyle: "Screensaver › Style", sounds: "Settings › Notifications", soundregular: "Notifications › Regular sound", soundurgent: "Notifications › Urgent sound", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
                                      launcherprefs: "Settings › Launcher", topbar: "Settings › Top bar", baropacity: "Top bar › Opacity", baricons: "Top bar › Icon colors", barhl: "Top bar › Highlight", baritems: "Top bar › Items",
-                                     system: "System", install: "System › Install", emoji: "Tools › Emoji", software: "Install › Software", webapp: "Install › Webapp", recommended: "Install › Recommended", plugins: "Install › Plugins", webname: "Install › Webapp › Name", webaddr: "Install › Webapp › Address", remove: "System › Remove", power: "Power", passwords: "Passwords", clipboard: "Clipboard",
+                                     system: "System", install: "System › Install", emoji: "Tools › Emoji", software: "Install › Software", swcat: "Software › " + swCat.name, swsearch: "Software › Search", webapp: "Install › Webapp", recommended: "Install › Recommended", plugins: "Install › Plugins", webname: "Install › Webapp › Name", webaddr: "Install › Webapp › Address", remove: "System › Remove", power: "Power", passwords: "Passwords", clipboard: "Clipboard",
                                      tools: "Tools" }, sys.titles, home.titles, ext ? ext.titles : {})
 
     // Reference at startup: the app list only loads on first reference
@@ -473,9 +479,19 @@ PanelWindow {
             all = keyList.map(k => ({ item: { kind: "key", name: k.name, sub: k.sub || undefined, keys: k.keys, section: k.section }, text: k.name,
                                       extra: k.keys + " " + k.section + " " + k.sub }))
         } else if (level === "software") {
+            const browse = [{ kind: "swcat", name: "Popular", glyph: "trending-up", key: "popular", summary: "top 100" }]
+                .concat(swCats.map(c => ({ kind: "swcat", name: c.name, glyph: c.glyph, key: c.key })))
+            if (q === "") return [{ kind: "swsearch", name: "Search", glyph: "search", summary: "Fedora + Flathub" },
+                                  { kind: "header", name: "Browse" }].concat(browse)
+            all = browse.map(r => ({ item: r, text: r.name }))
+        } else if (level === "swsearch") {
             if (q.replace(/[^a-z0-9._+\-]/g, "").length < 2) return [{ kind: "hint", name: "Type at least 2 characters to search apps and tools" }]
             if (installResults.length === 0) return [{ kind: "hint", name: searchProc.running ? "Searching…" : "Nothing found" }]
             return installResults
+        } else if (level === "swcat") {
+            if (swList === null) return hint("Loading…")
+            if (swList.length === 0) return hint("Nothing for this computer here")
+            all = swList.map(r => ({ item: r, text: r.name, extra: r.sub || "" }))
         } else if (level === "emoji") {
             if (!emojiLoaded) return [{ kind: "hint", name: "Loading emoji…" }]
             all = emojiList.map(e => ({ item: { kind: "emoji", name: e.name, emoji: e.ch }, text: e.name, extra: e.kw }))
@@ -675,6 +691,8 @@ PanelWindow {
         })
         scored.sort((a, b) => (a.s - b.s) || (level === "apps" ? a.x.text.localeCompare(b.x.text) : level === "emoji" ? (a.x.text.length - b.x.text.length) || (a.i - b.i) : a.i - b.i))
         const res = scored.map(o => o.x.item)
+        // Software: what's typed can always go on to the package search (the categories rarely match an app's name)
+        if (level === "software") res.push({ kind: "swsearch", name: "Search for “" + query.trim() + "”", glyph: "search", summary: "Fedora + Flathub" })
         return level === "keys" ? grouped(res) : res
     }
     readonly property var results: items()
@@ -691,6 +709,7 @@ PanelWindow {
         list.currentIndex = firstSelectable()
         installResults = []
         if (target === "remove") removeProc.running = true
+        if (target === "swcat") { swList = null; swProc.command = [scripts + "/pkg-search", "--list", swCat.key]; swProc.running = true }
         if (target === "plugins" || target === "recommended" || target === "webapp") pluginsProc.running = true
         if (target === "emoji" && !emojiLoaded) emojiProc.running = true
         if (target === "clipboard") { clipLoaded = false; clipProc.running = true }
@@ -819,6 +838,8 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
     function activate(item) {
         if (!item) return
         if (item.kind === "nav") go(item.target)
+        else if (item.kind === "swcat") { swCat = { key: item.key, name: item.name }; go("swcat") }
+        else if (item.kind === "swsearch") { const typed = query; go("swsearch"); input.text = typed }
         else if (item.kind === "app" && level === "startup") toggleAutostart(item)
         else if (item.kind === "app") {
             win.open = false
@@ -1034,7 +1055,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         }
     }
 
-    // Install › Software: search while typing (300 ms delay), hypr/scripts/pkg-search: { apps, tools }
+    // Software › Search: search while typing (300 ms delay), hypr/scripts/pkg-search: { apps, tools }
     function sanitized() { return query.trim().toLowerCase().replace(/[^a-z0-9._+\-]/g, "") }
     function runSearch() {
         const q = sanitized()
@@ -1044,6 +1065,12 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         searchProc.command = [scripts + "/pkg-search", q]
         searchProc.forQ = q
         searchProc.running = true
+    }
+    // A pkg-search row → a launcher row (Enter opens its details)
+    function pkgRow(p, glyph) {
+        return { kind: "action", name: p.name, sub: p.summary, iconFile: p.icon || undefined,
+                 glyph: p.icon ? undefined : (p.glyph || glyph), src: p.src, id: p.id, alt: p.alt,
+                 summary: p.installed ? "installed" : undefined, cmd: installCmd(p.src, p.id) }
     }
     function installCmd(src, id) {
         return src === "flatpak" ? term('flatpak install --user flathub "$1"', id) : term('sudo dnf install "$1"', id)
@@ -1058,7 +1085,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         return out
     }
     onQueryChanged: {
-        if (level === "software") { armed = ""; searchDelay.restart() }
+        if (level === "swsearch") { armed = ""; searchDelay.restart() }
         if (level === "musicsearch" && query.trim() !== "") spotifyDelay.restart()
     }
     Timer { id: searchDelay; interval: 300; onTriggered: win.runSearch() }
@@ -1066,13 +1093,11 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         id: searchProc
         property string forQ: ""
         onResult: text => {
-            if (win.level !== "software") return          // left the level while searching
+            if (win.level !== "swsearch") return          // left the level while searching
             if (win.sanitized() !== forQ) { win.runSearch(); return }
             let r
             try { r = JSON.parse(text) } catch (e) { win.installResults = []; return }
-            const row = (p, glyph) => ({ kind: "action", name: p.name, sub: p.summary, iconFile: p.icon || undefined,
-                                         glyph: p.icon ? undefined : glyph, src: p.src, id: p.id, alt: p.alt,
-                                         summary: p.installed ? "installed" : undefined, cmd: win.installCmd(p.src, p.id) })
+            const row = win.pkgRow
             // The headers only when both are there: one kind alone needs no title
             const both = r.apps.length > 0 && r.tools.length > 0
             const out = []
@@ -1083,6 +1108,22 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
             win.installResults = out
             list.currentIndex = win.firstSelectable()
         }
+    }
+    // Install › Software › a category: pkg-search --list (the most installed apps this machine can run)
+    Sh {
+        id: swProc
+        onResult: text => {
+            if (win.level !== "swcat") return
+            let r
+            try { r = JSON.parse(text) } catch (e) { win.swList = []; return }
+            win.swList = r.apps.map(p => win.pkgRow(p, "package-plus"))
+            list.currentIndex = win.firstSelectable()
+        }
+    }
+    // Browse's categories: their names and icons come with the lists (software-catalog writes both)
+    FileView {
+        path: Quickshell.env("HOME") + "/.config/quickshell/data/software.json"; printErrors: false
+        onLoaded: { try { win.swCats = JSON.parse(text()).categories || [] } catch (e) { win.swCats = [] } }
     }
     // Install / Remove: a package's details (hypr/scripts/pkg-info). The results stay as they were behind them.
     function showDetail(item) {

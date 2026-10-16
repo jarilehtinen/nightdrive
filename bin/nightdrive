@@ -12,12 +12,14 @@
 #   nightdrive agent-warn ["what"]   for coding agents: warns that the launcher or a menu opens in 5 s (AGENTS.md)
 #   nightdrive theme|display|wallpaper|bar-style …   the desktop's own scripts (hypr/scripts), e.g. `nightdrive theme color teal`
 #   nightdrive sandbox up|check|shot|ipc|vnc|down …   Nightdrive in a headless container, for checks and screenshots (docs/sandbox.md)
+#   nightdrive platform [arch|name|pagesize]   what this runs on, e.g. "aarch64 asahi" or "x86_64 generic"
+#   nightdrive software-catalog   regenerate Install › Software's lists from Flathub (config/quickshell/data/software.json)
 # update never pulls over local changes: a repo with uncommitted work or its own commits is skipped with a note.
 set -uo pipefail
 repo=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)
 scripts="$repo/config/hypr/scripts"
 cache="$HOME/.cache/nightdrive"
-usage() { echo "Usage:"; sed -n '3,14p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { echo "Usage:"; sed -n '3,16p' "$0" | sed 's/^# \{0,1\}//'; }
 
 # Repos to update: Nightdrive, the repos the git-ignored local slots link into (a private overlay), Deck's source
 repos() {
@@ -211,6 +213,7 @@ case ${1:-} in
            esac ;;
   agent-warn) exec "$scripts/agent-warn" "${@:2}" ;;
   sandbox) exec "$repo/config/sandbox/sandbox" "${@:2}" ;;
+  platform|software-catalog) exec "$scripts/$1" "${@:2}" ;;
   theme|display|wallpaper|bar-style) exec "$scripts/$1" "${@:2}" ;;
   ""|help|-h|--help) usage ;;
   *) usage >&2; exit 1 ;;

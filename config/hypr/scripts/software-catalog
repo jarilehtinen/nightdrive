@@ -1,0 +1,98 @@
+#!/usr/bin/python3 -I
+"""Install › Software's lists (Popular and the categories) from Flathub's install counts.
+  software-catalog    writes config/quickshell/data/software.json (commit it: the launcher reads it offline)
+The most installed apps of the last month, each with the architectures Flathub builds it for: pkg-search --list leaves
+out what this machine can't run, so the same file serves an ARM Mac and an x86 PC. The category comes from Flathub's
+own (FreeDesktop) categories; EXCLUDE and EXTRA below are the hand-made part."""
+import datetime, json, os, re, sys, urllib.request
+
+API = "https://flathub.org/api/v2/collection/popular?page={}&per_page=250"
+PAGES = 4                       # the top 1000: enough to fill every category on both architectures
+OUT = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../quickshell/data/software.json")
+
+# The launcher shows the categories in this order
+CATEGORIES = [("browsers", "Browsers", "globe"), ("communication", "Communication", "message-circle"),
+              ("productivity", "Productivity", "briefcase"), ("creative", "Creative", "palette"), ("media", "Media", "clapperboard"),
+              ("development", "Development", "code"), ("gaming", "Gaming", "gamepad-2"), ("utilities", "Utilities", "wrench")]
+# An app's category from Flathub's (FreeDesktop) categories: the first rule that matches its main category or one of its
+# sub-categories wins. The order settles the overlaps: a game is Gaming and a browser a Browser whatever else they say
+# (Vivaldi: also Email, Viewer, …), a player that also records (VLC) is Media, an AI chat that's a development tool
+# (LM Studio) isn't Communication, and an "Emulator" that isn't a game is a virtual machine (Boxes).
+RULES = [
+    ("gaming", ["game"]),
+    ("browsers", ["WebBrowser"]),
+    ("utilities", ["Viewer", "Scanning", "Emulator", "TerminalEmulator", "Calculator", "P2P", "FileTransfer"]),
+    ("media", ["Player", "TV"]),
+    ("development", ["Development", "IDE", "WebDevelopment", "Debugger", "RevisionControl", "Database"]),
+    ("communication", ["InstantMessaging", "Chat", "Email", "VideoConference", "Telephony", "IRCClient", "News", "Feed"]),
+    ("creative", ["graphics", "2DGraphics", "3DGraphics", "RasterGraphics", "VectorGraphics", "Photography", "AudioVideoEditing",
+                  "Recorder", "Midi", "Mixer", "Sequencer", "Music", "Engineering", "Electronics"]),
+    ("media", ["audiovideo", "Audio", "Video"]),
+    ("productivity", ["office", "WordProcessor", "Spreadsheet", "Presentation", "Calendar", "ContactManagement", "ProjectManagement",
+                      "Finance", "Dictionary", "TextEditor", "education", "science"]),
+    ("utilities", ["utility", "system", "network"]),
+]
+# Where Flathub's categories mislead
+CATEGORY_OF = {"org.audacityteam.Audacity": "creative",     # only "Audio": an editor, not a player
+               "com.ktechpit.orion": "utilities"}           # a torrent client with a built-in browser
+PER_CATEGORY, POPULAR = 25, 100
+
+# Apps that don't belong on Nightdrive's lists (still found by searching)
+EXCLUDE = {
+    "com.mattjakeman.ExtensionManager": "GNOME Shell extensions: Nightdrive runs Hyprland",
+    "org.gnome.Extensions": "GNOME Shell extensions",
+    "io.github.realmazharhussain.GdmSettings": "GDM's settings: Nightdrive doesn't use GDM",
+    "com.github.GradienceTeam.Gradience": "libadwaita theming: Nightdrive themes GTK itself",
+}
+# Test builds next to the real one (Google Chrome (unstable), com.google.ChromeDev)
+PRERELEASE = re.compile(r"\((unstable|beta|dev|nightly|canary|preview)\)|\.(Dev|Beta|Nightly|Canary|Unstable|Devel)$", re.I)
+# Rows that Flathub's numbers don't give, first in their list. platform/arch: only there (platform script's names).
+EXTRA = [
+    {"src": "dnf", "id": "steam", "name": "Steam", "summary": "Steam for Apple Silicon (x86 games through muvm and FEX)",
+     "category": "gaming", "platform": "asahi", "glyph": "gamepad-2"},
+]
+
+
+def fetch(page):
+    req = urllib.request.Request(API.format(page), headers={"User-Agent": "nightdrive-software-catalog"})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        return json.load(r)["hits"]
+
+
+def as_list(v):
+    return v if isinstance(v, list) else [v] if v else []
+
+
+def category(hit):
+    if hit["app_id"] in CATEGORY_OF:
+        return CATEGORY_OF[hit["app_id"]]
+    # Flathub lower-cases main_categories ("audiovideo"); compare without case
+    mine = {c.lower() for c in as_list(hit.get("sub_categories")) + as_list(hit.get("main_categories"))}
+    return next((key for key, cats in RULES if mine & {c.lower() for c in cats}), None)
+
+
+def main():
+    hits = [h for p in range(1, PAGES + 1) for h in fetch(p)]
+    apps = []
+    for h in hits:
+        if h["app_id"] in EXCLUDE or not h.get("arches") or PRERELEASE.search(h["app_id"]) or PRERELEASE.search(h["name"]):
+            continue
+        apps.append({"id": h["app_id"], "name": h["name"], "summary": h.get("summary") or "", "arches": h["arches"],
+                     "installs": h.get("installs_last_month") or 0, "category": category(h)})
+    apps.sort(key=lambda a: -a["installs"])
+    out = {"generated": datetime.date.today().isoformat(),
+           "categories": [{"key": k, "name": n, "glyph": g} for k, n, g in CATEGORIES],
+           "perCategory": PER_CATEGORY, "popular": POPULAR, "apps": apps, "extra": EXTRA}
+    with open(OUT + ".tmp", "w") as fh:
+        json.dump(out, fh, indent=0, ensure_ascii=False)
+        fh.write("\n")
+    os.replace(OUT + ".tmp", OUT)
+    counts = {k: sum(1 for a in apps if a["category"] == k) for k, *_ in CATEGORIES}
+    print(f"{len(apps)} apps → {os.path.normpath(OUT)}", file=sys.stderr)
+    print("  " + ", ".join(f"{k} {n}" for k, n in counts.items()) + f", none {sum(1 for a in apps if not a['category'])}", file=sys.stderr)
+
+
+if len(sys.argv) > 1:
+    print(__doc__.split("\n")[1], file=sys.stderr)
+    sys.exit(2)
+main()
