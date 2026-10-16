@@ -228,6 +228,24 @@ hl.window_rule({
     size  = "1000 650",
     center = true,
 })
+-- Image preview (Files' Space preview Sushi, image viewer Loupe): on top of the windows instead of splitting them, like
+-- Quick Look and Preview; ⌘T moves it into the tiling layout
+hl.window_rule({
+    name  = "float-preview",
+    match = { class = "^org\\.gnome\\.Loupe$" },
+    float = true,
+    size  = "monitor_w*0.85 monitor_h*0.85",
+    center = true,
+})
+-- Sushi sizes itself too small at scale 2 (a GTK3 bug, docs/known-issues.md), so it gets the size too; it briefly
+-- flashes a zoomed frame as it opens, until Sushi 51 (GTK4)
+hl.window_rule({
+    name  = "float-quicklook",
+    match = { class = "^org\\.gnome\\.NautilusPreviewer$" },
+    float = true,
+    size  = "monitor_w*0.85 monitor_h*0.85",
+    center = true,
+})
 hl.window_rule({
     name  = "float-tui",
     match = { class = "^floating-tui$" },

@@ -83,3 +83,23 @@ in the launcher's Settings › Sound also gives a notification. The check is liv
 fixes it, and then AirPlay audio is worth trying again.
 
 **A fix for everyone could be:** an AirPlay 2 sender (pairing) for audio only, if Apple doesn't fix it.
+
+## The Space preview in Files flashes a zoomed picture as it opens (Sushi 50)
+
+**Seen:** MacBook (Apple Silicon) at scale 2, Fedora Asahi Remix 44, `sushi-50.0-1.fc44`. Found 2026-10-16.
+
+**Symptom:** pressing Space on an image in Files opens the preview (Sushi), and for a moment the picture is shown too big and
+cropped before it settles into the window.
+
+**Cause:** Sushi's own window size, not Nightdrive. Sushi 50 is still GTK3, and on Wayland its `_getMaxSize()` divides the
+monitor size by the scale factor although GTK already reports it in logical pixels, so on a scale-2 screen the preview
+opens tiny (about 442×470 for a 1672×941 picture). Nightdrive's `float-quicklook` rule (hyprland.lua) makes it floating at
+85 % of the screen instead, and the flash is Sushi drawing its first frame for its own small size before it redraws at the
+rule's size. Without the rule's size there's no flash, but the preview stays tiny.
+
+**Workaround:** none needed, the preview works. For a calm look at a picture, open it in the image viewer (double-click, Loupe),
+which floats at the same 85 % without the flash.
+
+**Expected fix:** Sushi 51 (GNOME 51) is ported to GTK4 and loads images with Glycin like Loupe, which replaces this window
+code; it should reach Fedora with Fedora 45. Check then whether the flash is gone, and whether the `size` in `float-quicklook`
+is still needed. If the bug survives, report or fix it upstream (gitlab.gnome.org/GNOME/sushi) rather than forking.
