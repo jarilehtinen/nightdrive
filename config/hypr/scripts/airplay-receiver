@@ -4,8 +4,9 @@
 #   airplay-receiver enable|disable   on/off; it starts with the session
 #   airplay-receiver status           on | off
 #   airplay-receiver name             the name the iPhone shows (the host name, like LocalSend's)
-# The window is floating along the right edge (hyprland.lua, float-uxplay). UxPlay crashes when its window is closed
-# (⌘W); the service starts it again (Restart=always), so the receiver is back in a second.
+# The window is floating along the right edge (hyprland.lua, float-uxplay). UxPlay crashes (SIGSEGV) when its window
+# is closed (⌘W); run starts it again itself, so the receiver is back in a second and the unit never goes failed
+# (FUMonitor would notify "Failed unit detected" / "Unit recovered" every time).
 SERVICE=nightdrive-airplay.service
 PORT=50000   # UxPlay's TCP/UDP 50000-50002: inside the firewall's open range (its default ports aren't)
 
@@ -19,7 +20,14 @@ case ${1:-status} in
   run)
     # -vs waylandsink: a native window, sharp on a scaled screen (the default sink goes through XWayland, upscaled 2x).
     # -h265 -avdec: 4K HEVC decoded with FFmpeg. -vsync no: no frames dropped for lateness (a dropped one smears).
-    exec uxplay -n "$(name)" -nh -p "$PORT" -fps 60 -h265 -avdec -vsync no -vs waylandsink ;;
+    # A crash within 10 s of starting isn't ⌘W: exit with it and let systemd (and FUMonitor) handle it.
+    while true; do
+      started=$SECONDS
+      uxplay -n "$(name)" -nh -p "$PORT" -fps 60 -h265 -avdec -vsync no -vs waylandsink
+      rc=$?
+      (( rc == 139 && SECONDS - started >= 10 )) || exit "$rc"
+      sleep 1
+    done ;;
   enable)
     command -v uxplay >/dev/null || { echo "UxPlay isn't installed (install-airplay-receiver.sh)" >&2; exit 1; }
     systemctl --user daemon-reload
