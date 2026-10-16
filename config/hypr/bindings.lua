@@ -48,6 +48,8 @@ hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd(scripts .. "/dictate start"), { lock
 hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd(scripts .. "/dictate stop"),  { locked = true, release = true })    -- release -> transcribe and type
 hl.bind("XF86Fn", hl.dsp.exec_cmd(scripts .. "/dictate fn-down"), { locked = true })                       -- Fn held (over 0.3 s) -> dictation, like F5
 hl.bind("XF86Fn", hl.dsp.exec_cmd(scripts .. "/dictate fn-up"),   { locked = true, release = true })
+hl.bind("F19",    hl.dsp.exec_cmd(scripts .. "/dictate fn-down"), { locked = true })                       -- Fn when keyd (Mac text keys) runs: keyd sends F19 for it
+hl.bind("F19",    hl.dsp.exec_cmd(scripts .. "/dictate fn-up"),   { locked = true, release = true })
 hl.bind(mod .. " + SHIFT + B",   hl.dsp.exec_cmd(browser))
 hl.bind(mod .. " + SHIFT + RETURN", hl.dsp.exec_cmd(browser))
 -- Optional parts' apps (plugins.txt ids; SHORTCUTS.md tags the same lines with {id})

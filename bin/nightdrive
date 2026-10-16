@@ -108,6 +108,11 @@ logind-ignore-sleep-key.conf /etc/systemd/logind.conf.d/50-ignore-sleep-key.conf
 logind-power-key.conf /etc/systemd/logind.conf.d/50-power-key.conf 644
 nightdrive.actions /etc/dnf/libdnf5-plugins/actions.d/nightdrive.actions 644
 LIST
+  # Mac text keys (plugin keyd): its /etc config follows the repo's, if the plugin is installed
+  if [[ -f /etc/keyd/default.conf ]] && ! cmp -s "$repo/config/keyd/default.conf" /etc/keyd/default.conf; then
+    echo "    /etc/keyd/default.conf"; copied=1
+    sudo install -Dm644 "$repo/config/keyd/default.conf" /etc/keyd/default.conf && sudo keyd reload
+  fi
   # The file the dnf hook touches; Quickshell watches it only if it exists when it starts (restarted below)
   [[ -e /var/lib/nightdrive/dnf-changed ]] || sudo install -Dm644 /dev/null /var/lib/nightdrive/dnf-changed
   (( changed )) && sudo systemctl kill -s HUP systemd-logind
