@@ -59,6 +59,10 @@ PanelWindow {
     property string webName: ""               // Install › Webapp: the name, while asking for the address
     property var emojiList: []               // Emoji: [{ ch, name, kw }] (data/emoji.tsv, CLDR names in English and Finnish)
     property bool emojiLoaded: false
+    property var snipList: []                // Snippets: [{ trigger, text }] (hypr/scripts/snippets list)
+    property bool snipLoaded: false
+    property string snipAuto: ""             // auto-expand: on | off | no-access (snippets status)
+    property string snipTrigger: ""          // Snippets › Add / edit: the trigger being given a text
     property var removeList: []               // Remove: user-installed packages
     property var detail: null                 // Install / Remove: the package row whose details are shown ({ name, summary, src, id, cmd, remove })
     property var detailInfo: null             // its details from pkg-info (null = still loading)
@@ -138,7 +142,7 @@ PanelWindow {
     readonly property bool extLevel: extOf(level) !== null
     readonly property int selIndex: list.currentIndex
     function shakeNow() { shake.restart() }
-    readonly property var parents: Object.assign({ launcherprefs: "settings", shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", battery: "settings", install: "system", remove: "system", emoji: "tools", screenshot: "tools", software: "install", swcat: "software", swsearch: "software", webapp: "install", recommended: "install", plugins: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", sounds: "settings", soundregular: "sounds", soundurgent: "sounds", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, sys.parents, home.parents, ext ? ext.parents : {})
+    readonly property var parents: Object.assign({ launcherprefs: "settings", shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", battery: "settings", install: "system", remove: "system", emoji: "tools", snippets: "tools", snipkey: "snippets", sniptext: "snippets", screenshot: "tools", software: "install", swcat: "software", swsearch: "software", webapp: "install", recommended: "install", plugins: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", sounds: "settings", soundregular: "sounds", soundurgent: "sounds", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, sys.parents, home.parents, ext ? ext.parents : {})
     // Search found nothing: hint below ⌘⌥⏎ (icons) → send the text to Claude
     readonly property bool noHit: (level === "root" || level === "apps") && query.trim() !== "" && results.length === 0
     // The selected row is an app: ⌃Enter shows it in Apps (the list with an empty query) or hides it from there.
@@ -162,6 +166,10 @@ PanelWindow {
         : level === "clipboard" ? "Enter: paste  ·  Shift+Enter: copy only"
         : level === "shelf" || level === "curated" ? "Enter: play in Deck"
         : level === "emoji" ? "Enter: paste  ·  Shift+Enter: copy only  ·  search in English or Finnish"
+        : level === "snippets" && (results[list.currentIndex] || {}).kind === "snippet" ? "Enter: paste  ·  Shift+Enter: copy only  ·  Ctrl+Enter: edit  ·  Cmd+Backspace: remove"
+        : level === "snippets" && (results[list.currentIndex] || {}).kind === "snipauto" ? (snipAuto === "off" ? "Enter: turn on in a terminal (asks for your password once)" : "Enter: turn off in a terminal")
+        : level === "snipkey" && query.trim() !== "" ? "Enter: continue to the text"
+        : level === "sniptext" && query !== "" ? "Enter: save"
         : (level === "plugins" || level === "recommended") && (results[list.currentIndex] || {}).kind === "action" ? ((results[list.currentIndex] || {}).installed ? "Enter: run the installer again" : "Enter: install in a terminal")
         : level === "webapp" && (results[list.currentIndex] || {}).ready ? ((results[list.currentIndex] || {}).installed ? "Enter: add again" : "Enter: add")
         : level === "webname" && query.trim() !== "" ? "Enter: continue to the address"
@@ -185,7 +193,7 @@ PanelWindow {
 
     readonly property var titles: Object.assign({ apps: "Apps", music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", musicsearch: "Music › Search", artist: "Music › " + artist.name, keys: "Keybindings", screenshot: "Tools › Screenshot", settings: "Settings", display: "Settings › Display", battery: "Settings › Battery", startup: "Settings › Startup", screensaver: "Settings › Screensaver", saverafter: "Screensaver › Start after", screenoff: "Screensaver › Screen off after", saverstyle: "Screensaver › Style", sounds: "Settings › Notifications", soundregular: "Notifications › Regular sound", soundurgent: "Notifications › Urgent sound", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
                                      launcherprefs: "Settings › Launcher", topbar: "Settings › Top bar", baropacity: "Top bar › Opacity", baricons: "Top bar › Icon colors", barhl: "Top bar › Highlight", baritems: "Top bar › Items",
-                                     system: "System", install: "System › Install", emoji: "Tools › Emoji", software: "Install › Software", swcat: "Software › " + swCat.name, swsearch: "Software › Search", webapp: "Install › Webapp", recommended: "Install › Recommended", plugins: "Install › Plugins", webname: "Install › Webapp › Name", webaddr: "Install › Webapp › Address", remove: "System › Remove", power: "Power", passwords: "Passwords", clipboard: "Clipboard",
+                                     system: "System", install: "System › Install", emoji: "Tools › Emoji", snippets: "Tools › Snippets", snipkey: "Snippets › Trigger", sniptext: "Snippets › “" + snipTrigger + "”", software: "Install › Software", swcat: "Software › " + swCat.name, swsearch: "Software › Search", webapp: "Install › Webapp", recommended: "Install › Recommended", plugins: "Install › Plugins", webname: "Install › Webapp › Name", webaddr: "Install › Webapp › Address", remove: "System › Remove", power: "Power", passwords: "Passwords", clipboard: "Clipboard",
                                      tools: "Tools" }, sys.titles, home.titles, ext ? ext.titles : {})
 
     // Reference at startup: the app list only loads on first reference
@@ -227,6 +235,7 @@ PanelWindow {
         tools: [
             { kind: "nav", name: "Screenshot", glyph: "camera", target: "screenshot" },
             { kind: "nav", name: "Emoji", glyph: "smile", target: "emoji" },
+            { kind: "nav", name: "Snippets", glyph: "text-cursor-input", target: "snippets", extra: "text expansion replacement abbreviation autotext" },
             { kind: "action", name: "Color Picker", glyph: "pipette", cmd: ["bash", "-c", "sleep 0.4; \"$HOME/.config/hypr/scripts/color-picker\""] }
         ],
         screenshot: [
@@ -495,6 +504,24 @@ PanelWindow {
         } else if (level === "emoji") {
             if (!emojiLoaded) return [{ kind: "hint", name: "Loading emoji…" }]
             all = emojiList.map(e => ({ item: { kind: "emoji", name: e.name, emoji: e.ch }, text: e.name, extra: e.kw }))
+        } else if (level === "snippets") {
+            if (!snipLoaded) return hint("Loading snippets…")
+            const auto = { kind: "snipauto", name: "Auto-expand", glyph: "zap",
+                           summary: snipAuto === "on" ? "on" : snipAuto === "no-access" ? "no keyboard access: log out and in" : "off" }
+            const add = { kind: "nav", name: "Add snippet", glyph: "plus", target: "snipkey" }
+            const rows = snipList.map(s => ({ kind: "snippet", name: s.text.split("\n")[0], summary: s.trigger, glyph: "text-cursor-input",
+                                               trigger: s.trigger, text: s.text, armKey: "snipdel:" + s.trigger,
+                                               armHint: "press Cmd+Backspace again to remove" }))
+            if (q === "") return [auto, { kind: "header", name: rows.length ? "Snippets" : "No snippets yet" }].concat(rows, [add])
+            all = rows.map(r => ({ item: r, text: r.trigger, extra: r.text }))
+        } else if (level === "snipkey") {
+            if (query.trim() === "") return hint("Type the trigger, e.g. @@ or f#")
+            const t = query.trim(), old = snipList.find(s => s.trigger === t)
+            return [{ kind: "snipk", name: "Trigger: " + t, summary: old ? "replaces “" + old.text.split("\n")[0] + "”" : "next: text",
+                      glyph: "arrow-right", value: t }]
+        } else if (level === "sniptext") {
+            if (query === "") return hint("Type the text that “" + snipTrigger + "” expands to")
+            return [{ kind: "snipadd", name: "Save “" + snipTrigger + "”", summary: query, glyph: "text-cursor-input", value: query }]
         } else if (level === "webname") {
             if (query.trim() === "") return hint("Type the webapp’s name")
             return [{ kind: "wname", name: "Name: " + query.trim(), summary: "next: address", glyph: "arrow-right", value: query.trim() }]
@@ -713,6 +740,7 @@ PanelWindow {
         if (target === "plugins" || target === "recommended" || target === "webapp") pluginsProc.running = true
         if (target === "emoji" && !emojiLoaded) emojiProc.running = true
         if (target === "clipboard") { clipLoaded = false; clipProc.running = true }
+        if (target === "snippets") snipProc.running = true
         if (target === "background") wallProc.running = true
         if (target === "topbar" || target === "baropacity" || target === "baricons" || target === "barhl") barProc.running = true
         if (target === "theme" || target === "themecolor") themeProc.running = true
@@ -892,6 +920,20 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
             wallCurrent = item.path
             Quickshell.execDetached([scripts + "/wallpaper", "set", item.path])
         }
+        else if (item.kind === "snippet") snipPick(item, true)
+        else if (item.kind === "snipauto") {
+            win.open = false
+            Quickshell.execDetached(term('"$HOME/.local/bin/nightdrive" snippets ' + (snipAuto === "off" ? "enable" : "disable")))
+        }
+        else if (item.kind === "snipk") { snipTrigger = item.value; go("sniptext") }
+        else if (item.kind === "snipadd") {
+            snipList = snipList.filter(s => s.trigger !== snipTrigger).concat([{ trigger: snipTrigger, text: item.value }])
+                               .sort((a, b) => a.trigger.localeCompare(b.trigger))
+            Quickshell.execDetached([scripts + "/snippets", "set", snipTrigger, item.value])
+            const t = snipTrigger
+            go("snippets")
+            Qt.callLater(() => { const i = results.findIndex(r => r.kind === "snippet" && r.trigger === t); if (i >= 0) list.currentIndex = i })
+        }
         else if (item.kind === "wname") { webName = item.value; go("webaddr") }
         else if (item.kind === "wadd") {
             win.open = false
@@ -927,6 +969,29 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         Quickshell.execDetached(["bash", "-c",
             'printf %s "$1" | wl-copy; if [ "$3" = 1 ]; then ' + pasteCmd + '; else notify-send -e -a Emoji -t 1500 "Copied $1" "$2"; fi',
             "_", item.emoji, item.name, paste ? "1" : "0"])
+    }
+    // Snippets: pasted like an emoji (also works with auto-expand off)
+    function snipPick(item, paste) {
+        win.open = false
+        Quickshell.execDetached(["bash", "-c",
+            'printf %s "$1" | wl-copy; if [ "$3" = 1 ]; then ' + pasteCmd + '; else notify-send -a Snippets -t 1500 "Copied" "$2"; fi',
+            "_", item.text, item.trigger, paste ? "1" : "0"])
+    }
+    // Ctrl+Enter: the snippet's text in the input, to change it
+    function editSnippet(item) {
+        snipTrigger = item.trigger
+        go("sniptext")
+        input.text = item.text
+    }
+    // ⌘⌫ (IPC deleteSelected): a second press removes the selected snippet
+    function deleteSnippet() {
+        const item = results[list.currentIndex]
+        if (!item || item.kind !== "snippet") { shake.restart(); return }
+        if (armed !== item.armKey) { armed = item.armKey; disarm.restart(); return }
+        armed = ""
+        snipList = snipList.filter(s => s.trigger !== item.trigger)
+        if (list.currentIndex >= results.length) list.currentIndex = results.length - 1
+        Quickshell.execDetached([scripts + "/snippets", "remove", item.trigger])
     }
     // Passwords: field → [message when missing, message when copied, secret (1 = sensitive + cleared after 45 s), op item get options...]
     readonly property var pwFields: ({
@@ -1411,6 +1476,17 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
             win.pwState = "ready"
         }
     }
+    // Snippets: the list and whether auto-expand is on, read again each time the level opens (a change in the file shows up)
+    Sh {
+        id: snipProc
+        script: 's="$HOME/.config/hypr/scripts/snippets"; "$s" status; "$s" list'
+        onResult: text => {
+            const i = text.indexOf("\n")
+            win.snipAuto = text.slice(0, i).trim()
+            try { win.snipList = JSON.parse(text.slice(i + 1)) } catch (e) { win.snipList = [] }
+            win.snipLoaded = true
+        }
+    }
     // Emoji: data/emoji.tsv ("char<TAB>name<TAB>keywords", generated from CLDR annotations)
     Sh {
         id: emojiProc
@@ -1553,6 +1629,7 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
         function deleteSelected(): void {
             if (!win.open) return
             if (win.level === "background" && win.wallLoaded) win.deleteWall()
+            else if (win.level === "snippets" && win.query === "") win.deleteSnippet()
             else win.deleteBack(false)
         }
         // ⌘Q (hypr/scripts/quit-app asks first): with the launcher open quits the selected app if it's running, otherwise
@@ -1741,6 +1818,8 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                             else if (win.extLevel && cur && (event.modifiers & Qt.ShiftModifier)) win.extShift(cur)
                             else if (win.level === "clipboard" && cur && cur.kind === "clip" && (event.modifiers & Qt.ShiftModifier)) win.clipPick(cur, false)
                             else if (win.level === "emoji" && cur && cur.kind === "emoji" && (event.modifiers & Qt.ShiftModifier)) win.emojiPick(cur, false)
+                            else if (cur && cur.kind === "snippet" && (event.modifiers & Qt.ShiftModifier)) win.snipPick(cur, false)
+                            else if (cur && cur.kind === "snippet" && ctrl) win.editSnippet(cur)
                             else if (cur && cur.kind === "sound" && (event.modifiers & Qt.ShiftModifier)) win.listenSound(cur)
                             else if (win.results.length === 0) shake.restart()
                             else win.activate(cur)

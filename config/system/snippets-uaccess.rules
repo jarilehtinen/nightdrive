@@ -1,0 +1,4 @@
+# Snippets' auto-expand (hypr/scripts/snippets enable): the user at the screen may read keyboards, so the daemon can
+# see what is typed. uaccess = an ACL for the active local session only, applied at once (no re-login); 70- because it
+# has to come before systemd's 73-seat-late.rules. Mice and touchpads are left out.
+SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_INPUT_KEYBOARD}=="1", TAG+="uaccess"

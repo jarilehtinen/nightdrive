@@ -1,0 +1,336 @@
+#!/usr/bin/python3
+"""Snippets: typed abbreviations that expand into text in any app (like macOS's Text Replacements).
+
+    snippets list                   the snippets as JSON ([{"trigger", "text"}]), launcher › Tools › Snippets
+    snippets set TRIGGER TEXT       add one, or change the text of an existing trigger
+    snippets remove TRIGGER
+    snippets status                 on | off | no-access (auto-expand)
+    snippets enable | disable       auto-expand on/off: asks for sudo, run it in a terminal
+    snippets run                    the auto-expand daemon (nightdrive-snippets.service)
+
+Wayland doesn't let an app see keys typed into other windows, so the daemon reads the keyboards from /dev/input (evdev),
+turns key codes into characters with the same layout Hyprland uses (xkbcommon), and keeps the last few characters in
+memory only. When they end with a trigger, it types Backspaces over it and the text in its place (wtype). The access
+to the keyboards is a udev rule (uaccess): only the user at the screen gets it, and it works without logging out.
+"""
+import ctypes
+import json
+import os
+import selectors
+import shutil
+import socket
+import subprocess
+import sys
+import threading
+import time
+
+FILE = os.path.expanduser("~/.config/nightdrive/snippets.json")
+UDEV_RULE = "/etc/udev/rules.d/70-nightdrive-snippets.rules"
+RULE_SRC = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../system/snippets-uaccess.rules")
+SERVICE = "nightdrive-snippets.service"
+BUFFER = 32          # characters kept: enough for the longest trigger
+RESCAN = 3.0         # seconds between looks for a newly plugged keyboard
+
+
+def load():
+    try:
+        with open(FILE) as f:
+            return [s for s in json.load(f) if s.get("trigger") and "text" in s]
+    except (OSError, ValueError):
+        return []
+
+
+def save(snips):
+    os.makedirs(os.path.dirname(FILE), exist_ok=True)
+    tmp = FILE + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(sorted(snips, key=lambda s: s["trigger"]), f, ensure_ascii=False, indent=2)
+        f.write("\n")
+    os.chmod(tmp, 0o600)     # may hold work details (VAT number etc.)
+    os.replace(tmp, FILE)
+
+
+def readable_keyboards():
+    """Whether at least one keyboard's event device can be opened (the uaccess rule is in effect)."""
+    for d in os.listdir("/sys/class/input"):
+        if d.startswith("event") and os.access("/dev/input/" + d, os.R_OK):
+            try:
+                with open(f"/run/udev/data/c{open(f'/sys/class/input/{d}/dev').read().strip()}") as f:
+                    if "E:ID_INPUT_KEYBOARD=1" in f.read():
+                        return True
+            except OSError:
+                pass
+    return False
+
+
+def status():
+    active = subprocess.run(["systemctl", "--user", "is-enabled", "-q", SERVICE]).returncode == 0
+    if not active:
+        return "off"
+    return "on" if readable_keyboards() else "no-access"
+
+
+def enable():
+    print("Snippets: auto-expand\n")
+    print("Typing a trigger (e.g. @@) anywhere replaces it with its text. For that, Nightdrive needs to read the")
+    print("keyboard directly: Wayland doesn't let an app see what is typed into other windows.\n")
+    print("This will:")
+    print(f"  • add a udev rule ({UDEV_RULE}) that lets the user at the screen read")
+    print("    keyboards (not mice or touchpads). It takes effect right away: no need to log out.")
+    print("  • install python3-evdev, if missing")
+    print(f"  • start {SERVICE}\n")
+    print("The daemon keeps only the last few typed characters, in memory, and never writes them anywhere.")
+    print("Other programs you run could read the keyboard too, as they could with macOS's Accessibility permission.\n")
+    if input("Turn auto-expand on? [y/N] ").strip().lower() not in ("y", "yes"):
+        print("Nothing changed.")
+        return 1
+    try:
+        import evdev  # noqa: F401
+    except ImportError:
+        subprocess.run(["sudo", "dnf", "install", "-y", "python3-evdev"], check=True)
+    subprocess.run(["sudo", "install", "-Dm644", RULE_SRC, UDEV_RULE], check=True)
+    subprocess.run(["sudo", "udevadm", "control", "--reload"], check=True)
+    subprocess.run(["sudo", "udevadm", "trigger", "--subsystem-match=input", "--action=change"], check=True)
+    subprocess.run(["udevadm", "settle"])
+    subprocess.run(["systemctl", "--user", "enable", "--now", SERVICE], check=True)
+    time.sleep(1)
+    if readable_keyboards():
+        print("\nAuto-expand is on. Add snippets in launcher › Tools › Snippets.")
+    else:
+        print("\nThe service runs, but the keyboard isn't readable yet: log out and back in once.")
+    return 0
+
+
+def disable():
+    subprocess.run(["systemctl", "--user", "disable", "--now", SERVICE])
+    if os.path.exists(UDEV_RULE):
+        print(f"Removing the keyboard access rule ({UDEV_RULE})…")
+        subprocess.run(["sudo", "rm", "-f", UDEV_RULE])
+        subprocess.run(["sudo", "udevadm", "control", "--reload"])
+        subprocess.run(["sudo", "udevadm", "trigger", "--subsystem-match=input", "--action=change"])
+    print("Auto-expand is off. The snippets stay: Enter in launcher › Tools › Snippets still pastes them.")
+    return 0
+
+
+# --- the daemon ---
+
+class Xkb:
+    """Key codes → characters with Hyprland's layout (libxkbcommon through ctypes: no extra package)."""
+    class Names(ctypes.Structure):
+        _fields_ = [(n, ctypes.c_char_p) for n in ("rules", "model", "layout", "variant", "options")]
+
+    def __init__(self):
+        x = self.x = ctypes.CDLL("libxkbcommon.so.0")
+        x.xkb_context_new.restype = ctypes.c_void_p
+        x.xkb_context_new.argtypes = [ctypes.c_int]
+        x.xkb_keymap_new_from_names.restype = ctypes.c_void_p
+        x.xkb_keymap_new_from_names.argtypes = [ctypes.c_void_p, ctypes.POINTER(self.Names), ctypes.c_int]
+        x.xkb_state_new.restype = ctypes.c_void_p
+        x.xkb_state_new.argtypes = [ctypes.c_void_p]
+        x.xkb_state_unref.argtypes = [ctypes.c_void_p]
+        x.xkb_state_update_key.argtypes = [ctypes.c_void_p, ctypes.c_uint32, ctypes.c_int]
+        x.xkb_state_key_get_utf8.argtypes = [ctypes.c_void_p, ctypes.c_uint32, ctypes.c_char_p, ctypes.c_size_t]
+        x.xkb_state_mod_name_is_active.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_int]
+        self.ctx = x.xkb_context_new(0)
+        self.state = None
+        self.load()
+
+    def load(self):
+        def opt(name):
+            try:
+                out = subprocess.run(["hyprctl", "getoption", "input:" + name, "-j"], capture_output=True, text=True).stdout
+                v = json.loads(out).get("str", "")
+                return v.encode() if v and v != "[[EMPTY]]" else None
+            except (OSError, ValueError):
+                return None
+        names = self.Names(opt("kb_rules"), opt("kb_model"), opt("kb_layout"), opt("kb_variant"), opt("kb_options"))
+        keymap = self.x.xkb_keymap_new_from_names(self.ctx, ctypes.byref(names), 0)
+        if not keymap:
+            keymap = self.x.xkb_keymap_new_from_names(self.ctx, ctypes.byref(self.Names()), 0)
+        if self.state:
+            self.x.xkb_state_unref(self.state)
+        self.state = self.x.xkb_state_new(keymap)
+
+    def char(self, code):
+        buf = ctypes.create_string_buffer(16)
+        self.x.xkb_state_key_get_utf8(self.state, code + 8, buf, 16)
+        return buf.value.decode(errors="ignore")
+
+    def update(self, code, down):
+        self.x.xkb_state_update_key(self.state, code + 8, 1 if down else 0)
+
+    def shortcut_mods(self):
+        """Ctrl, Super or Hyper held: a shortcut, not typing (Shift, Alt and AltGr make characters)"""
+        return any(self.x.xkb_state_mod_name_is_active(self.state, m, 8) > 0 for m in (b"Control", b"Mod4", b"Mod3"))
+
+
+def hypr_events():
+    """Hyprland's event socket: the buffer is cleared when the active window changes."""
+    sig = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE", "")
+    run = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
+    s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    try:
+        s.connect(f"{run}/hypr/{sig}/.socket2.sock")
+    except OSError:
+        return None
+    s.setblocking(False)
+    return s
+
+
+def run():
+    import evdev
+    from evdev import ecodes as e
+    if not shutil.which("wtype"):
+        sys.exit("snippets: wtype is missing")
+    xkb = Xkb()
+    sel = selectors.DefaultSelector()
+    devices = {}                 # path → InputDevice
+    modifiers = {e.KEY_LEFTSHIFT, e.KEY_RIGHTSHIFT, e.KEY_LEFTCTRL, e.KEY_RIGHTCTRL, e.KEY_LEFTALT, e.KEY_RIGHTALT,
+                 e.KEY_LEFTMETA, e.KEY_RIGHTMETA, e.KEY_CAPSLOCK, e.KEY_FN}
+    state = {"buf": "", "pending": None, "held": set(), "snips": [], "mtime": None}
+
+    def scan():
+        for path in evdev.list_devices():
+            if path in devices:
+                continue
+            try:
+                d = evdev.InputDevice(path)
+            except OSError:
+                continue
+            keys = d.capabilities().get(e.EV_KEY, [])
+            if e.KEY_A in keys and e.KEY_SPACE in keys:
+                devices[path] = d
+                sel.register(d, selectors.EVENT_READ, "key")
+            else:
+                d.close()
+
+    def drop(d):
+        sel.unregister(d)
+        devices.pop(d.path, None)
+        try:
+            d.close()
+        except OSError:
+            pass
+
+    def snippets():
+        try:
+            m = os.stat(FILE).st_mtime
+        except OSError:
+            m = None
+        if m != state["mtime"]:
+            state["mtime"], state["snips"] = m, load()
+        return state["snips"]
+
+    def expand(trigger, text):
+        args = ["wtype"]
+        for _ in trigger:
+            args += ["-k", "BackSpace"]
+        subprocess.run(args)
+        if not paste(text):
+            subprocess.run(["wtype", "--", text])     # no clipboard: typed a letter at a time
+
+    def paste(text):
+        """The text in at once, like macOS: through the clipboard (Shift+Insert, as the launcher pastes), which is then
+        put back. --sensitive keeps the snippet out of cliphist's history."""
+        types = subprocess.run(["wl-paste", "--list-types"], capture_output=True, text=True).stdout.split()
+        kind = next((t for t in types if t.startswith("text/plain")), types[0] if types else None)
+        old = subprocess.run(["wl-paste", "-n", "--type", kind], capture_output=True).stdout if kind else None
+        if subprocess.run(["wl-copy", "--sensitive", "--", text]).returncode != 0:
+            return False
+        time.sleep(0.03)                               # the Backspaces first: they go by another route than the shortcut
+        subprocess.run(["hyprctl", "dispatch", 'hl.dsp.send_shortcut({ mods = "SHIFT", key = "Insert" })'],
+                       stdout=subprocess.DEVNULL)
+        # Put back once the app has read it (unless something else was copied meanwhile); in a thread so typing on
+        # isn't held up. Through stdin: the old content may be an image.
+        script = ('sleep 0.4; [ "$(wl-paste -n)" = "$1" ] || exit 0; '
+                  'if [ -n "$2" ]; then wl-copy --type "$2"; else wl-copy --clear; fi')
+        p = subprocess.Popen(["bash", "-c", script, "_", text, kind or ""], stdin=subprocess.PIPE)
+        threading.Thread(target=p.communicate, args=(old or b"",), daemon=True).start()
+        return True
+
+    def key(code, value):
+        if value == 0:
+            state["held"].discard(code)
+            xkb.update(code, False)
+        else:
+            if value == 1:
+                state["held"].add(code)
+            if code not in modifiers:
+                ch = xkb.char(code)
+                if code == e.KEY_BACKSPACE:
+                    state["buf"] = state["buf"][:-1]
+                elif xkb.shortcut_mods() or len(ch) != 1 or not ch.isprintable():
+                    state["buf"] = ""          # Enter, Tab, arrows, a shortcut: the trigger has to be typed in one go
+                else:
+                    state["buf"] = (state["buf"] + ch)[-BUFFER:]
+                    hits = [s for s in snippets() if state["buf"].endswith(s["trigger"])]
+                    if hits:
+                        s = max(hits, key=lambda s: len(s["trigger"]))
+                        state["pending"], state["buf"] = (s["trigger"], s["text"]), ""
+            if value == 1:
+                xkb.update(code, True)
+        # Typed once every key is up: a held Shift (from "#") would otherwise change what wtype types
+        if state["pending"] and not state["held"]:
+            expand(*state["pending"])
+            state["pending"] = None
+
+    hypr = hypr_events()
+    if hypr:
+        sel.register(hypr, selectors.EVENT_READ, "hypr")
+    scan()
+    last_scan = time.monotonic()
+    while True:
+        for k, _ in sel.select(timeout=RESCAN):
+            if k.data == "hypr":
+                try:
+                    data = k.fileobj.recv(4096)
+                except BlockingIOError:
+                    continue
+                if not data:                       # Hyprland went away
+                    sel.unregister(k.fileobj)
+                    continue
+                if b"activewindow>>" in data:
+                    state["buf"] = ""
+                if b"configreloaded>>" in data:    # the layout may have changed
+                    xkb.load()
+                continue
+            d = k.fileobj
+            try:
+                for ev in d.read():
+                    if ev.type == e.EV_KEY:
+                        key(ev.code, ev.value)
+            except BlockingIOError:
+                pass
+            except OSError:                        # unplugged
+                drop(d)
+        if time.monotonic() - last_scan > RESCAN:
+            scan()
+            last_scan = time.monotonic()
+
+
+def main():
+    a = sys.argv[1:]
+    cmd = a[0] if a else "list"
+    if cmd == "list":
+        print(json.dumps(load(), ensure_ascii=False))
+    elif cmd == "set" and len(a) == 3 and a[1].strip():
+        trig = a[1].strip()
+        save([s for s in load() if s["trigger"] != trig] + [{"trigger": trig, "text": a[2]}])
+    elif cmd == "remove" and len(a) == 2:
+        save([s for s in load() if s["trigger"] != a[1]])
+    elif cmd == "status":
+        print(status())
+    elif cmd == "enable":
+        return enable()
+    elif cmd == "disable":
+        return disable()
+    elif cmd == "run":
+        run()
+    else:
+        print(__doc__.split("\n\n")[1], file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

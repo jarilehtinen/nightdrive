@@ -1,0 +1,13 @@
+# Snippets' auto-expand (hypr/scripts/snippets). Off until turned on in launcher › Tools › Snippets (snippets enable).
+[Unit]
+Description=Nightdrive snippets (text expansion)
+PartOf=nightdrive-session.target
+After=nightdrive-session.target
+
+[Service]
+ExecStart=%h/.config/hypr/scripts/snippets run
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=nightdrive-session.target
