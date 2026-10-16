@@ -680,7 +680,11 @@ PanelWindow {
             // Enter opens the details (src "plugin"), whose Enter runs the installer in a terminal (they ask things: sudo, tokens,
             // logins); an installed one can be run again (rerun)
             if (pluginList === null) return hint("Loading…")
-            all = pluginList.filter(p => p.group === (level === "plugins" ? "plugin" : "recommended")).map(p => ({ item: { kind: "action", name: p.name, glyph: p.icon, sub: p.desc, installed: p.installed,
+            // "experimental" in the description becomes a tag after the name (plugins.txt keeps it in the text for install.sh)
+            const exp = /\bexperimental\b/i
+            const plain = d => d.replace(/\s*\(experimental\)/i, "").replace(/,\s*experimental(?=[;)])/i, "").replace(/\(experimental;\s*/i, "(")
+            all = pluginList.filter(p => p.group === (level === "plugins" ? "plugin" : "recommended")).map(p => ({ item: { kind: "action", name: p.name, glyph: p.icon, sub: plain(p.desc), installed: p.installed,
+                                                 experimental: exp.test(p.desc),
                                                  src: "plugin", id: p.id, rerun: true,
                                                  summary: p.installed ? "installed" : undefined,
                                                  cmd: term('"$HOME/.local/bin/nightdrive" plugins install "$1"', p.id) },
@@ -1932,6 +1936,13 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                         color: row.armedNow ? Theme.primary : (row.isHeader ? Theme.primary : row.modelData.kind === "hint" || row.modelData.dimmed ? Theme.dim : (row.current ? Theme.accent : Theme.text))
                         font { family: Theme.font; pixelSize: row.isHeader ? win.fontSize - 5 : row.modelData.sub ? win.fontSize - 2 : win.fontSize; weight: row.isHeader ? Font.Bold : win.fontWeight; letterSpacing: row.isHeader ? 1.5 : 0 }
                         topPadding: row.isHeader ? 10 : 0
+                    }
+                    Text {      // EXPERIMENTAL after a plugin's name (Install › Plugins)
+                        visible: !!row.modelData.experimental && !row.armedNow
+                        anchors { left: nameText.left; leftMargin: nameText.contentWidth + 10; baseline: nameText.baseline }
+                        text: "EXPERIMENTAL"
+                        color: Theme.caution
+                        font { family: Theme.font; pixelSize: win.fontSize - 7; letterSpacing: 1 }
                     }
                     Text {
                         visible: nameText.twoLines
