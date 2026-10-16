@@ -121,9 +121,9 @@ On a fresh Fedora Asahi Remix 44 with a network connection:
 sudo dnf install -y git   # not in a fresh install
 git clone https://github.com/jarilehtinen/nightdrive.git ~/dotfiles
 cd ~/dotfiles
-./install.sh              # asks which optional parts to install, then: system update, packages, fonts, the notch setting,
-                          # config links, login screen, the optional parts, and removes the KDE apps and services
-                          # Nightdrive doesn't use (packages-remove.txt)
+./install.sh              # asks which optional parts to install, then: removes the KDE apps and services Nightdrive
+                          # doesn't use (packages-remove.txt), system update, packages, fonts, the notch setting,
+                          # config links, login screen and the optional parts
 ```
 
 It asks first which optional parts you want (number toggles one, Enter continues):
@@ -134,7 +134,14 @@ It asks first which optional parts you want (number toggles one, Enter continues
    …
    6 [x] Deck              Spotify player (needs Premium), launcher and top bar; compiled
    …
+  15 [ ] Install all       every optional part above
+
+  16 [x] Remove apps       112 installed packages Nightdrive doesn't use: akregator dolphin konsole kmail …
 ```
+
+**Trying it on the system you already use?** The removals are on by default only on a fresh install (one installed less
+than three days ago). On an older system the *Remove apps* row starts unticked, and nothing else is removed: your configs
+in `~/.config` are moved aside to `<name>.bak-<time>`, and `config/greeter/switch.sh off` brings back the KDE login screen.
 
 After that it runs unattended (sudo asks for the password once at the start); the system update and compiling Deck take a
 while. Home Assistant, if chosen, asks for its address and token at the very end. Anything you skip can be added later from
@@ -147,12 +154,13 @@ login screen fails, press Ctrl+Alt+F3, log in and run `config/greeter/switch.sh 
 |---|---|
 | `--no-greeter` | Keeps the KDE login screen; pick **Hyprland** there (not *Hyprland (uwsm-managed)*) |
 | `--keep-apps` | Keeps the KDE apps, printing, network shares, accessibility tools and other packages listed in `packages-remove.txt` (comment a line out to keep just that one) |
+| `--debloat` | Removes them also on a system that isn't fresh (without a terminal, or with `--defaults` and the like, nothing is asked) |
 | `--no-kde` | Removes Plasma completely (experimental) |
 | `--vm` | For trying Nightdrive in a Fedora 44 VM instead of an Asahi Mac ([docs/vm.md](docs/vm.md)) |
 | `--with deck,1password` | These optional parts on top of the defaults, without asking (`--dry-run` lists the ids) |
 | `--without youtube` | The defaults without these, without asking; combines with `--with` |
 | `--all` / `--none` / `--defaults` | Every optional part / none / the defaults (Tailscale, Deck, YouTube), without asking |
-| `--dry-run` | Shows the optional parts and what would be installed, then stops |
+| `--dry-run` | Shows the optional parts, what would be installed and what would be removed, then stops |
 
 A few things stay manual (the install lists the ones for the parts you chose):
 - Tailscale: `sudo tailscale up`

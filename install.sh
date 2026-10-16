@@ -1,15 +1,18 @@
 #!/bin/bash
 # Sets up this environment on a fresh Fedora Asahi Remix 44 install (aarch64, MacBook).
-#   ./install.sh               asks which optional parts to install (1Password, Deck, web apps…, plugins.txt), then runs
-#                              unattended: updates the system, installs packages, fonts, the notch setting, links the
+#   ./install.sh               asks which optional parts to install (1Password, Deck, web apps…, plugins.txt) and whether
+#                              to remove the apps Nightdrive doesn't use (packages-remove.txt), then runs unattended:
+#                              removes those, updates the system, installs packages, fonts, the notch setting, links the
 #                              configs, installs the Nightdrive login screen (greetd, password only, active from the next
 #                              boot) and the chosen parts. Home Assistant, if chosen, asks for its address at the end.
+#                              The removals are on by default only on a fresh system (installed under 3 days ago).
 #   ./install.sh --with deck,1password   these parts on top of the defaults, without asking (ids: --dry-run lists them)
 #   ./install.sh --without youtube       the defaults without these, without asking (--with and --without combine)
 #   ./install.sh --all / --none / --defaults   every optional part / none / the defaults (Default on in plugins.txt)
-#   ./install.sh --dry-run     shows the optional parts and which would be installed, and stops
+#   ./install.sh --dry-run     shows the optional parts, which would be installed and what would be removed, and stops
 #   ./install.sh --no-greeter  keeps the distribution's own login screen (pick "Hyprland" there)
 #   ./install.sh --keep-apps   keeps the KDE apps and system services that are otherwise removed (packages-remove*.txt)
+#   ./install.sh --debloat     removes them also on a system that isn't fresh
 #   ./install.sh --no-kde      removes Plasma entirely (needs the greeter); experimental, see config/greeter/
 #   ./install.sh --vm          for trying it on a non-Asahi machine (e.g. a Fedora 44 VM): skips the notch setting
 # Without a terminal (or with any of --with/--without/--all/--none/--defaults) nothing is asked. What was skipped can be
@@ -17,12 +20,13 @@
 # Run as a regular user; sudo asks for the password once at the start.
 set -euo pipefail
 repo=$(cd "$(dirname "$0")" && pwd)
-debloat=1; vm=0; greeter=1; nokde=0; dry=0
+FRESH_DAYS=3                     # a system installed less than this many days ago gets the removals by default
+debloat=""; vm=0; greeter=1; nokde=0; dry=0      # debloat: 1 | 0, "" = by the system's age
 base=""; with=""; without=""     # base: all | none | defaults, "" = ask
-usage() { sed -n '3,19p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '3,20p' "$0" | sed 's/^# \{0,1\}//'; }
 while (( $# )); do
   case $1 in
-    --debloat) ;;              # the default now; still accepted
+    --debloat) debloat=1 ;;
     --keep-apps) debloat=0 ;;
     --vm) vm=1 ;;
     --greeter) ;;              # the default now; still accepted
@@ -43,6 +47,19 @@ while (( $# )); do
 done
 (( nokde && !greeter )) && { echo "--no-kde removes the KDE login screen, so it can't be combined with --no-greeter" >&2; exit 2; }
 pkgs() { grep -vE '^\s*(#|$)' "$1" | tr '\n' ' '; }
+# The names of these that are installed (rpm prints "package X is not installed" for the rest)
+installed() { (( $# )) && rpm -q --qf '%{NAME}\n' "$@" 2>/dev/null | grep -v ' ' | sort -u | tr '\n' ' ' || true; }
+
+# --- Removals (packages-remove*.txt): what this system has of them, and whether it's fresh ---
+# Someone trying Nightdrive on the system they already use shouldn't lose KMail or printing without seeing the list, so the
+# removals default to on only on a fresh install. /etc/machine-id is written at the first boot (an image's rpm install
+# times are the image's build date, so they can't tell).
+removable=$(installed $(pkgs "$repo/packages-remove.txt") $(rpm -qa --qf '%{NAME}\n' 'libreoffice-*' 2>/dev/null))
+(( vm )) || removable+=$(installed $(pkgs "$repo/packages-remove-asahi.txt"))
+read -ra removable <<<"$removable"
+age_days=$(( ( $(date +%s) - $(stat -c %Y /etc/machine-id 2>/dev/null || echo 0) ) / 86400 ))
+fresh=$(( age_days < FRESH_DAYS ))
+[[ -n $debloat ]] || debloat=$fresh
 
 # --- Optional parts (plugins.txt): chosen now, installed at the end ---
 ids=(); names=(); descs=(); on=()
@@ -68,15 +85,25 @@ toggle_listed() {  # toggle_listed LIST 0|1
 }
 toggle_listed "$with" 1
 toggle_listed "$without" 0
+all_row=$(( ${#ids[@]} + 1 ))        # after the optional parts: "Install all", then the removals
+removal_row=$(( ${#ids[@]} + 2 ))
+all_on() { [[ " ${on[*]} " != *" 0 "* ]]; }
 show_parts() {
-  local i w=$(( $(tput cols 2>/dev/null || echo 100) - 28 ))
+  local i w=$(( $(tput cols 2>/dev/null || echo 100) - 28 )) list
   for i in "${!ids[@]}"; do
     printf '  %2d [%s] %-17s %s\n' $((i + 1)) "$([[ ${on[i]} == 1 ]] && echo x || echo ' ')" "${names[i]}" "${descs[i]:0:w}"
   done
+  printf '  %2d [%s] %-17s %s\n' $all_row "$(all_on && echo x || echo ' ')" "Install all" "every optional part above"
+  (( ${#removable[@]} )) || return 0
+  list="${#removable[@]} installed packages Nightdrive doesn't use:"
+  for i in "${removable[@]}"; do (( ${#list} + ${#i} + 3 <= w )) || { list+=" …"; break; }; list+=" $i"; done
+  echo
+  printf '  %2d [%s] %-17s %s\n' $removal_row "$( (( debloat )) && echo x || echo ' ')" "Remove apps" "$list"
+  (( fresh )) || printf '         %-17s %s\n' "" "Off by default: this system was installed $age_days days ago, these may be in use."
 }
 if [[ -z $base$with$without && -t 0 ]]; then
   echo "Optional parts. Everything else is the same on every install; these can also be added later (launcher ›"
-  echo "Install › Plugins). Type numbers to tick or untick (e.g. 2 5), a = all, n = none, Enter installs the ticked ones."
+  echo "Install › Plugins). Type numbers to tick or untick (e.g. 2 5), a = all, n = none, Enter continues."
   while true; do
     echo; show_parts; echo
     read -rp "Toggle (Enter to continue): " ans
@@ -86,14 +113,22 @@ if [[ -z $base$with$without && -t 0 ]]; then
         a) on=("${on[@]/*/1}") ;;
         n) on=("${on[@]/*/0}") ;;
         *) if [[ $a =~ ^[0-9]+$ ]] && (( a >= 1 && a <= ${#ids[@]} )); then on[a-1]=$(( 1 - on[a-1] ))
+           elif [[ $a == "$all_row" ]]; then if all_on; then on=("${on[@]/*/0}"); else on=("${on[@]/*/1}"); fi
+           elif [[ $a == "$removal_row" ]] && (( ${#removable[@]} )); then debloat=$(( 1 - debloat ))
            else echo "  not a number from the list: $a"; fi ;;
       esac
     done
   done
 fi
 chosen=(); for i in "${!ids[@]}"; do [[ ${on[i]} == 1 ]] && chosen+=("${ids[i]}"); done
-if (( dry )); then show_parts; echo; echo "Would install: ${chosen[*]:-(no optional parts)}"; exit 0; fi
+if (( dry )); then
+  show_parts; echo; echo "Would install: ${chosen[*]:-(no optional parts)}"
+  if (( debloat && ${#removable[@]} )); then echo "Would remove:"; echo "${removable[*]}" | fold -s -w 100 | sed 's/^/  /'
+  else echo "Would remove: nothing"; fi
+  exit 0
+fi
 echo "Optional parts: ${chosen[*]:-none}"
+(( debloat && ${#removable[@]} )) && echo "Removing: ${#removable[@]} packages (packages-remove*.txt)"
 has() { [[ " ${chosen[*]} " == *" $1 "* ]]; }
 
 # sudo once: the system update and the compiling take long, and the password asked again halfway would stop the
@@ -102,6 +137,16 @@ sudo -v
 while sleep 50; do kill -0 $$ 2>/dev/null || exit; sudo -n -v 2>/dev/null; done &
 keepalive=$!
 trap 'kill $keepalive 2>/dev/null' EXIT
+
+if (( debloat && ${#removable[@]} )); then
+  # Before the update, which would otherwise download and install new versions of LibreOffice, KDE PIM and the rest only
+  # for them to go minutes later (and fewer KDE packages to update leaves fewer file conflicts on an older image).
+  echo "==> Removing unneeded apps and services (packages-remove*.txt; keep them with --keep-apps)"
+  # dnf also removes what only they needed: the packages.txt ones already here (ImageMagick…) are marked as wanted first
+  keep=$(installed $(pkgs "$repo/packages.txt"))
+  [[ -z $keep ]] || sudo dnf mark user $keep >/dev/null
+  sudo dnf remove -y "${removable[@]}"
+fi
 
 echo "==> System update (a fresh install from an older image would otherwise get a half-updated KDE: file conflicts)"
 sudo dnf upgrade --refresh -y
@@ -116,7 +161,7 @@ sudo dnf install -y $(pkgs "$repo/packages-hyprland.txt")
 
 echo "==> Fedora packages"
 sudo dnf install -y $(pkgs "$repo/packages.txt")
-# install leaves a package that KDE already pulled in marked as a dependency, and the removals below would take it along
+# install leaves a package that KDE already pulled in marked as a dependency, and --no-kde's removal would take it along
 sudo dnf mark user $(pkgs "$repo/packages.txt") >/dev/null
 
 if (( vm )); then
@@ -162,17 +207,6 @@ if (( greeter )); then
   echo "==> Login screen (greetd + Quickshell); takes effect from the next boot"
   "$repo/config/greeter/install.sh"
   "$repo/config/greeter/switch.sh" on
-fi
-
-if (( debloat )); then
-  echo "==> Removing unneeded apps and services (packages-remove.txt; keep them with --keep-apps)"
-  # Packages that aren't installed are skipped. dnf also removes what only they needed, so packages.txt lists the
-  # few things the scripts use that would otherwise go with them (ImageMagick, zenity).
-  sudo dnf remove -y $(pkgs "$repo/packages-remove.txt") 'libreoffice-*'
-  if (( !vm )); then
-    echo "==> Removing other hardware's firmware and VM guest tools (packages-remove-asahi.txt)"
-    sudo dnf remove -y $(pkgs "$repo/packages-remove-asahi.txt")
-  fi
 fi
 
 # Last of the unattended part. One that fails doesn't stop the rest: it's listed at the end, and can be run again from
