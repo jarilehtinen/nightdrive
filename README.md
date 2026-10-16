@@ -114,10 +114,12 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
 - An **Apple Silicon Mac** (M1 or M2 series) with **[Fedora Asahi Remix](https://asahilinux.org/fedora/) 44**, the KDE edition.
 - Tested on a MacBook Pro 14″ with an M2 Max. Other models should work, but you may need to adjust a few values (see
   [Make it yours](#make-it-yours)).
+- Experimental: a **PC** (x86_64) with **Fedora 44 KDE**, NVIDIA, AMD or Intel graphics ([docs/pc.md](docs/pc.md)), or a
+  Fedora 44 virtual machine ([docs/vm.md](docs/vm.md)). The installer tells which machine it's on.
 
 ## Install
 
-On a fresh Fedora Asahi Remix 44 with a network connection:
+On a fresh Fedora Asahi Remix 44 (or Fedora 44 KDE on a PC) with a network connection:
 
 ```sh
 sudo dnf install -y git   # not in a fresh install
@@ -167,7 +169,8 @@ login screen fails, press Ctrl+Alt+F3, log in and run `config/greeter/switch.sh 
 | `--keep-apps` | Keeps the KDE apps, printing, network shares, accessibility tools and other packages listed in `packages-remove.txt` (comment a line out to keep just that one) |
 | `--debloat` | Removes them also on a system that isn't fresh (without a terminal, or with `--defaults` and the like, nothing is asked) |
 | `--no-kde` | Removes Plasma completely (experimental) |
-| `--vm` | For trying Nightdrive in a Fedora 44 VM instead of an Asahi Mac ([docs/vm.md](docs/vm.md)) |
+| `--vm` | The virtual machine settings, if the VM isn't detected as one ([docs/vm.md](docs/vm.md)) |
+| `--no-nvidia` | On a PC, leaves an NVIDIA card's driver alone instead of installing RPM Fusion's ([docs/pc.md](docs/pc.md)) |
 | `--with deck,1password` | These optional parts on top of the defaults, without asking (`--dry-run` lists the ids) |
 | `--without youtube` | The defaults without these, without asking; combines with `--with` |
 | `--all` / `--none` / `--defaults` | Every optional part / none / the defaults (Tailscale, Deck, YouTube), without asking |

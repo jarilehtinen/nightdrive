@@ -30,7 +30,7 @@ Column {
     Timer {
         id: apply; interval: 60
         onTriggered: {
-            if (m.pendingKeys >= 0) { Quickshell.execDetached(["brightnessctl", "-d", "kbd_backlight", "set", Math.round(m.pendingKeys * 100) + "%"]); m.pendingKeys = -1 }
+            if (m.pendingKeys >= 0) { Quickshell.execDetached(["brightnessctl", "-d", "*kbd_backlight*", "set", Math.round(m.pendingKeys * 100) + "%"]); m.pendingKeys = -1 }
         }
     }
 
@@ -56,7 +56,7 @@ Column {
     }
     Sh {
         id: kbdProc
-        command: ["brightnessctl", "-m", "-d", "kbd_backlight"]
+        command: ["brightnessctl", "-m", "-d", "*kbd_backlight*"]
         onResult: text => {
             if (keySlider.pressed || m.pendingKeys >= 0) return
             const f = text.trim().split(",")

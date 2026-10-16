@@ -5,7 +5,7 @@ dev=$1 dir=$2
 args=()
 min=0
 step=5                                   # screen: 5 % step
-if [[ $dev == kbd ]]; then args=(-d kbd_backlight); step=10; fi   # backlight: 10 %
+if [[ $dev == kbd ]]; then args=(-d "*kbd_backlight*"); step=10; fi   # backlight: 10 %; the name differs by machine (MacBook: kbd_backlight, ThinkPad: tpacpi::kbd_backlight)
 IFS=, read -r _ _ cur _ max < <(brightnessctl "${args[@]}" -m)
 new=$(awk -v c="$cur" -v m="$max" -v d="$dir" -v lo="$min" -v s="$step" 'BEGIN {
   p = int(c * 100 / m + 0.5)

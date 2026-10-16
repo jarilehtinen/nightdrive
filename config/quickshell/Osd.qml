@@ -25,7 +25,7 @@ Scope {
         function dnd(on: bool): void { osd.mode = "dnd"; osd.dnd = on; win.visible = true; hide.restart() }
         function mic(): void { osd.mode = "mic"; osd.micLabel = ""; micProc.running = true }
         function micblocked(): void { osd.mode = "mic"; osd.micMuted = true; osd.micLabel = "Unable to listen - mic muted"; win.visible = true; hide.restart() }   // F5 with the mic muted
-        function kbd(): void { osd.mode = "kbd"; brightProc.command = ["brightnessctl", "-d", "kbd_backlight", "-m"]; brightProc.running = true }
+        function kbd(): void { osd.mode = "kbd"; brightProc.command = ["brightnessctl", "-d", "*kbd_backlight*", "-m"]; brightProc.running = true }
     }
 
     Sh {

@@ -4,7 +4,8 @@
 -----------------
 ---- MACHINE ----
 -----------------
--- Settings for the MacBook's built-in display and a Finnish Mac keyboard: the first things to change on other hardware.
+-- Settings for the MacBook's built-in display and a Finnish Mac keyboard. On a PC or a VM install.sh writes the machine's
+-- own in local.lua (docs/pc.md), which overrides these.
 -- MacBook display with the notch, 3024x1964 → scale 2.0 (= 1512x982)
 -- (1.75 doesn't divide it evenly; the only clean values are 2.0 and 1.333)
 local MONITOR_SCALE = 2.0
@@ -70,6 +71,15 @@ hl.env("HYPRCURSOR_SIZE", "24")
 hl.env("QT_QPA_PLATFORM", "wayland;xcb")
 hl.env("QT_QPA_PLATFORMTHEME", "kde")  -- Qt apps (Dolphin) use KDE's dark theme
 hl.env("MOZ_ENABLE_WAYLAND", "1")
+-- NVIDIA's own driver (a PC, install.sh): video decoding and GLX through it (Hyprland wiki › NVIDIA). Checked at start
+-- rather than written by install.sh, so a driver added or removed later is followed.
+local nvidia = io.open("/proc/driver/nvidia/version")
+if nvidia then
+    nvidia:close()
+    hl.env("LIBVA_DRIVER_NAME", "nvidia")
+    hl.env("__GLX_VENDOR_LIBRARY_NAME", "nvidia")
+    hl.env("NVD_BACKEND", "direct")
+end
 
 -----------------------
 ---- LOOK AND FEEL ----

@@ -1,0 +1,6 @@
+# Dictation (voxtype, F5) on a machine other than the MacBook (link.sh picks this file): the default mic, whichever is
+# selected. The name is the one voxtype/config.toml asks for (asoundrc is the MacBook's own mic).
+pcm.macbook_mic {
+    type pipewire
+    hint { show on description "Default microphone" }
+}

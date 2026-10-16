@@ -4,11 +4,13 @@
 CPU load is measured since the previous call (state: $XDG_RUNTIME_DIR/sysinfo-<mode>.json); the first call measures over 0.3 s."""
 import glob, json, os, sys, time
 
-# MacBook-specific (Apple Silicon): the temperature sensors shown in the menu, as (substring of
-# "<hwmon name> <sensor label>", title). Other machines: see /sys/class/hwmon/hwmon*/{name,temp*_label}.
+# The temperature sensors shown in the menu, as (substring of "<hwmon name> <sensor label>", title); the ones a machine
+# doesn't have are left out. MacBook (Apple Silicon), then a PC's CPU (Intel: coretemp, AMD: k10temp) and AMD graphics.
+# Others: see /sys/class/hwmon/hwmon*/{name,temp*_label}. NVIDIA's own driver has no hwmon sensor.
 # The battery's own temperature is in the battery menu (from power_supply), not here.
 SENSORS = [("nvme", "SSD"), ("WiFi/BT", "Wi-Fi/BT"),
-           ("Charge Regulator", "Charger"), ("tas2764", "Speakers")]
+           ("Charge Regulator", "Charger"), ("tas2764", "Speakers"),
+           ("coretemp Package", "CPU"), ("k10temp Tctl", "CPU"), ("amdgpu edge", "GPU")]
 
 mode = sys.argv[1] if len(sys.argv) > 1 else "menu"
 state_path = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), f"sysinfo-{mode}.json")

@@ -7,7 +7,13 @@
 # To disable the radio cut-off: put NIGHTDRIVE_RADIOS=0 in /etc/nightdrive-sleep.conf.
 LOG=${NIGHTDRIVE_SLEEP_LOG:-/var/log/nightdrive-sleep.log}
 WAS_ON=/run/nightdrive-sleep.radios   # radios that were on before sleep
-BAT=${NIGHTDRIVE_BATTERY:-/sys/class/power_supply/macsmc-battery}
+# The machine's own battery (MacBook: macsmc-battery), not a Bluetooth mouse's (scope Device); none on a desktop: no log values
+BAT=$NIGHTDRIVE_BATTERY
+if [ -z "$BAT" ]; then
+  for b in /sys/class/power_supply/*; do
+    [ "$(cat "$b/type" 2>/dev/null)" = Battery ] && [ "$(cat "$b/scope" 2>/dev/null)" != Device ] && { BAT=$b; break; }
+  done
+fi
 RADIOS=1
 [ -r /etc/nightdrive-sleep.conf ] && . /etc/nightdrive-sleep.conf
 [ -n "$NIGHTDRIVE_RADIOS" ] && RADIOS=$NIGHTDRIVE_RADIOS

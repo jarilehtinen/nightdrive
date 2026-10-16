@@ -1,19 +1,53 @@
 #!/bin/bash
-# What Nightdrive runs on, for scripts that differ between machines (e.g. Install › Software's lists).
+# What Nightdrive runs on, for scripts that differ between machines (e.g. Install › Software's lists, install.sh).
 #   platform           "<arch> <platform>", e.g. "aarch64 asahi" or "x86_64 generic"
 #   platform arch      aarch64 | x86_64 | … (Flatpak's arch name: the one Flathub's builds use)
 #   platform name      asahi (Apple Silicon) | generic
+#   platform machine   asahi (Apple Silicon Mac) | vm (virtual machine) | pc (anything else: a PC, an Intel Mac)
+#   platform gpu       the display adapters' vendors, e.g. "nvidia" or "intel nvidia" (a laptop with both); "" if none
+#   platform keyboard  the system's keyboard layout and variant (localectl, set by Fedora's installer), e.g. "fi" or "us intl"
 #   platform pagesize  memory page size in bytes (16384 on Asahi: some apps break on it)
 set -euo pipefail
 
 arch() { flatpak --default-arch 2>/dev/null || uname -m; }
 # The device tree names the hardware: Apple Silicon Macs have "apple,arm-platform" (x86 PCs have no device tree)
-name() { if tr '\0' '\n' < /proc/device-tree/compatible 2>/dev/null | grep -qx 'apple,arm-platform'; then echo asahi; else echo generic; fi; }
+name() { if tr '\0' '\n' 2>/dev/null < /proc/device-tree/compatible | grep -qx 'apple,arm-platform'; then echo asahi; else echo generic; fi; }
+machine() {
+  if [[ $(name) == asahi ]]; then echo asahi
+  elif systemd-detect-virt --vm --quiet 2>/dev/null; then echo vm
+  else echo pc; fi
+}
+# The PCI display controllers (class 0x03…) by vendor, read from sysfs (no lspci needed), so an NVIDIA card is found before
+# its driver is installed. Apple Silicon's GPU isn't on PCI: "".
+gpu() {
+  local d v out=()
+  for d in /sys/bus/pci/devices/*; do
+    [[ $(cat "$d/class" 2>/dev/null) == 0x03* ]] || continue
+    case $(cat "$d/vendor") in
+      0x10de) v=nvidia ;;
+      0x1002) v=amd ;;
+      0x8086) v=intel ;;
+      *) v=$(cat "$d/vendor") ;;
+    esac
+    [[ " ${out[*]} " == *" $v "* ]] || out+=("$v")
+  done
+  echo "${out[*]}"
+}
+keyboard() {
+  local layout variant
+  # || true: without localectl (a container) the pipeline fails, and set -e would end the script silently
+  layout=$(localectl status 2>/dev/null | sed -n 's/^ *X11 Layout: *//p' | cut -d, -f1 || true)
+  variant=$(localectl status 2>/dev/null | sed -n 's/^ *X11 Variant: *//p' | cut -d, -f1 || true)
+  echo "${layout:-us}${variant:+ $variant}"
+}
 
 case ${1:-} in
   "") echo "$(arch) $(name)" ;;
   arch) arch ;;
   name) name ;;
+  machine) machine ;;
+  gpu) gpu ;;
+  keyboard) keyboard ;;
   pagesize) getconf PAGESIZE ;;
-  *) sed -n '3,6p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2 ;;
+  *) sed -n '3,9p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2 ;;
 esac

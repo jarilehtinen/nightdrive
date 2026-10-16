@@ -1,5 +1,8 @@
 #!/bin/bash
-# Sets up this environment on a fresh Fedora Asahi Remix 44 install (aarch64, MacBook).
+# Sets up this environment on a fresh Fedora Asahi Remix 44 install (aarch64, MacBook), or Fedora 44 KDE on a PC (x86_64)
+# or in a virtual machine. Which one it is comes from `nightdrive platform machine` (asahi | pc | vm): the notch setting
+# and the Mac-only removals are for asahi, a PC gets its display and keyboard settings in config/hypr/local.lua and, with
+# an NVIDIA card, the driver from RPM Fusion.
 #   ./install.sh               asks which optional parts to install (1Password, Deck, web apps…, plugins.txt) and whether
 #                              to remove the apps Nightdrive doesn't use (packages-remove.txt), then runs unattended:
 #                              removes those, updates the system, installs packages, fonts, the notch setting, links the
@@ -14,21 +17,23 @@
 #   ./install.sh --keep-apps   keeps the KDE apps and system services that are otherwise removed (packages-remove*.txt)
 #   ./install.sh --debloat     removes them also on a system that isn't fresh
 #   ./install.sh --no-kde      removes Plasma entirely (needs the greeter); experimental, see config/greeter/
-#   ./install.sh --vm          for trying it on a non-Asahi machine (e.g. a Fedora 44 VM): skips the notch setting
+#   ./install.sh --vm          the virtual machine settings even if it isn't detected as one (docs/vm.md)
+#   ./install.sh --no-nvidia   leaves an NVIDIA card's driver alone (e.g. one installed by hand); docs/pc.md
 # Without a terminal (or with any of --with/--without/--all/--none/--defaults) nothing is asked. What was skipped can be
 # added later: launcher › System › Install (Recommended, Webapp, Plugins), or `nightdrive plugins install ID`.
 # Run as a regular user; sudo asks for the password once at the start.
 set -euo pipefail
 repo=$(cd "$(dirname "$0")" && pwd)
 FRESH_DAYS=3                     # a system installed less than this many days ago gets the removals by default
-debloat=""; vm=0; greeter=1; nokde=0; dry=0      # debloat: 1 | 0, "" = by the system's age
+debloat=""; machine=""; nvidia=1; secureboot=0; greeter=1; nokde=0; dry=0   # debloat: 1 | 0, "" = by the system's age; machine: "" = detected
 base=""; with=""; without=""     # base: all | none | defaults, "" = ask
-usage() { sed -n '3,20p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '6,24p' "$0" | sed 's/^# \{0,1\}//'; }
 while (( $# )); do
   case $1 in
     --debloat) debloat=1 ;;
     --keep-apps) debloat=0 ;;
-    --vm) vm=1 ;;
+    --vm) machine=vm ;;
+    --no-nvidia) nvidia=0 ;;
     --greeter) ;;              # the default now; still accepted
     --no-greeter) greeter=0 ;;
     --no-kde) nokde=1 ;;
@@ -50,12 +55,25 @@ pkgs() { grep -vE '^\s*(#|$)' "$1" | tr '\n' ' '; }
 # The names of these that are installed (rpm prints "package X is not installed" for the rest)
 installed() { (( $# )) && rpm -q --qf '%{NAME}\n' "$@" 2>/dev/null | grep -v ' ' | sort -u | tr '\n' ' ' || true; }
 
+# --- The machine: asahi | pc | vm, its display adapters and the keyboard layout Fedora's installer set ---
+platform="$repo/config/hypr/scripts/platform"
+[[ -n $machine ]] || machine=$("$platform" machine)
+gpus=$("$platform" gpu)
+read -r kb_layout kb_variant _ <<<"$("$platform" keyboard)"
+# NVIDIA: Hyprland needs the proprietary driver (nouveau is too slow and lacks features); a PC only, a VM has its own adapter
+[[ $machine == pc && " $gpus " == *" nvidia "* ]] || nvidia=0
+case $machine in
+  asahi) machine_desc="Apple Silicon Mac (Fedora Asahi Remix)" ;;
+  vm)    machine_desc="virtual machine" ;;
+  *)     machine_desc="PC ($(uname -m)${gpus:+, graphics: $gpus}, keyboard: $kb_layout${kb_variant:+ $kb_variant})" ;;
+esac
+
 # --- Removals (packages-remove*.txt): what this system has of them, and whether it's fresh ---
 # Someone trying Nightdrive on the system they already use shouldn't lose KMail or printing without seeing the list, so the
 # removals default to on only on a fresh install. /etc/machine-id is written at the first boot (an image's rpm install
 # times are the image's build date, so they can't tell).
 removable=$(installed $(pkgs "$repo/packages-remove.txt") $(rpm -qa --qf '%{NAME}\n' 'libreoffice-*' 2>/dev/null))
-(( vm )) || removable+=$(installed $(pkgs "$repo/packages-remove-asahi.txt"))
+[[ $machine != asahi ]] || removable+=$(installed $(pkgs "$repo/packages-remove-asahi.txt"))
 read -ra removable <<<"$removable"
 age_days=$(( ( $(date +%s) - $(stat -c %Y /etc/machine-id 2>/dev/null || echo 0) ) / 86400 ))
 fresh=$(( age_days < FRESH_DAYS ))
@@ -110,6 +128,9 @@ show_parts() {
   printf '  %2d [%s] %-17s %s\n' $removal_row "$( (( debloat )) && echo x || echo ' ')" "Remove apps" "$list"
   (( fresh )) || printf '         %-17s %s\n' "" "Off by default: this system was installed $age_days days ago, these may be in use."
 }
+echo "Machine: $machine_desc"
+(( nvidia )) && echo "         NVIDIA: installs the driver from RPM Fusion (akmod-nvidia; --no-nvidia leaves it alone)"
+echo
 if [[ -z $base$with$without && -t 0 ]]; then
   echo "Optional parts. Everything else is the same on every install; these can also be added later (launcher ›"
   echo "System › Install). Type numbers to tick or untick (e.g. 2 5), a = all, n = none, Enter continues."
@@ -173,22 +194,56 @@ sudo dnf install -y $(pkgs "$repo/packages.txt")
 # install leaves a package that KDE already pulled in marked as a dependency, and --no-kde's removal would take it along
 sudo dnf mark user $(pkgs "$repo/packages.txt") >/dev/null
 
-if (( vm )); then
-  echo "==> Skipping the notch setting (--vm)"
-  if [[ -e $repo/config/hypr/local.lua ]]; then
-    echo "    config/hypr/local.lua already exists, leaving it as is (delete it to regenerate the VM settings)"
-  else
-    cat > "$repo/config/hypr/local.lua" <<'LUA'
--- Generated by: ./install.sh --vm (virtual machine). Machine-specific; delete this file to restore the MacBook settings.
+if (( nvidia )); then
+  # RPM Fusion's driver, built for each kernel by akmods. With Secure Boot the module is signed with a key of this machine's
+  # own (kmodgenca), which has to be enrolled at the next boot: listed at the end.
+  echo "==> NVIDIA driver (RPM Fusion: akmod-nvidia)"
+  fedora=$(rpm -E %fedora)
+  sudo dnf install -y "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$fedora.noarch.rpm" \
+    "https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$fedora.noarch.rpm"
+  mokutil --sb-state 2>/dev/null | grep -q 'SecureBoot enabled' && secureboot=1
+  if (( secureboot )); then
+    sudo dnf install -y akmods mokutil openssl
+    sudo kmodgenca -a
+  fi
+  sudo dnf install -y akmod-nvidia
+  # Built now for the newest kernel (the one the reboot starts), not at the first boot with a black screen meanwhile
+  kernel=$(rpm -q --qf '%{VERSION}-%{RELEASE}.%{ARCH}\n' kernel-core | sort -V | tail -1)
+  sudo akmods --force --kernels "$kernel" || true
+  modinfo -k "$kernel" nvidia >/dev/null 2>&1 || echo "    The driver didn't build for $kernel yet; akmods tries again at the next boot (sudo journalctl -u akmods)."
+fi
+
+case $machine in
+  asahi)
+    echo "==> Notch: the display uses the full top edge (appledrm.show_notch=1, requires a reboot)"
+    sudo grubby --update-kernel=ALL --args="appledrm.show_notch=1"
+    ;;
+  *)
+    # The MacBook's settings are hyprland.lua's own; another machine gets its own in local.lua (not in the repo)
+    if [[ -e $repo/config/hypr/local.lua ]]; then
+      echo "==> config/hypr/local.lua already exists, leaving it as is (delete it to regenerate the $machine settings)"
+    elif [[ $machine == vm ]]; then
+      echo "==> Virtual machine settings (config/hypr/local.lua)"
+      cat > "$repo/config/hypr/local.lua" <<'LUA'
+-- Generated by: ./install.sh (virtual machine). Machine-specific; delete this file and run ./install.sh to regenerate it.
 NIGHTDRIVE = { corners = false }                       -- the rounded-corner shader is tuned for the 3024×1964 display (scale 2.0)
 hl.monitor({ output = "", mode = "preferred", position = "auto", scale = 2.0 })   -- Parallels "Best for Retina display"; "Scaled": launcher › Settings › Display
 hl.config({ cursor = { no_hardware_cursors = true } })                              -- in VMs the hardware cursor is often invisible
 LUA
-  fi
-else
-  echo "==> Notch: the display uses the full top edge (appledrm.show_notch=1, requires a reboot)"
-  sudo grubby --update-kernel=ALL --args="appledrm.show_notch=1"
-fi
+    else
+      echo "==> PC settings (config/hypr/local.lua): display scale by Hyprland, keyboard $kb_layout${kb_variant:+ $kb_variant}"
+      # Only plain xkb names go into the Lua strings
+      [[ $kb_layout =~ ^[a-z0-9_,-]+$ ]] || kb_layout=us
+      [[ $kb_variant =~ ^[a-z0-9_,-]*$ ]] || kb_variant=""
+      cat > "$repo/config/hypr/local.lua" <<LUA
+-- Generated by: ./install.sh (PC). Machine-specific; delete this file and run ./install.sh to regenerate it.
+NIGHTDRIVE = { corners = false }   -- the rounded-corner shader is tuned for the MacBook's 3024×1964 display (scale 2.0)
+hl.monitor({ output = "", mode = "preferred", position = "auto", scale = "auto" })   -- by the display's size and resolution; launcher › Settings › Display
+hl.config({ input = { kb_layout = "$kb_layout", kb_variant = "$kb_variant" } })   -- the layout Fedora's installer set (localectl), not the Mac one
+LUA
+    fi
+    ;;
+esac
 
 echo "==> Configs (links into ~/.config, fonts)"
 "$repo/link.sh"
@@ -258,4 +313,9 @@ if (( greeter )); then
 else
   echo "  Reboot and pick \"Hyprland\" (not \"Hyprland (uwsm-managed)\") as the session at the login screen."
 fi
-(( vm )) || echo "  The notch setting also takes effect at the reboot."
+[[ $machine == asahi ]] && echo "  The notch setting also takes effect at the reboot."
+if (( nvidia )) && (( secureboot )); then
+  echo "  Secure Boot is on: before the reboot, run  sudo mokutil --import /etc/pki/akmods/certs/public_key.der  (choose a"
+  echo "  one-time password); at the reboot the blue MOK screen asks for it: Enroll MOK › Continue › Yes. Otherwise the NVIDIA"
+  echo "  driver doesn't load (docs/pc.md)."
+fi

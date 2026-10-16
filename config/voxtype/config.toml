@@ -42,7 +42,8 @@ enabled = false
 # List devices with: voxtype info devices
 # (or `arecord -L`). This takes an ALSA device name, not a PulseAudio
 # or PipeWire source name -- names from `pactl list sources` will not work.
-# macbook_mic = ALSA alias (config/alsa/asoundrc): always the MacBook's mic, even if headphones are selected as the default mic
+# macbook_mic = ALSA alias (config/alsa/asoundrc): always the MacBook's mic, even if headphones are selected as the default mic;
+# on other machines the default mic (asoundrc.generic)
 device = "macbook_mic"
 
 # Sample rate in Hz (whisper expects 16000)
