@@ -76,7 +76,7 @@ PanelWindow {
         Quickshell.execDetached(["bash", "-c", 'mkdir -p "$(dirname "$2")" && printf "%s\\n" "$1" > "$2.tmp" && mv "$2.tmp" "$2"',
                                  "_", JSON.stringify(n), prefsFile])
     }
-    property var pluginList: null             // Install › Plugins: [{ id, name, icon, desc, installed }] (nightdrive plugins), null = loading
+    property var pluginList: null             // Install › Recommended, Plugins and Webapp's ready-made ones: [{ id, name, icon, desc, installed, group }] (nightdrive plugins), null = loading
     property var pwItems: []                  // Passwords: 1Password items (op item list)
     property string pwState: "idle"           // idle | loading | ready | error
     property string pwError: ""
@@ -132,7 +132,7 @@ PanelWindow {
     readonly property bool extLevel: extOf(level) !== null
     readonly property int selIndex: list.currentIndex
     function shakeNow() { shake.restart() }
-    readonly property var parents: Object.assign({ launcherprefs: "settings", shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", battery: "settings", install: "system", remove: "system", emoji: "tools", screenshot: "tools", software: "install", webapp: "install", plugins: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", sounds: "settings", soundregular: "sounds", soundurgent: "sounds", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, sys.parents, home.parents, ext ? ext.parents : {})
+    readonly property var parents: Object.assign({ launcherprefs: "settings", shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", battery: "settings", install: "system", remove: "system", emoji: "tools", screenshot: "tools", software: "install", webapp: "install", recommended: "install", plugins: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", sounds: "settings", soundregular: "sounds", soundurgent: "sounds", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, sys.parents, home.parents, ext ? ext.parents : {})
     // Search found nothing: hint below ⌘⌥⏎ (icons) → send the text to Claude
     readonly property bool noHit: (level === "root" || level === "apps") && query.trim() !== "" && results.length === 0
     // The selected row is an app: ⌃Enter shows it in Apps (the list with an empty query) or hides it from there.
@@ -156,7 +156,8 @@ PanelWindow {
         : level === "clipboard" ? "Enter: paste  ·  Shift+Enter: copy only"
         : level === "shelf" || level === "curated" ? "Enter: play in Deck"
         : level === "emoji" ? "Enter: paste  ·  Shift+Enter: copy only  ·  search in English or Finnish"
-        : level === "plugins" && (results[list.currentIndex] || {}).kind === "action" ? ((results[list.currentIndex] || {}).installed ? "Enter: run the installer again" : "Enter: install in a terminal")
+        : (level === "plugins" || level === "recommended") && (results[list.currentIndex] || {}).kind === "action" ? ((results[list.currentIndex] || {}).installed ? "Enter: run the installer again" : "Enter: install in a terminal")
+        : level === "webapp" && (results[list.currentIndex] || {}).ready ? ((results[list.currentIndex] || {}).installed ? "Enter: add again" : "Enter: add")
         : level === "webname" && query.trim() !== "" ? "Enter: continue to the address"
         : level === "webaddr" && query.trim() !== "" ? "Enter: create the webapp" : ""
     // The footer as key caps: "Ctrl+Enter: show in Apps  ·  Esc: back" → [{ keys: ["Ctrl", "Enter"], text: "show in Apps" }, ...].
@@ -178,7 +179,7 @@ PanelWindow {
 
     readonly property var titles: Object.assign({ apps: "Apps", music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", musicsearch: "Music › Search", artist: "Music › " + artist.name, keys: "Keybindings", screenshot: "Tools › Screenshot", settings: "Settings", display: "Settings › Display", battery: "Settings › Battery", startup: "Settings › Startup", screensaver: "Settings › Screensaver", saverafter: "Screensaver › Start after", screenoff: "Screensaver › Screen off after", saverstyle: "Screensaver › Style", sounds: "Settings › Notifications", soundregular: "Notifications › Regular sound", soundurgent: "Notifications › Urgent sound", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
                                      launcherprefs: "Settings › Launcher", topbar: "Settings › Top bar", baropacity: "Top bar › Opacity", baricons: "Top bar › Icon colors", barhl: "Top bar › Highlight", baritems: "Top bar › Items",
-                                     system: "System", install: "System › Install", emoji: "Tools › Emoji", software: "Install › Software", webapp: "Install › Webapp", plugins: "Install › Plugins", webname: "Install › Webapp › Name", webaddr: "Install › Webapp › Address", remove: "System › Remove", power: "Power", passwords: "Passwords", clipboard: "Clipboard",
+                                     system: "System", install: "System › Install", emoji: "Tools › Emoji", software: "Install › Software", webapp: "Install › Webapp", recommended: "Install › Recommended", plugins: "Install › Plugins", webname: "Install › Webapp › Name", webaddr: "Install › Webapp › Address", remove: "System › Remove", power: "Power", passwords: "Passwords", clipboard: "Clipboard",
                                      tools: "Tools" }, sys.titles, home.titles, ext ? ext.titles : {})
 
     // Reference at startup: the app list only loads on first reference
@@ -230,11 +231,12 @@ PanelWindow {
         install: [
             { kind: "nav", name: "Software", glyph: "package-plus", target: "software", summary: "dnf + Flatpak" },
             { kind: "nav", name: "Webapp", glyph: "app-window", target: "webapp", summary: "website as an app" },
-            { kind: "nav", name: "Plugins", glyph: "puzzle", target: "plugins", summary: "optional parts" }
+            { kind: "nav", name: "Recommended", glyph: "star", target: "recommended", summary: "apps set up for Nightdrive" },
+            { kind: "nav", name: "Plugins", glyph: "puzzle", target: "plugins", summary: "desktop features" }
         ],
         webapp: [
-            { kind: "nav", name: "Name and address here", glyph: "keyboard", target: "webname" },
-            { kind: "action", name: "In a terminal", glyph: "terminal", cmd: webappTerm() }
+            { kind: "nav", name: "Add your own", glyph: "plus", target: "webname" },
+            { kind: "action", name: "Add your own in a terminal", glyph: "terminal", cmd: webappTerm() }
         ],
         // In groups like macOS's System Settings: the often used first (connections, hardware), then the look, then
         // what is set once (behaviour)
@@ -329,8 +331,9 @@ PanelWindow {
         ]
     }
     readonly property var installAliases: ({ "Software": "package dnf rpm flatpak flathub app apps program store",
-                                             "Webapp": "web app website site pwa url",
-                                             "Plugins": "plugin extension addon optional home assistant jottacloud deck vscode airplay 1password tailscale thunderbird apostrophe telegram slack teams whatsapp youtube" })
+                                             "Webapp": "web app website site pwa url slack teams whatsapp youtube",
+                                             "Recommended": "optional home assistant jottacloud deck vscode 1password tailscale thunderbird apostrophe",
+                                             "Plugins": "plugin extension addon optional airplay screen mirroring" })
     readonly property var powerAliases: ({ "Lock": "screen", "Sleep": "suspend", "Log out": "logout sign out exit", "Restart": "reboot", "Shut down": "shutdown poweroff power off" })
 
     // Lower case without diacritics: "keittio" finds Keittiö, "ylavalo" Ylävalo
@@ -629,13 +632,22 @@ PanelWindow {
                       sub: "Typos and initials also match: firefx, vsc", switchOn: prefs.fuzzy },
                     { kind: "lpref", key: "shortcuts", name: "Shortcut hints", glyph: "keyboard",
                       sub: "An app’s or menu’s keys on its row (⌘⇧P)", switchOn: prefs.shortcuts }]
-        } else if (level === "plugins") {
+        } else if (level === "plugins" || level === "recommended") {
             // Enter runs the installer in a terminal (they ask things: sudo, tokens, logins); an installed one can be run again
             if (pluginList === null) return hint("Loading…")
-            all = pluginList.map(p => ({ item: { kind: "action", name: p.name, glyph: p.icon, sub: p.desc, installed: p.installed,
+            all = pluginList.filter(p => p.group === (level === "plugins" ? "plugin" : "recommended")).map(p => ({ item: { kind: "action", name: p.name, glyph: p.icon, sub: p.desc, installed: p.installed,
                                                  summary: p.installed ? "installed" : undefined,
                                                  cmd: term('"$HOME/.local/bin/nightdrive" plugins install "$1"', p.id) },
                                          text: p.name, extra: p.desc }))
+        } else if (level === "webapp") {
+            // Your own first, then the ready-made ones (plugins.txt, group webapp): added without a terminal, nothing to ask
+            const ready = (pluginList || []).filter(p => p.group === "webapp").map(p => ({
+                item: { kind: "action", ready: true, name: p.name, glyph: p.icon, installed: p.installed,
+                        summary: p.installed ? "added" : undefined,
+                        cmd: ["bash", "-c", 'out=$("$HOME/.local/bin/nightdrive" plugins install "$1" 2>&1) && notify-send -a Webapp "Webapp added" "$2" || notify-send -u critical -a Webapp "Adding webapp failed" "$out"', "_", p.id, p.name] },
+                text: p.name, extra: p.desc }))
+            all = statics.webapp.map(r => ({ item: r, text: r.name }))
+                .concat(ready.length ? [{ item: { kind: "header", name: "Ready-made" }, text: "" }] : [], ready)
         } else if (level === "remove") {
             if (!removeLoaded) return [{ kind: "hint", name: "Loading packages…" }]
             all = removeList.map(p => ({ item: p, text: p.name, extra: p.summary }))
@@ -679,7 +691,7 @@ PanelWindow {
         list.currentIndex = firstSelectable()
         installResults = []
         if (target === "remove") removeProc.running = true
-        if (target === "plugins") pluginsProc.running = true
+        if (target === "plugins" || target === "recommended" || target === "webapp") pluginsProc.running = true
         if (target === "emoji" && !emojiLoaded) emojiProc.running = true
         if (target === "clipboard") { clipLoaded = false; clipProc.running = true }
         if (target === "background") wallProc.running = true
@@ -1372,13 +1384,14 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
             win.emojiLoaded = true
         }
     }
-    // Install › Plugins: plugins.txt via `nightdrive plugins` (id, name, icon, description, default, installer, installed 1/0)
+    // Install › Recommended, Plugins and Webapp: plugins.txt via `nightdrive plugins` (id, name, icon, description, default,
+    // installer, installed 1/0, group)
     Sh {
         id: pluginsProc
         command: [Quickshell.env("HOME") + "/.local/bin/nightdrive", "plugins"]
         onResult: text => {
-            win.pluginList = text.split("\n").map(l => l.split("\t")).filter(f => f.length >= 7)
-                .map(f => ({ id: f[0], name: f[1], icon: f[2], desc: f[3], installed: f[6] === "1" }))
+            win.pluginList = text.split("\n").map(l => l.split("\t")).filter(f => f.length >= 8)
+                .map(f => ({ id: f[0], name: f[1], icon: f[2], desc: f[3], installed: f[6] === "1", group: f[7] }))
         }
     }
     // Remove: packages the user installed, then the user's Flatpak apps (after a "--flatpak--" line, tab-separated)

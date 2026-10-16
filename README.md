@@ -101,11 +101,11 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
 | Notifications | Quickshell | app icon and time on every notification, history and do not disturb in the bar |
 | Files and images | Nautilus, Loupe | images open in Loupe, a simple viewer like Preview |
 | Markdown (optional) | [Apostrophe](https://apps.gnome.org/Apostrophe/) (Flatpak) | `.md` files open in it, themed editor |
-| Messaging (optional) | [Telegram Desktop](https://desktop.telegram.org) (Flatpak) | native Wayland app |
-| Web apps | Chromium app windows | WhatsApp, Slack, Teams and YouTube to choose from (optional); add your own |
+| Messaging | [Telegram Desktop](https://desktop.telegram.org) (Flatpak, install it from Install › Software) | native Wayland app, keeps running in the background like 1Password |
+| Web apps | Chromium app windows | add your own, or a ready-made one with a keybinding: WhatsApp, Slack, Teams, YouTube (Install › Webapp) |
 | Lock and idle | hyprlock, hypridle | screensaver after 10 min, lock after 30 min (screensaver and screen-off times: Settings › Screensaver) |
 | Smart home (optional) | [Home Assistant](https://www.home-assistant.io) (`install-home-assistant.sh`) | Home in the launcher: rooms and their devices (Enter turns one on/off or runs a scene, a light that's on has a yellow bulb and a ring around it showing the brightness: ←/→ or a sideways drag sets it, "olohuone kattovalo" finds it from the search), pinned devices in the top bar's Home menu (the scroll wheel sets a light's brightness), the webapp; local, Tailscale and Nabu Casa addresses tried in order |
-| Optional parts | everything marked optional above, Jottacloud, VS Code | chosen when installing; the rest later in launcher › Install › Plugins or `nightdrive plugins` (`plugins.txt`). A part that isn't installed doesn't show anywhere: no launcher level, bar icon or keybinding. One installed later (the launcher, `dnf`, Flatpak) shows up by itself |
+| Optional parts | everything marked optional above, Jottacloud, VS Code | chosen when installing; the rest later in launcher › System › Install (Recommended: apps Nightdrive sets up; Webapp; Plugins: desktop features like Screen Mirroring) or `nightdrive plugins` (`plugins.txt`). A part that isn't installed doesn't show anywhere: no launcher level, bar icon or keybinding. One installed later (the launcher, `dnf`, Flatpak) shows up by itself |
 
 ## Requirements
 
@@ -129,14 +129,23 @@ cd ~/dotfiles
 It asks first which optional parts you want (number toggles one, Enter continues):
 
 ```
+  Recommended apps
    1 [ ] 1Password         Password manager: launcher › Passwords, op CLI, SSH agent
    2 [x] Tailscale         VPN, in the top bar (log in afterwards: sudo tailscale up)
    …
-   6 [x] Deck              Spotify player (needs Premium), launcher and top bar; compiled
+   5 [x] Deck              Spotify player (needs Premium), launcher and top bar; compiled
    …
-  15 [ ] Install all       every optional part above
 
-  16 [x] Remove apps       112 installed packages Nightdrive doesn't use: akregator dolphin konsole kmail …
+  Web apps
+   9 [ ] Slack             Slack as a web app (⌘⇧S)
+   …
+
+  Plugins
+  13 [ ] Screen Mirroring  AirPlay to an Apple TV (doubletake, experimental; compiled)
+
+  14 [ ] Install all       every optional part above
+
+  15 [x] Remove apps       112 installed packages Nightdrive doesn't use: akregator dolphin konsole kmail …
 ```
 
 **Trying it on the system you already use?** The removals are on by default only on a fresh install (one installed less
@@ -145,7 +154,7 @@ in `~/.config` are moved aside to `<name>.bak-<time>`, and `config/greeter/switc
 
 After that it runs unattended (sudo asks for the password once at the start); the system update and compiling Deck take a
 while. Home Assistant, if chosen, asks for its address and token at the very end. Anything you skip can be added later from
-the launcher (System › Install › Plugins) or with `nightdrive plugins install ID`.
+the launcher (System › Install) or with `nightdrive plugins install ID`.
 
 Then **reboot**. The Nightdrive login screen (greetd + Quickshell) starts Hyprland; KDE stays installed as a fallback. If the
 login screen fails, press Ctrl+Alt+F3, log in and run `config/greeter/switch.sh off`.
@@ -169,8 +178,8 @@ A few things stay manual (the install lists the ones for the parts you chose):
 - Deck: sign in to Spotify (needs Premium and the Client ID of your own Spotify app, see Deck's README).
 - Open Firefox (and Thunderbird) once and run `./link.sh` again: it themes their profiles, which don't exist before the first start.
 - Optionally, set up dictation ([docs/dictation.md](docs/dictation.md)).
-- More optional parts: launcher › Install › Plugins, or `nightdrive plugins`. Each opens its installer in a terminal; running
-  one again is safe.
+- More optional parts: launcher › System › Install (Recommended, Webapp, Plugins), or `nightdrive plugins`. Each opens its
+  installer in a terminal (a ready-made web app is added right away); running one again is safe.
 
 `./link.sh` on its own just (re)links the config files and is safe to run again. The repo can live anywhere; `~/dotfiles` is
 only a convention.
@@ -230,7 +239,8 @@ The full list is in [`config/hypr/SHORTCUTS.md`](config/hypr/SHORTCUTS.md).
   launcher (Settings › Display) wins over the default.
 - **Per-machine overrides** go to `config/hypr/local.lua`, which git ignores.
 - **Keybindings** are all in [`config/hypr/bindings.lua`](config/hypr/bindings.lua).
-- **Optional parts** (apps, web apps, plugins) are listed in [`plugins.txt`](plugins.txt): a new one is a line there, its
+- **Optional parts** (recommended apps, ready-made web apps, plugins) are listed in [`plugins.txt`](plugins.txt), its last
+  column says which: a new one is a line there, its
   keybinding goes in `bindings.lua`'s `optional` list and SHORTCUTS.md (with an `{id}` tag). Apps that ⌘W should only hide are in
   [`config/hypr/background-apps`](config/hypr/background-apps).
 - **Launcher apps**: only the apps in [`config/fuzzel/apps-allow.txt`](config/fuzzel/apps-allow.txt) are listed. Search finds

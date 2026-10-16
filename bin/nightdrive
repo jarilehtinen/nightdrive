@@ -6,7 +6,7 @@
 #                              Update button runs the update in a terminal (nightdrive-update-check.timer, every 6 h)
 #   nightdrive topbar adjust     top bar icon and text sizes / positions a pixel at a time, live (config/topbar/adjust.conf)
 #   nightdrive topbar date [auto|dmy|mdy|iso]   the clock's date: auto = the locale's order (15.10. / 15/10 / 10/15 / 10-15)
-#   nightdrive plugins [list]   optional parts (plugins.txt) and whether each is installed; launcher › Install › Plugins
+#   nightdrive plugins [list]   optional parts (plugins.txt) and whether each is installed; launcher › System › Install
 #   nightdrive plugins install ID|NAME   runs a plugin's installer (e.g. `nightdrive plugins install deck`)
 #   nightdrive plugins installed   the installed ones' ids (also to ~/.cache/nightdrive/plugins: the desktop hides the rest)
 #   nightdrive agent-warn ["what"]   for coding agents: warns that the launcher or a menu opens in 5 s (AGENTS.md)
@@ -144,19 +144,19 @@ LIST
 }
 
 # Plugins (plugins.txt, its format is explained there): one tab-separated line each, id, name, icon, description,
-# default (on/off), installer, installed (1/0). The tests run side by side: `flatpak info` takes a moment.
+# default (on/off), installer, installed (1/0), group. The tests run side by side: `flatpak info` takes a moment.
 plugin_rows() { grep -vE '^\s*(#|$)' "$repo/plugins.txt"; }
 plugins() {
-  local tmp id name icon desc def inst test i=0
+  local tmp id name icon desc def inst test group i=0
   tmp=$(mktemp -d)
-  while IFS='|' read -r id name icon desc def inst test; do
+  while IFS='|' read -r id name icon desc def inst test group; do
     (cd "$repo" && bash -c "$test" >/dev/null 2>&1 && touch "$tmp/$i") &
     i=$((i + 1))
   done < <(plugin_rows)
   wait
   i=0
-  while IFS='|' read -r id name icon desc def inst test; do
-    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$id" "$name" "$icon" "$desc" "$def" "$inst" "$([[ -e $tmp/$i ]] && echo 1 || echo 0)"
+  while IFS='|' read -r id name icon desc def inst test group; do
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$id" "$name" "$icon" "$desc" "$def" "$inst" "$([[ -e $tmp/$i ]] && echo 1 || echo 0)" "$group"
     i=$((i + 1))
   done < <(plugin_rows)
   rm -rf "$tmp"

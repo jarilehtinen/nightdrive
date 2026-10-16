@@ -16,7 +16,7 @@
 #   ./install.sh --no-kde      removes Plasma entirely (needs the greeter); experimental, see config/greeter/
 #   ./install.sh --vm          for trying it on a non-Asahi machine (e.g. a Fedora 44 VM): skips the notch setting
 # Without a terminal (or with any of --with/--without/--all/--none/--defaults) nothing is asked. What was skipped can be
-# added later: launcher › Install › Plugins, or `nightdrive plugins install ID`.
+# added later: launcher › System › Install (Recommended, Webapp, Plugins), or `nightdrive plugins install ID`.
 # Run as a regular user; sudo asks for the password once at the start.
 set -euo pipefail
 repo=$(cd "$(dirname "$0")" && pwd)
@@ -62,10 +62,16 @@ fresh=$(( age_days < FRESH_DAYS ))
 [[ -n $debloat ]] || debloat=$fresh
 
 # --- Optional parts (plugins.txt): chosen now, installed at the end ---
-ids=(); names=(); descs=(); on=()
-while IFS='|' read -r id name _ desc def _; do
-  ids+=("$id"); names+=("$name"); descs+=("$desc"); on+=("$([[ $def == on ]] && echo 1 || echo 0)")
+ids=(); names=(); descs=(); groups=(); on=()
+while IFS='|' read -r id name _ desc def _ _ group; do
+  ids+=("$id"); names+=("$name"); descs+=("$desc"); groups+=("$group"); on+=("$([[ $def == on ]] && echo 1 || echo 0)")
 done < <(grep -vE '^\s*(#|$)' "$repo/plugins.txt")
+# Shown by group like the launcher's Install menu; installed in the file's order. order: row number - 1 → index
+order=()
+for g in recommended webapp plugin; do
+  for i in "${!ids[@]}"; do [[ ${groups[i]} == "$g" ]] && order+=("$i"); done
+done
+declare -A group_title=([recommended]="Recommended apps" [webapp]="Web apps" [plugin]="Plugins")
 case $base in
   all) on=("${on[@]/*/1}") ;;
   none) on=("${on[@]/*/0}") ;;
@@ -89,10 +95,13 @@ all_row=$(( ${#ids[@]} + 1 ))        # after the optional parts: "Install all", 
 removal_row=$(( ${#ids[@]} + 2 ))
 all_on() { [[ " ${on[*]} " != *" 0 "* ]]; }
 show_parts() {
-  local i w=$(( $(tput cols 2>/dev/null || echo 100) - 28 )) list
-  for i in "${!ids[@]}"; do
-    printf '  %2d [%s] %-17s %s\n' $((i + 1)) "$([[ ${on[i]} == 1 ]] && echo x || echo ' ')" "${names[i]}" "${descs[i]:0:w}"
+  local i r w=$(( $(tput cols 2>/dev/null || echo 100) - 28 )) list prev=""
+  for r in "${!order[@]}"; do
+    i=${order[r]}
+    [[ ${groups[i]} != "$prev" ]] && { [[ -n $prev ]] && echo; echo "  ${group_title[${groups[i]}]:-${groups[i]}}"; prev=${groups[i]}; }
+    printf '  %2d [%s] %-17s %s\n' $((r + 1)) "$([[ ${on[i]} == 1 ]] && echo x || echo ' ')" "${names[i]}" "${descs[i]:0:w}"
   done
+  echo
   printf '  %2d [%s] %-17s %s\n' $all_row "$(all_on && echo x || echo ' ')" "Install all" "every optional part above"
   (( ${#removable[@]} )) || return 0
   list="${#removable[@]} installed packages Nightdrive doesn't use:"
@@ -103,7 +112,7 @@ show_parts() {
 }
 if [[ -z $base$with$without && -t 0 ]]; then
   echo "Optional parts. Everything else is the same on every install; these can also be added later (launcher ›"
-  echo "Install › Plugins). Type numbers to tick or untick (e.g. 2 5), a = all, n = none, Enter continues."
+  echo "System › Install). Type numbers to tick or untick (e.g. 2 5), a = all, n = none, Enter continues."
   while true; do
     echo; show_parts; echo
     read -rp "Toggle (Enter to continue): " ans
@@ -112,7 +121,7 @@ if [[ -z $base$with$without && -t 0 ]]; then
       case $a in
         a) on=("${on[@]/*/1}") ;;
         n) on=("${on[@]/*/0}") ;;
-        *) if [[ $a =~ ^[0-9]+$ ]] && (( a >= 1 && a <= ${#ids[@]} )); then on[a-1]=$(( 1 - on[a-1] ))
+        *) if [[ $a =~ ^[0-9]+$ ]] && (( a >= 1 && a <= ${#ids[@]} )); then on[order[a-1]]=$(( 1 - on[order[a-1]] ))
            elif [[ $a == "$all_row" ]]; then if all_on; then on=("${on[@]/*/0}"); else on=("${on[@]/*/1}"); fi
            elif [[ $a == "$removal_row" ]] && (( ${#removable[@]} )); then debloat=$(( 1 - debloat ))
            else echo "  not a number from the list: $a"; fi ;;
@@ -210,7 +219,7 @@ if (( greeter )); then
 fi
 
 # Last of the unattended part. One that fails doesn't stop the rest: it's listed at the end, and can be run again from
-# the launcher (Install › Plugins) or with `nightdrive plugins install ID`.
+# the launcher (System › Install) or with `nightdrive plugins install ID`.
 failed=()
 for id in "${chosen[@]}"; do
   "$repo/bin/nightdrive" plugins install "$id" || failed+=("$id")
@@ -243,7 +252,7 @@ else
   echo "  Firefox: open it once, then run ./link.sh again (it themes its profile, which doesn't exist yet)."
 fi
 has 1password && echo "  Firefox: the 1Password extension from addons.mozilla.org."
-echo "  Optional parts you skipped: launcher › Install › Plugins, or \`nightdrive plugins\`."
+echo "  Optional parts you skipped: launcher › System › Install, or \`nightdrive plugins\`."
 if (( greeter )); then
   echo "  Reboot: the Nightdrive login screen starts Hyprland (if it breaks: ctrl+alt+F3, log in and run config/greeter/switch.sh off)."
 else
