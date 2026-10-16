@@ -1,8 +1,7 @@
 # Nightdrive
 
-**A keyboard-driven Hyprland desktop for Apple Silicon Macs running Fedora Asahi Remix.**
-Mac shortcuts, one launcher for everything, a top bar that behaves like the macOS menu bar, and a synthwave look you can
-change in a click.
+**A keyboard-driven Hyprland desktop for Fedora, on an Apple Silicon Mac (Fedora Asahi Remix) or a PC.**
+Mac-style ⌘ shortcuts, one launcher for everything, a top bar that behaves like the macOS menu bar, and a synthwave look.
 
 ![Nightdrive: Firefox, Deck playing FM-84 and the launcher on top](docs/screenshots/desktop.jpg)
 
@@ -13,17 +12,21 @@ my desktop too: ⌘ shortcuts, a launcher like Spotlight, a menu bar that just w
 So I installed Fedora Asahi on my MacBook Pro and built Nightdrive, evening by evening and with a lot
 of help from Claude Code.
 
-> **Work in progress.** Nightdrive is my daily setup, published so others can use it or borrow from it. It has been tested on
-> one machine so far (MacBook Pro 14″, M2 Max). Feedback, issues and ideas are very welcome.
+> **Work in progress.** Nightdrive is my daily setup, published so others can use it or borrow from it. It's used every day on
+> a MacBook Pro 14″ (M2 Max) and tested in a virtual machine; PC support is new and not yet tested on real PC hardware.
+> Feedback, issues and ideas are very welcome.
 
 ## Why Nightdrive?
 
 [Hyprland](https://hypr.land) is a great tiling compositor, but on its own it's a toolkit: no bar, launcher, theme or apps.
 Nightdrive puts all of that together into one opinionated desktop.
 
-- **⌘ is the main key.** ⌘C / ⌘V / ⌘X work in every app, including the terminal. ⌘W closes, ⌘Q quits, ⌘Space opens the launcher.
-- **Built for the MacBook.** The top bar sits in the notch area. The display uses a clean 2× scale. The top-row keys control
-  volume, brightness, the keyboard backlight and dictation. Caps Lock is a second ⌘. Sleep is tuned for Asahi.
+- **⌘ is the main key.** ⌘ is the Super key: Command on a Mac, the Windows key on a PC, and Caps Lock is a second one.
+  ⌘C / ⌘V / ⌘X work in every app, including the terminal. ⌘W closes, ⌘Q quits, ⌘Space opens the launcher.
+- **Fits the machine it's on.** The installer recognises an Apple Silicon Mac, a PC or a virtual machine and sets it up to
+  match: the keyboard layout you picked when installing Fedora, the graphics driver (NVIDIA too), the display scale. On a
+  MacBook the top bar sits in the notch area, the top-row keys control volume, brightness, the keyboard backlight and
+  dictation, and sleep is tuned for Asahi.
 - **Everything is a keystroke away.** One launcher handles apps, passwords, clipboard history, emoji, screenshots, settings,
   installing packages and power. You rarely need a terminal for everyday things.
 - **Simple and readable.** Plain config files, a few small scripts, and comments that explain *why*.
@@ -47,13 +50,18 @@ you walk through the menus with the arrow keys.
 
 ![Claude usage, system and display menus](docs/screenshots/menus.jpg)
 
-### Make it yours in a click
+### Apps without a terminal, and only the parts you want
 
-Pick from seven theme colours: Violet, Blue, Teal, Green, Amber, Rose or Graphite. The colour changes the menus, launcher,
-window borders, notifications, lock screen and top bar at once. Two synthwave wallpapers come with it, and you can add your own.
-The top bar's items, opacity, and colours are all settings in the launcher.
+System › Install › Software in the launcher searches Fedora's packages and Flathub's apps at once, one row per app (Fedora's
+when both have it, Tab in the details takes Flathub's), with command-line tools below and the details before installing.
+Browse has Popular (top 100) and categories: Flathub's most installed apps that your machine can run (ARM or x86). Remove
+lists both.
 
-![Settings › Theme › Color with Teal selected](docs/screenshots/themes.jpg)
+Everything beyond the core is an optional part you choose when installing, or later under System › Install: apps Nightdrive
+sets up (1Password, Deck, Home Assistant…), ready-made web apps with a keybinding, and plugins for desktop features. A part
+that isn't installed doesn't show anywhere: no launcher level, bar icon or keybinding.
+
+Updates come in a notification with an **Update** button, which updates Nightdrive and the system in one go.
 
 ### A drawer for what you want at hand
 
@@ -66,18 +74,19 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
 ### Little things that add up
 
 - **Shelf**: drag a file to the top edge of the screen to park it, then drag it into another app (like Dropover / Yoink).
-- **Dictation**: hold F5 or Fn, speak, and let go. It runs fully offline with Voxtype and Parakeet ([setup](docs/dictation.md)).
+- **Dictation**: hold F5 (or Fn on a Mac), speak, and let go. It runs fully offline with Voxtype and Parakeet ([setup](docs/dictation.md)).
+- **Snippets**: text snippets in launcher › Tools › Snippets; Enter pastes one. Turn on auto-expand and typing a trigger
+  anywhere replaces it with the text.
+- **From your phone** (experimental plugins): LocalSend receives files from a phone after you accept them in a
+  notification, and AirPlay Receiver mirrors an iPhone, iPad or Mac into a window.
 - **Screen Mirroring**: mirror the screen to an Apple TV or an AirPlay TV from the display menu or the launcher (search
   "airplay"), with sound. Google Cast works from Chromium (⋮ › Cast…). Sharing the screen, for these and video calls, asks
   in a themed window: the whole screen or one window.
+- **Themes**: seven colours that change the whole desktop at once, two synthwave wallpapers and your own (Settings › Theme).
 - **Screensavers**: a synthwave sunset and a falling-characters rain, both drawn in the terminal, and a big clock whose
   digits slide up as the minutes change.
 - **Background apps**: ⌘W only hides chat apps and the music player, so they keep running. Their shortcut brings them straight back.
 - **Web apps**: turn any site into an app window from the launcher (System › Install › Webapp).
-- **Installing apps**: System › Install › Software › Search searches Fedora's packages and Flathub's apps at once, one row per app
-  (Fedora's when both have it, Tab in the details takes Flathub's), command-line tools below; details before installing. Remove
-  lists both. Below Search, Browse has Popular (top 100) and categories: Flathub's most installed apps that your machine can run
-  (ARM or x86; `nightdrive software-catalog` refreshes the lists).
 - **Login apps**: you choose what starts at login in the launcher (Settings › Startup, or ⌥Enter on an app). Background
   apps start hidden. Only 1Password (if installed) is on by default, because its SSH agent and the Passwords level need it.
 - **Login screen**: a password-only greeter that matches the theme (`--no-greeter` keeps the distribution's own).
@@ -106,20 +115,25 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
 | Messaging | [Telegram Desktop](https://desktop.telegram.org) (Flatpak, install it from Install › Software) | native Wayland app, keeps running in the background like 1Password |
 | Web apps | Chromium app windows | add your own, or a ready-made one with a keybinding: WhatsApp, Slack, Teams, YouTube (Install › Webapp) |
 | Lock and idle | hyprlock, hypridle | screensaver after 10 min, lock after 30 min (screensaver and screen-off times: Settings › Screensaver) |
-| Smart home (optional) | [Home Assistant](https://www.home-assistant.io) (`install-home-assistant.sh`) | Home in the launcher: rooms and their devices (Enter turns one on/off or runs a scene, a light that's on has a yellow bulb and a ring around it showing the brightness: ←/→ or a sideways drag sets it, "olohuone kattovalo" finds it from the search), pinned devices in the top bar's Home menu (the scroll wheel sets a light's brightness), the webapp; local, Tailscale and Nabu Casa addresses tried in order |
+| Smart home (optional) | [Home Assistant](https://www.home-assistant.io) (`install-home-assistant.sh`) | Home in the launcher: rooms and their devices, Enter turns one on/off or runs a scene, ←/→ sets a light's brightness; pinned devices in the top bar's Home menu; the webapp. Local, Tailscale and Nabu Casa addresses tried in order |
+| Phone (optional) | [LocalSend](https://localsend.org) receiver, [UxPlay](https://github.com/FDH2/UxPlay) | files and text from a phone, asked first in a notification; an iPhone, iPad or Mac mirrored into a window. Both experimental |
+| Mac text keys (optional) | [keyd](https://github.com/rvaiya/keyd) | ⌥⌫ deletes a word, ⌘⌫ to the line start (Files: to the trash) |
 | Optional parts | everything marked optional above, Jottacloud, VS Code | chosen when installing; the rest later in launcher › System › Install (Recommended: apps Nightdrive sets up; Webapp; Plugins: desktop features like Screen Mirroring) or `nightdrive plugins` (`plugins.txt`). A part that isn't installed doesn't show anywhere: no launcher level, bar icon or keybinding. One installed later (the launcher, `dnf`, Flatpak) shows up by itself |
 
 ## Requirements
 
-- An **Apple Silicon Mac** (M1 or M2 series) with **[Fedora Asahi Remix](https://asahilinux.org/fedora/) 44**, the KDE edition.
-- Tested on a MacBook Pro 14″ with an M2 Max. Other models should work, but you may need to adjust a few values (see
+One of these, with the KDE edition of Fedora 44. The installer tells which machine it's on and sets it up to match.
+
+- An **Apple Silicon Mac** (M1 or M2 series) with **[Fedora Asahi Remix](https://asahilinux.org/fedora/) 44**. Used daily
+  on a MacBook Pro 14″ with an M2 Max; other models should work, but you may need to adjust a few values (see
   [Make it yours](#make-it-yours)).
-- Experimental: a **PC** (x86_64) with **Fedora 44 KDE**, NVIDIA, AMD or Intel graphics ([docs/pc.md](docs/pc.md)), or a
-  Fedora 44 virtual machine ([docs/vm.md](docs/vm.md)). The installer tells which machine it's on.
+- A **PC** (x86_64) with **[Fedora 44 KDE](https://fedoraproject.org/kde/download)** and NVIDIA, AMD or Intel graphics.
+  Experimental, see [docs/pc.md](docs/pc.md) for what differs from the MacBook.
+- A Fedora 44 **virtual machine**, e.g. in Parallels on a Mac ([docs/vm.md](docs/vm.md)).
 
 ## Install
 
-On a fresh Fedora Asahi Remix 44 (or Fedora 44 KDE on a PC) with a network connection:
+On a fresh Fedora Asahi Remix 44 or Fedora 44 KDE, with a network connection:
 
 ```sh
 sudo dnf install -y git   # not in a fresh install
@@ -130,9 +144,11 @@ cd ~/dotfiles
                           # config links, login screen and the optional parts
 ```
 
-It asks first which optional parts you want (number toggles one, Enter continues):
+It tells which machine it's on and asks first which optional parts you want (number toggles one, Enter continues):
 
 ```
+Machine: PC (x86_64, graphics: amd, keyboard: us)
+
   Recommended apps
    1 [ ] 1Password         Password manager: launcher › Passwords, op CLI, SSH agent
    2 [x] Tailscale         VPN, in the top bar (log in afterwards: sudo tailscale up)
@@ -145,11 +161,13 @@ It asks first which optional parts you want (number toggles one, Enter continues
    …
 
   Plugins
-  13 [ ] Screen Mirroring  AirPlay to an Apple TV (doubletake, experimental; compiled)
+  13 [ ] LocalSend         Files from phones via the LocalSend app, asks first (experimental)
+  14 [ ] Screen Mirroring  AirPlay to an Apple TV (doubletake, experimental; compiled)
+   …
 
-  14 [ ] Install all       every optional part above
+  17 [ ] Install all       every optional part above
 
-  15 [x] Remove apps       112 installed packages Nightdrive doesn't use: akregator dolphin konsole kmail …
+  18 [x] Remove apps       112 installed packages Nightdrive doesn't use: akregator dolphin konsole kmail …
 ```
 
 **Trying it on the system you already use?** The removals are on by default only on a fresh install (one installed less
@@ -220,7 +238,7 @@ The same `nightdrive` command reaches the settings from a terminal (`nightdrive`
 
 ## Keys
 
-⌘ is the Super key, and Caps Lock works as a second ⌘.
+⌘ is the Super key (Command on a Mac, the Windows key on a PC), and Caps Lock works as a second ⌘.
 
 | Keys | Action |
 |---|---|
@@ -236,17 +254,18 @@ The same `nightdrive` command reaches the settings from a terminal (`nightdrive`
 | ⌘ ⇧ B / F / P / M / I | Browser / Files / 1Password / Music / Mail |
 | ⌘ ⇧ Space | Walk through the top bar menus with the keyboard |
 | ⌘ Esc | Notifications |
-| F5 or Fn (hold) | Dictation |
+| F5 (hold; Fn on a Mac) | Dictation |
 | ⌘ ⇧ K | All shortcuts (also in the launcher under *Keybindings*) |
 
 The full list is in [`config/hypr/SHORTCUTS.md`](config/hypr/SHORTCUTS.md).
 
 ## Make it yours
 
-- **Machine settings.** The default display scale and keyboard layout (Finnish Mac) are at the top of
-  [`config/hypr/hyprland.lua`](config/hypr/hyprland.lua). The installer writes the layout Fedora's installer set into
-  `config/hypr/local.lua` unless it's Finnish, and the login screen uses the same. A scale picked in the launcher
-  (Settings › Display) wins over the default.
+- **Machine settings.** The defaults at the top of [`config/hypr/hyprland.lua`](config/hypr/hyprland.lua) are for a
+  MacBook's display (scale 2) and a Finnish Mac keyboard. The installer writes the machine's own into
+  `config/hypr/local.lua`: on a PC the display scale picked automatically and the keyboard layout Fedora's installer
+  set, in a VM settings for it, on a Mac the layout unless it's Finnish. The login screen uses the same layout. A scale picked in the
+  launcher (Settings › Display) wins over both.
 - **Per-machine overrides** go to `config/hypr/local.lua`, which git ignores.
 - **Keybindings** are all in [`config/hypr/bindings.lua`](config/hypr/bindings.lua).
 - **Optional parts** (recommended apps, ready-made web apps, plugins) are listed in [`plugins.txt`](plugins.txt), its last
@@ -281,8 +300,8 @@ The full list is in [`config/hypr/SHORTCUTS.md`](config/hypr/SHORTCUTS.md).
 ## Good to know
 
 - **Known issues** that have a workaround but no fix in Nightdrive yet are in [docs/known-issues.md](docs/known-issues.md).
-- **Hyprland isn't in Fedora's aarch64 repositories.** The installer takes the `hypr*` packages from the COPR `arcaneon/arcos`
-  and limits that repository to them.
+- **Hyprland comes from a COPR.** Fedora's own repositories have none for aarch64, so on every machine the installer takes
+  the `hypr*` packages from the COPR `arcaneon/arcos` and limits that repository to them.
 - **Asahi specifics.** The notch area needs the `appledrm.show_notch=1` kernel argument, which the installer sets. The 16 KiB memory
   pages break a few Electron apps, but 1Password works.
 - **The Claude usage menu** reads your plan's limits with Claude Code's own sign-in, so Claude Code must have been run once.
@@ -292,16 +311,17 @@ The full list is in [`config/hypr/SHORTCUTS.md`](config/hypr/SHORTCUTS.md).
 
 Nightdrive is work in progress, and help of almost any kind moves it forward:
 
-- **Try it on your Mac.** It has only been tested on a MacBook Pro 14″ with M2 Max. A report from any other Apple Silicon
-  model is valuable (in Discussions), whether everything worked or something broke.
+- **Try it on your machine.** It's used daily on a MacBook Pro 14″ with M2 Max only. A report from a real PC (NVIDIA, AMD
+  or Intel graphics) or any other Apple Silicon model is valuable (in Discussions), whether everything worked or something
+  broke.
 - **Ask or share in [Discussions](https://github.com/jarilehtinen/nightdrive/discussions):** questions, ideas, how it runs
-  on your Mac, or a screenshot of your setup.
+  on your machine, or a screenshot of your setup.
 - **Open an [issue](https://github.com/jarilehtinen/nightdrive/issues)** for a bug or a rough edge. A screenshot or the output
   of the failing command helps a lot.
 - **Send a pull request.** Keep it small and in the spirit of the rest: plain files, comments that explain *why*, and nothing
   personal (that goes in the git-ignored local slots, see [Make it yours](#make-it-yours)). [`AGENTS.md`](AGENTS.md) has the
-  working notes, handy for people and coding agents alike. No Mac at hand? `nightdrive sandbox` runs the desktop in a
-  headless container on Linux with Podman and a GPU, for checks and screenshots ([docs/sandbox.md](docs/sandbox.md)).
+  working notes, handy for people and coding agents alike. Not running Nightdrive yourself? `nightdrive sandbox` runs the
+  desktop in a headless container on Linux with Podman and a GPU, for checks and screenshots ([docs/sandbox.md](docs/sandbox.md)).
 - **Make wallpapers.** See below.
 
 ## Credits
