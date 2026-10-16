@@ -1612,6 +1612,10 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
         }
     }
 
+    // A hair space between key symbols in running text: JetBrains Mono's ⌘⌥⌫ are wider than their cell and overlap side
+    // by side (the shortcut rows use letterSpacing instead)
+    function keySpaced(t) { return t.replace(/([⌘⌥⇧⌃⌫⌦])(?=[⌘⌥⇧⌃⌫⌦])/g, "$1\u200A") }
+
     IpcHandler {
         target: "launcher"
         function toggle(): void { win.open = !win.open }
@@ -1934,7 +1938,7 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                         anchors { left: nameText.left; right: nameText.right; top: nameText.bottom; topMargin: row.modelData.sub ? 0 : -1 }
                         elide: Text.ElideRight
                         textFormat: Text.PlainText
-                        text: row.modelData.sub || (row.modelData.artist || "").toUpperCase()
+                        text: win.keySpaced(row.modelData.sub || (row.modelData.artist || "").toUpperCase())
                         color: row.modelData.sub ? Theme.dim : Theme.primary
                         font { family: Theme.font; pixelSize: row.modelData.sub ? win.fontSize - 5 : win.fontSize - 6; weight: row.modelData.sub ? win.fontWeight : Font.Normal
                                letterSpacing: row.modelData.sub ? 0 : 1 }
@@ -2123,7 +2127,7 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                                 maximumLineCount: 2
                                 elide: Text.ElideRight
                                 textFormat: Text.PlainText
-                                text: detailView.info && detailView.info.summary ? detailView.info.summary : (detailView.pkg.summary || detailView.pkg.sub || "")
+                                text: win.keySpaced(detailView.info && detailView.info.summary ? detailView.info.summary : (detailView.pkg.summary || detailView.pkg.sub || ""))
                                 color: Theme.dim
                                 font { family: Theme.font; pixelSize: win.fontSize - 2; weight: win.fontWeight }
                             }
@@ -2244,7 +2248,7 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                                 wrapMode: Text.Wrap
                                 textFormat: Text.PlainText
                                 lineHeight: 1.15
-                                text: modelData
+                                text: win.keySpaced(modelData)
                                 color: Theme.text
                                 font { family: Theme.font; pixelSize: win.fontSize - 3; weight: win.fontWeight }
                             }
