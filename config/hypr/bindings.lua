@@ -92,15 +92,21 @@ for _, k in ipairs({ { "", "Z" }, { " SHIFT", "Z" }, { "", "A" } }) do
 end
 
 -- ⌘⌫ = Delete (move to trash) in the file manager, like in macOS Finder. Elsewhere it messages the launcher:
--- in Settings › Background it removes the selected custom wallpaper (otherwise it does nothing)
-hl.bind(mod .. " + BACKSPACE", function ()
-    local w = hl.get_active_window()
-    if w and (w.class == "org.gnome.Nautilus" or w.class == "nautilus") then
-        hl.dispatch(hl.dsp.send_shortcut({ mods = "", key = "Delete" }))
-    else
-        hl.dispatch(hl.dsp.exec_cmd("qs ipc call launcher deleteSelected"))
-    end
-end)
+-- in Settings › Background it removes the selected custom wallpaper (otherwise it does nothing).
+-- With the Mac text keys plugin (keyd, install-keyd.sh) keyd does ⌘⌫ and ⌥⌫ instead, as real key presses, per app
+-- (config/keyd/app.conf): Hyprland's synthetic Delete could get stuck repeating. Its app mapper starts with Hyprland.
+if plugins.keyd then
+    hl.on("hyprland.start", function () hl.exec_cmd("keyd-application-mapper -d") end)
+else
+    hl.bind(mod .. " + BACKSPACE", function ()
+        local w = hl.get_active_window()
+        if w and (w.class == "org.gnome.Nautilus" or w.class == "nautilus") then
+            hl.dispatch(hl.dsp.send_shortcut({ mods = "", key = "Delete" }))
+        else
+            hl.dispatch(hl.dsp.exec_cmd("qs ipc call launcher deleteSelected"))
+        end
+    end)
+end
 
 -- ⌥← / ⌥→ move by word, like in macOS, in apps where Alt+arrows does something else: GtkSourceView editors swap
 -- words with them, Chromium and its web apps go back/forward. These get Ctrl+arrows (word move; ⇧ selects).

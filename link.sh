@@ -52,6 +52,8 @@ link "$repo/config/applications/nm-connection-editor.desktop" "$HOME/.local/shar
 # macbook_mic alias for dictation (voxtype): the MacBook's mic on Apple Silicon, the default mic elsewhere
 if [[ $("$repo/config/hypr/scripts/platform" name) == asahi ]]; then asound=asoundrc; else asound=asoundrc.generic; fi
 link "$repo/config/alsa/$asound" "$HOME/.config/alsa/asoundrc"
+# Mac text keys plugin (install-keyd.sh): keyd-application-mapper's per-app keys
+[[ -f /etc/keyd/default.conf ]] && link "$repo/config/keyd/app.conf" "$HOME/.config/keyd/app.conf"
 
 # Session target: brings up graphical-session.target, which xdg-desktop-portal needs (started by hyprland.lua)
 link "$repo/config/systemd/user/nightdrive-session.target" "$HOME/.config/systemd/user/nightdrive-session.target"

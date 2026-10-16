@@ -1784,7 +1784,12 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                         // Esc with a search typed clears it first (on any level); with an empty one it goes back / closes
                         if (event.key === Qt.Key_Escape) { if (text !== "") text = ""; else win.back(); event.accepted = true }
                         else if (ctrl && event.key === Qt.Key_Space) { if (win.hasDeck) win.deckPlayPress(); event.accepted = true }
-                        else if (event.key === Qt.Key_Backspace && text === "" && win.level !== "root") { win.back(); event.accepted = true }
+                        // Delete: removes your own wallpaper in Background, the selected snippet in Snippets (empty search). ⌘⌫
+                        // arrives as ⇧Home + Delete with the keyd plugin (config/keyd/app.conf), so it does the same
+                        else if (event.key === Qt.Key_Delete && win.level === "background" && win.wallLoaded) { win.deleteWall(); event.accepted = true }
+                        else if (event.key === Qt.Key_Delete && win.level === "snippets" && text === "") { win.deleteSnippet(); event.accepted = true }
+                        // Backspace with an empty search goes back; Ctrl+⌫ (⌥⌫ with keyd: delete a word) doesn't
+                        else if (event.key === Qt.Key_Backspace && !ctrl && text === "" && win.level !== "root") { win.back(); event.accepted = true }
                         else if (win.grid && win.wallLoaded && (event.key === Qt.Key_Left || event.key === Qt.Key_Right)) {
                             win.step(event.key === Qt.Key_Left ? -1 : 1); event.accepted = true
                         } else if (win.grid && win.wallLoaded && (event.key === Qt.Key_Down || event.key === Qt.Key_Up)) {

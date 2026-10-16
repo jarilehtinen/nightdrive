@@ -1,0 +1,6 @@
+# keyd's virtual keyboard counts as the internal keyboard, so the trackpad's disable-while-typing keeps working
+# (/etc/libinput/local-overrides.quirks)
+[Serial Keyboards]
+MatchUdevType=keyboard
+MatchName=keyd*keyboard
+AttrKeyboardIntegration=internal

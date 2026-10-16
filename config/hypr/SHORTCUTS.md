@@ -26,6 +26,8 @@
   ⌘ Z / ⌘ ⇧ Z        Undo / redo (not in the terminal)
   ⌘ A                Select all (not in the terminal)
   ⌘ ⌫                Move file to trash (in Files)
+  ⌥ ⌫                Delete the previous word {keyd}
+  ⌘ ⌫                Delete to the start of the line (Thunderbird: delete the message) {keyd}
   ⌘ ⇧ V              Clipboard history (Enter pastes into the active window, ⇧ Enter copies only)
   ⌘ ⇧ E              Emoji picker (Enter pastes, ⇧ Enter copies only)
 
@@ -58,7 +60,7 @@
   ⌘ Space → Tools › Screenshot   Region, window or whole screen (saved to a file and the clipboard)
 
 ## Other
-  ⌘ ⌫ in Settings › Background   Delete the selected own background (press twice; moves it to the trash)
+  ⌘ ⌫ / Delete in Settings › Background   Delete the selected own background (press twice; moves it to the trash)
   Top-row keys       Volume, screen brightness (F1/F2); keyboard backlight = ⌘F1/⌘F2
   F3                 Notification center (hamburger menu)
   F4                 App launcher (like ⌘Space)
