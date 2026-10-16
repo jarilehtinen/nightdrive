@@ -4,8 +4,13 @@ import QtQuick
 // Lucide icons by name, e.g. Icons.g("wifi").  Code points from lucide-static 1.57.0 (font/info.json; fonts/lucide.ttf)
 // (if you update the font, regenerate this file).
 // Usage:  Text { text: Icons.g("volume-2"); font.family: Icons.family }
+// familyThin / familyLight / familyMedium: the same glyphs with a thinner stroke (1.25 / 1.5 / 1.75); the launcher uses
+// Light in its lists and Medium for its player buttons (fonts/build-lucide-strokes.py; same code points)
 QtObject {
     readonly property string family: "lucide"
+    readonly property string familyThin: "lucide thin"
+    readonly property string familyLight: "lucide light"
+    readonly property string familyMedium: "lucide medium"
     readonly property var map: ({
         "activity": 57400,
         "airplay": 57401,
