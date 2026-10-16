@@ -1,0 +1,50 @@
+[Plymouth Theme]
+Name=Nightdrive
+Description=The login screen while it loads: its background, the title, and a spinner where the password field is.
+ModuleName=two-step
+
+# The images come from images.sh (install.sh draws them) and are drawn at device pixels (DeviceScale=1 in plymouthd.conf):
+# a Retina screen would otherwise scale them up 2x and blur the title. The alignments are what images.sh prints.
+[two-step]
+Font=Cantarell 24
+TitleFont=Cantarell Light 48
+ImageDir=/usr/share/plymouth/themes/nightdrive
+DialogHorizontalAlignment=.5
+DialogVerticalAlignment=.62
+TitleHorizontalAlignment=.5
+TitleVerticalAlignment=.38
+HorizontalAlignment=.5
+VerticalAlignment=.5132
+WatermarkHorizontalAlignment=.5
+WatermarkVerticalAlignment=.4389
+ScaleBackgroundImage=true
+Transition=none
+TransitionDuration=0.0
+BackgroundStartColor=0x1a1b26
+BackgroundEndColor=0x1a1b26
+ProgressBarBackgroundColor=0x2e2833
+ProgressBarForegroundColor=0xe0bff2
+MessageBelowAnimation=true
+
+[boot-up]
+UseEndAnimation=false
+
+[shutdown]
+UseEndAnimation=false
+
+[reboot]
+UseEndAnimation=false
+
+[updates]
+SuppressMessages=true
+ProgressBarShowPercentComplete=true
+UseProgressBar=true
+Title=Installing Updates...
+SubTitle=Do not turn off your computer
+
+[system-upgrade]
+SuppressMessages=true
+ProgressBarShowPercentComplete=true
+UseProgressBar=true
+Title=Upgrading System...
+SubTitle=Do not turn off your computer
