@@ -8,5 +8,5 @@ flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/fl
 flatpak install --user -y --noninteractive flathub "$id"
 # Its theme is a link into the repo (link.sh), which the sandbox can't see otherwise
 flatpak override --user --filesystem="$repo/config/gtk-4.0:ro" "$id"
-xdg-mime default "$id.desktop" text/markdown text/x-markdown
+KDE_SESSION_VERSION= xdg-mime default "$id.desktop" text/markdown text/x-markdown   # from Plasma too: see setup-user.sh
 "$repo/config/fuzzel/sync-apps" >/dev/null 2>&1 || true

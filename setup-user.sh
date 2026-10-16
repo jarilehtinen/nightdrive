@@ -37,4 +37,6 @@ gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark' 2>/dev/null
 gsettings set org.gnome.desktop.wm.preferences button-layout ':' 2>/dev/null || true
 
 echo "==> Default apps: images open in Loupe (instead of the browser); Markdown in Apostrophe, if chosen (its installer)"
-xdg-mime default org.gnome.Loupe.desktop image/png image/jpeg image/gif image/webp image/bmp image/tiff image/svg+xml image/avif image/heic
+# Run from Plasma (install.sh), KDE_SESSION_VERSION=6 sends xdg-mime to Qt5's qtpaths (not installed), an error per type.
+# Without it xdg-mime writes only ~/.config/mimeapps.list, the file Plasma and Hyprland both read.
+KDE_SESSION_VERSION= xdg-mime default org.gnome.Loupe.desktop image/png image/jpeg image/gif image/webp image/bmp image/tiff image/svg+xml image/avif image/heic
