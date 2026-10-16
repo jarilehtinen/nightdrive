@@ -355,7 +355,9 @@ Rectangle {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: { btn.modelData.invoke(); if (card.n && !card.n.resident) card.dismissed() }
+                        // invoke() itself closes a notification that isn't resident, and its popup and this card go with it
+                        // at once: nothing here may be read after it
+                        onClicked: btn.modelData.invoke()
                     }
                 }
             }
