@@ -16,7 +16,8 @@ import Quickshell.Widgets
 // (hypr/scripts/software-catalog) for this machine's architecture (pkg-search --list). Typing on Software filters those,
 // and the last row takes the words to Search. Install › Software and Remove: Enter on a row opens its details
 // in a wider card (hypr/scripts/pkg-info); there Enter installs or removes it, Tab takes the app from the other source,
-// Esc goes back to the results.
+// Esc goes back to the results. Install › Recommended and Plugins open the same card (hypr/scripts/plugin-info: the long
+// text and screenshot from docs/plugins/<id>.md); there Enter runs the installer, an installed one's again.
 PanelWindow {
     id: win
 
@@ -148,7 +149,8 @@ PanelWindow {
     // The selected row is an app: ⌃Enter shows it in Apps (the list with an empty query) or hides it from there.
     // "Hide", not "remove": removing sounded like uninstalling.
     readonly property var selApp: { const c = results[list.currentIndex]; return (level === "apps" || level === "root") && c && c.kind === "app" ? c : null }
-    readonly property string footer: detail !== null ? (detail.remove ? "Enter: remove" : detailInfo && detailInfo.installed ? "Already installed" : "Enter: install")
+    readonly property string footer: detail !== null ? (detail.remove ? "Enter: remove" : detail.rerun ? (detailInfo && detailInfo.installed ? "Enter: run the installer again" : "Enter: install in a terminal")
+                                                        : detailInfo && detailInfo.installed ? "Already installed" : "Enter: install")
                                                        + (detail.alt ? "  ·  Tab: get it from " + (detail.alt.src === "flatpak" ? "Flathub" : "Fedora") : "")
                                                        + "  ·  Esc: back"
         : selApp ? "Enter: open  ·  Ctrl+Enter: " + (selApp.shown ? "hide from Apps" : "show in Apps")
@@ -170,7 +172,6 @@ PanelWindow {
         : level === "snippets" && (results[list.currentIndex] || {}).kind === "snipauto" ? (snipAuto === "off" ? "Enter: turn on in a terminal (asks for your password once)" : "Enter: turn off in a terminal")
         : level === "snipkey" && query.trim() !== "" ? "Enter: continue to the text"
         : level === "sniptext" && query !== "" ? "Enter: save"
-        : (level === "plugins" || level === "recommended") && (results[list.currentIndex] || {}).kind === "action" ? ((results[list.currentIndex] || {}).installed ? "Enter: run the installer again" : "Enter: install in a terminal")
         : level === "webapp" && (results[list.currentIndex] || {}).ready ? ((results[list.currentIndex] || {}).installed ? "Enter: add again" : "Enter: add")
         : level === "webname" && query.trim() !== "" ? "Enter: continue to the address"
         : level === "webaddr" && query.trim() !== "" ? "Enter: create the webapp" : ""
@@ -676,9 +677,11 @@ PanelWindow {
                     { kind: "lpref", key: "shortcuts", name: "Shortcut hints", glyph: "keyboard",
                       sub: "An app’s or menu’s keys on its row (⌘⇧P)", switchOn: prefs.shortcuts }]
         } else if (level === "plugins" || level === "recommended") {
-            // Enter runs the installer in a terminal (they ask things: sudo, tokens, logins); an installed one can be run again
+            // Enter opens the details (src "plugin"), whose Enter runs the installer in a terminal (they ask things: sudo, tokens,
+            // logins); an installed one can be run again (rerun)
             if (pluginList === null) return hint("Loading…")
             all = pluginList.filter(p => p.group === (level === "plugins" ? "plugin" : "recommended")).map(p => ({ item: { kind: "action", name: p.name, glyph: p.icon, sub: p.desc, installed: p.installed,
+                                                 src: "plugin", id: p.id, rerun: true,
                                                  summary: p.installed ? "installed" : undefined,
                                                  cmd: term('"$HOME/.local/bin/nightdrive" plugins install "$1"', p.id) },
                                          text: p.name, extra: p.desc }))
@@ -1198,12 +1201,13 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
     }
     function runDetail() {
         detailProc.forId = detail.src + ":" + detail.id
-        detailProc.command = [scripts + "/pkg-info", detail.src, detail.id]
+        detailProc.command = detail.src === "plugin" ? [scripts + "/plugin-info", detail.id] : [scripts + "/pkg-info", detail.src, detail.id]
         detailProc.running = true
     }
-    // Enter in the details: installs / removes in a terminal (an installed package can't be installed again)
+    // Enter in the details: installs / removes in a terminal (an installed package can't be installed again, a plugin's
+    // installer can run again)
     function detailConfirm() {
-        if (!detail.remove && detailInfo && detailInfo.installed) { shake.restart(); return }
+        if (!detail.remove && !detail.rerun && detailInfo && detailInfo.installed) { shake.restart(); return }
         win.open = false
         Quickshell.execDetached(detail.cmd)
     }
@@ -2124,9 +2128,11 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                                 font { family: Theme.font; pixelSize: win.fontSize - 2; weight: win.fontWeight }
                             }
                         }
-                        Rectangle {      // Install / Remove (= Enter); grey when already installed
+                        Rectangle {      // Install / Remove / Run again (= Enter); grey when already installed
                             id: button
-                            readonly property bool off: !detailView.pkg.remove && detailView.info !== null && detailView.info.installed
+                            readonly property bool installed: !detailView.pkg.remove && detailView.info !== null && detailView.info.installed
+                            readonly property bool again: installed && !!detailView.pkg.rerun
+                            readonly property bool off: installed && !again
                             anchors { right: parent.right; rightMargin: 6; verticalCenter: parent.verticalCenter }
                             width: buttonRow.implicitWidth + 32
                             height: 40
@@ -2140,13 +2146,13 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                                 spacing: 8
                                 Text {
                                     anchors.verticalCenter: parent.verticalCenter
-                                    text: Icons.g(button.off ? "check" : detailView.pkg.remove ? "trash-2" : "download")
+                                    text: Icons.g(button.off ? "check" : button.again ? "rotate-cw" : detailView.pkg.remove ? "trash-2" : "download")
                                     color: button.off ? Theme.dim : buttonArea.containsMouse ? Theme.bg : Theme.accent
                                     font { family: Icons.family; pixelSize: 17 }
                                 }
                                 Text {
                                     anchors.verticalCenter: parent.verticalCenter
-                                    text: button.off ? "Installed" : detailView.pkg.remove ? "Remove" : "Install"
+                                    text: button.off ? "Installed" : button.again ? "Run again" : detailView.pkg.remove ? "Remove" : "Install"
                                     color: button.off ? Theme.dim : buttonArea.containsMouse ? Theme.bg : Theme.accent
                                     font { family: Theme.font; pixelSize: win.fontSize - 1; weight: Font.Normal }
                                 }

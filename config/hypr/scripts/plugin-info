@@ -1,0 +1,90 @@
+#!/usr/bin/python3 -I
+"""Details of an optional part (plugins.txt) for the launcher's detail view, as JSON on stdout: the same shape as
+pkg-info's, so Install › Recommended and Plugins open the same page as Install › Software.
+  plugin-info <id>
+Output: { name, summary, installed, icon, screenshot, paragraphs: [text], fields: [[label, value]] }
+The long text is docs/plugins/<id>.md (GitHub shows the same file): the # title is left out, paragraphs are split at
+blank lines, a "- " item is a paragraph of its own, the first image ![…](file) is the screenshot and lines
+"Homepage: …" / "Needs: …" / "Keys: …" go to the facts. Without the file the page has plugins.txt's one line."""
+import json, os, re, subprocess, sys
+
+REPO = os.path.realpath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../.."))
+FIELDS = ("Homepage", "Needs", "Keys")
+
+
+def row(pid):
+    with open(os.path.join(REPO, "plugins.txt")) as f:
+        for line in f:
+            if line.strip() and not line.lstrip().startswith("#"):
+                p = line.rstrip("\n").split("|")
+                if len(p) >= 8 and p[0] == pid:
+                    return p
+    return None
+
+
+def plain(t):
+    """Markdown → plain text: links keep their text, ** and ` go."""
+    t = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", t)
+    return t.replace("**", "").replace("`", "").strip()
+
+
+def doc(pid):
+    paragraphs, fields, shot, cur = [], [], "", []
+    path = os.path.join(REPO, "docs/plugins", pid + ".md")
+    try:
+        lines = open(path).read().split("\n")
+    except OSError:
+        return paragraphs, fields, shot
+
+    def flush():
+        if cur:
+            paragraphs.append(plain(" ".join(cur)))
+            cur.clear()
+    for line in lines:
+        s = line.strip()
+        img = re.match(r"!\[[^\]]*\]\(([^)\s]+)", s)
+        field = re.match(r"(%s): (.+)$" % "|".join(FIELDS), s)
+        if not s or s.startswith("#"):
+            flush()
+        elif img:
+            flush()
+            if not shot:
+                f = img.group(1)
+                shot = f if re.match(r"https?://", f) else "file://" + os.path.normpath(os.path.join(os.path.dirname(path), f))
+        elif field:
+            flush()
+            fields.append([field.group(1), plain(field.group(2)) if field.group(1) != "Homepage" else field.group(2)])
+        elif s.startswith(("- ", "* ")):
+            flush()
+            cur.append("•  " + s[2:])
+            flush()
+        else:
+            cur.append(s)
+    flush()
+    return paragraphs, fields, shot
+
+
+def installer(inst):
+    if inst.startswith("flatpak "):
+        return "Flathub: " + inst[8:]
+    if inst.startswith("webapp "):
+        return "Web app: " + inst[7:]
+    return inst + " (in a terminal)"
+
+
+if len(sys.argv) != 2:
+    print(__doc__.split("\n")[2], file=sys.stderr)
+    sys.exit(1)
+p = row(sys.argv[1])
+if p is None:
+    print(json.dumps({ "name": sys.argv[1], "summary": "", "installed": False, "icon": "", "screenshot": "",
+                       "paragraphs": [], "fields": [["Details", "not available"]] }))
+    sys.exit(0)
+pid, name, icon, desc, default, inst, test, group = p[:8]
+installed = subprocess.run(["bash", "-c", test], cwd=REPO, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+paragraphs, extra, shot = doc(pid)
+fields = [["Status", "installed" if installed else "not installed"],
+          ["Type", { "plugin": "Desktop feature", "recommended": "App Nightdrive sets up", "webapp": "Web app" }.get(group, group)]] \
+         + extra + [["Installer", installer(inst)]]
+print(json.dumps({ "name": name, "summary": desc, "installed": installed, "icon": "", "screenshot": shot,
+                   "paragraphs": paragraphs, "fields": fields }))
