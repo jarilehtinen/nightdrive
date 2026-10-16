@@ -5,7 +5,9 @@
 # A window hidden in the background (special:bg: ⌘W on background apps, or a window rule that opens it straight in the background) is brought to the current workspace.
 # With the drawer open that is the drawer, as for a new window: activeworkspace names the workspace under it.
 # A window open on a workspace stays there: focusing it hides the drawer.
+# LAUNCH_HIDDEN=1 (autostart's background apps): only launch, leave the new window where it opens (special:bg).
 pattern=$1; shift
+hidden=$LAUNCH_HIDDEN; unset LAUNCH_HIDDEN   # not passed on to the app
 find_win() { hyprctl -j clients | jq -r --arg re "$pattern" '[.[] | select(.class | test($re))] | first | "\(.address // "") \(.workspace.name // "")"'; }
 show() {  # $1 = address, $2 = workspace
   if [[ $2 == special:bg ]]; then
@@ -22,6 +24,7 @@ if [[ -n $addr ]]; then
 fi
 # Not open: launch and wait for the window (it may open straight in the background), then bring it up
 setsid "$@" >/dev/null 2>&1 &
+[[ -n $hidden ]] && exit 0
 for _ in $(seq 80); do
   sleep 0.25
   read -r addr wsname < <(find_win)
