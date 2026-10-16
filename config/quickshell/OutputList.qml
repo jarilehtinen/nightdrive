@@ -14,6 +14,11 @@ Column {
     readonly property string mediaClass: kind === "source" ? "Audio/Source" : "Audio/Sink"
     readonly property string defaultKey: kind === "source" ? "default.audio.source" : "default.audio.sink"
     property var sinkList: []
+    // AirPlay speakers that refuse audio (Apple TV / HomePod OS 27 bug, docs/known-issues.md): checked live every 30 s,
+    // so the error disappears by itself once Apple fixes it
+    readonly property string airplayCheck: Quickshell.env("HOME") + "/.config/hypr/scripts/airplay-check"
+    property var refused: []
+    property real probedAt: 0
 
     function refresh() { dumpProc.running = true }
     onActiveChanged: if (active) refresh()
@@ -41,13 +46,23 @@ Column {
                 if (p["media.class"] !== o.mediaClass) continue
                 if (/^easyeffects_/.test(p["node.name"])) continue   // EasyEffects' virtual device, not a real output
                 sinks.push({ id: ob.id, name: p["node.description"] || p["node.name"], current: p["node.name"] === defName,
-                             bt: /^bluez_/.test(p["node.name"]) })
+                             bt: /^bluez_/.test(p["node.name"]), node: p["node.name"] })
             }
             // The machine's own devices first (MacBook Pro …, then Built-in …), the rest alphabetically
             const rank = n => /^MacBook Pro/i.test(n) ? 0 : /^Built-in/i.test(n) ? 1 : 2
             sinks.sort((a, b) => rank(a.name) - rank(b.name) || a.name.localeCompare(b.name))
             o.sinkList = sinks
+            const air = sinks.filter(d => /^raop_sink\./.test(d.node)).map(d => d.node)
+            if (air.length > 0 && !probe.running && Date.now() - o.probedAt > 30000) {
+                o.probedAt = Date.now()
+                probe.command = [o.airplayCheck, "refused"].concat(air)
+                probe.running = true
+            }
         }
+    }
+    Sh {
+        id: probe
+        onResult: text => o.refused = text.split("\n").filter(l => l !== "")
     }
 
     Repeater {
@@ -58,6 +73,8 @@ Column {
             active: modelData.current
             checkIcon: modelData.current ? "check" : ""
             label: modelData.name
+            danger: o.refused.includes(modelData.node)
+            detail: danger ? "no audio (Apple bug)" : ""
             icon: o.kind === "source" ? (modelData.bt || /head|buds|airpods/i.test(modelData.name) ? "headphones" : "mic")
                 : modelData.bt || /head|buds|airpods/i.test(modelData.name) ? "headphones"
                 : /macbook|built-in|laptop/i.test(modelData.name) ? "laptop"

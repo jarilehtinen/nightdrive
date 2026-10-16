@@ -101,6 +101,8 @@ Item {
             sel()
             Quickshell.execDetached(["wpctl", "set-default", String(it.id)])
             soundSoon.restart()
+            const d = sinks.find(x => x.id === it.id)
+            if (d && d.airplay) Quickshell.execDetached([airplayCheck, "notify", d.node])   // warns if it refuses audio
             return true
         }
         if (it.kind === "tsmachine") { copyText(it.ip); return true }
@@ -456,6 +458,11 @@ done; true'
     property real micPending: -1
     property var sinks: []           // [{ id, name, current, bt }]
     property var sources: []
+    // AirPlay speakers that refuse PipeWire's AirPlay 1 (RTSP 403): Apple TV / HomePod since OS 27 (Apple bug FB24452968).
+    // Probed live, so the warning disappears by itself once Apple fixes it. See docs/known-issues.md.
+    property var airplayRefused: []  // [node.name]
+    readonly property string airplayCheck: Quickshell.env("HOME") + "/.config/hypr/scripts/airplay-check"
+    property real airplayProbedAt: 0
     function soundRefresh() { volProc.running = true; micProc.running = true; dumpProc.running = true }
     function toggleMute(key) {
         if (key === "mic") micMuted = !micMuted; else muted = !muted
@@ -474,7 +481,8 @@ done; true'
                      summary: muted ? "muted" : pct(volume) }]
         for (const d of sinks)
             r.push({ kind: "sounddev", id: d.id, name: d.name, glyph: devIcon(d, false), trailGlyph: d.current ? "check" : undefined,
-                     summary: d.airplay && !d.current ? "AirPlay" : undefined, extra: "output speakers" + (d.airplay ? " airplay" : "") })
+                     summary: s.airplayRefused.includes(d.node) ? "no audio (Apple bug)" : d.airplay && !d.current ? "AirPlay" : undefined,
+                     extra: "output speakers" + (d.airplay ? " airplay" : "") })
         r.push({ kind: "header", name: "Microphone" },
                { kind: "slider", key: "mic", name: "Microphone", value: micVolume, dimmed: micMuted, extra: "mute input",
                  glyph: micMuted ? "mic-off" : "mic", summary: micMuted ? "muted" : pct(micVolume) })
@@ -484,7 +492,22 @@ done; true'
         r.push({ kind: "action", name: "Sound settings…", glyph: "settings", cmd: ["pavucontrol"] })
         return r
     }
-    Timer { interval: 1000; repeat: true; running: s.shown && s.level === "sound"; onTriggered: s.soundRefresh() }
+    Timer { interval: 1000; repeat: true; running: s.shown && s.level === "sound"; onTriggered: { s.soundRefresh(); s.probeAirplay() } }
+    function probeAirplay() {
+        const nodes = sinks.filter(d => d.airplay).map(d => d.node)
+        if (nodes.length === 0 || airplayProbe.running || Date.now() - airplayProbedAt < 30000) return
+        airplayProbedAt = Date.now()
+        airplayProbe.command = [airplayCheck, "refused"].concat(nodes)
+        airplayProbe.running = true
+    }
+    Sh {
+        id: airplayProbe
+        onResult: text => {
+            const refused = text.split("\n").filter(l => l !== "")
+            if (JSON.stringify(refused) === JSON.stringify(s.airplayRefused)) return
+            s.sel(); s.airplayRefused = refused
+        }
+    }
     Timer { id: soundSoon; interval: 150; onTriggered: s.soundRefresh() }
     Timer {
         id: volApply; interval: 60
@@ -531,7 +554,8 @@ done; true'
                 if (!list || /^easyeffects_/.test(p["node.name"])) continue   // EasyEffects' virtual device, not a real one
                 const key = p["media.class"] === "Audio/Sink" ? "default.audio.sink" : "default.audio.source"
                 list.push({ id: ob.id, name: p["node.description"] || p["node.name"], current: p["node.name"] === def[key], bt: /^bluez_/.test(p["node.name"]),
-                            airplay: /^raop_sink\./.test(p["node.name"]) })   // PipeWire's AirPlay speakers (RAOP)
+                            airplay: /^raop_sink\./.test(p["node.name"]),   // PipeWire's AirPlay speakers (RAOP)
+                            node: p["node.name"] })
             }
             // The machine's own devices first, the rest alphabetically (as in OutputList)
             const rank = n => /^MacBook Pro/i.test(n) ? 0 : /^Built-in/i.test(n) ? 1 : 2
@@ -539,6 +563,7 @@ done; true'
             if (JSON.stringify(out["Audio/Sink"]) === JSON.stringify(s.sinks) && JSON.stringify(out["Audio/Source"]) === JSON.stringify(s.sources)) return
             s.sel()
             s.sinks = out["Audio/Sink"]
+            s.probeAirplay()
             s.sources = out["Audio/Source"]
         }
     }

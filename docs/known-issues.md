@@ -59,3 +59,27 @@ Try it live first with `hyprctl eval 'hl.config({ debug = { damage_tracking = 0 
 
 **A fix for everyone could be:** finding which layer's damage is wrong (the bar, the wallpaper or the shelf overlay) and
 reporting it upstream, or making the bar's background opaque (an opaque bar hides it, which is why it only shows with bar opacity).
+
+## AirPlay audio to an Apple TV or HomePod plays nothing (OS 27)
+
+**Seen:** Apple TV 4K (`AppleTV11,1`), tvOS 27.0 (24J361), `AirTunes/980.77.2`; PipeWire 1.6.9 on Fedora Asahi Remix 44.
+Found 2026-10-16. Worked before the tvOS 27 update. Other AirPlay speakers (a Sony receiver) still work.
+
+**Symptom:** the Apple TV shows up under Sound as an output and can be chosen, but nothing is heard, from any app.
+
+**Cause:** Apple's OS 27 bug, not Nightdrive: Apple TV and HomePod refuse AirPlay 1 senders, which is what PipeWire's
+AirPlay output (`module-raop-sink`) is. Even with *Allow Access: Anyone on the same network* the device answers the very
+first RTSP request with `403 Forbidden`. Airfoil and OwnTone hit the same wall; Rogue Amoeba has reported it to Apple as
+FB24452968 ([their note](https://rogueamoeba.com/support/knowledgebase/?showArticle=Airfoil-OS27-Issues),
+[OwnTone #2047](https://github.com/owntone/owntone-server/issues/2047)). Check by hand:
+
+```
+exec 3<>/dev/tcp/<ip>/7000; printf 'OPTIONS * RTSP/1.0\r\nCSeq: 1\r\n\r\n' >&3; head -1 <&3   # RTSP/1.0 403 Forbidden
+```
+
+**Workaround:** use Screen Mirroring (Settings › Display), which speaks AirPlay 2 with pairing and carries the sound too.
+The Sound menus show a refusing speaker in red with *no audio (Apple bug)* (`hypr/scripts/airplay-check`), and choosing it
+in the launcher's Settings › Sound also gives a notification. The check is live, so the mark disappears by itself once Apple
+fixes it, and then AirPlay audio is worth trying again.
+
+**A fix for everyone could be:** an AirPlay 2 sender (pairing) for audio only, if Apple doesn't fix it.

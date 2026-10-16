@@ -1,0 +1,24 @@
+#!/bin/bash
+# Checks whether AirPlay speakers (PipeWire's raop_sink.*) accept audio. Apple TV and HomePod with OS 27 answer an AirPlay 1
+# sender's first request with 403 (Apple bug FB24452968, docs/known-issues.md), so the output plays nothing.
+#   airplay-check refused <node.name>…   prints the node names that refuse (Settings › Sound marks them)
+#   airplay-check notify <node.name>     a notification if it refuses (when it's chosen in a Sound menu)
+# Non-AirPlay node names are skipped, so callers can pass any sink.
+refuses() {   # raop_sink.<host>.<ip>.<port> → RTSP OPTIONS like an AirPlay 1 sender
+  [[ $1 =~ ^raop_sink\..*\.([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)\.([0-9]+)$ ]] || return 1
+  timeout 2 bash -c 'exec 3<>"/dev/tcp/$0/$1"; printf "OPTIONS * RTSP/1.0\r\nCSeq: 1\r\n\r\n" >&3; head -1 <&3' \
+    "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" 2>/dev/null | grep -q " 403 "
+}
+
+case ${1:-} in
+  refused) shift; for n in "$@"; do refuses "$n" && echo "$n"; done; exit 0 ;;
+  notify)
+    refuses "$2" || exit 0
+    name=$(pw-dump | python3 -I -c 'import json,sys
+for o in json.load(sys.stdin):
+    p = (o.get("info") or {}).get("props") or {}
+    if p.get("node.name") == sys.argv[1]: print(p.get("node.description") or ""); break' "$2")
+    notify-send -a Sound "${name:-AirPlay speaker} refuses AirPlay audio" \
+      "Apple TV and HomePod OS 27 block AirPlay 1 senders (Apple bug), so nothing is heard. Pick another output, or mirror the screen to it (Settings › Display)." ;;
+  *) echo "usage: airplay-check refused <node.name>… | notify <node.name>" >&2; exit 2 ;;
+esac
