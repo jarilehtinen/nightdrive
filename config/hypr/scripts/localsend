@@ -1,0 +1,499 @@
+#!/usr/bin/python3
+"""LocalSend: receives files and text from phones and other computers running LocalSend (https://localsend.org).
+
+    localsend status                   on | off
+    localsend enable | disable         the receiver on/off (nightdrive-localsend.service, starts with the session)
+    localsend run                      the receiver itself (the service)
+
+The LocalSend app's own window isn't needed: this speaks its protocol (github.com/localsend/protocol, v2). It answers
+the multicast discovery on the local network, so the computer shows up in the phone's LocalSend under its host name.
+A send asks first: a notification with Accept and Decline (nothing is saved without Accept, and no answer in a minute
+is a Decline). Files go to the Downloads folder; a text (LocalSend's "Text" or a shared link) is shown in the notification
+with a Copy button. The connection is HTTPS with a self-signed certificate made on the first run, as LocalSend does.
+"""
+import hashlib
+import json
+import os
+import re
+import secrets
+import select
+import shutil
+import socket
+import ssl
+import struct
+import subprocess
+import sys
+import threading
+import time
+import urllib.parse
+import urllib.request
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+PORT = 53317                 # LocalSend's port, for both the multicast discovery and HTTPS
+GROUP = "224.0.0.167"        # LocalSend's multicast group
+STATE = os.path.expanduser("~/.local/share/nightdrive/localsend")   # the certificate and its key
+SERVICE = "nightdrive-localsend.service"
+APP = "LocalSend"       # the notifications' app name
+ICON = "smartphone"
+ASK_TIMEOUT = 60             # seconds to answer Accept/Decline
+SESSION_IDLE = 300           # seconds without an upload before a session is dropped (the sender went away)
+REJOIN = 30                  # seconds between multicast re-joins: a Wi-Fi reconnect drops the membership
+ANNOUNCE_EVERY = 600         # seconds between own announcements (also sent at start)
+CHUNK = 1 << 20
+
+
+def downloads():
+    try:
+        d = subprocess.run(["xdg-user-dir", "DOWNLOAD"], capture_output=True, text=True).stdout.strip()
+    except OSError:
+        d = ""
+    return d if d and d != os.path.expanduser("~") else os.path.expanduser("~/Downloads")
+
+
+def alias():
+    try:
+        pretty = subprocess.run(["hostnamectl", "--pretty"], capture_output=True, text=True).stdout.strip()
+    except OSError:
+        pretty = ""
+    return pretty or socket.gethostname().split(".")[0].capitalize()
+
+
+def certificate():
+    """The self-signed certificate (made once) and its fingerprint: the SHA-256 of the DER certificate, as LocalSend."""
+    cert, key = os.path.join(STATE, "cert.pem"), os.path.join(STATE, "key.pem")
+    if not (os.path.exists(cert) and os.path.exists(key)):
+        os.makedirs(STATE, mode=0o700, exist_ok=True)
+        subprocess.run(["openssl", "req", "-x509", "-newkey", "ec", "-pkeyopt", "ec_paramgen_curve:prime256v1", "-nodes",
+                        "-days", "3650", "-subj", "/CN=LocalSend User", "-keyout", key, "-out", cert],
+                       check=True, capture_output=True)
+        os.chmod(key, 0o600)
+    with open(cert) as f:
+        der = ssl.PEM_cert_to_DER_cert(f.read())
+    return cert, key, hashlib.sha256(der).hexdigest().upper()
+
+
+def human(n):
+    for unit in ("B", "KB", "MB", "GB"):
+        if n < 1000 or unit == "GB":
+            return f"{n:.0f} {unit}" if unit == "B" else f"{n:.1f} {unit}"
+        n /= 1000
+
+
+def notify(summary, body="", actions=(), wait=False, timeout=None, urgency=None):
+    """A notification. With wait, returns (process, its id) while it waits for a button; else None."""
+    cmd = ["notify-send", "-a", APP, "-i", ICON, "-p"]
+    if urgency:
+        cmd += ["-u", urgency]
+    if timeout is not None:
+        cmd += ["-t", str(timeout)]
+    for key, label in actions:
+        cmd += ["-A", f"{key}={label}"]
+    if actions or wait:
+        cmd.append("--wait")
+    cmd += ["--", summary, body]
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+    nid = p.stdout.readline().strip()   # -p prints the id as soon as it's shown
+    if not (actions or wait):
+        p.wait()
+    return p, nid
+
+
+def close_notification(nid):
+    if nid.isdigit():
+        subprocess.run(["gdbus", "call", "--session", "--dest", "org.freedesktop.Notifications", "--object-path",
+                        "/org/freedesktop/Notifications", "--method", "org.freedesktop.Notifications.CloseNotification",
+                        nid], capture_output=True)
+
+
+def answer(p, nid, timeout):
+    """The button pressed on a notification from notify(…, wait=True), or "" (closed, timed out)."""
+    try:
+        out, _ = p.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        p.kill()
+        p.communicate()
+        close_notification(nid)
+        return ""
+    return out.strip().splitlines()[-1] if out.strip() else ""
+
+
+def follow(p, nid, actions):
+    """Runs the button's command when one is pressed (a background thread, so the notification can wait)."""
+    def wait():
+        key = answer(p, nid, None)
+        if key in actions:
+            actions[key]()
+    threading.Thread(target=wait, daemon=True).start()
+
+
+def safe_path(root, name):
+    """A file name from the sender inside root: a folder send has subfolders ("dir/file"), never "..", never absolute."""
+    parts = [re.sub(r'[\x00-\x1f]', "", p).strip() for p in name.replace("\\", "/").split("/")]
+    parts = [p for p in parts if p and p not in (".", "..")] or ["file"]
+    return os.path.join(root, *parts)
+
+
+def unique(path, taken):
+    """path, or "name (2).ext" when it exists or another file of this send already has it."""
+    base, ext = os.path.splitext(path)
+    n = 1
+    while os.path.exists(path) or path in taken:
+        n += 1
+        path = f"{base} ({n}){ext}"
+    return path
+
+
+class Session:
+    def __init__(self, sender, ip, files):
+        self.id = secrets.token_hex(8)
+        self.sender, self.ip = sender, ip
+        self.files = files          # id → {"token", "path", "size", "sha256", "done"}
+        self.touched = time.monotonic()
+
+    def finished(self):
+        return all(f["done"] for f in self.files.values())
+
+
+class Receiver:
+    def __init__(self):
+        self.cert, self.key, self.fingerprint = certificate()
+        self.dest = downloads()
+        self.lock = threading.Lock()
+        self.session = None     # the one transfer at a time (LocalSend's 409 for another)
+        self.asking = None      # (sender ip, notification process, id) while Accept/Decline is shown
+
+    def info(self, full=True):
+        d = {"alias": alias(), "version": "2.1", "deviceModel": "Nightdrive", "deviceType": "desktop",
+             "fingerprint": self.fingerprint, "download": False}
+        if full:
+            d.update({"port": PORT, "protocol": "https"})
+        return d
+
+    # --- Discovery ---------------------------------------------------------------------------------------------
+    def multicast(self):
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+        s.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 1)
+        s.bind(("", PORT))
+        mreq = struct.pack("4s4s", socket.inet_aton(GROUP), socket.inet_aton("0.0.0.0"))
+        last = 0.0
+        while True:
+            # Re-join every round: after a Wi-Fi reconnect the old membership is gone (dropping a missing one fails)
+            for opt in (socket.IP_DROP_MEMBERSHIP, socket.IP_ADD_MEMBERSHIP):
+                try:
+                    s.setsockopt(socket.IPPROTO_IP, opt, mreq)
+                except OSError:
+                    pass
+            if time.monotonic() - last > ANNOUNCE_EVERY:
+                last = time.monotonic()
+                self.send_multicast(s, announce=True)
+            if not select.select([s], [], [], REJOIN)[0]:
+                continue
+            data, (ip, _) = s.recvfrom(65535)
+            try:
+                msg = json.loads(data)
+            except ValueError:
+                continue
+            if not isinstance(msg, dict) or msg.get("fingerprint") == self.fingerprint:
+                continue
+            if msg.get("announce") or msg.get("announcement"):
+                threading.Thread(target=self.reply, args=(s, ip, msg), daemon=True).start()
+
+    def send_multicast(self, s, announce):
+        d = self.info()
+        d.update({"announce": announce, "announcement": announce})   # "announcement": LocalSend before 2.0
+        try:
+            s.sendto(json.dumps(d).encode(), (GROUP, PORT))
+        except OSError:
+            pass
+
+    def reply(self, s, ip, msg):
+        """An announcement from another device: introduce ourselves over HTTP(S), or by multicast when that fails."""
+        proto = msg.get("protocol") if msg.get("protocol") in ("http", "https") else "https"
+        url = f"{proto}://{ip}:{int(msg.get('port') or PORT)}/api/localsend/v2/register"
+        ctx = ssl.create_default_context()
+        ctx.check_hostname, ctx.verify_mode = False, ssl.CERT_NONE   # LocalSend's certificates are self-signed
+        req = urllib.request.Request(url, json.dumps(self.info()).encode(), {"Content-Type": "application/json"})
+        try:
+            urllib.request.urlopen(req, timeout=3, context=ctx).read()
+        except Exception:
+            self.send_multicast(s, announce=False)
+
+    # --- Transfers ---------------------------------------------------------------------------------------------
+    def current(self):
+        """The session, or None once it has been idle too long (the sender went away mid-transfer)."""
+        s = self.session
+        if s and time.monotonic() - s.touched > SESSION_IDLE:
+            self.end(s, interrupted=True)
+            return None
+        return s
+
+    def prepare(self, ip, body):
+        sender = body.get("info") or {}
+        files = body.get("files") or {}
+        if not isinstance(files, dict) or not files:
+            return 400, None
+        who = str(sender.get("alias") or ip)
+        items = list(files.values())
+
+        # A text (LocalSend's "Text" / a shared link): one text file whose content is in the preview, nothing to upload
+        if len(items) == 1 and str(items[0].get("fileType", "")).startswith("text/") and items[0].get("preview"):
+            text = str(items[0]["preview"])
+            p, nid = notify(f"Text from {who}", text, actions=[("copy", "Copy")])
+            follow(p, nid, {"copy": lambda: subprocess.run(["wl-copy", "--", text])})
+            return 204, None
+
+        with self.lock:
+            s = self.current()
+        if s and s.ip == ip:
+            self.end(s, quiet=True)   # the same sender again: its last send failed on its side and was left open
+        with self.lock:
+            if self.asking or self.current():
+                return 409, None
+            self.asking = (ip, None, "")
+        try:
+            names = [os.path.basename(str(f.get("fileName", "file"))) for f in items]
+            total = sum(int(f.get("size") or 0) for f in items)
+            title = f"{who} wants to send {names[0]}" if len(items) == 1 else f"{who} wants to send {len(items)} files"
+            shown = names[:4] + ([f"and {len(names) - 4} more"] if len(names) > 4 else [])
+            body_text = (", ".join(shown) + " · " if len(items) > 1 else "") + human(total)
+            p, nid = notify(title, body_text, actions=[("accept", "Accept"), ("decline", "Decline")],
+                            timeout=ASK_TIMEOUT * 1000, urgency="critical")
+            with self.lock:
+                self.asking = (ip, p, nid)
+            choice = answer(p, nid, ASK_TIMEOUT)
+        finally:
+            with self.lock:
+                self.asking = None
+        if choice != "accept":
+            return 403, None
+
+        taken, out = set(), {}
+        for fid, f in files.items():
+            path = unique(safe_path(self.dest, str(f.get("fileName") or fid)), taken)
+            taken.add(path)
+            out[str(fid)] = {"token": secrets.token_hex(16), "path": path, "size": int(f.get("size") or 0),
+                             "sha256": (f.get("sha256") or "").lower(), "done": False}
+        s = Session(who, ip, out)
+        with self.lock:
+            self.session = s
+        return 200, {"sessionId": s.id, "files": {fid: f["token"] for fid, f in out.items()}}
+
+    def upload(self, ip, q, chunks):
+        with self.lock:
+            s = self.current()
+        if not s or s.id != q.get("sessionId"):
+            return 409 if s else 403
+        f = s.files.get(q.get("fileId", ""))
+        if not f or f["token"] != q.get("token") or ip != s.ip:
+            return 403
+        os.makedirs(os.path.dirname(f["path"]), exist_ok=True)
+        part = f["path"] + ".part"
+        h = hashlib.sha256()
+        try:
+            with open(part, "wb") as out:
+                for chunk in chunks:
+                    out.write(chunk)
+                    h.update(chunk)
+                    s.touched = time.monotonic()
+        except (OSError, ValueError) as e:
+            print(f"upload of {f['path']} failed: {e}", flush=True)
+            self.remove(part)
+            return 500
+        if f["sha256"] and h.hexdigest() != f["sha256"]:
+            print(f"checksum mismatch: {f['path']}", flush=True)
+            self.remove(part)
+            return 422
+        os.replace(part, f["path"])
+        f["done"] = True
+        if s.finished():
+            self.end(s)
+        return 200
+
+    def cancel(self, ip, q):
+        with self.lock:
+            asking, s = self.asking, self.session
+        if asking and asking[0] == ip and asking[1]:
+            asking[1].kill()           # its answer() returns "": a Decline
+            close_notification(asking[2])
+        if s and s.id == q.get("sessionId"):
+            self.end(s, interrupted=True)
+        return 200
+
+    def end(self, s, interrupted=False, quiet=False):
+        with self.lock:
+            if self.session is not s:
+                return
+            self.session = None
+        done = [f["path"] for f in s.files.values() if f["done"]]
+        for f in s.files.values():
+            if not f["done"]:
+                self.remove(f["path"] + ".part")
+        if quiet:
+            return
+        if interrupted:
+            notify(f"Transfer from {s.sender} stopped",
+                   f"{len(done)} of {len(s.files)} files received" if done else "Nothing was saved", urgency="normal")
+            return
+        if len(done) == 1:
+            title, target = f"Received {os.path.basename(done[0])}", done[0]
+        else:
+            title, target = f"Received {len(done)} files", None
+        p, nid = notify(title, f"From {s.sender} · {os.path.basename(self.dest)}",
+                        actions=[("default", "Open"), ("show", "Show in Files")])
+        show = (lambda: subprocess.Popen(["nautilus", "--select", done[0]])) if target else \
+            (lambda: subprocess.Popen(["xdg-open", self.dest]))
+        opener = (lambda: subprocess.Popen(["xdg-open", target])) if target else show
+        follow(p, nid, {"default": opener, "show": show})
+
+    @staticmethod
+    def remove(path):
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+
+
+def handler(r):
+    class Handler(BaseHTTPRequestHandler):
+        protocol_version = "HTTP/1.1"
+
+        def log_message(self, fmt, *a):
+            print(f"{self.client_address[0]} {fmt % a}", flush=True)   # the journal: journalctl --user -u nightdrive-localsend
+
+        def reply(self, code, data=None):
+            body = json.dumps(data).encode() if data is not None else b""
+            self.send_response(code)
+            if data is not None:
+                self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def read_json(self):
+            n = int(self.headers.get("Content-Length") or 0)
+            try:
+                return json.loads(self.rfile.read(n) or b"{}")
+            except ValueError:
+                return None
+
+        def body(self):
+            """The request body in pieces: a Content-Length, or chunked (LocalSend on iOS sends files without a length)."""
+            if "chunked" in (self.headers.get("Transfer-Encoding") or "").lower():
+                while True:
+                    size = int(self.rfile.readline(1024).split(b";")[0].strip() or b"x", 16)   # ValueError: broken
+                    if size == 0:
+                        while self.rfile.readline(1024).strip():   # trailers up to the empty line
+                            pass
+                        return
+                    while size > 0:
+                        chunk = self.rfile.read(min(CHUNK, size))
+                        if not chunk:
+                            raise OSError("connection closed")
+                        size -= len(chunk)
+                        yield chunk
+                    self.rfile.readline(1024)   # the CRLF after the chunk
+            else:
+                left = int(self.headers.get("Content-Length") or 0)
+                while left > 0:
+                    chunk = self.rfile.read(min(CHUNK, left))
+                    if not chunk:
+                        raise OSError("connection closed")
+                    left -= len(chunk)
+                    yield chunk
+
+        def route(self):
+            u = urllib.parse.urlsplit(self.path)
+            return u.path.rstrip("/"), dict(urllib.parse.parse_qsl(u.query))
+
+        def do_GET(self):
+            path, _ = self.route()
+            if path in ("/api/localsend/v2/info", "/api/localsend/v1/info"):
+                self.reply(200, r.info(full=False))
+            else:
+                self.reply(404)
+
+        def do_POST(self):
+            path, q = self.route()
+            ip = self.client_address[0]
+            if path == "/api/localsend/v2/register":
+                self.read_json()
+                self.reply(200, r.info(full=False))
+            elif path == "/api/localsend/v2/prepare-upload":
+                body = self.read_json()
+                code, data = r.prepare(ip, body) if isinstance(body, dict) else (400, None)
+                self.reply(code, data)
+            elif path == "/api/localsend/v2/upload":
+                self.reply(r.upload(ip, q, self.body()))
+            elif path == "/api/localsend/v2/cancel":
+                self.reply(r.cancel(ip, q))
+            else:
+                self.reply(404)
+    return Handler
+
+
+class Server(ThreadingHTTPServer):
+    daemon_threads = True
+    allow_reuse_address = True
+
+    def __init__(self, receiver):
+        super().__init__(("", PORT), handler(receiver))
+        self.ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        self.ctx.load_cert_chain(receiver.cert, receiver.key)
+
+    def handle_error(self, request, client_address):
+        print(f"{client_address[0]} connection error: {sys.exc_info()[1]!r}", flush=True)   # a sender gone mid-request
+
+    def finish_request(self, request, client_address):
+        # TLS in the request's own thread: a slow or stuck handshake doesn't hold up the others
+        try:
+            request = self.ctx.wrap_socket(request, server_side=True)
+        except (ssl.SSLError, OSError):
+            return
+        super().finish_request(request, client_address)
+
+
+def run():
+    r = Receiver()
+    server = Server(r)
+    threading.Thread(target=r.multicast, daemon=True).start()
+    print(f"LocalSend: {r.info()['alias']} on port {PORT}, files to {r.dest}", flush=True)
+    server.serve_forever()
+
+
+def systemctl(*a):
+    return subprocess.run(["systemctl", "--user", *a], capture_output=True, text=True)
+
+
+def status():
+    return "on" if systemctl("is-enabled", "-q", SERVICE).returncode == 0 else "off"
+
+
+def main():
+    a = sys.argv[1:]
+    cmd = a[0] if a else "status"
+    if cmd == "status":
+        print(status())
+    elif cmd == "enable":
+        if not shutil.which("openssl"):
+            print("openssl is needed for the certificate", file=sys.stderr)
+            return 1
+        certificate()
+        systemctl("daemon-reload")
+        res = systemctl("enable", "--now", SERVICE)
+        if res.returncode:
+            print(res.stderr.strip(), file=sys.stderr)
+            return 1
+    elif cmd == "disable":
+        systemctl("disable", "--now", SERVICE)
+    elif cmd == "run":
+        run()
+    else:
+        print(__doc__.split("\n\n")[1], file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

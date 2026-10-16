@@ -17,6 +17,7 @@ tailscale|Tailscale|shield-check|VPN, in the top bar (log in afterwards: sudo ta
 thunderbird|Thunderbird|mail|Email (⌘⇧I)|off|sudo dnf install -y thunderbird|command -v thunderbird|recommended
 apostrophe|Apostrophe|file-text|Markdown editor (Flatpak), opens .md files|off|install-apostrophe.sh|flatpak info --user org.gnome.gitlab.somas.Apostrophe|recommended
 deck|Deck|disc-3|Spotify player (needs Premium), launcher and top bar; compiled|on|install-deck.sh|test -x ~/.local/bin/deck|recommended
+localsend|LocalSend|smartphone|Files from phones via the LocalSend app, asks first (experimental)|off|sudo dnf install -y openssl && config/hypr/scripts/localsend enable|systemctl --user -q is-enabled nightdrive-localsend.service|plugin
 mirroring|Screen Mirroring|screen-share|AirPlay to an Apple TV (doubletake, experimental; compiled)|off|install-doubletake.sh|test -x ~/.local/bin/doubletake|plugin
 keyd|Mac text keys|keyboard|⌥⌫ deletes a word, ⌘⌫ to the line start (Files: to the trash), as real key presses (keyd)|off|install-keyd.sh|systemctl -q is-enabled keyd|plugin
 vscode|VS Code|code|Visual Studio Code from Microsoft's repo (⌘⇧C)|off|install-vscode.sh|command -v code|recommended

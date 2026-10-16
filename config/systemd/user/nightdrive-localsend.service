@@ -1,0 +1,13 @@
+# LocalSend receiver (hypr/scripts/localsend). Off until turned on (localsend enable, plugins.txt).
+[Unit]
+Description=Nightdrive LocalSend receiver
+PartOf=nightdrive-session.target
+After=nightdrive-session.target
+
+[Service]
+ExecStart=%h/.config/hypr/scripts/localsend run
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=nightdrive-session.target
