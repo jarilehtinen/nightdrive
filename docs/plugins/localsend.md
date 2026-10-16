@@ -8,6 +8,8 @@ Nightdrive answers LocalSend's discovery on its own, so the computer shows up in
 - Files go to your Downloads folder.
 - A text or a shared link shows in the notification, with a Copy button.
 
+Sending works the other way too: right-click files or folders in Files › Send with LocalSend, or in the launcher Tools › Send clipboard / Send files with LocalSend. The phone asks before it saves anything, so LocalSend has to be open there (iOS doesn't let it listen in the background). With several devices around, you pick one from a list.
+
 The connection is encrypted (HTTPS with a certificate made on the first run, as LocalSend does). Turn it off again with `~/.config/hypr/scripts/localsend disable`.
 
 Homepage: https://localsend.org

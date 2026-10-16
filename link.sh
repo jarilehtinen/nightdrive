@@ -48,6 +48,7 @@ cp -n "$repo/config/easyeffects/db/easyeffectsrc" "$HOME/.config/easyeffects/db/
 
 link "$repo/config/wireplumber/wireplumber.conf.d/51-bt-no-headset-autoswitch.conf" "$HOME/.config/wireplumber/wireplumber.conf.d/51-bt-no-headset-autoswitch.conf"   # don't make the BT headset mic the default
 
+link "$repo/config/nautilus-python/localsend.py" "$HOME/.local/share/nautilus-python/extensions/localsend.py"   # Files › Send with LocalSend (shown while the plugin is on)
 link "$repo/config/applications/nm-connection-editor.desktop" "$HOME/.local/share/applications/nm-connection-editor.desktop"   # Fedora ships none
 # macbook_mic alias for dictation (voxtype): the MacBook's mic on Apple Silicon, the default mic elsewhere
 if [[ $("$repo/config/hypr/scripts/platform" name) == asahi ]]; then asound=asoundrc; else asound=asoundrc.generic; fi

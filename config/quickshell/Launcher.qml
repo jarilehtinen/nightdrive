@@ -238,7 +238,12 @@ PanelWindow {
             { kind: "nav", name: "Emoji", glyph: "smile", target: "emoji" },
             { kind: "nav", name: "Snippets", glyph: "text-cursor-input", target: "snippets", extra: "text expansion replacement abbreviation autotext" },
             { kind: "action", name: "Color Picker", glyph: "pipette", cmd: ["bash", "-c", "sleep 0.4; \"$HOME/.config/hypr/scripts/color-picker\""] }
-        ],
+        ].concat(Plugins.has("localsend") ? [   // to a phone running LocalSend (hypr/scripts/localsend); several: picked from a list
+            { kind: "action", name: "Send clipboard with LocalSend", glyph: "smartphone", cmd: [scripts + "/localsend", "send-clipboard"],
+              extra: "phone iphone share airdrop text link" },
+            { kind: "action", name: "Send files with LocalSend", glyph: "smartphone", cmd: [scripts + "/localsend", "send-pick"],
+              extra: "phone iphone share airdrop" }
+        ] : []),
         screenshot: [
             { kind: "action", name: "Region", glyph: "crop", cmd: shot("region") },
             { kind: "action", name: "Window", glyph: "app-window", cmd: shot("window") },

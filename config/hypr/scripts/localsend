@@ -4,15 +4,25 @@
     localsend status                   on | off
     localsend enable | disable         the receiver on/off (nightdrive-localsend.service, starts with the session)
     localsend run                      the receiver itself (the service)
+    localsend devices                  the devices on the network (JSON), after asking them to answer
+    localsend send FILE…               sends files or folders (Files › Send with LocalSend)
+    localsend send-clipboard           sends the clipboard's text (launcher › Tools › LocalSend)
+    localsend send-pick                picks files in a file chooser and sends them (launcher › Tools › LocalSend)
 
 The LocalSend app's own window isn't needed: this speaks its protocol (github.com/localsend/protocol, v2). It answers
 the multicast discovery on the local network, so the computer shows up in the phone's LocalSend under its host name.
 A send asks first: a notification with Accept and Decline (nothing is saved without Accept, and no answer in a minute
 is a Decline). Files go to the Downloads folder; a text (LocalSend's "Text" or a shared link) is shown in the notification
 with a Copy button. The connection is HTTPS with a self-signed certificate made on the first run, as LocalSend does.
+
+Sending goes the other way: the devices that announced themselves to the receiver are remembered (DEVICES), a send asks
+them to answer again, one device is used as it is and several are picked from a list. The phone asks its user, so the
+LocalSend app has to be open there (iOS doesn't let it listen in the background).
 """
 import hashlib
+import http.client
 import json
+import mimetypes
 import os
 import re
 import secrets
@@ -40,6 +50,10 @@ SESSION_IDLE = 300           # seconds without an upload before a session is dro
 REJOIN = 30                  # seconds between multicast re-joins: a Wi-Fi reconnect drops the membership
 ANNOUNCE_EVERY = 600         # seconds between own announcements (also sent at start)
 CHUNK = 1 << 20
+DEVICES = os.path.expanduser("~/.cache/nightdrive/localsend-devices.json")   # the devices seen, for sending
+FRESH = 900                  # seconds a device counts as present after it was last seen
+DISCOVER_WAIT = 2.0          # seconds a send waits for the devices to answer its announcement
+SEND_ASK_TIMEOUT = 120       # seconds the phone's user has to accept a send
 
 
 def downloads():
@@ -79,9 +93,10 @@ def human(n):
         n /= 1000
 
 
-def notify(summary, body="", actions=(), wait=False, timeout=None, urgency=None):
-    """A notification. With wait, returns (process, its id) while it waits for a button; else None."""
-    cmd = ["notify-send", "-a", APP, "-i", ICON, "-p"]
+def notify(summary, body="", actions=(), wait=False, timeout=None, urgency=None, replace=""):
+    """A notification (replacing the one with id replace). Returns (process, its id); with actions or wait the process
+    waits for a button."""
+    cmd = ["notify-send", "-a", APP, "-i", ICON, "-p"] + (["-r", replace] if replace.isdigit() else [])
     if urgency:
         cmd += ["-u", urgency]
     if timeout is not None:
@@ -143,6 +158,38 @@ def unique(path, taken):
     return path
 
 
+_devices_lock = threading.Lock()
+
+
+def load_devices():
+    try:
+        with open(DEVICES) as f:
+            d = json.load(f)
+        return d if isinstance(d, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def remember(ip, info, own):
+    """A device that announced or registered itself: kept by its fingerprint with the address it came from."""
+    fp = str(info.get("fingerprint") or ip)
+    if fp == own or not info.get("alias"):
+        return
+    with _devices_lock:
+        devs = load_devices()
+        old = devs.get(fp, {})
+        devs[fp] = {"alias": str(info["alias"]), "deviceModel": info.get("deviceModel") or old.get("deviceModel"),
+                    "deviceType": info.get("deviceType") or old.get("deviceType"), "ip": ip,
+                    "port": int(info.get("port") or old.get("port") or PORT),
+                    "protocol": info.get("protocol") or old.get("protocol") or "https", "seen": time.time()}
+        devs = {k: v for k, v in devs.items() if time.time() - v.get("seen", 0) < 7 * 86400}
+        os.makedirs(os.path.dirname(DEVICES), exist_ok=True)
+        tmp = DEVICES + ".tmp"
+        with open(tmp, "w") as f:
+            json.dump(devs, f, ensure_ascii=False)
+        os.replace(tmp, DEVICES)
+
+
 class Session:
     def __init__(self, sender, ip, files):
         self.id = secrets.token_hex(8)
@@ -197,6 +244,7 @@ class Receiver:
                 continue
             if not isinstance(msg, dict) or msg.get("fingerprint") == self.fingerprint:
                 continue
+            remember(ip, msg, self.fingerprint)
             if msg.get("announce") or msg.get("announcement"):
                 threading.Thread(target=self.reply, args=(s, ip, msg), daemon=True).start()
 
@@ -216,7 +264,9 @@ class Receiver:
         ctx.check_hostname, ctx.verify_mode = False, ssl.CERT_NONE   # LocalSend's certificates are self-signed
         req = urllib.request.Request(url, json.dumps(self.info()).encode(), {"Content-Type": "application/json"})
         try:
-            urllib.request.urlopen(req, timeout=3, context=ctx).read()
+            answer = json.loads(urllib.request.urlopen(req, timeout=3, context=ctx).read() or b"{}")
+            if isinstance(answer, dict):
+                remember(ip, dict(answer, port=msg.get("port"), protocol=proto), self.fingerprint)
         except Exception:
             self.send_multicast(s, announce=False)
 
@@ -418,7 +468,9 @@ def handler(r):
             path, q = self.route()
             ip = self.client_address[0]
             if path == "/api/localsend/v2/register":
-                self.read_json()
+                body = self.read_json()
+                if isinstance(body, dict):
+                    remember(ip, body, r.fingerprint)
                 self.reply(200, r.info(full=False))
             elif path == "/api/localsend/v2/prepare-upload":
                 body = self.read_json()
@@ -462,6 +514,174 @@ def run():
     server.serve_forever()
 
 
+# --- Sending ----------------------------------------------------------------------------------------------------
+def insecure():
+    ctx = ssl.create_default_context()
+    ctx.check_hostname, ctx.verify_mode = False, ssl.CERT_NONE   # LocalSend's certificates are self-signed
+    return ctx
+
+
+def own_info():
+    d = {"alias": alias(), "version": "2.1", "deviceModel": "Nightdrive", "deviceType": "desktop",
+         "fingerprint": certificate()[2], "port": PORT, "protocol": "https", "download": False}
+    return d
+
+
+def discover():
+    """The devices present: an announcement makes the open LocalSend apps register again with the receiver (the
+    service), which keeps them in DEVICES."""
+    d = dict(own_info(), announce=True, announcement=True)
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+    s.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 1)
+    try:
+        s.sendto(json.dumps(d).encode(), (GROUP, PORT))
+    except OSError:
+        pass
+    s.close()
+    time.sleep(DISCOVER_WAIT)
+    devs = load_devices()
+    return sorted(({"id": k, **v} for k, v in devs.items() if time.time() - v.get("seen", 0) < FRESH),
+                  key=lambda v: -v["seen"])
+
+
+def pick_device():
+    if status() != "on":
+        notify("LocalSend is off", "Turn it on in the launcher: Install › Plugins › LocalSend", urgency="normal")
+        return None
+    devs = discover()
+    if not devs:
+        notify("No device found", "Open LocalSend on the phone, on the same network, and try again")
+        return None
+    if len(devs) == 1:
+        return devs[0]
+    rows = []
+    for d in devs:
+        rows += [d["id"], d["alias"], d.get("deviceModel") or ""]
+    out = subprocess.run(["zenity", "--list", "--title=Send with LocalSend", "--text=Send to", "--column=id",
+                          "--column=Device", "--column=Model", "--hide-column=1", "--print-column=1", *rows],
+                         capture_output=True, text=True).stdout.strip()
+    return next((d for d in devs if d["id"] == out), None)
+
+
+def request(dev, path, body=b"", length=None, timeout=10):
+    """A POST to the device: (status, the JSON answer or None). body is bytes or an open file (sent in pieces)."""
+    cls = http.client.HTTPSConnection if dev.get("protocol", "https") == "https" else http.client.HTTPConnection
+    kw = {"context": insecure()} if cls is http.client.HTTPSConnection else {}
+    conn = cls(dev["ip"], dev.get("port") or PORT, timeout=timeout, **kw)
+    try:
+        kind = "application/octet-stream" if "/upload?" in path else "application/json"
+        conn.request("POST", path, body=body,
+                     headers={"Content-Type": kind, "Content-Length": str(len(body) if length is None else length)})
+        res = conn.getresponse()
+        data = res.read()
+        try:
+            return res.status, json.loads(data) if data else None
+        except ValueError:
+            return res.status, None
+    finally:
+        conn.close()
+
+
+def send(items, dev):
+    """Sends items ({"name", "size", "type", and "path" or "text"}) to dev, following it in one notification."""
+    who = dev["alias"]
+    files = {}
+    for it in items:
+        fid = secrets.token_hex(8)
+        files[fid] = dict(it, id=fid)
+    meta = {fid: {"id": fid, "fileName": f["name"], "size": f["size"], "fileType": f["type"], "sha256": None,
+                  "preview": f.get("text")} for fid, f in files.items()}
+    body = json.dumps({"info": own_info(), "files": meta}).encode()
+    _, nid = notify(f"Waiting for {who}", "Accept on the phone (LocalSend has to be open there)", timeout=0)
+    try:
+        status, answer = request(dev, "/api/localsend/v2/prepare-upload", body, timeout=SEND_ASK_TIMEOUT)
+    except (OSError, http.client.HTTPException):
+        notify(f"{who} didn't answer", "Open LocalSend on the phone and try again", replace=nid)
+        return 1
+    if status == 204:
+        notify(f"Sent to {who}", "", replace=nid)
+        return 0
+    if status != 200 or not isinstance(answer, dict):
+        why = {403: "Declined", 409: "It's busy with another transfer", 401: "It asks for a PIN (not supported)"}
+        notify(f"{who} didn't take it", why.get(status, f"Error {status}"), replace=nid)
+        return 1
+    sid, tokens = answer.get("sessionId", ""), answer.get("files") or {}
+    todo = [f for fid, f in files.items() if fid in tokens]   # the receiver may take only some
+    for i, f in enumerate(todo, 1):
+        if len(todo) > 1:
+            notify(f"Sending to {who}", f"{i} of {len(todo)}: {f['name']}", replace=nid, timeout=0)
+        else:
+            notify(f"Sending to {who}", f"{f['name']} · {human(f['size'])}", replace=nid, timeout=0)
+        q = urllib.parse.urlencode({"sessionId": sid, "fileId": f["id"], "token": tokens[f["id"]]})
+        try:
+            if "text" in f:   # a text the receiver wants uploaded after all (most show the preview and answer 204)
+                status, _ = request(dev, "/api/localsend/v2/upload?" + q, f["text"].encode(), timeout=60)
+            else:
+                with open(f["path"], "rb") as fh:
+                    status, _ = request(dev, "/api/localsend/v2/upload?" + q, fh, f["size"], timeout=60)
+        except (OSError, http.client.HTTPException) as e:
+            status = str(e)
+        if status != 200:
+            try:
+                request(dev, "/api/localsend/v2/cancel?" + urllib.parse.urlencode({"sessionId": sid}))
+            except (OSError, http.client.HTTPException):
+                pass
+            notify(f"Sending to {who} stopped", f"{f['name']}: {status}", replace=nid)
+            return 1
+    what = todo[0]["name"] if len(todo) == 1 else f"{len(todo)} files"
+    notify(f"Sent {what} to {who}", "", replace=nid)
+    return 0
+
+
+def file_items(paths):
+    """Files to send; a folder becomes its files, named with the folder's relative path ("Trip/IMG_1.HEIC")."""
+    out = []
+    for p in paths:
+        p = os.path.abspath(p)
+        if os.path.isdir(p):
+            base = os.path.dirname(p.rstrip("/"))
+            for root, _, names in os.walk(p):
+                for n in sorted(names):
+                    full = os.path.join(root, n)
+                    out.append(file_item(full, os.path.relpath(full, base)))
+        elif os.path.isfile(p):
+            out.append(file_item(p, os.path.basename(p)))
+    return out
+
+
+def file_item(path, name):
+    return {"name": name, "path": path, "size": os.path.getsize(path),
+            "type": mimetypes.guess_type(path)[0] or "application/octet-stream"}
+
+
+def send_files(paths):
+    items = file_items(paths)
+    if not items:
+        notify("Nothing to send", "Pick files or folders")
+        return 1
+    dev = pick_device()
+    return send(items, dev) if dev else 1
+
+
+def send_clipboard():
+    text = subprocess.run(["wl-paste", "--no-newline", "--type", "text"], capture_output=True, text=True).stdout
+    if not text.strip():
+        notify("The clipboard has no text", "Copy a text or a link first")
+        return 1
+    dev = pick_device()
+    if not dev:
+        return 1
+    fid = secrets.token_hex(8)
+    return send([{"name": fid + ".txt", "size": len(text.encode()), "type": "text/plain", "text": text}], dev)
+
+
+def send_pick():
+    out = subprocess.run(["zenity", "--file-selection", "--multiple", "--separator=\n", "--title=Send with LocalSend"],
+                         capture_output=True, text=True).stdout
+    paths = [p for p in out.splitlines() if p]
+    return send_files(paths) if paths else 0
+
+
 def systemctl(*a):
     return subprocess.run(["systemctl", "--user", *a], capture_output=True, text=True)
 
@@ -489,6 +709,14 @@ def main():
         systemctl("disable", "--now", SERVICE)
     elif cmd == "run":
         run()
+    elif cmd == "devices":
+        print(json.dumps(discover(), ensure_ascii=False))
+    elif cmd == "send" and len(a) > 1:
+        return send_files(a[1:])
+    elif cmd == "send-clipboard":
+        return send_clipboard()
+    elif cmd == "send-pick":
+        return send_pick()
     else:
         print(__doc__.split("\n\n")[1], file=sys.stderr)
         return 1
