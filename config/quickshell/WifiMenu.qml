@@ -14,6 +14,9 @@ Column {
     property var knownSet: ({})
     property string connecting: ""
     property string askFor: ""       // network whose password is being asked for
+    // The typed password lives here, not in the field: the 3 s refresh rebuilds the list's rows, and the field with them
+    property string pwText: ""
+    onAskForChanged: pwText = ""
     property string message: ""
     signal close()
 
@@ -384,6 +387,8 @@ done; true'
                         font { family: Theme.font; pixelSize: 13 }
                         focus: parent.visible
                         onVisibleChanged: if (visible) forceActiveFocus()
+                        Component.onCompleted: if (parent.visible) { text = m.pwText; forceActiveFocus() }
+                        onTextChanged: if (parent.visible) m.pwText = text
                         onAccepted: if (text !== "") m.connectTo(item.modelData, text)
                         Text {
                             visible: pw.text === ""
