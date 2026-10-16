@@ -1,8 +1,24 @@
-# Asahi: the Apple MTP keyboard may not be detected as internal, so libinput's disable-while-typing (palm rejection
-# while typing) doesn't pair it with the internal touchpad. This marks the keyboard as internal.
-# Install (from the repo root):  sudo install -Dm644 config/system/libinput-apple-mtp.quirks /etc/libinput/local-overrides.quirks
-# Takes effect after logging out and back in (Hyprland reads the quirks at startup).
+# libinput tweaks for the MacBook's (Asahi) internal keyboard and trackpad, in /etc/libinput/local-overrides.quirks.
+# Installed by install.sh (install-keyd.sh adds its own section to the same file). Takes effect after logging out and
+# back in (Hyprland reads the quirks at startup).
+
+# The Apple MTP keyboard may not be detected as internal, so libinput's disable-while-typing (palm rejection while
+# typing) doesn't pair it with the internal touchpad. This marks the keyboard as internal.
 [Apple MTP keyboard]
 MatchName=Apple MTP keyboard
 AttrKeyboardIntegration=internal
 
+# Palm rejection for wrists resting beside the trackpad. Measured (libinput record): the side of the palm lands within
+# ~2 mm of the left or right edge and barely moves, its size peaks at 600-1700; a finger stays under 800.
+# - ModelAppleTouchpad=0: libinput turns its edge palm zones off for Apple trackpads; this turns them back on (8 mm on
+#   both sides: a touch that starts there is a palm until it moves out). Otherwise the quirk only sets natural
+#   scrolling's default, which hyprland.lua sets anyway.
+# - AttrPalmSizeThreshold: a touch this large anywhere is a palm (the system default 1600 misses most palms).
+# - AttrPalmPressureThreshold=0: off; libinput's default (130) is below a firm finger press, palms press lightly.
+[Apple MTP trackpad palms]
+MatchUdevType=touchpad
+MatchName=Apple*MTP*
+MatchVendor=0x05AC
+ModelAppleTouchpad=0
+AttrPalmSizeThreshold=1200
+AttrPalmPressureThreshold=0

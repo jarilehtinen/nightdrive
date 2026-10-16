@@ -9,8 +9,10 @@ repo=$(cd "$(dirname "$(readlink -f "$0")")" && pwd)
 sudo dnf copr enable -y alternateved/keyd
 sudo dnf install -y keyd
 sudo install -Dm644 "$repo/config/keyd/default.conf" /etc/keyd/default.conf
-# keyd's virtual keyboard counts as the internal one: the trackpad's disable-while-typing keeps working
-sudo install -Dm644 "$repo/config/keyd/local-overrides.quirks" /etc/libinput/local-overrides.quirks
+# keyd's virtual keyboard counts as the internal one: the trackpad's disable-while-typing keeps working. Added after
+# install.sh's own libinput tweaks: the file is shared.
+cat "$repo/config/system/libinput-apple-mtp.quirks" "$repo/config/keyd/local-overrides.quirks" |
+  sudo install -Dm644 /dev/stdin /etc/libinput/local-overrides.quirks
 sudo usermod -aG keyd "$USER"   # keyd-application-mapper talks to keyd's socket
 sudo systemctl enable --now keyd
 sudo keyd reload
