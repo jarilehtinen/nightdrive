@@ -1583,7 +1583,7 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                     anchors { left: parent.left; leftMargin: 14; verticalCenter: parent.verticalCenter }
                     text: Icons.g(win.deckPlaying ? "pause" : "play")
                     color: (playArea.containsMouse || win.playerFocused) ? Theme.accent : (win.deckInfo === null ? Theme.dim : Theme.text)
-                    font { family: Icons.family; pixelSize: 19 }
+                    font { family: Icons.familyMedium; pixelSize: 19 }
                     MouseArea { cursorShape: Qt.PointingHandCursor; id: playArea; anchors { fill: parent; margins: -8 } hoverEnabled: true; onClicked: win.deckPlayPress() }
                 }
                 Text {
@@ -1601,7 +1601,7 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                     anchors { right: heartBtn.visible ? heartBtn.left : parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
                     text: Icons.g("skip-forward")
                     color: nextArea.containsMouse ? Theme.accent : Theme.text
-                    font { family: Icons.family; pixelSize: 17 }
+                    font { family: Icons.familyMedium; pixelSize: 17 }
                     MouseArea { cursorShape: Qt.PointingHandCursor; id: nextArea; anchors { fill: parent; margins: -8 } hoverEnabled: true; onClicked: win.deckCtl("next") }
                 }
                 Text {
@@ -1610,7 +1610,7 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                     anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
                     text: Icons.g("heart")
                     color: win.deckLiked ? Theme.primary : (heartArea.containsMouse ? Theme.accent : Theme.dim)
-                    font { family: Icons.family; pixelSize: 17 }
+                    font { family: Icons.familyMedium; pixelSize: 17 }
                     MouseArea { cursorShape: Qt.PointingHandCursor; id: heartArea; anchors { fill: parent; margins: -8 } hoverEnabled: true; onClicked: win.deckCtl("like") }
                 }
             }
@@ -1779,7 +1779,7 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                             text: row.modelData.glyph !== undefined ? Icons.g(row.modelData.glyph) : ""
                             color: row.modelData.glyphColor !== undefined ? row.modelData.glyphColor   // Home: a light that's on is yellow
                                  : row.modelData.dimmed ? Theme.dim : row.current ? Theme.accent : Theme.text
-                            font { family: Icons.family; pixelSize: win.iconSize - 2 }
+                            font { family: Icons.familyLight; pixelSize: win.iconSize - 2 }
                         }
                     }
                     Text {
@@ -1857,7 +1857,7 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                             : (row.chevron ? Icons.g("chevron-right") : ""))
                         color: row.modelData.trailGlyph !== undefined ? (row.modelData.dimmed ? Theme.dim : row.current ? Theme.accent : Theme.text)
                              : tag ? Theme.primary : (row.modelData.keys !== undefined && row.current ? Theme.accent : Theme.dim)
-                        font { family: glyphOnly ? Icons.family : Theme.font; pixelSize: glyphOnly ? win.iconSize - 6 : tag ? win.fontSize - 6 : row.modelData.kind === "album" ? win.fontSize - 5 : win.fontSize - 3
+                        font { family: glyphOnly ? Icons.familyLight : Theme.font; pixelSize: glyphOnly ? win.iconSize - 6 : tag ? win.fontSize - 6 : row.modelData.kind === "album" ? win.fontSize - 5 : win.fontSize - 3
                                letterSpacing: tag ? 1 : 0 }   // tags: normal weight and spacing, the same as an album's artist
                     }
                     Rectangle {      // green dot right after the name: the app has a window open (including one hidden to the background by ⌘W)
