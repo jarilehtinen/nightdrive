@@ -1,17 +1,29 @@
 name: Bug report
-description: Something in Nightdrive is broken or behaves oddly
+description: Something in Nightdrive is broken or behaves oddly (for a failed ./install.sh, use Install problem)
 labels: [bug]
 body:
   - type: markdown
     attributes:
       value: |
         Thanks for taking the time to report this! A few details about your machine help a lot,
-        since Nightdrive has only been tested on a handful of Macs so far.
-  - type: input
-    id: mac
+        since Nightdrive has only been tested on a handful of machines so far.
+  - type: dropdown
+    id: machine
     attributes:
-      label: Mac model
-      placeholder: MacBook Air 13″, M2, 2022
+      label: Machine type
+      description: What `nightdrive platform machine` prints.
+      options:
+        - asahi (Apple Silicon Mac, Fedora Asahi Remix)
+        - pc (x86_64, Fedora KDE)
+        - vm (virtual machine)
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: Machine
+      description: The model, and on a PC the graphics card. In a VM, the host and the hypervisor.
+      placeholder: MacBook Air 13″ M2 · ThinkPad T14 Gen 4, Intel graphics · Parallels 27 on a Mac mini M4
     validations:
       required: true
   - type: textarea
@@ -23,6 +35,7 @@ body:
         ```
         git -C ~/dotfiles rev-parse --short HEAD
         cat /etc/fedora-release
+        nightdrive platform; nightdrive platform machine; nightdrive platform gpu
         hyprctl version | head -1
         ```
       render: text
@@ -46,5 +59,11 @@ body:
     id: logs
     attributes:
       label: Logs
-      description: Anything relevant from `journalctl --user -b` or the terminal.
+      description: |
+        Whatever looks relevant. The usual places:
+        ```
+        hyprctl configerrors        # Hyprland's config
+        qs log | tail -50           # the top bar, menus and launcher (Quickshell)
+        journalctl --user -b | tail -100
+        ```
       render: text

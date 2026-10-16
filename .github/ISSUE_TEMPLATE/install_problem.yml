@@ -1,0 +1,98 @@
+name: Install problem
+description: ./install.sh failed, or the desktop doesn't start after the reboot
+labels: [install]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Sorry it didn't go smoothly. Nightdrive has been tested on few machines yet, so a failed install on yours is
+        exactly what needs fixing. The installer can be run again once the cause is fixed; the steps are safe to repeat.
+  - type: dropdown
+    id: machine
+    attributes:
+      label: Machine type
+      description: "The installer's first line (`Machine: …`), or `~/dotfiles/config/hypr/scripts/platform machine`."
+      options:
+        - asahi (Apple Silicon Mac, Fedora Asahi Remix)
+        - pc (x86_64, Fedora KDE)
+        - vm (virtual machine)
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: Machine
+      description: The model, and on a PC the graphics card. In a VM, the host and the hypervisor.
+      placeholder: MacBook Air 13″ M2 · ThinkPad T14 Gen 4, Intel graphics · Parallels 27 on a Mac mini M4
+    validations:
+      required: true
+  - type: dropdown
+    id: system
+    attributes:
+      label: The system you installed on
+      options:
+        - A fresh install (a few days old at most)
+        - A system I already used
+    validations:
+      required: true
+  - type: textarea
+    id: versions
+    attributes:
+      label: Versions
+      description: |
+        Run these and paste the output (`~/dotfiles` is where the README clones Nightdrive).
+        ```
+        git -C ~/dotfiles rev-parse --short HEAD
+        cat /etc/fedora-release
+        uname -m; ~/dotfiles/config/hypr/scripts/platform gpu; ~/dotfiles/config/hypr/scripts/platform keyboard
+        ```
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: command
+    attributes:
+      label: The install command
+      description: With the options you used, and the optional parts you picked.
+      placeholder: ./install.sh --no-greeter (picked Deck and 1Password)
+    validations:
+      required: true
+  - type: dropdown
+    id: when
+    attributes:
+      label: Where it failed
+      options:
+        - During ./install.sh
+        - At the login screen after the reboot
+        - Hyprland or the top bar after logging in
+        - Somewhere else (describe below)
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: The installer's output
+      description: |
+        At least from the last `==>` line to the end. If it scrolled away, run the step again with its output saved:
+        `./install.sh … 2>&1 | tee ~/install.log`
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: after
+    attributes:
+      label: After the reboot (if it got that far)
+      description: |
+        On a black screen or a login loop, Ctrl+Alt+F3 gives a text login. Then:
+        ```
+        journalctl -b -u greetd | tail -50
+        journalctl --user -b | tail -100
+        tail -50 "$XDG_RUNTIME_DIR"/hypr/*/hyprland.log   # the last Hyprland of this boot
+        ```
+        `~/dotfiles/config/greeter/switch.sh off` brings back the KDE login screen meanwhile.
+      render: text
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: What you tried, screenshots, a photo of the screen.
