@@ -26,14 +26,14 @@ PanelWindow {
     // of the cue gets lost while the device wakes up (ALSA, Bluetooth, the EasyEffects chain).
     // The .wav files sit next to this file (link.sh links them into ~/.local/share/voxtype/quickshell/ too)
     function sound(name) { return decodeURIComponent(Qt.resolvedUrl(name).toString().replace(/^file:\/\//, "")) }
-    onAudioReadyChanged: if (audioReady && listening) Quickshell.execDetached(["pw-play", sound("listening.wav")])
+    onAudioReadyChanged: if (audioReady && listening) Quickshell.execDetached([Quickshell.env("HOME") + "/.config/hypr/scripts/sounds", "file", sound("listening.wav")])
     readonly property bool waiting: listening && !audioReady && audio !== null
     property real listenStart: 0
     onListeningChanged: {
         audioReady = false
         listenStart = Date.now()
         if (listening) { readyFallback.restart(); keepAwake.running = true; keepAwakeEnd.stop() }
-        else { Quickshell.execDetached(["pw-play", sound("done.wav")]); keepAwakeEnd.restart() }
+        else { Quickshell.execDetached([Quickshell.env("HOME") + "/.config/hypr/scripts/sounds", "file", sound("done.wav")]); keepAwakeEnd.restart() }
     }
     Process {
         id: keepAwake

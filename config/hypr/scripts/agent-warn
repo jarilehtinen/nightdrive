@@ -8,7 +8,7 @@ sounds="$HOME/.local/share/nightdrive/sounds/agent"
 name=${AGENT_NAME:-Agent}
 icon=lucide:bot
 for f in "$HOME"/.config/nightdrive/agent-icon.{svg,png}; do [[ -f $f ]] && { icon=$f; break; }; done
-play() { pw-play --media-role=Notification "$sounds/$1.wav" >/dev/null 2>&1 & }
+play() { "$HOME/.config/hypr/scripts/sounds" file "$sounds/$1.wav" >/dev/null 2>&1 & }   # a personal output only (sounds: never room speakers)
 
 notify-send -a "$name" -i "$icon" -h boolean:suppress-sound:true -t 6000 \
   "⚠️ $name is opening ${1:-the launcher}" "Stop typing: it opens in 5 seconds"

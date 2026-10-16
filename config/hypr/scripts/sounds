@@ -5,6 +5,11 @@
 #
 #   sounds regular|urgent [NAME]       prints / sets the sound for regular or urgent (critical) notifications
 #   sounds play regular|urgent [NAME]  plays the chosen sound, or NAME (the launcher's preview)
+#   sounds file PATH                   plays a .wav as a notification sound (agent-warn, dictation's tones)
+# They play only on personal outputs, never on speakers in the room: the Mac's own speakers, wired headphones or Bluetooth
+# headphones. The current output when it is one of those; otherwise (AirPlay, a Bluetooth speaker, a screen's HDMI audio,
+# EasyEffects' sink) Bluetooth headphones if connected, then wired headphones if plugged in, then the Mac's speakers.
+# A machine with none of these (no Asahi speakers) plays them on the current output.
 set -euo pipefail
 dir="$HOME/.local/share/nightdrive/sounds"
 state="$HOME/.local/state/nightdrive/sounds"
@@ -16,15 +21,45 @@ get() {
   [[ $v == none || -f $dir/$1/$v.wav ]] || v=${default[$1]}
   echo "$v"
 }
+# The personal output to play on, or nothing when that is the current output (or there is none)
+personal_sink() {
+  pactl -f json list sinks 2>/dev/null | python3 -I -c '
+import json, subprocess, sys
+default = subprocess.run(["pactl", "get-default-sink"], capture_output=True, text=True).stdout.strip()
+def kind(s):
+    p, name = s.get("properties", {}), s.get("name", "")
+    if name.startswith("audio_effect.") and name.endswith("-convolver"): return "speakers"      # asahi-audio (j314, j414…)
+    if p.get("device.api") == "bluez5" and (p.get("device.form_factor") in ("headphone", "headset", "hands-free")
+                                            or p.get("device.icon_name", "").startswith(("audio-headphones", "audio-headset"))):
+        return "bluetooth"
+    if p.get("device.api") == "alsa" and any("Headphones" in x.get("name", "") and x.get("availability") == "available"
+                                             for x in s.get("ports", [])):
+        return "wired"
+    return None
+try: sinks = json.load(sys.stdin)
+except ValueError: sys.exit()
+if any(s.get("name") == default and kind(s) for s in sinks): sys.exit()
+for want in ("bluetooth", "wired", "speakers"):
+    for s in sinks:
+        if kind(s) == want: print(s["name"]); sys.exit()
+'
+}
+# The Notification role: PipeWire/WirePlumber can route or duck it apart from music
+play_file() {
+  local target=() sink
+  sink=$(personal_sink)
+  [[ -n $sink ]] && target=(--target "$sink")
+  exec pw-play --media-role=Notification "${target[@]}" "$1"
+}
 kind() { [[ -n ${default[${1:-}]+x} ]] || { echo "usage: sounds regular|urgent [NAME] | play regular|urgent [NAME]" >&2; exit 2; }; }
 
 if [[ ${1:-} == play ]]; then
   kind "${2:-}"
   name=${3:-$(get "$2")}
   [[ $name == none ]] && exit 0
-  # The Notification role: PipeWire/WirePlumber can route or duck it apart from music
-  exec pw-play --media-role=Notification "$dir/$2/$name.wav"
+  play_file "$dir/$2/$name.wav"
 fi
+[[ ${1:-} == file ]] && play_file "${2:?usage: sounds file PATH}"
 
 kind "${1:-}"
 if [[ -z ${2:-} ]]; then get "$1"; exit 0; fi
