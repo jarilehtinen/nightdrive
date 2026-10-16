@@ -7,8 +7,10 @@ save valid, then check:
 - Scripts: `bash -n` for shell, `ast.parse` for Python.
 
 Test over IPC (`qs ipc show`, e.g. `qs ipc call launcher openLevel settings`) and take screenshots with `grim`.
-The user may be typing on this same desktop, and the launcher and menus take the keyboard: run `nightdrive agent-warn
-"the launcher"` before opening one (once per burst of tests) and open it only after it returns (~5 s countdown with sound).
+The user may be typing on this same desktop, and the launcher and menus take the keyboard: run `~/.local/bin/nightdrive
+agent-warn "the launcher"` before opening one (once per burst of tests) and open it only after it returns (~5 s countdown
+with sound). Use the full path: an agent's shell may not have `~/.local/bin` in its PATH, and if the command fails, don't
+open anything.
 Don't press Enter over IPC on rows that act on real things (Home Assistant devices, Power).
 On a machine without Hyprland, or to leave the user's desktop alone, use the headless container: `nightdrive sandbox
 check` (exit 1 with the findings) and `nightdrive sandbox shot NAME`, `ipc …` for the rest (docs/sandbox.md; no agent-warn there).
