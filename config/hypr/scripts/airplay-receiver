@@ -1,0 +1,31 @@
+#!/bin/bash
+# AirPlay Receiver (UxPlay, install-airplay-receiver.sh): an iPhone, iPad or Mac mirrors its screen to a window here.
+#   airplay-receiver run              the receiver itself (nightdrive-airplay.service)
+#   airplay-receiver enable|disable   on/off; it starts with the session
+#   airplay-receiver status           on | off
+#   airplay-receiver name             the name the iPhone shows (the host name, like LocalSend's)
+# The window is floating along the right edge (hyprland.lua, float-uxplay). UxPlay crashes when its window is closed
+# (⌘W); the service starts it again (Restart=always), so the receiver is back in a second.
+SERVICE=nightdrive-airplay.service
+PORT=50000   # UxPlay's TCP/UDP 50000-50002: inside the firewall's open range (its default ports aren't)
+
+name() {
+  local n; n=$(hostnamectl --pretty 2>/dev/null)
+  [[ -n $n ]] || { n=$(hostname -s); n=${n^}; }
+  echo "$n"
+}
+
+case ${1:-status} in
+  run)
+    # -vs waylandsink: a native window, sharp on a scaled screen (the default sink goes through XWayland, upscaled 2x).
+    # -h265 -avdec: 4K HEVC decoded with FFmpeg. -vsync no: no frames dropped for lateness (a dropped one smears).
+    exec uxplay -n "$(name)" -nh -p "$PORT" -fps 60 -h265 -avdec -vsync no -vs waylandsink ;;
+  enable)
+    command -v uxplay >/dev/null || { echo "UxPlay isn't installed (install-airplay-receiver.sh)" >&2; exit 1; }
+    systemctl --user daemon-reload
+    systemctl --user enable --now "$SERVICE" ;;
+  disable) systemctl --user disable --now "$SERVICE" ;;
+  status)  systemctl --user -q is-enabled "$SERVICE" 2>/dev/null && echo on || echo off ;;
+  name)    name ;;
+  *)       sed -n '2,6p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+esac

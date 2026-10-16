@@ -58,8 +58,9 @@ link "$repo/config/alsa/$asound" "$HOME/.config/alsa/asoundrc"
 # Session target: brings up graphical-session.target, which xdg-desktop-portal needs (started by hyprland.lua)
 link "$repo/config/systemd/user/nightdrive-session.target" "$HOME/.config/systemd/user/nightdrive-session.target"
 # Update check: every 6 h a fetch, and a notification when new commits are waiting (nightdrive update check).
-# Snippets and LocalSend: linked only, started when turned on (hypr/scripts/snippets enable, localsend enable)
-for u in nightdrive-update-check.service nightdrive-update-check.timer nightdrive-snippets.service nightdrive-localsend.service; do link "$repo/config/systemd/user/$u" "$HOME/.config/systemd/user/$u"; done
+# Snippets, LocalSend and AirPlay Receiver: linked only, started when turned on (hypr/scripts/snippets enable, localsend
+# enable, airplay-receiver enable)
+for u in nightdrive-update-check.service nightdrive-update-check.timer nightdrive-snippets.service nightdrive-localsend.service nightdrive-airplay.service; do link "$repo/config/systemd/user/$u" "$HOME/.config/systemd/user/$u"; done
 systemctl --user daemon-reload 2>/dev/null || true
 systemctl --user enable --now nightdrive-update-check.timer 2>/dev/null || true
 

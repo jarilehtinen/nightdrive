@@ -1,0 +1,14 @@
+# AirPlay Receiver (hypr/scripts/airplay-receiver). Off until turned on (install-airplay-receiver.sh, plugins.txt).
+# Restart=always: UxPlay crashes when its window is closed with ⌘W, and the receiver should be back at once.
+[Unit]
+Description=Nightdrive AirPlay Receiver (UxPlay)
+PartOf=nightdrive-session.target
+After=nightdrive-session.target
+
+[Service]
+ExecStart=%h/.config/hypr/scripts/airplay-receiver run
+Restart=always
+RestartSec=1
+
+[Install]
+WantedBy=nightdrive-session.target

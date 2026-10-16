@@ -255,6 +255,16 @@ hl.window_rule({
     float = true,
     size  = "900 750",
 })
+-- iPhone mirroring (UxPlay, AirPlay receiver; app id uxplay with waylandsink): floating along the right edge, full
+-- height below the top bar, a phone's width (19.5:9 portrait). Floating so it can be moved anywhere.
+local MIRROR_TOP = 37 + 10   -- the top bar's reserved height + gaps_out
+hl.window_rule({
+    name  = "float-uxplay",
+    match = { class = "^uxplay$" },
+    float = true,
+    size  = "(monitor_h-" .. MIRROR_TOP + 10 .. ")*0.462 monitor_h-" .. MIRROR_TOP + 10,
+    move  = "monitor_w-window_w-10 " .. MIRROR_TOP,
+})
 -- 1Password: floating window centred on screen (bigger than Deck), hidden from screen sharing
 hl.window_rule({
     name  = "1password",
