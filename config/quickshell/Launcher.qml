@@ -512,7 +512,7 @@ PanelWindow {
             const rows = snipList.map(s => ({ kind: "snippet", name: s.text.split("\n")[0], summary: s.trigger, glyph: "text-cursor-input",
                                                trigger: s.trigger, text: s.text, armKey: "snipdel:" + s.trigger,
                                                armHint: "press Cmd+Backspace again to remove" }))
-            if (q === "") return [add, auto, { kind: "header", name: rows.length ? "Snippets" : "No snippets yet" }].concat(rows)
+            if (q === "") return [auto, { kind: "header", name: "Snippets" }, add].concat(rows)
             all = rows.map(r => ({ item: r, text: r.trigger, extra: r.text }))
         } else if (level === "snipkey") {
             if (query.trim() === "") return hint("Type the trigger, e.g. @@ or f#")
