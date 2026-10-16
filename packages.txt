@@ -27,6 +27,9 @@ jetbrains-mono-fonts-all
 eza
 # bash history search (Ctrl+R) and file picker (Ctrl+T), config/bash
 fzf
+# setup-user.sh builds ble.sh from source; a fresh Fedora has no make
+make
+gawk
 nautilus
 loupe
 sushi
