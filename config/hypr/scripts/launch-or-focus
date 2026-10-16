@@ -5,15 +5,19 @@
 # A window hidden in the background (special:bg: ⌘W on background apps, or a window rule that opens it straight in the background) is brought to the current workspace.
 # With the drawer open that is the drawer, as for a new window: activeworkspace names the workspace under it.
 # A window open on a workspace stays there: focusing it hides the drawer.
+# With several windows (1Password's main window + Settings) the most recently focused one is picked, and if it is in the
+# background, all of the app's hidden windows come along, so none is left stranded in special:bg.
 # LAUNCH_HIDDEN=1 (autostart's background apps): only launch, leave the new window where it opens (special:bg).
 pattern=$1; shift
 hidden=$LAUNCH_HIDDEN; unset LAUNCH_HIDDEN   # not passed on to the app
-find_win() { hyprctl -j clients | jq -r --arg re "$pattern" '[.[] | select(.class | test($re))] | first | "\(.address // "") \(.workspace.name // "")"'; }
+find_win() { hyprctl -j clients | jq -r --arg re "$pattern" '[.[] | select(.class | test($re))] | sort_by(.focusHistoryID) | first | "\(.address // "") \(.workspace.name // "")"'; }
 show() {  # $1 = address, $2 = workspace
   if [[ $2 == special:bg ]]; then
-    local target
+    local target a
     target=$(hyprctl -j monitors | jq -r '[.[] | select(.focused)] | first | if .specialWorkspace.name == "special:drawer" then "\"special:drawer\"" else .activeWorkspace.id end')
-    hyprctl dispatch "hl.dsp.window.move({ workspace = $target, window = \"address:$1\" })" >/dev/null
+    for a in $(hyprctl -j clients | jq -r --arg re "$pattern" '.[] | select((.class | test($re)) and .workspace.name == "special:bg") | .address'); do
+      hyprctl dispatch "hl.dsp.window.move({ workspace = $target, window = \"address:$a\" })" >/dev/null
+    done
   fi
   hyprctl dispatch "hl.dsp.focus({ window = \"address:$1\" })" >/dev/null
 }
