@@ -4,8 +4,8 @@
 -----------------
 ---- MACHINE ----
 -----------------
--- Settings for the MacBook's built-in display and a Finnish Mac keyboard. On a PC or a VM install.sh writes the machine's
--- own in local.lua (docs/pc.md), which overrides these.
+-- Settings for the MacBook's built-in display and a Finnish Mac keyboard. On a PC or a VM, or with another keyboard layout,
+-- install.sh writes the machine's own in local.lua (docs/pc.md), which overrides these.
 -- MacBook display with the notch, 3024x1964 → scale 2.0 (= 1512x982)
 -- (1.75 doesn't divide it evenly; the only clean values are 2.0 and 1.333)
 local MONITOR_SCALE = 2.0

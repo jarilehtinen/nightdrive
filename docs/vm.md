@@ -19,6 +19,6 @@ You can try the whole setup in an aarch64 **Fedora 44** VM on any Apple Silicon 
    slowly, and dnf rejects new packages whose signatures look made in the future.
 
 On a VM the installer skips the notch step and writes `config/hypr/local.lua` with scale 2.0 (for *Best for Retina display*; pick 1.0 in the
-launcher's Settings › Display for *Scaled*), a software cursor and the rounded-corner shader off. It must be Fedora 44,
+launcher's Settings › Display for *Scaled*), a software cursor, the rounded-corner shader off and, unless it's Finnish, the keyboard layout Fedora's installer set. It must be Fedora 44,
 because the Hyprland COPR builds only for that release. Containers won't work, since Hyprland needs a GPU. Parallels passes
 the Mac's battery to the VM; without a display or keyboard backlight their sliders are left out.

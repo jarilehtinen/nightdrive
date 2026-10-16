@@ -14,7 +14,7 @@ Nightdrive is built on a MacBook, but runs on an x86_64 PC with **Fedora 44 KDE*
 | | MacBook | PC |
 |---|---|---|
 | Display | scale 2.0 for the built-in display, the notch area for the top bar | scale picked by Hyprland from the display's size and resolution (`scale = "auto"`); change it in launcher › Settings › Display |
-| Keyboard | Finnish Mac layout (`fi`, `mac`) | the layout Fedora's installer set (`localectl`), also on the login screen |
+| Keyboard | the layout Fedora's installer set (`localectl`); a Finnish one is the Finnish Mac layout (`fi`, `mac`) | the layout Fedora's installer set, also on the login screen |
 | ⌘ | the Command key (and Caps Lock) | the Windows key (and Caps Lock): ⌘C / ⌘V / ⌘X copy, paste and cut in every app, and the rest of the shortcuts work as they are |
 | Rounded screen corners | on (shader tuned for the MacBook's display) | off |
 | Wi-Fi firmware | other chips' firmware removed | kept |

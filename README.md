@@ -239,9 +239,10 @@ The full list is in [`config/hypr/SHORTCUTS.md`](config/hypr/SHORTCUTS.md).
 
 ## Make it yours
 
-- **Machine settings.** The keyboard layout (Finnish Mac) and the default display scale are at the top of
-  [`config/hypr/hyprland.lua`](config/hypr/hyprland.lua). These are the first things to change. A scale picked in the
-  launcher (Settings › Display) wins over the default.
+- **Machine settings.** The default display scale and keyboard layout (Finnish Mac) are at the top of
+  [`config/hypr/hyprland.lua`](config/hypr/hyprland.lua). The installer writes the layout Fedora's installer set into
+  `config/hypr/local.lua` unless it's Finnish, and the login screen uses the same. A scale picked in the launcher
+  (Settings › Display) wins over the default.
 - **Per-machine overrides** go to `config/hypr/local.lua`, which git ignores.
 - **Keybindings** are all in [`config/hypr/bindings.lua`](config/hypr/bindings.lua).
 - **Optional parts** (recommended apps, ready-made web apps, plugins) are listed in [`plugins.txt`](plugins.txt), its last
