@@ -10,9 +10,17 @@ icon=lucide:bot
 for f in "$HOME"/.config/nightdrive/agent-icon.{svg,png}; do [[ -f $f ]] && { icon=$f; break; }; done
 play() { "$HOME/.config/hypr/scripts/sounds" file "$sounds/$1.wav" >/dev/null 2>&1 & }   # a personal output only (sounds: never room speakers)
 
-notify-send -a "$name" -i "$icon" -h boolean:suppress-sound:true -t 6000 \
-  "⚠️ $name is opening ${1:-the launcher}" "Stop typing: it opens in 5 seconds"
+# The body counts down: the same notification is replaced each second (-r), which doesn't chime again.
+note() { notify-send -a "$name" -i "$icon" -h boolean:suppress-sound:true -t "$2" ${id:+-r "$id"} -p \
+  "⚠️ $name is opening ${what}" "$1"; }
+what=${1:-the launcher}
+id=$(note "Stop typing: it opens in 5 seconds" 6000)
 play attention
-sleep 2
-for _ in 3 2 1; do play tick; sleep 1; done
+for n in 4 3 2 1; do
+  sleep 1
+  id=$(note "Stop typing: it opens in $n second$([[ $n == 1 ]] || echo s)" 6000)
+  (( n <= 3 )) && play tick
+done
+sleep 1
+note "Opening now" 1500 >/dev/null
 play go
