@@ -32,80 +32,28 @@ Rectangle {
     height: body.implicitHeight + 28
     radius: 4                                  // the same as the windows' corners (decoration.rounding in hyprland.lua)
     opacity: appear * (1 - swipeFade)
-    transform: [
-        Rotation { origin.x: card.width / 2; origin.y: card.height / 2; angle: card.fallAngle },
-        Translate { x: card.enterX + card.swipeX + card.fallX; y: card.fallY }
-    ]
+    transform: Translate { x: card.enterX + card.swipeX }
 
-    // Clear in the notification menu (fall()): one screw gives, the card swings from the other like a sign (a real
-    // pendulum, damped a little), then that one gives too and the card drops off the screen spinning. fell() when gone.
-    property real fallAngle: 0                 // degrees, about the card's centre
-    property real fallX: 0                     // the centre's move
-    property real fallY: 0
-    signal fell()
-    // Moves the card to where it falls (the menu's window without blur) to the same place on the screen, before fall()
-    function detachTo(where, x, y, bg) {
-        parent = where
-        card.x = x
-        card.y = y
-        color = bg
+    // Clear in the notification menu (sweep()): the card slides a little to the right and fades out. swept() when gone.
+    signal swept()
+    function sweep(delay) {
+        sweeper.delay = delay
+        sweeper.start()
     }
-    // side: 1 = hangs from the left screw, -1 = the right; hang: s before it drops
-    function fall(delay, side, hang) {
-        faller.side = side
-        faller.hang = hang
-        fallStart.interval = Math.max(1, delay)
-        fallStart.start()
-    }
-    Timer { id: fallStart; onTriggered: faller.begin() }
-    FrameAnimation {
-        id: faller
+    SequentialAnimation {
+        id: sweeper
 
         // --- Tunables ---
-        readonly property real g: 4500         // px/s²
-        readonly property real damping: 1.2    // 1/s
-        readonly property real spinKeep: 1     // of the swing's turning speed kept while it falls
+        readonly property int duration: 220    // ms
+        readonly property real distance: 40    // px
 
-        property real side: 1
-        property real hang: 0.5
-        property real t: 0
-        property real th: 0                    // angle (rad, clockwise)
-        property real om: 0                    // its speed
-        property real vx: 0
-        property real vy: 0
-        property bool free: false
-        // While it falls the card is one texture that only moves (layer): its text isn't drawn again every frame
-        function begin() {
-            t = 0; th = 0; om = 0; free = false
-            card.z = 1
-            card.layer.enabled = true
-            card.layer.smooth = true
-            start()
+        property int delay: 0
+        PauseAnimation { duration: sweeper.delay }
+        ParallelAnimation {
+            NumberAnimation { target: card; property: "swipeX"; to: sweeper.distance; duration: sweeper.duration; easing.type: Easing.OutCubic }
+            NumberAnimation { target: card; property: "appear"; to: 0; duration: sweeper.duration; easing.type: Easing.OutCubic }
         }
-
-        onTriggered: {
-            const dt = Math.min(frameTime, 0.033)
-            const w = card.width, h = card.height
-            const rx = side * w / 2, ry = h / 2           // the centre seen from the screw (top left or top right corner)
-            t += dt
-            if (!free) {
-                // A rectangle swinging from its corner: θ'' = −3·g·r / (w² + h²) · sin(θ − θrest)
-                const r = Math.hypot(rx, ry)
-                om += (-3 * g * r / (w * w + h * h) * Math.sin(th - Math.atan2(rx, ry)) - damping * om) * dt
-                th += om * dt
-                const ox = rx * Math.cos(th) - ry * Math.sin(th), oy = rx * Math.sin(th) + ry * Math.cos(th)
-                card.fallX = ox - rx
-                card.fallY = oy - ry
-                if (t >= hang) { free = true; vx = -om * oy; vy = om * ox; om *= spinKeep }   // lets go with the swing's speed
-            } else {
-                vy += g * dt
-                card.fallX += vx * dt
-                card.fallY += vy * dt
-                th += om * dt
-                if (card.fallY > (card.Window.height || 1500) + w) { stop(); card.visible = false; card.fell() }
-            }
-            card.fallAngle = th * 180 / Math.PI
-        }
+        ScriptAction { script: card.swept() }
     }
 
     HoverHandler { id: hover }
