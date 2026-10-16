@@ -6,6 +6,7 @@ Item {
     property real value: 0
     property bool dimmed: false
     property color trackColor: Theme.border   // the unfilled part; on a selected row (Theme.sel) it needs to be darker
+    property real level: -1                   // optional input level meter 0..1 as a row of pills under the track (-1 = none)
     readonly property bool pressed: area.pressed
     // While held, the knob follows the mouse even if `value` lags behind (or the owner holds back updates during a drag)
     property real dragValue: -1
@@ -28,6 +29,28 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             width: 14; height: 14; radius: 7
             color: Theme.text
+        }
+    }
+    // Level meter: a classic segmented meter just under the track. It hangs a few pixels below the slider's height, into
+    // the spacing of the menu's Column, so the row's layout doesn't change. The scale is -60..0 dB: yellow from -12 dB, red from -3 dB (close to clipping).
+    Row {
+        id: meter
+        visible: s.level >= 0
+        x: track.x
+        y: track.y + track.height + 6
+        spacing: 3
+        // About 12 px pills, stretched so the row is exactly as wide as the track
+        readonly property int count: Math.max(1, Math.round((track.width + spacing) / (12 + spacing)))
+        readonly property real pill: (track.width - spacing * (count - 1)) / count
+        Repeater {
+            model: meter.visible ? Math.max(0, meter.count) : 0
+            Rectangle {
+                readonly property real pos: (index + 1) / meter.count
+                width: meter.pill; height: 4; radius: 2
+                color: (index + 0.5) / meter.count > s.level ? Theme.border
+                     : s.dimmed ? Theme.dim
+                     : pos > 0.95 ? Theme.danger : pos > 0.8 ? Theme.caution : Theme.ok
+            }
         }
     }
     MouseArea {

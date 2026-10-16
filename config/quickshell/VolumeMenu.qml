@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell
+import Quickshell.Io
 
 // Sound: volume, mute and output selection, plus microphone volume, mute and selection.
 // Uses wpctl and pw-dump (Quickshell's Pipewire module doesn't work with Pipewire 1.6).
@@ -14,6 +15,7 @@ Column {
     property real micVolume: 0
     property bool micMuted: false
     property real micPending: -1
+    property real micLevel: 0
     signal close()
 
     function refresh() { volProc.running = true; micProc.running = true }
@@ -56,6 +58,26 @@ Column {
                 Quickshell.execDetached(["wpctl", "set-volume", "@DEFAULT_AUDIO_SOURCE@", m.micPending.toFixed(2)])
                 m.micPending = -1
             }
+        }
+    }
+    // Input level meter for the mic slider. The menu is loaded only while open, so the mic is recorded only then.
+    // The stream follows the default source and sees its volume, so the meter shows what apps get.
+    // Peak per 50 ms block on a dB scale (-60..0 dB -> 0..1); the first block is a start-up click, so it's skipped.
+    Process {
+        running: true
+        command: ["python3", "-I", "-c", `
+import array, math, subprocess
+p = subprocess.Popen(["pw-record", "--rate", "16000", "--channels", "1", "--format", "s16", "--latency", "50ms",
+                      "-P", "{ node.name = nightdrive-mic-meter, media.name = \\"Mic level meter\\" }", "-"],
+                     stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+p.stdout.read(1600)
+while (b := p.stdout.read(1600)) and len(b) == 1600:
+    peak = max(map(abs, array.array("h", b))) / 32768
+    print(round(max(0, min(1, (20 * math.log10(peak) + 60) / 60)) if peak > 0 else 0, 3), flush=True)
+`]
+        stdout: SplitParser {
+            // fast attack, slower fall so the line doesn't flicker
+            onRead: line => { const v = parseFloat(line); if (!isNaN(v)) m.micLevel = Math.max(v, m.micLevel * 0.75) }
         }
     }
     Sh {
@@ -136,6 +158,7 @@ Column {
             width: parent.width - micIcon.width - micPct.width - 24
             anchors.verticalCenter: parent.verticalCenter
             value: m.micVolume
+            level: m.micMuted ? 0 : m.micLevel
             dimmed: m.micMuted
             onMoved: v => m.setMicVolume(v)
         }
