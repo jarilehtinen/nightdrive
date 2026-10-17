@@ -4,7 +4,8 @@ import QtQuick.Effects
 // The Nightdrive logo, as on the website (nightdrive.sh): the name in bold JetBrains Mono with a white → lilac → violet
 // gradient and a blinking block cursor after it. The big version types itself in once, letter by letter, the cursor riding
 // along, then the cursor keeps blinking. A soft violet glow sits behind it.
-// `typed: false` skips the intro (shows the whole name at once).
+// `typed: false` skips the intro (shows the whole name at once); `blinks: false` keeps the cursor lit, and
+// `keepsCursor: false` lets it go once the name is typed (when something else on screen takes the cursor over).
 Item {
     id: logo
 
@@ -14,6 +15,10 @@ Item {
     property int typeInterval: 75       // ms per letter
     property int startDelay: 900        // the cursor blinks once alone before the first letter
     property bool glow: true
+    property bool blinks: true
+    property bool keepsCursor: true
+    property bool flashes: false        // the cursor flashes white once the name is typed
+    property real cursorOpacity: 1      // for fading the cursor out from outside
 
     readonly property color white: "#ffffff"
     readonly property color lilac: "#e0bff2"
@@ -24,6 +29,7 @@ Item {
     readonly property bool done: shown >= name.length
 
     readonly property real gap: 0.12 * pixelSize     // between the last letter and the cursor
+    readonly property real textWidth: full.implicitWidth   // the letters alone, for centring without the cursor
 
     implicitWidth: full.implicitWidth + gap + cursor.width
     implicitHeight: full.implicitHeight
@@ -81,11 +87,20 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         width: 0.55 * logo.pixelSize; height: logo.pixelSize
         color: logo.violet
+        visible: logo.keepsCursor || !logo.done
         // While typing it stays lit, like a real cursor; afterwards it blinks (the website's 1.1 s, half on, half off)
-        opacity: logo.done && blink.off ? 0 : 1
+        opacity: (logo.done && blink.off ? 0 : 1) * logo.cursorOpacity
 
         layer.enabled: logo.glow
         layer.effect: Glow { strength: 0.7; blurMax: 32 }
+
+        // White in an instant, back to violet over a quarter second
+        SequentialAnimation on color {
+            running: logo.flashes && logo.done
+            PropertyAction { value: logo.white }
+            PauseAnimation { duration: 70 }
+            ColorAnimation { to: logo.violet; duration: 260; easing.type: Easing.OutQuad }
+        }
     }
     TextMetrics {
         id: partial
@@ -100,7 +115,7 @@ Item {
     Timer {
         // Blinks before the first letter too, then pauses while typing
         interval: 550; repeat: true
-        running: logo.done || logo.shown === 0
+        running: logo.blinks && (logo.done || logo.shown === 0)
         onTriggered: blink.off = !blink.off
         onRunningChanged: if (!running) blink.off = false
     }
