@@ -7,3 +7,10 @@ if command -v eza >/dev/null 2>&1; then
   alias la='eza -la --icons --group-directories-first --git'         # hidden files too
   alias lt='eza --tree --level=2 --icons --group-directories-first'  # tree view (2 levels); e.g. lt -L3 or lt -a
 fi
+
+# open, as on a Mac: opens files, folders and links in their default app (xdg-open), several at once, e.g. open .
+open() {
+  (( $# )) || set -- .
+  local f
+  for f in "$@"; do xdg-open "$f" >/dev/null 2>&1 & disown; done
+}
