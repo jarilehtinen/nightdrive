@@ -29,6 +29,10 @@ picked directly: a computer answers another one's page (CORS) only if that one b
 subscription belongs to the computer it added the page from, so the others ask that one to pass their notifications on
 (/api/relay, /api/relay-push).
 
+A request must name this machine (Host: its tailnet name), so a web page that rebinds its own name to 127.0.0.1 in a
+browser here gets nothing. Anyone logged in to this computer could still reach the local port with made-up headers:
+Ferry trusts the computer's own users, as a single-user desktop does.
+
 Kept in STATE: items.json (the box), the files left for the phone (files/), the VAPID key for Web Push (made on the first
 run; python3-cryptography) and the phone's push subscriptions. Files from the phone go to Downloads. Items go after
 KEEP_DAYS days; removing one from the box doesn't delete a file in Downloads.
@@ -68,6 +72,10 @@ ICON = "inbox"
 KEEP_DAYS = 7                # an item leaves the box after this many days
 MAX_FILE = 4 << 30           # bytes per file from the phone
 MAX_TEXT = 1 << 20           # bytes of text
+MIN_FREE = 2 << 30           # bytes left free on the disk: an upload that would go below this is refused
+INLINE = re.compile(r"^(image/(jpeg|png|gif|webp|heic|heif|avif)|video/|audio/|application/pdf$|text/plain$)")
+                             # shown in the browser; any other file is a download (an HTML or SVG file would run its
+                             # scripts as the Ferry page)
 CHUNK = 1 << 20
 GROUP_NOTIFY = 20            # seconds: files from the phone within this time share one notification
 PUSH_CONTACT = "https://github.com/jarilehtinen/nightdrive"   # the VAPID "sub": push services want a contact URL
@@ -162,6 +170,7 @@ class Tailnet:
     def __init__(self):
         self.owner, self.names, self.when = "", {}, 0.0
         self.hosts = set()      # the owner's machines' tailnet names (this one too)
+        self.me = ""            # this machine's tailnet name
         self.machines = []      # the owner's other machines that are online and could run Ferry: their tailnet names
 
     def load(self, force=False):
@@ -173,6 +182,7 @@ class Tailnet:
         uid = (st.get("Self") or {}).get("UserID")
         self.owner = (users.get(str(uid)) or {}).get("LoginName", "") if uid is not None else ""
         me = st.get("Self") or {}
+        self.me = (me.get("DNSName") or "").rstrip(".")
         self.hosts = {(p.get("DNSName") or "").rstrip(".") for p in list((st.get("Peer") or {}).values()) + [me]
                       if p.get("UserID") == uid and p.get("DNSName")}
         self.machines = [p["DNSName"].rstrip(".") for p in (st.get("Peer") or {}).values()
@@ -191,6 +201,14 @@ class Tailnet:
         if login and login != self.owner:
             self.load(force=True)   # the owner may have just logged in
         return bool(login) and login == self.owner
+
+    def for_me(self, host):
+        """Whether a request's Host names this machine (tailscale serve passes the name the phone used)."""
+        host = host.rsplit(":", 1)[0] if host.count(":") == 1 else host
+        self.load()
+        if host != self.me:
+            self.load(force=True)
+        return bool(host) and host == self.me
 
     def same_owner(self, url):
         """Whether url (an Origin, a page's address) is on one of the owner's machines."""
@@ -614,7 +632,8 @@ def handler(app):
         def gate(self, api):
             """Only the machine's owner, and for the API only a Ferry page: this one, or one on another of the owner's
             machines (see the module's notes)."""
-            if not app.tailnet.allowed(self.headers.get("Tailscale-User-Login", "")):
+            if not app.tailnet.allowed(self.headers.get("Tailscale-User-Login", "")) or \
+                    not app.tailnet.for_me(self.headers.get("Host", "")):
                 self.send(403, "Ferry answers only its computer's owner, through Tailscale.")
                 return False
             site = self.headers.get("Sec-Fetch-Site", "same-origin")
@@ -627,7 +646,8 @@ def handler(app):
             """A CORS preflight from the Ferry page on another of the owner's machines."""
             self.route()
             origin = self.cors()
-            if not origin or not app.tailnet.allowed(self.headers.get("Tailscale-User-Login", "")):
+            if not origin or not app.tailnet.allowed(self.headers.get("Tailscale-User-Login", "")) or \
+                    not app.tailnet.for_me(self.headers.get("Host", "")):
                 return self.send(403, "Not allowed")
             self.send(204, b"", "text/plain", {"Access-Control-Allow-Methods": "GET, POST",
                                               "Access-Control-Allow-Headers": "X-Ferry, Content-Type",
@@ -726,11 +746,15 @@ def handler(app):
             with f:
                 size = os.fstat(f.fileno()).st_size
                 quoted = urllib.parse.quote(it["name"])
+                kind = it.get("type") or ""
+                inline = bool(INLINE.match(kind)) and not attachment
                 self.send_response(200)
-                self.send_header("Content-Type", it.get("type") or "application/octet-stream")
+                self.send_header("Content-Type", kind if INLINE.match(kind) else "application/octet-stream")
                 self.send_header("Content-Length", str(size))
-                self.send_header("Content-Disposition", f"{'attachment' if attachment else 'inline'}; "
-                                                        f"filename*=UTF-8''{quoted}")
+                self.send_header("Content-Disposition", f"{'inline' if inline else 'attachment'}; filename*=UTF-8''{quoted}")
+                self.send_header("X-Content-Type-Options", "nosniff")
+                if kind != "application/pdf":   # Safari's PDF viewer doesn't open in a sandbox
+                    self.send_header("Content-Security-Policy", "sandbox; default-src 'none'; img-src 'self'; media-src 'self'")
                 origin = self.cors()
                 if origin:
                     self.send_header("Access-Control-Allow-Origin", origin)
@@ -804,10 +828,18 @@ def handler(app):
                 return self.send(413, f"Too big: {human(MAX_FILE)} at most")
             dest = downloads()
             os.makedirs(dest, exist_ok=True)
-            path = unique(os.path.join(dest, safe_name(q.get("name", "file"))))
-            part, size = path + ".part", 0
+            if shutil.disk_usage(dest).free - n < MIN_FREE:
+                return self.send(507, "Not enough space on the computer")
+            while True:   # a name no other upload is writing to at the same time
+                path = unique(os.path.join(dest, safe_name(q.get("name", "file"))))
+                part, size = path + ".part", 0
+                try:
+                    out = open(part, "xb")
+                    break
+                except FileExistsError:
+                    continue
             try:
-                with open(part, "wb") as out:
+                with out:
                     for chunk in self.body(MAX_FILE):
                         out.write(chunk)
                         size += len(chunk)
@@ -817,6 +849,8 @@ def handler(app):
                     os.remove(part)
                 self.consumed = False
                 return self.send(400, "Upload failed")
+            if os.path.exists(path):   # taken meanwhile
+                path = unique(path)
             os.replace(part, path)
             kind = q.get("type") or mimetypes.guess_type(path)[0] or "application/octet-stream"
             app.received_file(path, size, kind, self.who())
@@ -832,9 +866,18 @@ class Server(ThreadingHTTPServer):
         print(f"connection error: {sys.exc_info()[1]!r}", flush=True)   # a phone gone mid-request
 
 
+def tidy():
+    """Old items out of the box, now and every hour (otherwise only a write would notice them)."""
+    while True:
+        with box(write=True):
+            pass
+        time.sleep(3600)
+
+
 def run():
     app = Ferry()
     server = Server(("127.0.0.1", PORT), handler(app))
+    threading.Thread(target=tidy, daemon=True).start()
     print(f"Ferry on 127.0.0.1:{PORT}{'' if app.key else ' (no Web Push: python3-cryptography is missing)'}",
           flush=True)
     server.serve_forever()

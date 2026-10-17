@@ -42,8 +42,12 @@
   .status { display: flex; align-items: center; gap: 8px; font-size: 15px; color: var(--dim); margin-left: auto; min-width: 0;
             background: transparent; min-height: 40px; padding: 0 4px 0 10px; font-weight: 400; }
   .status .i { width: 18px; height: 18px; }
+  /* With several computers the name is a button that opens the list */
+  .status.many { background: var(--card); border: 1px solid var(--border); border-radius: 12px; min-height: 46px;
+                 padding: 0 12px 0 14px; color: var(--text); }
+  .status.many:active { background: var(--hover); }
   /* The computers: a list under the name */
-  #machines { position: absolute; right: 0; top: 100%; z-index: 10; min-width: 240px; max-width: 90vw; padding: 6px;
+  #machines { position: absolute; right: 0; top: calc(100% + 6px); z-index: 10; min-width: 240px; max-width: 90vw; padding: 6px;
               background: var(--sel); border-radius: 14px; box-shadow: 0 12px 32px #000a; }
   #machines button { width: 100%; justify-content: flex-start; background: transparent; color: var(--text); min-height: 48px;
                      padding: 0 12px; font-weight: 400; }
@@ -232,7 +236,7 @@ async function api(path, opts = {}) {
 }
 
 function setStatus(kind, text) {
-  $("status").className = "status " + kind
+  $("status").className = "status " + kind + (machines.length > 1 ? " many" : "")
   $("statusText").textContent = text
 }
 
@@ -555,6 +559,7 @@ async function loadMachines() {
 function drawMachines() {
   const many = machines.length > 1
   $("chevron").hidden = !many
+  $("status").classList.toggle("many", many)
   $("machines").replaceChildren(...machines.map(m => el("button", { onclick: () => pick(m.url) }, m.name,
                                                        m.url === (base || HOME) ? icon("check") : null)))
 }
