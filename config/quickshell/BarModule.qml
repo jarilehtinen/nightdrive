@@ -74,8 +74,8 @@ Item {
         }
     }
 
-    // modules.jsonc "drop": files dropped on the icon go to its command; lingering over it opens the menu, as the shelf
-    // opens under a drag (Shelf.qml)
+    // modules.jsonc "drop": files dropped on the icon go to its command and its menu opens (Ferry's says "Sent"); lingering
+    // over it opens the menu too, as the shelf opens under a drag (Shelf.qml)
     DropArea {
         id: drop
         anchors.fill: parent
@@ -86,7 +86,10 @@ Item {
         onDropped: d => {
             dragOpen.stop()
             const paths = Array.from(d.urls, u => u.toString()).filter(u => u.startsWith("file://")).map(u => decodeURIComponent(u.slice(7)))
-            if (paths.length) { TopBar.run(mod.def.drop, mod.name, paths); d.acceptProposedAction() }
+            if (!paths.length) return
+            TopBar.run(mod.def.drop, mod.name, paths)
+            d.acceptProposedAction()
+            mod.dragOver(mod.mapToItem(null, mod.width / 2, 0).x)
         }
     }
     Timer { id: dragOpen; interval: 300; onTriggered: if (drop.containsDrag) mod.dragOver(mod.mapToItem(null, mod.width / 2, 0).x) }

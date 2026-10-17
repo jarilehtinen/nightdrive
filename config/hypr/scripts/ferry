@@ -7,6 +7,7 @@
     ferry url                     the phone's address: https://<this machine>.<tailnet>.ts.net/ferry/
     ferry list                    what's in the box, for the top bar's menu (JSON)
     ferry add FILE…               leaves files (or a folder's files) for the phone
+    ferry pick                    the same, files chosen in a file dialog (several at once); then the menu says "Sent"
     ferry text TEXT               leaves a text for the phone
     ferry send-clipboard          leaves the clipboard's text for the phone
     ferry copy | open | remove ID an item: its text to the clipboard, its file opened, out of the box
@@ -325,8 +326,7 @@ def add_files(paths):
     with box(write=True) as items:
         items += added
     what = added[0]["name"] if len(added) == 1 else f"{len(added)} files"
-    notify(f"{what} is waiting for the phone", "")   # files dropped on the bar icon get no other answer
-    push_all("From " + alias(), what)
+    push_all(alias(), what)   # iOS shows the title as "<title> from Ferry"
     return 0
 
 
@@ -336,7 +336,7 @@ def add_text(text):
     text = text[:MAX_TEXT]
     with box(write=True) as items:
         items.append(new_item(to="phone", kind="text", text=text))
-    push_all("From " + alias(), text[:180])
+    push_all(alias(), text[:180])
     return 0
 
 
@@ -824,7 +824,7 @@ def handler(app):
                 elif path == "/api/test-push":
                     if not app.key:
                         return self.send(503, "Notifications need python3-cryptography on the computer")
-                    push_all(APP, "Notifications work")
+                    push_all(alias(), "Notifications work")
                     self.send(200, {"ok": True})
                 else:
                     self.send(404, "Not found")
@@ -974,6 +974,16 @@ def main():
         print(json.dumps(listing(), ensure_ascii=False))
     elif cmd == "add" and len(a) > 1:
         return add_files(a[1:])
+    elif cmd == "pick":
+        res = subprocess.run(["zenity", "--file-selection", "--multiple", "--separator=\n", "--title=Send with Ferry",
+                              "--filename=" + os.path.expanduser("~/")], capture_output=True, text=True)
+        paths = [p for p in res.stdout.splitlines() if p]
+        if not paths:
+            return 1
+        if add_files(paths):
+            return 1
+        # The menu, which closed for the dialog, opens again: it shows what was just sent
+        subprocess.run(["qs", "ipc", "call", "menu", "toggle", "ferry"], capture_output=True)
     elif cmd == "text" and len(a) > 1:
         return add_text(" ".join(a[1:]))
     elif cmd == "send-clipboard":

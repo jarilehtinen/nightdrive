@@ -16,6 +16,7 @@ Rectangle {
     property bool navSelected: false   // selected during keyboard navigation (⌘⇧Space)
     function navActivate() { row.clicked() }
     property bool action: false        // action button (Open …): uppercase, smaller font
+    property bool centered: false      // icon and label centred (buttons side by side, e.g. Ferry's)
     property bool busy: false          // in progress (connecting …): animated dots instead of the detail text
     property bool interactive: true    // false: an information row (no hover, not clickable, skipped by the keyboard, no side padding)
     readonly property bool navEnabled: interactive
@@ -54,7 +55,9 @@ Rectangle {
         id: ic
         visible: row.icon !== ""
         // A filled circle (26 px) is wider than the icon (20 px): without side padding it starts at the left edge
-        anchors { left: parent.left; leftMargin: row.pad + (row.iconFilled && !row.padded ? 3 : 0); verticalCenter: parent.verticalCenter }
+        anchors { left: parent.left; verticalCenter: parent.verticalCenter
+                  leftMargin: row.centered ? Math.max(6, (row.width - width - 10 - lbl.implicitWidth) / 2)
+                                           : row.pad + (row.iconFilled && !row.padded ? 3 : 0) }
         width: 20
         horizontalAlignment: Text.AlignHCenter
         text: Icons.g(row.icon)
@@ -62,9 +65,10 @@ Rectangle {
         font { family: Icons.family; pixelSize: row.iconFilled ? 17 : 16 }
     }
     Text {
+        id: lbl
         anchors {
             left: ic.visible ? ic.right : parent.left; leftMargin: ic.visible ? 10 : (row.padded ? 12 : 0)
-            right: trailing.left; rightMargin: 8
+            right: row.centered ? parent.right : trailing.left; rightMargin: row.centered ? 6 : 8   // centred: a narrow button, no detail
             verticalCenter: parent.verticalCenter
             // An action's uppercase text has no descenders, so centring by line height leaves it high next to the icon
             verticalCenterOffset: row.action ? 1 : 0
