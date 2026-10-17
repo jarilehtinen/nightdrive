@@ -72,12 +72,13 @@
   .progress div { height: 100%; width: 0; background: var(--primary); transition: width .2s; }
   .note { font-size: 13px; color: var(--dim); margin-top: 6px; min-height: 18px; }
   .note.err { color: var(--danger); }
-  /* A card sits on a red strip with a bin at both ends: swiped far enough either way, it goes */
+  /* A card sits on a red strip; the bin shows at the end the swipe uncovers. Swiped far enough either way, it goes */
   .swipe { position: relative; border-radius: 14px; overflow: hidden; margin-bottom: 8px; background: #3a1a26; }
   .swipe .bin { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; padding: 0 22px;
-                color: var(--danger); opacity: .5; transition: opacity .15s; }
+                color: var(--danger); opacity: 0; transition: opacity .15s; }
   .swipe .bin.l { left: 0; } .swipe .bin.r { right: 0; }
-  .swipe.armed .bin { opacity: 1; }
+  .swipe.left .bin.r, .swipe.right .bin.l { opacity: .5; }
+  .swipe.armed.left .bin.r, .swipe.armed.right .bin.l { opacity: 1; }
   .item { position: relative; background: var(--card); border-radius: 14px; padding: 12px 14px; touch-action: pan-y; }
   .item.new { background: var(--hover); }   /* not seen yet */
   .item .top { display: flex; align-items: flex-start; gap: 10px; }
@@ -355,6 +356,8 @@ function swipeable(wrap, card, done) {
     }
     dx = mx
     card.style.transform = `translateX(${dx}px)`
+    wrap.classList.toggle("left", dx < 0)
+    wrap.classList.toggle("right", dx > 0)
     wrap.classList.toggle("armed", Math.abs(dx) > wrap.offsetWidth * SWIPE)
   })
   const end = () => {
@@ -365,7 +368,7 @@ function swipeable(wrap, card, done) {
     swiped = true   // the click after it isn't a tap on a button
     setTimeout(() => swiped = false, 50)
     card.style.transition = "transform .2s ease-out"
-    if (Math.abs(dx) <= wrap.offsetWidth * SWIPE) { card.style.transform = ""; wrap.classList.remove("armed"); return }
+    if (Math.abs(dx) <= wrap.offsetWidth * SWIPE) { card.style.transform = ""; wrap.classList.remove("armed", "left", "right"); return }
     card.style.transform = `translateX(${Math.sign(dx) * wrap.offsetWidth * 1.1}px)`
     // Then the gap closes
     wrap.style.height = wrap.offsetHeight + "px"
