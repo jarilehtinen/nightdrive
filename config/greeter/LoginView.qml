@@ -40,11 +40,11 @@ Item {
         anchors.centerIn: parent
         spacing: 28
 
-        Text {
+        NightdriveLogo {
+            id: logo
             anchors.horizontalCenter: parent.horizontalCenter
-            text: view.title
-            color: view.accent
-            font { family: view.font; pixelSize: 34; weight: Font.Light; letterSpacing: 6 }
+            name: view.title
+            pixelSize: 72
         }
 
         Rectangle {
@@ -71,7 +71,7 @@ Item {
                 focus: true
                 onAccepted: { if (text !== "" && !view.busy) view.submitted(text); text = "" }
                 Keys.onEscapePressed: view.escapePressed()
-                onTextChanged: if (text !== "") view.typing()
+                onTextChanged: if (text !== "") { logo.finish(); view.typing() }
             }
             Text {
                 anchors.centerIn: parent
