@@ -5,7 +5,8 @@ import Quickshell
 // A bare menu (shell.qml draws no card around it): a bar with the title and the controls, then each notification as its
 // own card, the same as the popups (NotificationCard.qml) and in the same place, so one is easy to find again.
 // Click = open the app, ×, right click or a two-finger swipe right = remove it, Clear = remove all (the cards slide
-// a little to the right and fade out one after another, NotificationCard.sweep()).
+// a little to the right and fade out one after another, NotificationCard.sweep()). A screenshot's preview drags out
+// as a file; the menu closes when it lands.
 // The power actions (lock, suspend, log out, reboot, shut down) live in the launcher (⌘Space › Power).
 Column {
     id: m
@@ -20,6 +21,7 @@ Column {
     spacing: 10                                 // the popups' gap
 
     property real lastShownBottom: -1           // the bottom of card number maxCards (set by that card)
+    property int dragging: 0                    // previews being dragged out: shell.qml lets the drop through to the windows below
 
     // Clear: the cards in view go one after another from the top, the history empties when the last is gone
     property bool clearing: false
@@ -124,6 +126,8 @@ Column {
                     enabled: !m.clearing
                     color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, m.bgOpacity)
                     onSwept: m.sweptOne()
+                    onDraggingChanged: m.dragging += dragging ? 1 : -1
+                    onDropped: m.close()
                     onActivated: { Notifs.openApp(modelData); m.close() }
                     onDismissed: Notifs.forget(modelData.uid)
                     Binding { when: card.index === m.maxCards - 1; target: m; property: "lastShownBottom"; value: card.y + card.height }

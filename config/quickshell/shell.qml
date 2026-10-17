@@ -170,7 +170,7 @@ ShellRoot {
         // was lost until the mouse was moved.
         WlrLayershell.keyboardFocus: root.navMode && !root.viaSubmap ? WlrKeyboardFocus.Exclusive : (root.current === "wifi" ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None)
 
-        // A menu dragging a file out (FerryMenu: dragging > 0) takes input only on its card meanwhile, so the drop reaches
+        // A menu dragging a file out (FerryMenu, NotificationsMenu: dragging > 0) takes input only on its card meanwhile, so the drop reaches
         // the windows below
         mask: loader.item && loader.item.dragging > 0 ? cardMask : null
         property Region cardMask: Region { item: card }

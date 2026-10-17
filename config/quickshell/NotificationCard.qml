@@ -4,7 +4,7 @@ import Quickshell.Widgets
 
 // One notification as a card: the app's icon and name with the time (× while the mouse is over it), the title, the text,
 // the notification's own picture on the right (a preview, e.g. a screenshot: small under the text), and the app's
-// actions as buttons. The popups (NotificationPopups.qml) and the notification menu (NotificationsMenu.qml) both draw
+// actions as buttons. A preview that is a file gets Copy image and Copy path buttons of its own (also in the menu). The popups (NotificationPopups.qml) and the notification menu (NotificationsMenu.qml) both draw
 // these, so a notification looks the same in both.
 // row = a history row from Notifs.qml; n = the live Notification while it's shown as a popup (its actions, updates), else null.
 Rectangle {
@@ -18,8 +18,19 @@ Rectangle {
     property var row: ({})
     property var n: null
     readonly property var actions: n ? n.actions.filter(a => a.identifier !== "default") : []
+    // The preview's file (file:// URI and path), "" when there's none
+    readonly property string fileUri: {
+        const i = row.preview ? row.image || "" : ""
+        return i.startsWith("/") ? "file://" + i : i.startsWith("file://") ? i : ""
+    }
+    readonly property string filePath: fileUri ? decodeURIComponent(fileUri.slice(7)) : ""
+    // The buttons: the preview's copies first, then the app's actions
+    readonly property var buttons: (filePath ? [{ text: "Copy image", copy: "image" }, { text: "Copy path", copy: "path" }] : [])
+        .concat(actions.map(a => ({ text: a.text, action: a })))
     readonly property bool hovered: hover.hovered || shotDrag.active   // a drag of the preview keeps a popup up too
+    readonly property bool dragging: shot.Drag.active   // the preview is being dragged out (the menu lets the drop through)
     signal activated()                         // click: open
+    signal dropped()                           // the dragged preview landed somewhere
     signal dismissed()                         // ×, right click or a two-finger swipe to the right
 
     // The popups slide the card in with these (NotificationPopups.qml); the swipe adds its own offset and fade
@@ -245,15 +256,12 @@ Rectangle {
             height: visible ? Math.min(card.previewHeight, width * ar) : 0
             // Draggable as a file (text/uri-list): dropped on a terminal it's the file's path (Claude Code attaches
             // it as a picture), on a file manager or a browser the file. A click still opens the notification.
-            readonly property string uri: {
-                const i = card.row.image || ""
-                return i.startsWith("/") ? "file://" + i : i.startsWith("file://") ? i : ""
-            }
             Drag.dragType: Drag.Automatic
             Drag.supportedActions: Qt.CopyAction
-            Drag.mimeData: ({ "text/uri-list": uri, "text/plain": decodeURIComponent(uri.slice(7)) })
+            Drag.mimeData: ({ "text/uri-list": card.fileUri, "text/plain": card.filePath })
             Drag.active: shotDrag.active
-            DragHandler { id: shotDrag; target: null; enabled: shot.uri !== "" }
+            Drag.onDragFinished: action => { if (action !== Qt.IgnoreAction) card.dropped() }
+            DragHandler { id: shotDrag; target: null; enabled: card.fileUri !== "" }
             // The picture under the pointer while dragging: a small copy of the preview
             function grabIcon() {
                 if (shotImg.status !== Image.Ready || shotClip.width <= 0) return
@@ -278,23 +286,25 @@ Rectangle {
             }
         }
 
-        // The app's other actions as buttons
-        Item { width: 1; height: card.actions.length ? 10 : 0 }
+        // The preview's copy buttons and the app's other actions
+        Item { width: 1; height: card.buttons.length ? 10 : 0 }
         Row {
-            visible: card.actions.length > 0
+            visible: card.buttons.length > 0
             spacing: 8
             Repeater {
-                model: card.actions
+                model: card.buttons
                 Rectangle {
                     id: btn
                     required property var modelData
-                    width: btnText.implicitWidth + 20; height: 26
+                    property bool copied: false        // "Copied" for a moment after a copy button
+                    width: label.advanceWidth + 20; height: 26   // the label's width also while it says "Copied"
+                    TextMetrics { id: label; font: btnText.font; text: btn.modelData.text }
                     radius: 7
                     color: btnArea.containsMouse ? Theme.sel : Qt.rgba(1, 1, 1, 0.06)
                     Text {
                         id: btnText
                         anchors.centerIn: parent
-                        text: btn.modelData.text
+                        text: btn.copied ? "Copied" : btn.modelData.text
                         color: btnArea.containsMouse ? Theme.accent : Theme.text
                         font { family: Theme.font; pixelSize: 11 }
                     }
@@ -305,8 +315,16 @@ Rectangle {
                         cursorShape: Qt.PointingHandCursor
                         // invoke() itself closes a notification that isn't resident, and its popup and this card go with it
                         // at once: nothing here may be read after it
-                        onClicked: btn.modelData.invoke()
+                        onClicked: {
+                            if (btn.modelData.action) { btn.modelData.action.invoke(); return }
+                            Quickshell.execDetached(btn.modelData.copy === "image"
+                                ? ["sh", "-c", 'wl-copy --type image/png < "$1"', "sh", card.filePath]
+                                : ["wl-copy", "--", card.filePath])
+                            btn.copied = true
+                            copiedTimer.restart()
+                        }
                     }
+                    Timer { id: copiedTimer; interval: 1500; onTriggered: btn.copied = false }
                 }
             }
         }
