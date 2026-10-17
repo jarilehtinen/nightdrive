@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
   <!-- Ferry's app icon: Lucide's inbox as a neon sign in the wallpaper's sunset colours (orange, pink, violet) -->
   <defs>
-    <radialGradient id="bg" cx=".5" cy=".75" r=".8"><stop offset="0" stop-color="#3a1660"/><stop offset="1" stop-color="#0b0a1c"/></radialGradient>
+    <radialGradient id="bg" cx=".5" cy=".5" r=".75"><stop offset="0" stop-color="#3a1660"/><stop offset="1" stop-color="#2a1250"/></radialGradient>
     <linearGradient id="neon" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffb35c"/><stop offset=".45" stop-color="#ff4f9a"/><stop offset="1" stop-color="#b56bff"/></linearGradient>
     <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="16"/></filter>
   </defs>
