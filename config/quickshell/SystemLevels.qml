@@ -1,8 +1,8 @@
 import QtQuick
 import Quickshell
 
-// The launcher's Settings › Wi-Fi, Bluetooth, Sound and Tailscale, and Status (the top bar's System and Claude usage): the
-// same things as the top bar's menus (WifiMenu, BluetoothMenu, VolumeMenu, TailscaleMenu, SystemMenu, ClaudeMenu) as
+// The launcher's Settings › Wi-Fi, Bluetooth, Sound, Headphones and Tailscale, and Status (the top bar's System and Claude usage): the
+// same things as the top bar's menus (WifiMenu, BluetoothMenu, VolumeMenu, HeadphonesMenu, TailscaleMenu, SystemMenu, ClaudeMenu) as
 // launcher rows, so the launcher doesn't hand over to a menu.
 // Launcher.qml asks it like its private extension (levels, titles, parents, items, activate, footer, entered).
 // The data is read while one of these levels is open; rows use the launcher's kinds (header, hint, stat, action) and a few
@@ -11,10 +11,10 @@ Item {
     id: s
     property var launcher: null
 
-    readonly property var levels: ["wifi", "wifipw", "bluetooth", "sound", "tailscale", "status", "mirrorpin"]
+    readonly property var levels: ["wifi", "wifipw", "bluetooth", "sound", "headphones", "tailscale", "status", "mirrorpin"]
     readonly property var titles: ({ status: "System › Status", mirrorpin: "Screen Mirroring › Code", wifi: "Settings › Wi-Fi", wifipw: "Wi-Fi › Password", bluetooth: "Settings › Bluetooth",
-                                     sound: "Settings › Sound", tailscale: "Settings › Tailscale" })
-    readonly property var parents: ({ status: "system", mirrorpin: "display", wifi: "settings", wifipw: "wifi", bluetooth: "settings", sound: "settings", tailscale: "settings" })
+                                     sound: "Settings › Sound", headphones: "Settings › Headphones", tailscale: "Settings › Tailscale" })
+    readonly property var parents: ({ status: "system", mirrorpin: "display", wifi: "settings", wifipw: "wifi", bluetooth: "settings", sound: "settings", headphones: "settings", tailscale: "settings" })
     readonly property string level: launcher ? launcher.level : ""
     readonly property bool shown: launcher !== null && launcher.open && levels.indexOf(level) >= 0
 
@@ -29,6 +29,8 @@ Item {
         if (cur.kind === "wifinet") return cur.active ? "" : "Enter: connect"
         if (cur.kind === "btdev") return "Enter: " + (cur.connected ? "disconnect" : cur.paired ? "connect" : "pair and connect")
         if (cur.kind === "sounddev") return "Enter: use this"
+        if (cur.kind === "hpdev") return "Enter: " + (cur.current ? "disconnect" : "use as output")
+        if (cur.kind === "hpmode") return cur.trailGlyph ? "" : "Enter: switch"
         if (cur.kind === "tsmachine") return "Enter: copy IP address  ·  Cmd+C: copy"
         if (cur.copy !== undefined) return "Enter: copy  ·  Cmd+C: copy"
         if (level === "wifipw") return query !== "" ? "Enter: connect  ·  Esc: back" : ""
@@ -41,6 +43,7 @@ Item {
         if (level === "wifi") { wifiMessage = ""; wifiRefresh(); rescan(); if (activeSsid !== "") ipProc.running = true }
         if (level === "bluetooth") { btMessage = ""; btRefresh() }
         if (level === "sound") soundRefresh()
+        if (level === "headphones") hpProc.running = true
         if (level === "tailscale") { tsMessage = ""; tsProc.running = true }
         if (level === "status") { sysProc.running = true; claudeProc.running = true }
         if (level === "mirrorpin" || level === "display") mirrorProc.running = true
@@ -53,6 +56,7 @@ Item {
                                           summary: launcher.query === "" ? "type the password" : undefined, dimmed: launcher.query === "" }]
         if (level === "bluetooth") return { all: btRows().map(row) }
         if (level === "sound") return { all: soundRows().map(row) }
+        if (level === "headphones") return { all: hpRows().map(row) }
         if (level === "tailscale") return { all: tsRows().map(row) }
         if (level === "status") return { all: statusRows().map(row) }
         if (level === "mirrorpin") return [{ kind: "mirrorcode", name: "Pair with " + (mirrorName || "the receiver"), glyph: "key-round",
@@ -105,6 +109,14 @@ Item {
             if (d && d.airplay) Quickshell.execDetached([airplayCheck, "notify", d.node])   // warns if it refuses audio
             return true
         }
+        if (it.kind === "hpdev") {
+            sel()
+            if (it.current) Quickshell.execDetached([eq, "disconnect"])
+            else Quickshell.execDetached(["pactl", "set-default-sink", hp.sink])
+            hpSoon.restart()
+            return true
+        }
+        if (it.kind === "hpmode") { sel(); hpSet.command = [eq, "anc", it.name]; hpSet.running = true; return true }
         if (it.kind === "tsmachine") { copyText(it.ip); return true }
         if (it.kind === "mirrordev") {
             if (it.ip === mirrorIp && mirrorState !== "idle") { sel(); mirrorState = "idle"; Quickshell.execDetached([mirrorScript, "stop"]); return true }
@@ -566,6 +578,57 @@ done; true'
             s.probeAirplay()
             s.sources = out["Audio/Source"]
         }
+    }
+
+    // ================= Headphones (as in HeadphonesMenu: topbar/scripts/eq info) =================
+    readonly property string eq: Quickshell.env("HOME") + "/.config/topbar/scripts/eq"
+    property var hp: ({})
+    function hpRows() {
+        if (!hp.sink) return hint("No headphones connected")
+        const r = [{ kind: "hpdev", name: hp.name, glyph: "headphones", current: !!hp.default, summary: hp.codec || undefined,
+                     trailGlyph: hp.default ? "check" : undefined }]
+        // Battery: AirPods per pod and case (hypr/scripts/headphones-ctl), other headphones the level BlueZ reports
+        const pods = (hp.airpods && hp.airpods.pods) || {}
+        const bats = ["left", "right", "case"].filter(k => pods[k]).map(k => Object.assign({ key: k }, pods[k]))
+        if (bats.length === 0 && /^\d+$/.test(hp.battery || "")) bats.push({ key: "", level: parseInt(hp.battery) })
+        if (bats.length > 0) r.push({ kind: "header", name: "Battery" })
+        for (const b of bats) {
+            const where = b.key === "case" ? (b.stale ? "earlier" : b.charging ? "charging" : "")
+                        : b.charging ? "charging" : ({ ear: "in ear", out: "out", case: "in case" })[b.where] || ""
+            r.push({ kind: "battery", name: ({ left: "Left", right: "Right", case: "Case", "": "Battery" })[b.key], value: b.level / 100,
+                     charging: !!b.charging, dimmed: !!b.stale, low: b.level < 20 && !b.charging && !b.stale,
+                     glyph: b.charging ? "zap" : b.where === "ear" ? "ear" : "battery-medium",
+                     summary: b.level + "%" + (where ? " · " + where : "") })
+        }
+        if ((hp.ancModes || []).length > 1) {
+            r.push({ kind: "header", name: "Listening mode" })
+            const icons = { "Noise cancelling": "ear-off", "Adaptive": "sparkles", "Transparency": "ear", "Passive": "mic-audio-lines" }
+            const rank = m => { const i = Object.keys(icons).indexOf(m); return i < 0 ? 99 : i }   // in the menu's order
+            for (const m of hp.ancModes.slice().sort((a, b) => rank(a) - rank(b)))
+                r.push({ kind: "hpmode", name: m, glyph: icons[m] || "headphones", trailGlyph: hp.anc === m ? "check" : undefined })
+        }
+        r.push({ kind: "header", name: "More" })
+        if (hp.airpods) r.push({ kind: "action", name: "AirPods settings…", glyph: "settings", cmd: ["qs", "ipc", "call", "airpods", "open"] })
+        r.push({ kind: "menu", name: "Equalizer…", glyph: "sliders-horizontal", target: "headphones",
+                 summary: hp.preset && hp.preset !== "off" ? hp.preset : "off" })
+        return r
+    }
+    Timer { interval: 2000; repeat: true; running: s.shown && s.level === "headphones"; onTriggered: hpProc.running = true }
+    Timer { id: hpSoon; interval: 800; onTriggered: hpProc.running = true }
+    Sh {
+        id: hpProc
+        command: [s.eq, "info"]
+        onResult: text => {
+            let v
+            try { v = JSON.parse(text) } catch (e) { return }
+            if (JSON.stringify(v) === JSON.stringify(s.hp)) return
+            s.sel()
+            s.hp = v
+        }
+    }
+    Sh {
+        id: hpSet
+        onResult: () => { hpProc.running = true; TopBar.refresh("headphones") }
     }
 
     // ================= Tailscale (as in TailscaleMenu) =================

@@ -109,7 +109,7 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
 | AI | [Claude Code](https://claude.com/claude-code) | ⌘⌥Enter, ask from the launcher, usage limits in the bar |
 | Dictation | [Voxtype](https://github.com/peteonrails/voxtype) (Parakeet) | F5 / Fn push-to-talk, recording card on screen |
 | Network | NetworkManager, BlueZ, [Tailscale](https://tailscale.com) (optional) | Wi-Fi, Bluetooth and Tailscale menus |
-| Audio | PipeWire, [EasyEffects](https://github.com/wwmm/easyeffects) | output switching (AirPlay speakers too), EQ presets for headphones |
+| Audio | PipeWire, [EasyEffects](https://github.com/wwmm/easyeffects) | output switching (AirPlay speakers too), EQ presets for headphones; Sony and AirPods listening mode, AirPods battery per pod and case and their own settings |
 | Screen Mirroring (optional) | [doubletake](https://github.com/omarroth/doubletake) (AirPlay, built by `install-doubletake.sh`) | Settings › Display; experimental, picture limited to 1080p (no hardware encoder on Asahi) |
 | Notifications | Quickshell | app icon and time on every notification, history and do not disturb in the bar |
 | Files and images | Nautilus, Loupe | images open in Loupe, a simple viewer like Preview |

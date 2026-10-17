@@ -3,6 +3,8 @@ import Quickshell
 
 // Headphones (shown in the bar only while Bluetooth headphones are connected): select as output and pick the EasyEffects EQ preset
 // (the connected headphones' own presets, see config/easyeffects/build-presets) and their noise cancelling state.
+// Battery: AirPods per pod and case (hypr/scripts/headphones-ctl), other headphones the level BlueZ reports.
+// AirPods settings… opens their own settings (AirPodsSettings.qml).
 // Info and changes: ~/.config/topbar/scripts/eq (info / set / toggle). The preset is saved as the headphones' autoload profile.
 Column {
     id: m
@@ -29,6 +31,13 @@ Column {
     property var info: ({})
     property real maxShown: -1   // while dragging the Max volume slider (saved on release)
     readonly property bool eqOn: !!info.preset && info.preset !== "off"
+    readonly property var pods: (info.airpods && info.airpods.pods) || ({})
+    readonly property var podRows: ["left", "right", "case"].filter(k => pods[k]).map(k => Object.assign({ key: k }, pods[k]))
+    readonly property bool hasBattery: podRows.length > 0 || /^\d+$/.test(info.battery || "")
+    function podStatus(p) {
+        if (p.key === "case") return p.stale ? "earlier" : p.charging ? "charging" : ""
+        return { ear: "in ear", out: "out", case: "in case" }[p.where] || ""
+    }
     signal close()
 
     function refresh() { infoProc.running = true }
@@ -62,7 +71,7 @@ Column {
         width: parent.width
         icon: "headphones"
         label: m.info.name || "Not connected"
-        detail: [m.info.battery ? m.info.battery + (/^\d+$/.test(m.info.battery) ? "%" : "") : "", m.info.codec || ""].filter(s => s).join(" · ")
+        detail: m.info.codec || ""
         active: !!m.info.default
         checkIcon: m.info.default ? "check" : ""
         hoverCheckIcon: m.info.default ? "unplug" : ""
@@ -73,6 +82,33 @@ Column {
             const mac = (m.info.sink.match(/^bluez_output\.([0-9A-F_]{17})/) || [])[1]
             if (m.info.default && mac) { Quickshell.execDetached(["bluetoothctl", "disconnect", mac.replace(/_/g, ":")]); m.close() }
             else { Quickshell.execDetached(["pactl", "set-default-sink", m.info.sink]); m.refresh() }
+        }
+    }
+
+    Divider { visible: m.hasBattery }
+    MenuHeader { visible: m.hasBattery; width: parent.width; title: "Battery" }
+    Column {
+        visible: m.hasBattery
+        width: parent.width
+        spacing: 10
+        topPadding: 2; bottomPadding: 4
+        Repeater {
+            model: m.podRows
+            delegate: BatteryBar {
+                required property var modelData
+                width: parent.width
+                label: ({ left: "Left", right: "Right", case: "Case" })[modelData.key]
+                level: modelData.level
+                charging: modelData.charging
+                stale: !!modelData.stale
+                status: m.podStatus(modelData)
+            }
+        }
+        BatteryBar {
+            visible: m.podRows.length === 0
+            width: parent.width
+            level: parseInt(m.info.battery) || 0
+            status: level < 20 ? "low" : ""
         }
     }
 
@@ -179,6 +215,14 @@ Column {
     }
 
     Divider {}
+    MenuRow {
+        visible: !!m.info.airpods
+        width: parent.width
+        icon: "headphones"
+        action: true
+        label: "AirPods settings…"
+        onClicked: { Quickshell.execDetached(["qs", "ipc", "call", "airpods", "open"]); m.close() }
+    }
     MenuRow {
         width: parent.width
         icon: "sliders-horizontal"

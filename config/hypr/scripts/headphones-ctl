@@ -4,13 +4,15 @@
 Keeps the headphones' control channel open while they are connected (the one the maker's own app or iPhone uses):
   - listening mode (noise cancelling / adaptive / transparency / off), both ways: a press on the headphones shows in the
     menu at once, and picking a mode in the menu switches the headphones
-  - AirPods: ear detection (taking a pod out pauses, putting it back resumes what it paused) and battery
+  - AirPods: ear detection (taking a pod out pauses, putting it back resumes what it paused; can be turned off), battery
+    per pod and case, where each pod is (ear / out / case) and their own settings (the AirPods settings window)
 Started by hyprland.lua. Files for topbar/scripts/eq and the menu, while the channel is open:
 
   $XDG_RUNTIME_DIR/nightdrive/anc/<MAC>          the mode now, as the menu names it
   $XDG_RUNTIME_DIR/nightdrive/anc/<MAC>.modes    the modes these headphones have, one per line
-  $XDG_RUNTIME_DIR/nightdrive/anc/<MAC>.battery  AirPods: e.g. "L 85% · R 84% · case 40%"
-  $XDG_RUNTIME_DIR/nightdrive/headphones-ctl.sock  "<MAC> <mode>" switches the headphones (eq anc does this)
+  $XDG_RUNTIME_DIR/nightdrive/anc/<MAC>.airpods  AirPods: JSON {model, pods: {left, right, case}, settings}
+  $XDG_RUNTIME_DIR/nightdrive/headphones-ctl.sock  "<MAC> <mode>" switches the headphones (eq anc does this),
+                                                   "<MAC> set <setting> <value>" changes an AirPods setting (eq airpods)
 
 Sony (MDR over RFCOMM, reverse engineered by Gadgetbridge and mos9527/SonyHeadphonesClient): frames 3e <type> <seq>
 <len:4> <payload> <checksum> 3c with 3c/3d/3e escaped as 3d <byte & ef>; type 0c = command, 01 = ack. Payload 66 <kind>
@@ -19,11 +21,14 @@ asks the noise cancelling / ambient state, 67 is the reply, 69 a notification (a
 Tested on the WH-1000XM6; the others follow the same sources but are untested.
 
 Apple (AAP over L2CAP PSM 0x1001, documented by LibrePods): a handshake and a notification request, then packets
-04 00 04 00 <opcode> 00 …: 06 ear detection (per pod 00 in ear, 01 out, 02 in the case), 04 battery, 09 0d <mode>
-the listening mode (01 off, 02 noise cancelling, 03 transparency, 04 adaptive; the same packet sets it).
+04 00 04 00 <opcode> 00 …: 06 ear detection (primary pod, secondary pod: 00 in ear, 01 out, 02 in the case),
+04 battery (<count> × <part: 02 right, 04 left, 08 case> 01 <level> <status: 01 charging, 02 not, 04 not connected> 01;
+the primary pod comes first), 1d the model and firmware (strings), 09 <id> <value> 00 00 00 a setting (the same packet
+sets it): 0d the listening mode (01 off, 02 noise cancelling, 03 transparency, 04 adaptive), the others in SETTINGS.
+Right after the notification request the AirPods send every setting's value.
 Tested on the AirPods Pro 3; other AirPods and Beats speak the same protocol (modes they lack are ignored).
 """
-import fcntl, os, socket, subprocess, sys
+import fcntl, json, os, re, socket, subprocess, sys
 import dbus, dbus.service, dbus.mainloop.glib
 from gi.repository import GLib
 
@@ -32,6 +37,7 @@ APPLE_UUID = "74ec2172-0bad-4d01-8f77-997b2be0722a"   # Apple accessories' AAP s
 NAMES = {"nc": "Noise cancelling", "adaptive": "Adaptive", "ambient": "Transparency", "off": "Passive"}
 KEYS = {v: k for k, v in NAMES.items()}
 RUN = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "nightdrive")
+PREFS = os.path.expanduser("~/.local/state/nightdrive/airpods")   # ear-detection-off, case-<MAC> (the last known level)
 STATE = os.path.join(RUN, "anc")
 SOCK = os.path.join(RUN, "headphones-ctl.sock")
 EQ = os.path.expanduser("~/.config/topbar/scripts/eq")
@@ -80,7 +86,7 @@ class Headphones:
         GLib.source_remove(self.watch)
         try: self.sock.close()
         except OSError: pass
-        for suffix in ("", ".modes", ".battery"):
+        for suffix in ("", ".modes", ".airpods"):
             try: os.remove(os.path.join(STATE, self.mac + suffix))
             except FileNotFoundError: pass
         if connected.get(self.mac) is self:
@@ -184,10 +190,21 @@ class Apple(Headphones):
     modes = ("nc", "adaptive", "ambient", "off")
     MODE_BYTES = {1: "off", 2: "nc", 3: "ambient", 4: "adaptive"}
     HEAD = bytes.fromhex("04000400")
+    # The AirPods' own settings (control command ids, LibrePods' docs/control_commands.md). bool: 01 on, 02 off;
+    # level: 0–100; step: 0 default, 1, 2 (slower / shorter)
+    SETTINGS = {"conversation": (0x28, "bool"), "oneBudAnc": (0x1B, "bool"), "personalVolume": (0x26, "bool"),
+                "adaptiveLevel": (0x2E, "level"), "caseVolume": (0x1F, "level"), "swipeVolume": (0x25, "bool"),
+                "pressSpeed": (0x17, "step"), "holdDuration": (0x18, "step"), "sleepDetection": (0x35, "bool")}
+    IDS = {v[0]: k for k, v in SETTINGS.items()}
+    PARTS = {0x04: "left", 0x02: "right", 0x08: "case"}
 
     def __init__(self, mac, sock):
-        self.ears = None          # (pod, pod): 0 in ear, 1 out, 2 in the case
+        self.ears = None          # (primary, secondary): 0 in ear, 1 out, 2 in the case
+        self.primary = None       # "left" / "right": the pod listed first in the battery packet
         self.paused = False       # ear detection paused the music: putting a pod back resumes it
+        self.pods = {}            # left / right / case: {level, charging}
+        self.raw = {}             # setting id -> its 4 value bytes as the AirPods sent them
+        self.model = ""
         super().__init__(mac, sock)
         for packet in ("00000400010002000000000000000000",   # handshake
                        "040004004d00ff00000000000000",       # features (adaptive transparency …)
@@ -198,23 +215,62 @@ class Apple(Headphones):
         if not p.startswith(self.HEAD) or len(p) < 6:
             return
         op = p[4]
-        if op == 0x09 and len(p) >= 8 and p[6] == 0x0d and p[7] in self.MODE_BYTES:
-            self.publish(self.MODE_BYTES[p[7]])
+        if op == 0x09 and len(p) >= 11:
+            if p[6] == 0x0d and p[7] in self.MODE_BYTES:
+                self.publish(self.MODE_BYTES[p[7]])
+            elif p[6] in self.IDS:
+                self.raw[p[6]] = bytes(p[7:11])
+                self.save()
         elif op == 0x06 and len(p) >= 8:
             self.ear(p[6], p[7])
         elif op == 0x04 and len(p) >= 7:
-            parts, names = {}, {0x04: "L", 0x02: "R", 0x08: "case"}
+            pods, order = {}, []
             for i in range(p[6]):
                 c = p[7 + i * 5: 12 + i * 5]
-                if len(c) == 5 and c[0] in names and c[3] != 0x04:   # 04: not connected (e.g. the case with no pods)
-                    parts[names[c[0]]] = f"{names[c[0]]} {c[2]}%"
-            self.write(".battery", " · ".join(parts[k] for k in ("L", "R", "case") if k in parts))
+                if len(c) == 5 and c[0] in self.PARTS:
+                    name = self.PARTS[c[0]]
+                    if name != "case": order.append(name)
+                    if c[3] != 0x04:   # 04: not connected (e.g. the case with no pods in it)
+                        pods[name] = {"level": c[2], "charging": c[3] == 0x01}
+            if order: self.primary = order[0]
+            if "case" in pods:
+                write_pref(f"case-{self.mac}", str(pods["case"]["level"]))
+            self.pods = pods
+            self.save()
+        elif op == 0x1d:   # model number among the strings (name, model, maker, serial, firmware …)
+            self.model = next((t.decode(errors="ignore") for t in p[6:].split(b"\0") if re.fullmatch(rb"A\d{4}", t)), "")
+            self.save()
+
+    def where(self, side):
+        """ear / out / case for "left" or "right" (None until both packets have come)"""
+        if self.ears is None or self.primary is None:
+            return None
+        v = self.ears[0] if side == self.primary else self.ears[1]
+        return {0: "ear", 1: "out", 2: "case"}.get(v)
+
+    def save(self):
+        pods = {}
+        for side in ("left", "right"):
+            if side in self.pods:
+                pods[side] = dict(self.pods[side], where=self.where(side))
+        if "case" in self.pods:
+            pods["case"] = dict(self.pods["case"], stale=False)
+        else:   # the case only reports while a pod is in it: its last known level, dimmed in the menu
+            last = read_pref(f"case-{self.mac}")
+            if last.isdigit(): pods["case"] = {"level": int(last), "charging": False, "stale": True}
+        settings = {"earDetection": read_pref("ear-detection-off") == ""}
+        for key, (sid, kind) in self.SETTINGS.items():
+            if sid in self.raw:
+                v = self.raw[sid][0]
+                settings[key] = v == 0x01 if kind == "bool" else v
+        self.write(".airpods", json.dumps({"model": self.model, "pods": pods, "settings": settings}) + "\n")
 
     def ear(self, a, b):
         inear = (a == 0) + (b == 0)
         before = None if self.ears is None else sum(x == 0 for x in self.ears)
         self.ears = (a, b)
-        if before is None:
+        self.save()
+        if before is None or read_pref("ear-detection-off"):
             return
         if inear < before:   # a pod came out
             if run(["playerctl", "status"]).strip() == "Playing":
@@ -226,6 +282,43 @@ class Apple(Headphones):
         byte = {v: k for k, v in self.MODE_BYTES.items()}.get(mode)
         if byte:
             self.sock.send(bytes.fromhex("0400040009000d") + bytes([byte, 0, 0, 0]))
+
+    def set_setting(self, key, value):
+        if key == "earDetection":   # Nightdrive's own (ear()), not the AirPods'
+            write_pref("ear-detection-off", "" if value in ("1", "true", "on") else "off")
+            self.paused = False
+            self.save()
+            return True
+        if key not in self.SETTINGS or not value.isdigit():
+            return False
+        sid, kind = self.SETTINGS[key]
+        v = int(value)
+        if kind == "bool": v = 0x01 if v else 0x02
+        elif kind == "level": v = max(0, min(100, v))
+        elif kind == "step": v = max(0, min(2, v))
+        raw = bytearray(self.raw.get(sid, b"\0\0\0\0"))
+        raw[0] = v
+        self.sock.send(bytes.fromhex("040004000900") + bytes([sid]) + bytes(raw))
+        self.raw[sid] = bytes(raw)   # shown at once; the AirPods' own echo (when they send one) confirms it
+        self.save()
+        return True
+
+
+def read_pref(name):
+    try:
+        with open(os.path.join(PREFS, name)) as f: return f.read().strip()
+    except OSError:
+        return ""
+
+
+def write_pref(name, text):
+    path = os.path.join(PREFS, name)
+    if not text:
+        try: os.remove(path)
+        except FileNotFoundError: pass
+        return
+    os.makedirs(PREFS, exist_ok=True)
+    with open(path, "w") as f: f.write(text + "\n")
 
 
 def run(cmd):
@@ -301,6 +394,9 @@ def on_command(src, cond):
         if mac in connected and mode in KEYS:
             connected[mac].set_mode(KEYS[mode])
             conn.send(b"ok\n")
+        elif mac in connected and mode.startswith("set ") and hasattr(connected[mac], "set_setting"):
+            _, key, value = mode.split(" ", 2)
+            conn.send(b"ok\n" if connected[mac].set_setting(key, value) else b"unknown\n")
     except (ValueError, OSError):
         pass
     conn.close()

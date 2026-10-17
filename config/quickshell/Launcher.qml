@@ -280,6 +280,7 @@ PanelWindow {
         ].concat(Plugins.has("tailscale") ? [{ kind: "nav", name: "Tailscale", glyph: "shield-check", target: "tailscale" }] : [], [
             { kind: "header", name: "Hardware" },
             { kind: "nav", name: "Sound", glyph: "volume-2", target: "sound" },
+            { kind: "nav", name: "Headphones", glyph: "headphones", target: "headphones" },
             { kind: "nav", name: "Display", glyph: "monitor", target: "display" },
             { kind: "nav", name: "Battery", glyph: "battery-medium", target: "battery" },
             { kind: "header", name: "Appearance" },
@@ -2074,11 +2075,14 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                         font { family: Icons.family; pixelSize: win.fontSize - 2 }
                     }
                     Slider {         // Settings › Display › Brightness, Sound: above the row's MouseArea, so it gets the drag
-                        visible: row.modelData.kind === "brightness" || row.modelData.kind === "slider"
+                        // Settings › Headphones › Battery: a meter (no knob, not draggable), green while charging, red when low
+                        visible: row.modelData.kind === "brightness" || row.modelData.kind === "slider" || row.modelData.kind === "battery"
                         z: 1
                         // after the name ("Screen" in Display, "Brightness" in a search), lined up while the name is short
                         anchors { left: slot.right; leftMargin: Math.max(120, 16 + nameText.implicitWidth + 28); right: trailing.left; rightMargin: 20; verticalCenter: parent.verticalCenter }
-                        value: row.modelData.kind === "slider" ? row.modelData.value : Math.max(0, win.bright)
+                        value: row.modelData.kind === "slider" || row.modelData.kind === "battery" ? row.modelData.value : Math.max(0, win.bright)
+                        readOnly: row.modelData.kind === "battery"
+                        fillColor: row.modelData.charging ? Theme.ok : row.modelData.low ? Theme.danger : Theme.accent
                         dimmed: !!row.modelData.dimmed
                         trackColor: Qt.rgba(1, 1, 1, 0.1)   // the same on and off the selected row (Theme.border nearly matches Theme.sel)
                         onMoved: v => { list.currentIndex = row.index; row.modelData.kind === "slider" ? sys.setSlider(row.modelData.key, v) : win.setBright(v) }

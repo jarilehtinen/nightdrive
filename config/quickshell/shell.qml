@@ -146,6 +146,8 @@ ShellRoot {
 
     PowerDialog {}
 
+    AirPodsSettings {}
+
     SharePicker {}
 
     Drawer {}
