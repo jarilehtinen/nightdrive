@@ -48,7 +48,7 @@ hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd(scripts .. "/dictate start"), { lock
 hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd(scripts .. "/dictate stop"),  { locked = true, release = true })    -- release -> transcribe and type
 hl.bind("XF86Fn", hl.dsp.exec_cmd(scripts .. "/dictate fn-down"), { locked = true })                       -- Fn held (over 0.3 s) -> dictation, like F5
 hl.bind("XF86Fn", hl.dsp.exec_cmd(scripts .. "/dictate fn-up"),   { locked = true, release = true })
-hl.bind("F19",    hl.dsp.exec_cmd(scripts .. "/dictate fn-down"), { locked = true })                       -- Fn when keyd (Mac text keys) runs: keyd sends F19 for it
+hl.bind("F19",    hl.dsp.exec_cmd(scripts .. "/dictate fn-down"), { locked = true })                       -- Fn when keyd (Mac Keyboard Shortcuts) runs: keyd sends F19 for it
 hl.bind("F19",    hl.dsp.exec_cmd(scripts .. "/dictate fn-up"),   { locked = true, release = true })
 hl.bind(mod .. " + SHIFT + B",   hl.dsp.exec_cmd(browser))
 hl.bind(mod .. " + SHIFT + RETURN", hl.dsp.exec_cmd(browser))
@@ -95,7 +95,7 @@ end
 
 -- ⌘⌫ = Delete (move to trash) in the file manager, like in macOS Finder. Elsewhere it messages the launcher:
 -- in Settings › Background it removes the selected custom wallpaper (otherwise it does nothing).
--- With the Mac text keys plugin (keyd, install-keyd.sh) keyd does ⌘⌫ and ⌥⌫ instead, as real key presses, per app
+-- With the Mac Keyboard Shortcuts plugin (keyd, install-keyd.sh) keyd does ⌘⌫ and ⌥⌫ instead, as real key presses, per app
 -- (config/keyd/app.conf): Hyprland's synthetic Delete could get stuck repeating. Its app mapper starts with Hyprland.
 if plugins.keyd then
     hl.on("hyprland.start", function () hl.exec_cmd("keyd-application-mapper -d") end)

@@ -26,6 +26,8 @@
   ⌘ Z / ⌘ ⇧ Z        Undo / redo (not in the terminal)
   ⌘ A                Select all (not in the terminal)
   ⌘ ⌫                Move file to trash (in Files)
+  Enter              Rename file (in Files; F2 too) {keyd}
+  ⌘ O                Open file (in Files) {keyd}
   ⌥ ⌫                Delete the previous word {keyd}
   ⌘ ⌫                Delete to the start of the line (Thunderbird: delete the message) {keyd}
   ⌘ ⇧ V              Clipboard history (Enter pastes into the active window, ⇧ Enter copies only)

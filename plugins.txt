@@ -21,7 +21,7 @@ localsend|LocalSend|smartphone|Files from phones via the LocalSend app, asks fir
 ferry|Ferry|inbox|Files and text both ways with an iPhone over Tailscale, no app (experimental)|off|sudo dnf install -y python3-cryptography qrencode && config/hypr/scripts/ferry enable|systemctl --user -q is-enabled nightdrive-ferry.service|plugin
 mirroring|Screen Mirroring|screen-share|AirPlay to an Apple TV (doubletake, experimental; compiled)|off|install-doubletake.sh|test -x ~/.local/bin/doubletake|plugin
 airplay-receiver|AirPlay Receiver|cast|Mirror an iPhone, iPad or Mac here (UxPlay, experimental)|off|install-airplay-receiver.sh|systemctl --user -q is-enabled nightdrive-airplay.service|plugin
-keyd|Mac text keys|keyboard|⌥⌫ deletes a word, ⌘⌫ to the line start (Files: to the trash), as real key presses (keyd)|off|install-keyd.sh|systemctl -q is-enabled keyd|plugin
+keyd|Mac Keyboard Shortcuts|keyboard|⌥⌫ deletes a word, ⌘⌫ to the line start; Files: Enter renames, ⌘O opens, ⌘⌫ to the trash|off|install-keyd.sh|systemctl -q is-enabled keyd|plugin
 vscode|VS Code|code|Visual Studio Code from Microsoft's repo (⌘⇧C)|off|install-vscode.sh|command -v code|recommended
 jotta|Jottacloud|cloud|Jottacloud sync to ~/Jotta (jotta-cli)|off|install-jotta.sh|command -v jotta-cli|recommended
 slack|Slack|message-square|Slack as a web app (⌘⇧S)|off|webapp https://app.slack.com/client|test -f ~/.local/share/applications/webapp-slack.desktop|webapp
