@@ -31,7 +31,10 @@ PanelWindow {
             anchors.centerIn: parent
             text: parent.glyph !== "" ? Icons.g(parent.glyph) : parent.key.length === 1 ? parent.key : parent.key.toLowerCase()   // a letter (⌘C) stays a capital
             color: Theme.dim
-            font { family: parent.glyph !== "" ? Icons.family : Theme.font; pixelSize: parent.glyph !== "" ? 12 : 11 }
+            // a capital as big and heavy as the glyphs next to it (⌘ ⇧ V); a key name (esc) stays small
+            readonly property bool letter: parent.glyph === "" && parent.key.length === 1
+            font { family: parent.glyph !== "" ? Icons.family : Theme.font; pixelSize: parent.glyph !== "" ? 12 : letter ? 14 : 11
+                   weight: letter ? Font.Medium : Font.Normal }
         }
     }
 
@@ -188,6 +191,7 @@ PanelWindow {
     readonly property var keyGlyphs: ({ Enter: "corner-down-left", Ctrl: "chevron-up", Shift: "arrow-big-up", Alt: "option", Cmd: "command",
                                         Up: "arrow-up", Down: "arrow-down", Left: "arrow-left", Right: "arrow-right",
                                         Backspace: "delete", Space: "space" })
+    readonly property var keySymbolNames: ({ "⌘": "Cmd", "⇧": "Shift", "⌥": "Alt", "⌃": "Ctrl" })   // SHORTCUTS.md symbols → keyGlyphs
     readonly property var footerParts: footer === "" ? [] : footer.split(/\s+·\s+/).map(part => {
         const m = part.match(/^((?:Ctrl|Shift|Alt|Cmd|Enter|Esc|Tab|Space|Backspace|Up|Down|Left|Right)(?:\+(?:Ctrl|Shift|Alt|Cmd|Enter|Esc|Tab|Space|Backspace|Up|Down|Left|Right|[A-Z]))*)(?::\s*|\s+)(.*)$/)
         return m ? { keys: m[1].split("+"), text: m[2] } : { keys: [], text: part }
@@ -1988,15 +1992,17 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                             || (row.modelData.summary !== undefined && row.modelData.summary !== "") ? "" : win.shortcutFor(row.modelData)
                         visible: keys !== ""
                         anchors { right: trailing.left; rightMargin: trailing.text !== "" ? 18 : 0; verticalCenter: parent.verticalCenter }
-                        width: shortcutText.implicitWidth + 14; height: 24; radius: 6
+                        width: shortcutCaps.implicitWidth + 14; height: 24; radius: 6
                         color: "transparent"
                         border { width: 1; color: Theme.dim }
-                        Text {
-                            id: shortcutText
+                        Row {        // the footer's keycaps: Lucide glyphs for ⌘ ⇧ ⌥ ⌃ (JetBrains Mono's ⇧ is a faint outline)
+                            id: shortcutCaps
                             anchors.centerIn: parent
-                            text: shortcut.keys
-                            color: Theme.dim
-                            font { family: Theme.font; pixelSize: win.fontSize - 5 }
+                            spacing: 4
+                            Repeater {
+                                model: shortcut.keys.split(/\s+/).filter(k => k !== "").map(k => win.keySymbolNames[k] || k)
+                                Keycap { required property string modelData; key: modelData }
+                            }
                         }
                     }
                     Rectangle {      // row.switchOn: an on/off switch like the top bar menus' (MenuHeader), instead of "on"/"off"
