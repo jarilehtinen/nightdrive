@@ -20,6 +20,7 @@ deck|Deck|disc-3|Spotify player (needs Premium), launcher and top bar; compiled|
 localsend|LocalSend|smartphone|Files from phones via the LocalSend app, asks first (experimental)|off|sudo dnf install -y openssl nautilus-python zenity && config/hypr/scripts/localsend enable|systemctl --user -q is-enabled nightdrive-localsend.service|plugin
 mirroring|Screen Mirroring|screen-share|AirPlay to an Apple TV (doubletake, experimental; compiled)|off|install-doubletake.sh|test -x ~/.local/bin/doubletake|plugin
 airplay-receiver|AirPlay Receiver|cast|Mirror an iPhone, iPad or Mac here (UxPlay, experimental)|off|install-airplay-receiver.sh|systemctl --user -q is-enabled nightdrive-airplay.service|plugin
+airdrop|AirDrop|radio|AirDrop's Wi-Fi link (AWDL) on M1/M2 Macs; receiving comes later (experimental, restart after)|off|install-airdrop.sh|systemctl -q is-enabled awdl0.service|plugin
 keyd|Mac text keys|keyboard|⌥⌫ deletes a word, ⌘⌫ to the line start (Files: to the trash), as real key presses (keyd)|off|install-keyd.sh|systemctl -q is-enabled keyd|plugin
 vscode|VS Code|code|Visual Studio Code from Microsoft's repo (⌘⇧C)|off|install-vscode.sh|command -v code|recommended
 jotta|Jottacloud|cloud|Jottacloud sync to ~/Jotta (jotta-cli)|off|install-jotta.sh|command -v jotta-cli|recommended
