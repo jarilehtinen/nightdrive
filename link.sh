@@ -13,7 +13,7 @@ link() {
   echo "linked      $dst -> $src"
 }
 
-for d in hypr topbar fuzzel kitty quickshell screensaver; do
+for d in hypr topbar fuzzel kitty quickshell screensaver greeter; do   # greeter: the lock at startup (greeter/lock.qml) and the preview
   link "$repo/config/$d" "$HOME/.config/$d"
 done
 # Waybar drew the top bar until 13.10.2026; its config is gone from the repo (a leftover config/waybar only holds

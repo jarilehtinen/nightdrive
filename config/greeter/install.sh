@@ -6,6 +6,9 @@ here=$(cd "$(dirname "$0")" && pwd)
 sudo dnf install -y greetd greetd-selinux
 [[ -f /etc/greetd/config.toml && ! -f /etc/greetd/config.toml.orig ]] && sudo cp /etc/greetd/config.toml /etc/greetd/config.toml.orig
 sudo install -d -m 0755 /etc/greetd /etc/greetd/greeter
+# An autologin set up with switch.sh autologin stays on (the fresh config.toml wouldn't have it)
+autologin=0
+grep -q '^\[initial_session\]' /etc/greetd/config.toml 2>/dev/null && systemctl -q is-enabled greetd.service 2>/dev/null && autologin=1
 sudo install -m 0644 "$here/config.toml" /etc/greetd/config.toml
 # On a PC the scale is Hyprland's own pick. The keyboard is the layout Fedora's installer set on a PC, and on a Mac or a VM
 # too unless it's Finnish, as install.sh writes for the session in hypr/local.lua (the file itself is the MacBook's):
@@ -21,6 +24,7 @@ edits=()
   edits+=(-e "s/kb_layout = \"fi\", kb_variant = \"mac\"/kb_layout = \"$kb_layout\", kb_variant = \"${kb_variant:-}\"/")
 sed "${edits[@]}" -e '' "$here/hyprland-greeter.lua" | sudo install -m 0644 /dev/stdin /etc/greetd/hyprland-greeter.lua
 sed "s/@USER@/${SUDO_USER:-$USER}/" "$here/shell.qml" | sudo install -m 0644 /dev/stdin /etc/greetd/greeter/shell.qml
-sudo install -m 0644 "$here/background.jpg" /etc/greetd/greeter/background.jpg
+sudo install -m 0644 "$here/LoginView.qml" "$here/background.jpg" /etc/greetd/greeter/
 sudo restorecon -R /etc/greetd 2>/dev/null || true
-echo "Done. The login screen only switches with: $here/switch.sh on"
+if (( autologin )); then "$here/switch.sh" autologin; exit; fi
+echo "Done. The login screen only switches with: $here/switch.sh on (or autologin)"

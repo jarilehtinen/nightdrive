@@ -1,0 +1,7 @@
+#%PAM-1.0
+# The lock at startup (lock.qml, greetd's autologin): the login password, and the keyring opens with it, as greetd's own
+# PAM does at a normal login (there, autologin starts the keyring daemon locked). Installed as /etc/pam.d/nightdrive-lock
+# by switch.sh autologin.
+auth       include      login
+-auth      optional     pam_gnome_keyring.so
+account    include      login

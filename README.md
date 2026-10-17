@@ -163,6 +163,10 @@ the launcher (System › Install) or with `nightdrive plugins install ID`.
 Then **reboot**. The Nightdrive login screen (greetd + Quickshell) starts Hyprland; KDE stays installed as a fallback. If the
 login screen fails, press Ctrl+Alt+F3, log in and run `config/greeter/switch.sh off`.
 
+Experimental: `config/greeter/switch.sh autologin` boots straight into the desktop with the same login screen as its lock,
+so the screen goes from the boot splash to the desktop without the black flashes of a second handover. The login apps
+start after the password. `switch.sh on` goes back to the plain login screen.
+
 | Option | What it changes |
 |---|---|
 | `--no-greeter` | Keeps the KDE login screen; pick **Hyprland** there (not *Hyprland (uwsm-managed)*) |

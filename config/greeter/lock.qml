@@ -1,0 +1,87 @@
+import QtQuick
+import Quickshell
+import Quickshell.Wayland
+import Quickshell.Services.Pam
+
+// The lock at startup: with greetd's autologin (switch.sh autologin) Hyprland starts straight into the desktop session,
+// and this login screen covers it as an ext-session-lock, so the screen changes hands only once at boot (Plymouth →
+// Hyprland). hyprland.lua starts it first; once the lock is secure it starts the session (NightdriveLocked), and the
+// login apps after the password (NightdriveUnlocked: they may ask the keyring, which the password opens).
+// If this process dies while locked, Hyprland keeps the session locked (the "lockdead" screen).
+// Preview without locking: `NIGHTDRIVE_LOCK_PREVIEW=1 qs -p ~/.config/greeter/lock.qml` (checks the password, Esc closes).
+ShellRoot {
+    id: root
+
+    readonly property bool preview: Quickshell.env("NIGHTDRIVE_LOCK_PREVIEW") === "1"
+    // /etc/pam.d/nightdrive-lock (switch.sh autologin) also opens the keyring; hyprland.lua passes it when it exists, as
+    // a missing service would fall back to PAM's "other", which refuses every password
+    readonly property string pamService: Quickshell.env("NIGHTDRIVE_LOCK_PAM") || "login"
+
+    property string pending: ""     // typed password, waiting for PAM's prompt
+    property bool busy: false
+    property string message: ""
+
+    function submit(pw) {
+        if (busy) return
+        busy = true; message = ""; pending = pw
+        if (!pam.start()) fail("Can't check the password")
+    }
+    function fail(msg) { busy = false; pending = ""; message = msg }
+    function unlock() {
+        if (preview) { Qt.quit(); return }
+        lock.locked = false
+        Quickshell.execDetached(["hyprctl", "eval", "NightdriveUnlocked()"])
+        quit.start()
+    }
+
+    PamContext {
+        id: pam
+        config: root.pamService
+        onPamMessage: if (responseRequired) { respond(root.pending); root.pending = "" }
+        onCompleted: result => {
+            if (result === PamResult.Success) root.unlock()
+            else root.fail(result === PamResult.MaxTries ? "Too many tries" : "Wrong password")
+        }
+        onError: error => root.fail("Can't check the password")
+    }
+
+    // Exits once the compositor has had the unlock
+    Timer { id: quit; interval: 1000; onTriggered: Qt.quit() }
+
+    WlSessionLock {
+        id: lock
+        locked: !root.preview
+        onSecureChanged: if (secure) Quickshell.execDetached(["hyprctl", "eval", "NightdriveLocked()"])
+
+        WlSessionLockSurface {
+            color: "#1a1b26"
+            LoginView {
+                anchors.fill: parent
+                busy: root.busy
+                message: root.message
+                onTyping: root.message = ""
+                onSubmitted: password => root.submit(password)
+            }
+        }
+    }
+
+    // Preview: the same view in a window of its own, nothing locked
+    LazyLoader {
+        active: root.preview
+        PanelWindow {
+            anchors { top: true; bottom: true; left: true; right: true }
+            color: "#1a1b26"
+            exclusionMode: ExclusionMode.Ignore
+            WlrLayershell.layer: WlrLayer.Overlay
+            WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
+            LoginView {
+                anchors.fill: parent
+                busy: root.busy
+                message: root.message
+                onTyping: root.message = ""
+                onSubmitted: password => root.submit(password)
+                onEscapePressed: Qt.quit()
+            }
+        }
+    }
+}

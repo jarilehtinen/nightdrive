@@ -40,13 +40,33 @@ end
 -------------------
 ---- AUTOSTART ----
 -------------------
-hl.on("hyprland.start", function ()
+-- Autologin (config/greeter/switch.sh autologin) starts this session with NIGHTDRIVE_LOCKED_START=1: the login screen
+-- (greeter/lock.qml) locks it first, and nothing else starts until the lock is secure. If the lock isn't up in
+-- LOCK_TIMEOUT seconds, the session exits to greetd's login screen rather than stay open.
+local LOCK_TIMEOUT = 20
+local LOCKED_START = os.getenv("NIGHTDRIVE_LOCKED_START") == "1"
+hl.env("NIGHTDRIVE_LOCKED_START", "")   -- not for apps started here (a nested Hyprland would lock itself too)
+local RUNTIME = os.getenv("XDG_RUNTIME_DIR") or "/tmp"
+-- Flags rather than variables: they survive a config reload, and each step runs once even if the lock is started again
+local LOCKED_FLAG   = RUNTIME .. "/nightdrive-session-started"
+local UNLOCKED_FLAG = RUNTIME .. "/nightdrive-apps-started"
+
+local function once(flag)
+    local f = io.open(flag)
+    if f then f:close(); return false end
+    f = io.open(flag, "w")
+    if f then f:close() end
+    return true
+end
+
+-- The session: everything but the login apps. Runs under the lock at an autologin start (lock.qml calls it once secure).
+function NightdriveLocked()
+    if not once(LOCKED_FLAG) then return end
     -- graphical-session.target for xdg-desktop-portal (config/systemd/user); restart: fresh environment after a re-login
     hl.exec_cmd("systemctl --user restart nightdrive-session.target")
     -- Theme colours (~/.cache/nightdrive, hypr/scripts/theme) first: Quickshell (the top bar, its menus and the notifications)
     -- reads them on startup
     hl.exec_cmd("sh -c '\"$HOME/.config/hypr/scripts/theme\" apply; exec qs'")
-    hl.exec_cmd(HOME .. "/.config/hypr/scripts/autostart")   -- the user's login apps (launcher › Settings › Startup; 1Password by default)
     hl.exec_cmd(HOME .. "/.config/hypr/scripts/wallpaper restore")   -- swaybg with the remembered wallpaper (change: launcher › Settings › Background)
     hl.exec_cmd("env PATH=" .. HOME .. "/.local/bin:" .. os.getenv("PATH") .. " " .. HOME .. "/.local/bin/voxtype-onnx daemon")   -- speech to text (F5), Parakeet
     -- AirPlay screen mirroring (install-doubletake.sh): the daemon finds the receivers; Settings › Display › Screen Mirroring
@@ -61,6 +81,25 @@ hl.on("hyprland.start", function ()
     hl.exec_cmd("blueman-applet")
     hl.exec_cmd("wl-paste --type text --watch cliphist store")
     hl.exec_cmd("wl-paste --type image --watch cliphist store")
+end
+
+-- The login apps: after the password at an autologin start, as they may ask the keyring (the lock's PAM opens it)
+function NightdriveUnlocked()
+    if not once(UNLOCKED_FLAG) then return end
+    hl.exec_cmd(HOME .. "/.config/hypr/scripts/autostart")   -- the user's login apps (launcher › Settings › Startup; 1Password by default)
+end
+
+hl.on("hyprland.start", function ()
+    -- The flags are from an earlier session of this login (the runtime dir lives as long as the user has a session)
+    os.remove(LOCKED_FLAG); os.remove(UNLOCKED_FLAG)
+    if not LOCKED_START then
+        NightdriveLocked(); NightdriveUnlocked()
+        return
+    end
+    local pam = io.open("/etc/pam.d/nightdrive-lock")
+    if pam then pam:close() end
+    hl.exec_cmd("env NIGHTDRIVE_LOCK_PAM=" .. (pam and "nightdrive-lock" or "login") .. " qs -p " .. HOME .. "/.config/greeter/lock.qml")
+    hl.exec_cmd("sh -c 'sleep " .. LOCK_TIMEOUT .. "; [ -e \"" .. LOCKED_FLAG .. "\" ] || hyprctl dispatch \"hl.dsp.exit()\"'")
 end)
 
 -------------------------------
@@ -146,6 +185,8 @@ hl.config({
         disable_hyprland_logo   = true,
         background_color        = 0xff1a1b26,   -- background colour until swaybg draws the wallpaper (softens the flash after login)
         focus_on_activate       = true,   -- apps may request focus: e.g. opening a link → Firefox comes to the front (switches workspace)
+        -- A lock that crashed (lock.qml, hyprlock) can be started again from a text console instead of only logging out
+        allow_session_lock_restore = true,
     },
 })
 
