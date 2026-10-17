@@ -51,6 +51,17 @@ local RUNTIME = os.getenv("XDG_RUNTIME_DIR") or "/tmp"
 local LOCKED_FLAG   = RUNTIME .. "/nightdrive-session-started"
 local UNLOCKED_FLAG = RUNTIME .. "/nightdrive-apps-started"
 
+local function exists(path)
+    local f = io.open(path)
+    if f then f:close() end
+    return f ~= nil
+end
+-- Under the login screen at an autologin start: before the password (the login apps start with it)
+local function session_locked()
+    return (LOCKED_START or exists(LOCKED_FLAG)) and not exists(UNLOCKED_FLAG)
+end
+local update_corners   -- DECORATION below: the screen's rounded corners, off under the login screen
+
 local function once(flag)
     local f = io.open(flag)
     if f then f:close(); return false end
@@ -62,6 +73,10 @@ end
 -- The session: everything but the login apps. Runs under the lock at an autologin start (lock.qml calls it once secure).
 function NightdriveLocked()
     if not once(LOCKED_FLAG) then return end
+    -- The keyring daemon that greetd's PAM started gets its secrets and pkcs11 parts (a desktop's login does this): without
+    -- them the lock's PAM can't open the login keyring with the password, and an app asking for a secret started a
+    -- second daemon that asked for the password again
+    hl.exec_cmd("gnome-keyring-daemon --start --components=secrets,pkcs11")
     -- graphical-session.target for xdg-desktop-portal (config/systemd/user); restart: fresh environment after a re-login
     hl.exec_cmd("systemctl --user restart nightdrive-session.target")
     -- Theme colours (~/.cache/nightdrive, hypr/scripts/theme) first: Quickshell (the top bar, its menus and the notifications)
@@ -87,6 +102,7 @@ end
 function NightdriveUnlocked()
     if not once(UNLOCKED_FLAG) then return end
     hl.exec_cmd(HOME .. "/.config/hypr/scripts/autostart")   -- the user's login apps (launcher › Settings › Startup; 1Password by default)
+    update_corners()
 end
 
 hl.on("hyprland.start", function ()
@@ -201,6 +217,7 @@ hl.config({
         repeat_rate  = 40,
         repeat_delay = 250,
         follow_mouse = 1,
+        mouse_refocus = false,   -- focus follows the mouse only when it crosses into another window (a jittery trackpad no longer steals focus from a new window)
         sensitivity  = 0,
         touchpad = {
             natural_scroll       = false,
@@ -358,7 +375,7 @@ hl.window_rule({
     opacity = "0.97 0.94",
 })
 
--- Rounded corners off when a window is fullscreen (bar hidden)
+-- Rounded corners off when a window is fullscreen (bar hidden), and under the login screen (no bar either)
 -- Top bar opacity (Settings › Top bar opacity, hypr/scripts/bar-style): below 100 % we use a copy of the shader written by
 -- the script, in which the top corners are as transparent as the bar. The change is applied with `hyprctl reload`.
 local function corner_shader_path()
@@ -402,10 +419,17 @@ local function night_shader(corners)
     end
     return p
 end
-local function update_corners()
+-- `nightdrive preview login` (greeter/lock.qml) hides them too while it shows, as the real login screen does:
+-- hyprctl eval "NightdriveCornersHidden(true)"; a config reload brings them back
+local corners_hidden = false
+function NightdriveCornersHidden(on)
+    corners_hidden = on
+    update_corners()
+end
+update_corners = function()
     local ws = hl.get_active_workspace()
     local fullscreen = ws ~= nil and ws.has_fullscreen and ws.fullscreen_mode == 2
-    local corners = not fullscreen and not (NIGHTDRIVE and NIGHTDRIVE.corners == false)   -- local.lua can turn the rounding off
+    local corners = not fullscreen and not session_locked() and not corners_hidden and not (NIGHTDRIVE and NIGHTDRIVE.corners == false)   -- local.lua can turn the rounding off
     hl.config({ decoration = { screen_shader = night and night_shader(corners) or (corners and corner_shader or "") } })
 end
 hl.on("window.fullscreen", update_corners)

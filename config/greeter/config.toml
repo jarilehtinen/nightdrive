@@ -2,5 +2,7 @@
 vt = 1
 
 [default_session]
-command = "start-hyprland -- -c /etc/greetd/hyprland-greeter.lua"
+# Hyprland's output off the text console: its ASCII logo and first log lines showed on tty1 between the boot splash and
+# the login screen (the log is in $XDG_RUNTIME_DIR/hypr all the same)
+command = "sh -c 'exec start-hyprland -- -c /etc/greetd/hyprland-greeter.lua >/dev/null 2>&1'"
 user = "greetd"

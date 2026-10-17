@@ -28,7 +28,7 @@ ShellRoot {
     }
     function fail(msg) { busy = false; pending = ""; message = msg }
     function unlock() {
-        if (preview) { Qt.quit(); return }
+        if (preview) { root.endPreview(); return }
         lock.locked = false
         Quickshell.execDetached(["hyprctl", "eval", "NightdriveUnlocked()"])
         quit.start()
@@ -65,7 +65,13 @@ ShellRoot {
         }
     }
 
-    // Preview: the same view in a window of its own, nothing locked
+    // Preview: the same view in a window of its own, nothing locked; the screen's rounded corners go while it shows, as
+    // under the real lock (hyprland.lua)
+    function endPreview() {
+        Quickshell.execDetached(["hyprctl", "eval", "NightdriveCornersHidden(false)"])
+        Qt.quit()
+    }
+    Component.onCompleted: if (preview) Quickshell.execDetached(["hyprctl", "eval", "NightdriveCornersHidden(true)"])
     LazyLoader {
         active: root.preview
         PanelWindow {
@@ -80,7 +86,7 @@ ShellRoot {
                 message: root.message
                 onTyping: root.message = ""
                 onSubmitted: password => root.submit(password)
-                onEscapePressed: Qt.quit()
+                onEscapePressed: root.endPreview()
             }
         }
     }

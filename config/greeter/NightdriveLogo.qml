@@ -14,6 +14,7 @@ Item {
     property bool typed: true
     property int typeInterval: 75       // ms per letter
     property int startDelay: 900        // the cursor blinks once alone before the first letter
+    property bool started: true         // false holds the typing (the login screen waits for its startup sound)
     property bool glow: true
     property bool blinks: true
     property bool keepsCursor: true
@@ -123,7 +124,7 @@ Item {
         id: typer
         interval: logo.shown === 0 ? logo.startDelay : logo.typeInterval
         repeat: true
-        running: logo.typed && !logo.done
+        running: logo.typed && logo.started && !logo.done
         onTriggered: logo.shown++
     }
 

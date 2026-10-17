@@ -1,10 +1,10 @@
 [Plymouth Theme]
 Name=Nightdrive
-Description=The login screen while it loads: its background, the title, and a spinner where the password field is.
+Description=The login screen while it loads: its background and a spinner in the middle.
 ModuleName=two-step
 
 # The images come from images.sh (install.sh draws them) and are drawn at device pixels (DeviceScale=1 in plymouthd.conf):
-# a Retina screen would otherwise scale them up 2x and blur the title. The alignments are what images.sh prints.
+# a Retina screen would otherwise scale them up 2x and blur them. No watermark: the login screen's logo types itself in.
 [two-step]
 Font=Cantarell 24
 TitleFont=Cantarell Light 48
@@ -14,9 +14,7 @@ DialogVerticalAlignment=.62
 TitleHorizontalAlignment=.5
 TitleVerticalAlignment=.38
 HorizontalAlignment=.5
-VerticalAlignment=.5132
-WatermarkHorizontalAlignment=.5
-WatermarkVerticalAlignment=.4389
+VerticalAlignment=.5
 ScaleBackgroundImage=true
 Transition=none
 TransitionDuration=0.0

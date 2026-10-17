@@ -31,7 +31,8 @@ case "${1:-}" in
        conf=$(base_conf)
        { printf '%s\n' "$conf"
          printf '\n# Autologin at boot (switch.sh autologin): the session starts locked (hypr/hyprland.lua, greeter/lock.qml)\n'
-         printf '[initial_session]\ncommand = "env NIGHTDRIVE_LOCKED_START=1 start-hyprland"\nuser = "%s"\n' "$user"
+         # Output off the text console, as in config.toml
+         printf '[initial_session]\ncommand = "sh -c '\''exec env NIGHTDRIVE_LOCKED_START=1 start-hyprland >/dev/null 2>&1'\''"\nuser = "%s"\n' "$user"
        } | sudo install -m 0644 /dev/stdin "$CONF"
        sudo restorecon "$CONF" "$PAM" 2>/dev/null || true
        echo "greetd enabled from the next boot, logging in $user by itself; the session starts locked." ;;

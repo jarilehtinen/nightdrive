@@ -35,6 +35,8 @@ gsettings set org.gnome.desktop.interface icon-theme 'Papirus-Dark' 2>/dev/null 
 gsettings set org.gnome.desktop.interface gtk-theme 'Adwaita' 2>/dev/null || true
 gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark' 2>/dev/null || true
 gsettings set org.gnome.desktop.wm.preferences button-layout ':' 2>/dev/null || true
+# No "Connection established" from nm-applet each time Wi-Fi connects (a Mac doesn't say either); losing it still shows
+gsettings set org.gnome.nm-applet disable-connected-notifications true 2>/dev/null || true
 
 echo "==> Default apps: images open in Loupe (instead of the browser); Markdown in Apostrophe, if chosen (its installer)"
 # Run from Plasma (install.sh), KDE_SESSION_VERSION=6 sends xdg-mime to Qt5's qtpaths (not installed), an error per type.

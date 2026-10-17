@@ -9,6 +9,8 @@ import Quickshell.Wayland
 // NotificationsMenu.qml the history. The app's icon comes from its .desktop file, so every notification shows one.
 // Like mako's ignore-timeout: every popup goes after `timeout` whatever the app asks (Chromium and nm-applet ask for never);
 // critical ones stay until clicked. Do not disturb hides the popups, the history keeps them.
+// Under the login screen at an autologin start (greeter/lock.qml) they're quiet and wait: their popups show after the
+// password, and they never chime.
 // A new notification plays a sound (hypr/scripts/sounds; Settings › Notifications): regular or urgent by its urgency,
 // none for low ones, in do not disturb, for an update of one already shown, when its app is the focused window (you are
 // looking at it), or when the same app chimed under `soundGap` ago (a burst of messages chimes once).
@@ -41,6 +43,24 @@ Singleton {
     // popup, they show up in the menu's list
     property bool menuOpen: false
     onMenuOpenChanged: if (menuOpen) dismissAll()
+
+    // The session is under the login screen: hyprland.lua has started it (nightdrive-session-started) but not yet the
+    // login apps (nightdrive-apps-started, after the password). Checked again every half second while it lasts; true
+    // until the first check, so nothing chimes in the moment before it.
+    property bool locked: true
+    property var held: []                     // popups waiting for the password: [{ uid, n, entry }], oldest first
+    Process {
+        id: lockCheck
+        running: true
+        command: ["sh", "-c", 'r=${XDG_RUNTIME_DIR:-/tmp}; [ -e "$r/nightdrive-session-started" ] && [ ! -e "$r/nightdrive-apps-started" ]']
+        onExited: code => { s.locked = code === 0; if (s.locked) lockPoll.start() }
+    }
+    Timer { id: lockPoll; interval: 500; onTriggered: lockCheck.running = true }
+    onLockedChanged: if (!locked) {
+        const waiting = held
+        held = []
+        for (const p of waiting) pop(p)
+    }
 
     // Survive Quickshell's reload on save (a restart still starts empty, as mako did). The history goes over as JSON
     // text: a JS array can't move to the reloaded config's engine ("JSValue can't be reassigned"), it came back undefined.
@@ -112,7 +132,19 @@ Singleton {
             || null
     }
 
-    function remove(uid) { popups = popups.filter(p => p.uid !== uid) }
+    function remove(uid) {
+        popups = popups.filter(p => p.uid !== uid)
+        held = held.filter(p => p.uid !== uid)
+    }
+    // A popup on top (or, under the login screen, after the password)
+    function pop(p) {
+        if (locked) { held = held.filter(h => h.uid !== p.uid).concat([p]); return }
+        if (dnd || menuOpen) { if (p.n.transient) p.n.expire(); return }
+        const all = [p].concat(popups.filter(q => q.uid !== p.uid))
+        // Too many: the oldest go (into the history only)
+        popups = all.slice(0, maxPopups)
+        for (const q of all.slice(maxPopups)) if (q.n.transient) q.n.expire()
+    }
     // The popup goes; the notification stays open for the history unless it's transient
     function hide(uid) {
         const p = popups.find(p => p.uid === uid)
@@ -226,7 +258,7 @@ Singleton {
             // (twin's notification closes as its row goes: onHistoryChanged)
             s.history = n.transient ? others : [row].concat(others).slice(0, s.maxHistory)
             if (twin && s.live[twin.uid] && s.live[twin.uid].transient) s.live[twin.uid].expire()
-            if (!s.dnd && !old && !prev && !(twin && row.tag)) s.chime(row, n)
+            if (!s.dnd && !s.locked && !old && !prev && !(twin && row.tag)) s.chime(row, n)
             n.tracked = true
             if (!old) {
                 s.live[row.uid] = n
@@ -234,14 +266,11 @@ Singleton {
             }
             // Handed over again after a reload: its popup comes back only if it was showing
             const reloaded = !old && prev && same
-            if (s.dnd || s.menuOpen || (reloaded && s.shownAtReload.indexOf(row.uid) < 0)) {
+            if (reloaded && s.shownAtReload.indexOf(row.uid) < 0) {
                 if (n.transient) n.expire()
                 return
             }
-            const all = [{ uid: row.uid, n: n, entry: row }].concat(s.popups.filter(p => p.uid !== row.uid))
-            // Too many: the oldest go (into the history only)
-            s.popups = all.slice(0, s.maxPopups)
-            for (const p of all.slice(s.maxPopups)) if (p.n.transient) p.n.expire()
+            s.pop({ uid: row.uid, n: n, entry: row })
         }
     }
 

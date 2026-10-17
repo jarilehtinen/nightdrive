@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell
+import Quickshell.Io
 
 // The login screen's look, shared by the greeter (shell.qml, greetd) and the lock at startup (lock.qml): wallpaper, logo,
 // password prompt, an error line and the sounds. The caller does the authentication and sets busy/message (and clears
@@ -31,30 +32,52 @@ Item {
     function beep(name) { Quickshell.execDetached(["pw-play", "--volume", "0.7", view.sounds + name + ".wav"]) }
     // The startup sound as the screen appears (it swells in slowly while the logo's cursor waits), a PC's power-on beep
     // as the prompt is printed
-    Component.onCompleted: beep("startup")
     onPromptShownChanged: if (promptShown) beep("prompt")
+
+    // At boot the screen comes up before PipeWire has its outputs, and a sound started then went nowhere: the startup
+    // sound waits (at most 4 s) for the default output, on a Mac (asahi-audio) for the speakers' filter or headphones,
+    // which come after the raw outputs. The logo is timed to the sound, so it starts typing as the sound starts.
+    property bool soundStarted: false
+    Process {
+        running: true
+        command: ["sh", "-c", `
+            i=0
+            while [ $i -lt 40 ]; do
+                case $(wpctl inspect @DEFAULT_AUDIO_SINK@ 2>/dev/null | sed -n 's/^.* node.name = "\\(.*\\)"$/\\1/p') in
+                    audio_effect.*|bluez_*) break ;;
+                    ?*) [ -d /usr/share/asahi-audio ] || break ;;
+                esac
+                sleep 0.1; i=$((i + 1))
+            done
+            [ $i -gt 0 ] && sleep 0.3    # just came up: a moment for it to be linked to the speakers
+            echo playing
+            exec pw-play --volume 0.7 "$1"`, "sh", view.sounds + "startup.wav"]
+        stdout: SplitParser { onRead: view.soundStarted = true }
+    }
+    Timer { interval: 4500; running: !view.soundStarted; onTriggered: view.soundStarted = true }
 
     // Gives the keyboard back to the field after busy (a disabled TextInput loses its focus)
     onBusyChanged: if (!busy) input.forceActiveFocus()
 
     Rectangle { anchors.fill: parent; color: view.bg }
+    // Already darkened in the middle (background.sh)
     Image {
         anchors.fill: parent
         source: view.wallpaper
         fillMode: Image.PreserveAspectCrop
         asynchronous: true
     }
-    Rectangle { anchors.fill: parent; color: view.bg; opacity: 0.72 }
-
     // A retro prompt: the logo types itself in, its cursor flashes and fades, then PASSWORD? is printed with a cursor of
     // its own: one cursor on screen at a time.
     // Errors read like a C64's (?WRONG PASSWORD ERROR) on the line above the prompt.
-    // The logo is centred by its letters (so its cursor going out moves nothing); the prompt by "PASSWORD? █", and what
-    // you type runs on to the right of that, like on a terminal.
+    // Everything is centred on the logo's letters (so its cursor going out moves nothing): PASSWORD?, and what you type on
+    // the line below it, with the cursor after it ("***█" centred as a whole).
     Item {
+        id: stage
         anchors.centerIn: parent
         width: parent.width
         height: logo.height + 34 + promptBlock.height
+        readonly property real centre: logo.x + logo.textWidth / 2
 
         NightdriveLogo {
             id: logo
@@ -64,6 +87,7 @@ Item {
             // N appears with the startup sound's first sparkle: 0.5 s into the sound, plus ~100 ms for pw-play to reach
             // the speakers (~65 ms measured at the sink, the rest by ear: the speakers' own processing)
             startDelay: 600
+            started: view.soundStarted
             blinks: false
             flashes: true
             keepsCursor: !view.promptShown      // the cursor moves down to the prompt when that shows
@@ -83,12 +107,12 @@ Item {
 
         Column {
             id: promptBlock
-            x: Math.round((parent.width - label.implicitWidth - 2 * view.cell) / 2)
             y: logo.height + 34
             spacing: 10
             visible: view.promptShown
 
             Text {
+                x: Math.round(stage.centre - implicitWidth / 2)
                 height: 22
                 text: view.message === "" ? "" : view.message === "Wrong password" ? "?WRONG PASSWORD ERROR"
                                                                                    : "?" + view.message.toUpperCase()
@@ -96,67 +120,65 @@ Item {
                 font { family: view.font; pixelSize: view.promptSize }
             }
 
-            Row {
-                id: prompt
-                spacing: view.cell
+            Text {
+                id: label
+                x: Math.round(stage.centre - implicitWidth / 2)
+                text: "PASSWORD?"
+                color: view.accent
+                font { family: view.font; pixelSize: view.promptSize; weight: Font.Bold }
+            }
 
-                Text {
-                    id: label
-                    text: "PASSWORD?"
-                    color: view.accent
-                    font { family: view.font; pixelSize: view.promptSize; weight: Font.Bold }
-                }
+            // Room for ~24 characters; a longer password scrolls. Half a cell to the left, for the cursor after the text.
+            Item {
+                x: Math.round(stage.centre - width / 2 - view.cell / 2)
+                width: 24 * view.cell; height: input.implicitHeight
+                clip: true
 
-                // Room for ~24 characters, so the prompt doesn't grow as you type; a longer password scrolls
-                Item {
-                    width: 24 * view.cell; height: input.implicitHeight
-                    clip: true
+                TextInput {
+                    id: input
+                    width: parent.width
+                    horizontalAlignment: TextInput.AlignHCenter
+                    echoMode: TextInput.Password
+                    passwordCharacter: "*"
+                    passwordMaskDelay: 0
+                    color: view.text
+                    selectionColor: "#35253d"
+                    // No ligatures: JetBrains Mono draws *** as one shape, its middle star raised
+                    font { family: view.font; pixelSize: view.promptSize; weight: Font.Bold; features: { "liga": 0, "calt": 0 } }
+                    enabled: !view.busy
+                    focus: true
+                    onAccepted: { if (text !== "" && !view.busy) view.submitted(text); text = "" }
+                    Keys.onEscapePressed: view.escapePressed()
+                    // A beep per key press, the return key's too
+                    Keys.onPressed: event => {
+                        if (!view.busy && !event.isAutoRepeat && (event.text !== "" || event.key === Qt.Key_Backspace))
+                            view.beep("key")
+                    }
+                    onTextChanged: if (text !== "") { logo.finish(); view.promptShown = true; view.typing() }
 
-                    TextInput {
-                        id: input
-                        width: parent.width
-                        echoMode: TextInput.Password
-                        passwordCharacter: "*"
-                        passwordMaskDelay: 0
-                        color: view.text
-                        selectionColor: "#35253d"
-                        // No ligatures: JetBrains Mono draws *** as one shape, its middle star raised
-                        font { family: view.font; pixelSize: view.promptSize; weight: Font.Bold; features: { "liga": 0, "calt": 0 } }
-                        enabled: !view.busy
-                        focus: true
-                        onAccepted: { if (text !== "" && !view.busy) view.submitted(text); text = "" }
-                        Keys.onEscapePressed: view.escapePressed()
-                        // A beep per key press, the return key's too
-                        Keys.onPressed: event => {
-                            if (!view.busy && !event.isAutoRepeat && (event.text !== "" || event.key === Qt.Key_Backspace))
-                                view.beep("key")
+                    // A block cursor, a character cell wide; it blinks faster while the password is checked
+                    cursorDelegate: Rectangle {
+                        width: view.cell; height: input.cursorRectangle.height
+                        color: view.violet
+                        // Lights up when the logo's cursor goes out: one cursor on screen at a time. Opacity, not
+                        // visible: TextInput sets its cursor's visible itself
+                        opacity: view.promptShown && (input.activeFocus || view.busy) && blinker.lit ? 1 : 0
+
+                        QtObject { id: blinker; property bool lit: true }
+                        Timer {
+                            id: blinkTimer
+                            interval: view.busy ? 120 : 550; repeat: true; running: true
+                            onTriggered: blinker.lit = !blinker.lit
                         }
-                        onTextChanged: if (text !== "") { logo.finish(); view.promptShown = true; view.typing() }
-
-                        // A block cursor, a character cell wide; it blinks faster while the password is checked
-                        cursorDelegate: Rectangle {
-                            width: view.cell; height: input.cursorRectangle.height
-                            color: view.violet
-                            // Lights up when the logo's cursor goes out: one cursor on screen at a time. Opacity, not
-                            // visible: TextInput sets its cursor's visible itself
-                            opacity: view.promptShown && (input.activeFocus || view.busy) && blinker.lit ? 1 : 0
-
-                            QtObject { id: blinker; property bool lit: true }
-                            Timer {
-                                id: blinkTimer
-                                interval: view.busy ? 120 : 550; repeat: true; running: true
-                                onTriggered: blinker.lit = !blinker.lit
-                            }
-                            // Typing keeps it lit, like a real cursor
-                            Connections {
-                                target: input
-                                function onTextChanged() { blinker.lit = true; blinkTimer.restart() }
-                            }
-                            // ... and it starts lit when the prompt is printed
-                            Connections {
-                                target: view
-                                function onPromptShownChanged() { blinker.lit = true; blinkTimer.restart() }
-                            }
+                        // Typing keeps it lit, like a real cursor
+                        Connections {
+                            target: input
+                            function onTextChanged() { blinker.lit = true; blinkTimer.restart() }
+                        }
+                        // ... and it starts lit when the prompt is printed
+                        Connections {
+                            target: view
+                            function onPromptShownChanged() { blinker.lit = true; blinkTimer.restart() }
                         }
                     }
                 }
