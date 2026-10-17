@@ -64,7 +64,6 @@
   button:active, .btn:active { opacity: .7; }
   button:disabled { opacity: .45; }
   button.small, .btn.small { min-height: 44px; padding: 0 16px; font-size: 16px; }
-  button.icon { background: transparent; color: var(--dim); padding: 0; min-height: 44px; width: 44px; margin: -8px -8px 0 0; }
   @media (min-width: 700px) { button, .btn { min-height: 42px; font-size: 15px; } button.small, .btn.small { min-height: 36px; font-size: 14px; }
                               .i { width: 18px; height: 18px; } }
   .grow { flex: 1; justify-content: center; }
@@ -73,7 +72,13 @@
   .progress div { height: 100%; width: 0; background: var(--primary); transition: width .2s; }
   .note { font-size: 13px; color: var(--dim); margin-top: 6px; min-height: 18px; }
   .note.err { color: var(--danger); }
-  .item { background: var(--card); border-radius: 14px; padding: 12px 14px; margin-bottom: 8px; }
+  /* A card sits on a red strip with a bin at both ends: swiped far enough either way, it goes */
+  .swipe { position: relative; border-radius: 14px; overflow: hidden; margin-bottom: 8px; background: #3a1a26; }
+  .swipe .bin { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; padding: 0 22px;
+                color: var(--danger); opacity: .5; transition: opacity .15s; }
+  .swipe .bin.l { left: 0; } .swipe .bin.r { right: 0; }
+  .swipe.armed .bin { opacity: 1; }
+  .item { position: relative; background: var(--card); border-radius: 14px; padding: 12px 14px; touch-action: pan-y; }
   .item.new { background: var(--hover); }   /* not seen yet */
   .item .top { display: flex; align-items: flex-start; gap: 10px; }
   .item .body { flex: 1; min-width: 0; }
@@ -97,7 +102,7 @@
   <symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
   <symbol id="i-external-link" viewBox="0 0 24 24"><path d="M15 3h6v6m-11 5L21 3m-3 10v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
   <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 15V3m9 12v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10l5 5l5-5"/></symbol>
-  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></symbol>
+  <symbol id="i-trash-2" viewBox="0 0 24 24"><path d="M10 11v6m4-6v6m5-11v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
   <symbol id="i-bell" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0m-10.47-5.674A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></symbol>
   <symbol id="i-refresh-cw" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9a9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5m5 4a9 9 0 0 1-9 9a9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol>
 </svg>
@@ -287,7 +292,6 @@ async function removeItem(it) {
 
 function card(it) {
   const fresh = it.to === "phone" && !seenIds.has(it.id)
-  const del = el("button", { class: "icon", title: "Remove", "aria-label": "Remove", onclick: () => removeItem(it) }, icon("x"))
   const meta = (it.kind === "file" ? size(it.size) + " · " : "") + ago(it.time)
   let lead, main, actions = null
   if (it.kind === "text") {
@@ -312,9 +316,13 @@ function card(it) {
                    el("a", { class: "btn small", href: "api/file/" + it.id, target: "_blank" }, icon("external-link"), "Open"))
     }
   }
-  return el("div", { class: "item" + (fresh ? " new" : "") },
-            el("div", { class: "top" }, lead, el("div", { class: "body" }, main, el("div", { class: "meta" }, meta)), del),
-            actions)
+  const c = el("div", { class: "item" + (fresh ? " new" : "") },
+               el("div", { class: "top" }, lead, el("div", { class: "body" }, main, el("div", { class: "meta" }, meta))),
+               actions)
+  const wrap = el("div", { class: "swipe" }, el("div", { class: "bin l" }, icon("trash-2")),
+                  el("div", { class: "bin r" }, icon("trash-2")), c)
+  swipeable(wrap, c, () => removeItem(it))
+  return wrap
 }
 
 function render() {
@@ -325,6 +333,51 @@ function render() {
   $("sent").hidden = !toComputer.length
   // Marked as seen once shown: the highlight stays until the next update
   setTimeout(() => { for (const i of toPhone) seenIds.add(i.id); localStorage.setItem("ferry.seen", JSON.stringify([...seenIds].slice(-200))) }, 3000)
+}
+
+// Swiping a card left or right far enough removes it; a shorter swipe springs back, and a vertical one scrolls
+const SWIPE = 0.35   // of the card's width
+function swipeable(wrap, card, done) {
+  let x0 = null, y0 = 0, dx = 0, dragging = false, swiped = false
+  card.addEventListener("pointerdown", e => {
+    if (e.button) return
+    x0 = e.clientX; y0 = e.clientY; dx = 0; dragging = false
+    card.style.transition = "none"
+  })
+  card.addEventListener("pointermove", e => {
+    if (x0 === null) return
+    const mx = e.clientX - x0, my = e.clientY - y0
+    if (!dragging) {
+      if (Math.abs(my) > 10 && Math.abs(my) > Math.abs(mx)) { x0 = null; return }   // a scroll
+      if (Math.abs(mx) < 10) return
+      dragging = true
+      card.setPointerCapture(e.pointerId)
+    }
+    dx = mx
+    card.style.transform = `translateX(${dx}px)`
+    wrap.classList.toggle("armed", Math.abs(dx) > wrap.offsetWidth * SWIPE)
+  })
+  const end = () => {
+    if (x0 === null) return
+    x0 = null
+    if (!dragging) return
+    dragging = false
+    swiped = true   // the click after it isn't a tap on a button
+    setTimeout(() => swiped = false, 50)
+    card.style.transition = "transform .2s ease-out"
+    if (Math.abs(dx) <= wrap.offsetWidth * SWIPE) { card.style.transform = ""; wrap.classList.remove("armed"); return }
+    card.style.transform = `translateX(${Math.sign(dx) * wrap.offsetWidth * 1.1}px)`
+    // Then the gap closes
+    wrap.style.height = wrap.offsetHeight + "px"
+    setTimeout(() => {
+      wrap.style.transition = "height .2s ease-out, margin .2s ease-out"
+      wrap.style.height = "0"; wrap.style.marginBottom = "0"
+    }, 150)
+    setTimeout(done, 380)
+  }
+  card.addEventListener("pointerup", end)
+  card.addEventListener("pointercancel", end)
+  card.addEventListener("click", e => { if (swiped) { e.preventDefault(); e.stopPropagation() } }, true)
 }
 
 // --- Sending ---
