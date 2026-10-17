@@ -167,9 +167,9 @@ Machine: PC (x86_64, graphics: amd, keyboard: us)
   14 [ ] Ferry             Files and text both ways with an iPhone over Tailscale, no app (experimental)
    …
 
-  19 [ ] Install all       every optional part above
+  18 [ ] Install all       every optional part above
 
-  20 [x] Remove apps       112 installed packages Nightdrive doesn't use: akregator dolphin konsole kmail …
+  19 [x] Remove apps       112 installed packages Nightdrive doesn't use: akregator dolphin konsole kmail …
 ```
 
 **Trying it on the system you already use?** The removals are on by default only on a fresh install (one installed less
