@@ -5,7 +5,7 @@ import Quickshell.Io
 
 // The top bar's data (Bar.qml draws it). Everything is read from files that are watched, so edits show at once:
 //   ~/.config/topbar/modules.jsonc (+ local.modules.jsonc)   the modules, in order
-//   ~/.config/topbar/adjust.conf   (+ local.adjust.conf)     icon sizes and positions, the text size
+//   ~/.config/topbar/adjust.conf   (+ local.adjust.conf)     icon and text sizes
 //   ~/.cache/nightdrive/bar.json                              colours (hypr/scripts/bar-style)
 //   ~/.local/state/nightdrive/bar-items.json                  {hidden, order}: modules turned off and their order
 //                                                             (launcher › Settings › Top bar › Items)
@@ -130,14 +130,15 @@ Singleton {
         }
     }
 
-    // --- Sizes: rows "element size y"; text = every text, icon = icons without a row of their own ---
+    // --- Sizes: rows "element size" (an old third column, y, is ignored); text = every text, icon = icons without a row
+    // of their own ---
     property var sizesPublic: ({})
     property var sizesLocal: ({})
     function parseSizes(t) {
         const out = {}
         for (const line of t.split("\n")) {
             const f = line.split("#")[0].trim().split(/\s+/)
-            if (f.length >= 3 && !isNaN(parseFloat(f[1]))) out[f[0]] = { size: parseFloat(f[1]), y: parseFloat(f[2]) || 0 }
+            if (f.length >= 2 && !isNaN(parseFloat(f[1]))) out[f[0]] = { size: parseFloat(f[1]) }
         }
         return out
     }
@@ -151,7 +152,7 @@ Singleton {
         onLoadFailed: tb.sizesLocal = ({})
     }
     function size(el) {
-        return sizesLocal[el] || sizesPublic[el] || (el === "text" ? { size: 13, y: 0 } : sizesPublic.icon || { size: 16, y: 0 })
+        return sizesLocal[el] || sizesPublic[el] || (el === "text" ? { size: 13 } : sizesPublic.icon || { size: 16 })
     }
 
     // --- Colours (bar-style); defaults = white icons on black ---

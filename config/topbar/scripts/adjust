@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# Top bar sizes and vertical positions (adjust.conf + a private overlay's local.adjust.conf): `nightdrive topbar adjust`.
-# A terminal UI: pick a row, change its size / position a pixel at a time. Every change is saved at once and the bar
+# Top bar sizes (adjust.conf + a private overlay's local.adjust.conf): `nightdrive topbar adjust`.
+# A terminal UI: pick a row, change its size half a pixel at a time. Every change is saved at once and the bar
 # (Quickshell, which watches the files) redraws immediately. Modules without a row of their own are listed too
 # (with the `icon` defaults); changing one adds its row.
 import curses, json, os, sys
@@ -24,10 +24,9 @@ def modules(path):
 
 
 class Row:
-    def __init__(self, path, idx, el, size, y):
+    def __init__(self, path, idx, el, size):
         self.path, self.idx, self.el = path, idx, el      # idx None = not in the file yet
-        self.size, self.y = float(size), float(y)
-        self.size0, self.y0 = self.size, self.y
+        self.size = self.size0 = float(size)
 
 
 def load():
@@ -38,15 +37,15 @@ def load():
         lines[p] = open(p).read().split("\n")
         for i, line in enumerate(lines[p]):
             f = line.split("#", 1)[0].split()
-            if len(f) >= 3:
-                rows.append(Row(p, i, f[0], f[1], f[2]))
+            if len(f) >= 2:                                # an old third column (y) is ignored
+                rows.append(Row(p, i, f[0], f[1]))
     have = {r.el for r in rows}
-    icon = next((r for r in rows if r.el == "icon"), Row(CONF, None, "icon", 16, 0))
+    icon = next((r for r in rows if r.el == "icon"), Row(CONF, None, "icon", 16))
     local, public = modules(LOCAL_MODULES), modules(MODULES)
     for name in local + public:
         if name not in have and name != "calendar":      # calendar is text only
             p = LOCAL_CONF if name in local and LOCAL_CONF in lines else CONF
-            rows.append(Row(p, None, name, icon.size, icon.y))
+            rows.append(Row(p, None, name, icon.size))
     order = ["text", "workspaces", "icon"] + local + public
     rows.sort(key=lambda r: order.index(r.el) if r.el in order else len(order))
     return rows, lines
@@ -55,9 +54,9 @@ def load():
 def save(rows, lines):
     for p in lines:
         for r in rows:
-            if r.path != p or (r.idx is None and r.size == r.size0 and r.y == r.y0):
+            if r.path != p or (r.idx is None and r.size == r.size0):
                 continue
-            row = f"{r.el:<18}{fmt(r.size):<7}{fmt(r.y)}"
+            row = f"{r.el:<18}{fmt(r.size)}"
             if r.idx is None:
                 while lines[p] and lines[p][-1] == "":
                     lines[p].pop()
@@ -71,7 +70,7 @@ def save(rows, lines):
         os.replace(real + ".tmp", real)
 
 
-HELP = "↑↓ row   ←→ / a d size   w s up/down   A D W S ½ px   r reset row   R reset all   q quit"
+HELP = "↑↓ row   ←→ / a d size ½ px   r reset row   R reset all   q quit"
 
 
 def ui(scr, rows, lines):
@@ -80,22 +79,20 @@ def ui(scr, rows, lines):
     curses.init_pair(1, curses.COLOR_MAGENTA, -1)
     curses.init_pair(2, curses.COLOR_YELLOW, -1)
     sel, msg = 0, ""
-    keys = {curses.KEY_LEFT: (-1, 0), ord("a"): (-1, 0), ord("-"): (-1, 0),
-            curses.KEY_RIGHT: (1, 0), ord("d"): (1, 0), ord("+"): (1, 0),
-            ord("A"): (-0.5, 0), ord("D"): (0.5, 0),
-            ord("w"): (0, -1), ord("s"): (0, 1), ord("W"): (0, -0.5), ord("S"): (0, 0.5)}
+    # Half a pixel a step: a real pixel on a 2× screen
+    keys = {curses.KEY_LEFT: -0.5, ord("a"): -0.5, ord("-"): -0.5, curses.KEY_RIGHT: 0.5, ord("d"): 0.5, ord("+"): 0.5}
     while True:
         scr.erase()
         h, w = scr.getmaxyx()
         put = lambda y, x, s, a=0: y < h and scr.addnstr(y, x, s, max(0, w - x - 1), a)
         put(0, 2, "Top bar adjust", curses.A_BOLD | curses.color_pair(1))
-        put(1, 2, "size and y in px (y + = lower); saved to adjust.conf as you go", curses.A_DIM)
-        put(3, 4, f"{'element':<18}{'size':>7}{'y':>8}", curses.A_DIM)
+        put(1, 2, "size in px; saved to adjust.conf as you go", curses.A_DIM)
+        put(3, 4, f"{'element':<18}{'size':>7}", curses.A_DIM)
         for i, r in enumerate(rows[:max(0, h - 7)]):
-            changed = r.size != r.size0 or r.y != r.y0
-            line = f"{r.el:<18}{fmt(r.size):>7}{fmt(r.y):>8}"
+            changed = r.size != r.size0
+            line = f"{r.el:<18}{fmt(r.size):>7}"
             if changed:
-                line += f"   (was {fmt(r.size0)} / {fmt(r.y0)})"
+                line += f"   (was {fmt(r.size0)})"
             elif r.idx is None:
                 line += "   (default)"
             attr = (curses.A_REVERSE if i == sel else 0) | (curses.color_pair(2) if changed else 0)
@@ -111,18 +108,16 @@ def ui(scr, rows, lines):
         elif k in (curses.KEY_DOWN, ord("j")):
             sel = (sel + 1) % len(rows)
         elif k in keys:
-            ds, dy = keys[k]
-            r.size = max(1, round(r.size + ds, 2))
-            r.y = round(r.y + dy, 2)
+            r.size = max(1, round(r.size + keys[k], 2))
             save(rows, lines)
-            msg = f"{r.el}: size {fmt(r.size)}, y {fmt(r.y)}"
+            msg = f"{r.el}: size {fmt(r.size)}"
         elif k == ord("r"):
-            r.size, r.y = r.size0, r.y0
+            r.size = r.size0
             save(rows, lines)
             msg = f"{r.el} reset"
         elif k == ord("R"):
             for x in rows:
-                x.size, x.y = x.size0, x.y0
+                x.size = x.size0
             save(rows, lines)
             msg = "all rows reset"
         elif k in (ord("q"), 27):
@@ -136,9 +131,9 @@ def main():
     if CONF not in lines:
         sys.exit(f"missing {CONF}")
     curses.wrapper(ui, rows, lines)
-    changed = [r for r in rows if r.size != r.size0 or r.y != r.y0]
+    changed = [r for r in rows if r.size != r.size0]
     for r in changed:
-        print(f"{r.el}: size {fmt(r.size0)} → {fmt(r.size)}, y {fmt(r.y0)} → {fmt(r.y)}")
+        print(f"{r.el}: size {fmt(r.size0)} → {fmt(r.size)}")
     print("Saved in adjust.conf." if changed else "No changes.")
 
 

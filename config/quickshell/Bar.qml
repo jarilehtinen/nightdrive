@@ -40,7 +40,7 @@ Variants {
         function modules() { const out = []; for (let i = 0; i < rep.count; i++) out.push(rep.itemAt(i)); return out }
 
         // Workspaces 1–5 always, others while they exist; the screen's active one highlighted, empty ones dimmed.
-        // Number size and position: the `workspaces` row in adjust.conf.
+        // Number size: the `workspaces` row in adjust.conf.
         Row {
             x: 10; anchors.verticalCenter: parent.verticalCenter
             spacing: 4

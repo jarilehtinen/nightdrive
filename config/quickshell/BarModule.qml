@@ -1,8 +1,8 @@
 import QtQuick
 
 // One module in the top bar: an icon and/or a text in a rounded box (the box lights up while its menu is open).
-// The icon is an SVG in a size × size square and the text is centred by its digits, both independently of each
-// other: adjust.conf's y moves only that part. Positions are snapped to whole device pixels.
+// The icon is an SVG in a size × size square (adjust.conf) centred by its box, and the text is centred by its digits.
+// Positions are snapped to whole device pixels.
 Item {
     id: mod
     required property var def             // the module's entry in modules.jsonc
@@ -55,7 +55,7 @@ Item {
             visible: mod.icon !== ""
             width: mod.isz.size; height: mod.isz.size
             x: mod.snap(mod.label ? mod.pad : (mod.width - width) / 2)
-            y: mod.snap((mod.height - height) / 2 + mod.isz.y)
+            y: mod.snap((mod.height - height) / 2)
             sourceSize: Qt.size(Math.ceil(width * mod.dpr), Math.ceil(height * mod.dpr))
             source: TopBar.iconUrl(mod.shownIcon, mod.fg)
             opacity: mod.fg.a

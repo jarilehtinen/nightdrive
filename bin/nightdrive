@@ -22,7 +22,7 @@ usage() {
   row "wallpaper COMMAND"        "The background: list, set, add, remove"
   row "display COMMAND"          "Screen scale: list, scale OUTPUT SCALE"
   row "bar-style COMMAND"        "The top bar's look: opacity, icons, highlight, icon-opacity"
-  row "topbar adjust"            "Nudge the top bar's icons and text a pixel at a time, live"
+  row "topbar adjust"            "The top bar's icon and text sizes, live"
   row "topbar date [STYLE]"      "The clock's date order: auto, dmy, mdy or iso"
   row "snippets [COMMAND]"       "Text snippets: list, set, remove, status, enable, disable"
   section "Plugins"
