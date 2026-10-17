@@ -40,11 +40,13 @@ Column {
             try { j = JSON.parse(text) } catch (e) { m.running = false; m.peers = []; return }
             m.running = j.BackendState === "Running"
             m.selfIp = ((j.Self || {}).TailscaleIPs || [""])[0]
-            m.selfName = (j.Self || {}).HostName || ""
+            // Machine name from the admin console (MagicDNS name), not the OS hostname: they differ after a rename
+            const name = p => ((p.DNSName || "").split(".")[0]) || p.HostName || ""
+            m.selfName = name(j.Self || {})
             const arr = []
             for (const k in (j.Peer || {})) {
                 const p = j.Peer[k]
-                arr.push({ host: p.HostName, ip: (p.TailscaleIPs || [""])[0], online: !!p.Online, os: p.OS })
+                arr.push({ host: name(p), ip: (p.TailscaleIPs || [""])[0], online: !!p.Online, os: p.OS })
             }
             arr.sort((a, b) => (b.online - a.online) || a.host.localeCompare(b.host))
             m.peers = arr
