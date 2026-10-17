@@ -105,21 +105,31 @@ icon("nightdrive-icon-square.svg", 200, 0, 0, 120, "JetBrainsMono-Bold.otf", 0.0
 icon("nightdrive-icon-small.svg", 32, 8, 1, 19, "JetBrainsMono-ExtraBold.otf", 0.06, 0.42, 0.74, "#ece6f5", True)
 
 
-# --- GIF: the gradient wordmark on Night with a blinking cursor (needs ImageMagick; skipped without it) ---
+# --- GIFs: the wordmarks with a blinking cursor (need ImageMagick; skipped without it) ---
+# The gradient one sits on Night; white and ink are transparent, to go on any background they suit
+# (GIF transparency is on/off, so their edges are hard where the PNGs' are smooth).
 import shutil
 import subprocess
 
-if shutil.which("magick"):
-    svg = open(f"{out}/nightdrive-logo.svg").read()
-    off = svg.replace(f'fill="#c071eb"/>\n</svg>', 'fill="none"/>\n</svg>')   # the same logo, cursor off
+
+def gif(name, cursor_fill, bg):
+    svg = open(f"{out}/{name}.svg").read()
+    off = svg.replace(f'fill="{cursor_fill}"/>\n</svg>', 'fill="none"/>\n</svg>')   # the same logo, cursor off
+    assert off != svg
     open(f"{out}/.logo-off.svg", "w").write(off)
     frames = []
-    for name, src in (("on", "nightdrive-logo.svg"), ("off", ".logo-off.svg")):
-        frames.append(f"{out}/.logo-{name}.png")
-        subprocess.run(["magick", "-background", "#0a0716", "-density", "192", f"{out}/{src}",
-                        "-bordercolor", "#0a0716", "-border", "48", frames[-1]], check=True)
+    for state, src in (("on", f"{name}.svg"), ("off", ".logo-off.svg")):
+        frames.append(f"{out}/.logo-{state}.png")
+        subprocess.run(["magick", "-background", bg, "-density", "192", f"{out}/{src}",
+                        "-bordercolor", bg, "-compose", "Copy", "-border", "48", frames[-1]], check=True)
     # The website's 1.1 s blink: half on, half off
-    subprocess.run(["magick", "-delay", "55", "-loop", "0", *frames, "-layers", "Optimize",
-                    f"{out}/nightdrive-logo.gif"], check=True)
+    subprocess.run(["magick", "-delay", "55", "-loop", "0", "-dispose", "Background", *frames,
+                    "-layers", "Optimize", f"{out}/{name}.gif"], check=True)
     for f in frames + [f"{out}/.logo-off.svg"]:
         os.remove(f)
+
+
+if shutil.which("magick"):
+    gif("nightdrive-logo", "#c071eb", "#0a0716")
+    gif("nightdrive-logo-white", "#ffffff", "none")
+    gif("nightdrive-logo-ink", "#a54fd6", "none")
