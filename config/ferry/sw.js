@@ -1,6 +1,6 @@
 // Ferry's service worker: the page opens from its cache when the computer can't be reached (asleep, Tailscale off), so
 // the page can say so instead of Safari's error, and it shows the Web Push notifications (hypr/scripts/ferry push_all).
-const CACHE = "ferry-12"
+const CACHE = "ferry-13"
 const SHELL = ["./", "manifest.webmanifest", "icon-180.png", "icon-192.png", "icon.svg"]
 const WAIT = 4000   // ms the network gets before the cached page is shown
 
@@ -37,17 +37,16 @@ self.addEventListener("push", e => {
   // iOS ends a subscription whose push doesn't show a notification: always show one
   e.waitUntil(Promise.all([
     self.registration.showNotification(d.title || "Ferry", { body: d.body || "", icon: "icon-192.png", tag: "ferry",
-                                                             renotify: true, data: { machine: d.machine || "" } }),
+                                                             renotify: true }),
     self.clients.matchAll({ type: "window" }).then(list => list.forEach(c => c.postMessage("refresh"))),
   ]))
 })
 
-// A tap opens the page on the computer the notification is about ("" = this page's own)
+// A tap opens the page (it shows every computer, so it doesn't matter which one the notification is about)
 self.addEventListener("notificationclick", e => {
   e.notification.close()
-  const machine = (e.notification.data || {}).machine || ""
   e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(list => {
-    for (const c of list) if ("focus" in c) { c.postMessage({ machine }); c.postMessage("refresh"); return c.focus() }
-    return self.clients.openWindow(self.registration.scope + (machine ? "?m=" + encodeURIComponent(machine) : ""))
+    for (const c of list) if ("focus" in c) { c.postMessage("refresh"); return c.focus() }
+    return self.clients.openWindow(self.registration.scope)
   }))
 })

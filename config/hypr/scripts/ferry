@@ -23,9 +23,9 @@ request is answered only for the Tailscale user who owns this machine (Tailscale
 and a client can't). A custom header on every API call keeps other web pages on the phone from posting here (their
 cross-site request would need a CORS preflight, which isn't answered).
 
-Several computers: each runs its own Ferry, and the page switches between them (the computer's name, top right). The
-page asks its own computer which of the owner's other machines answer at MOUNT (/api/machines) and then talks to the one
-picked directly: a computer answers another one's page (CORS) only if that one belongs to the same owner. A phone's push
+Several computers: each runs its own Ferry, and the page shows them as one. It asks its own computer which of the owner's
+other machines answer at MOUNT (/api/machines), lists what all of them hold, and sends to the one picked above the form,
+talking to each directly: a computer answers another one's page (CORS) only if that one belongs to the same owner. A phone's push
 subscription belongs to the computer it added the page from, so the others ask that one to pass their notifications on
 (/api/relay, /api/relay-push).
 
@@ -779,6 +779,15 @@ def handler(app):
                     self.send(200, {"ok": True})
                 elif path == "/api/upload":
                     self.upload(q)
+                elif path == "/api/clear":
+                    # Everything in one direction out of the box (the page's Clear)
+                    to = q.get("to", "")
+                    with box(write=True) as items:
+                        for it in [i for i in items if i.get("to") == to]:
+                            drop_file(it)
+                            items.remove(it)
+                    refresh_bar()
+                    self.send(200, {"ok": True})
                 elif path == "/api/remove":
                     remove(q.get("id", ""))
                     refresh_bar()
