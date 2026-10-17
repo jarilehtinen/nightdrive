@@ -17,6 +17,10 @@
 <title>Ferry</title>
 <style>
   /* Nightdrive's menu colours (quickshell/Theme.qml, the violet theme) */
+  /* Nightdrive's font, from the computer (hypr/scripts/ferry serves the system's JetBrains Mono); the system's otherwise */
+  @font-face { font-family: "JetBrains Mono"; font-weight: 400; font-display: swap; src: url("font/JetBrainsMono-Regular.otf"); }
+  @font-face { font-family: "JetBrains Mono"; font-weight: 500 600; font-display: swap; src: url("font/JetBrainsMono-Medium.otf"); }
+  @font-face { font-family: "JetBrains Mono"; font-weight: 700; font-display: swap; src: url("font/JetBrainsMono-Bold.otf"); }
   :root {
     --bg: #0b0b0d; --card: #16121b; --hover: #1f1528; --sel: #35253d; --border: #3a2f45;
     --text: #c9bdd3; --dim: #9486a3; --accent: #e0bff2; --primary: #c071eb;
@@ -26,14 +30,14 @@
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; background: var(--bg); color: var(--text); }
   body {
-    font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-    padding: calc(env(safe-area-inset-top) + 14px) calc(env(safe-area-inset-right) + 16px)
+    font: 15px/1.45 "JetBrains Mono", ui-monospace, Menlo, monospace;
+    padding: calc(env(safe-area-inset-top) + 20px) calc(env(safe-area-inset-right) + 16px)
              calc(env(safe-area-inset-bottom) + 24px) calc(env(safe-area-inset-left) + 16px);
     max-width: 640px; margin: 0 auto;
   }
   header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
-  header img { width: 30px; height: 30px; border-radius: 7px; }
-  h1 { font-size: 20px; margin: 0; color: var(--accent); letter-spacing: .02em; }
+  header img { width: 40px; height: 40px; border-radius: 10px; }
+  h1 { font-size: 24px; margin: 0; color: var(--accent); letter-spacing: .02em; }
   .status { display: flex; align-items: center; gap: 8px; font-size: 15px; color: var(--dim); margin-left: auto; min-width: 0; }
   #statusText { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dim); flex: none; }
@@ -52,11 +56,11 @@
        margin: 18px 0 8px; display: flex; justify-content: space-between; }
   h2 span { color: var(--dim); font-weight: 400; letter-spacing: 0; text-transform: none; }
   textarea { width: 100%; min-height: 76px; resize: vertical; background: var(--card); color: var(--text);
-             border: 0; border-radius: 14px; padding: 12px 14px; font: inherit; font-size: 16px; }
+             border: 0; border-radius: 14px; padding: 12px 14px; font: inherit; font-size: 16px; }   /* 16 px: iOS doesn't zoom */
   textarea:focus { outline: none; box-shadow: 0 0 0 2px var(--primary); }
   .row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
   button, .btn { appearance: none; border: 0; border-radius: 12px; padding: 0 18px; min-height: 50px; font: inherit;
-                 font-size: 17px; font-weight: 500; background: var(--sel); color: var(--accent); cursor: pointer;
+                 font-size: 16px; font-weight: 500; background: var(--sel); color: var(--accent); cursor: pointer;
                  text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
   .i { width: 22px; height: 22px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round;
         stroke-linejoin: round; }   /* <use> inherits from here, not from the sprite */
@@ -64,6 +68,19 @@
   button:active, .btn:active { opacity: .7; }
   button:disabled { opacity: .45; }
   button.small, .btn.small { min-height: 44px; padding: 0 16px; font-size: 16px; }
+  @media (min-width: 900px) {
+    body { max-width: 1120px; padding-top: 64px; padding-left: 40px; padding-right: 40px; }
+    header { margin-bottom: 28px; gap: 16px; }
+    header img { width: 60px; height: 60px; border-radius: 14px; }
+    h1 { font-size: 36px; }
+    .status { font-size: 16px; }
+    .live { display: grid; grid-template-columns: 1fr 1fr; column-gap: 48px; align-items: start; }
+    #received { grid-column: 1; grid-row: 1 / span 2; }
+    #send, #sent { grid-column: 2; }
+    body { font-size: 16px; }
+    h2 { margin-top: 4px; font-size: 13px; }
+    .item .meta { font-size: 13px; }
+  }
   @media (min-width: 700px) { button, .btn { min-height: 42px; font-size: 15px; } button.small, .btn.small { min-height: 36px; font-size: 14px; }
                               .i { width: 18px; height: 18px; } }
   .grow { flex: 1; justify-content: center; }
@@ -113,12 +130,12 @@
 <div class="banner info" id="pushHint" hidden></div>
 
 <div class="live">
-  <section>
+  <section id="received">
     <h2>Received</h2>
     <div id="toPhone"></div>
   </section>
 
-  <section>
+  <section id="send">
     <h2>Send</h2>
     <textarea id="text" placeholder="Text or link" autocomplete="off" autocapitalize="off"></textarea>
     <div class="row">
