@@ -8,7 +8,7 @@ import Quickshell.Services.Pam
 // Hyprland). hyprland.lua starts it first; once the lock is secure it starts the session (NightdriveLocked), and the
 // login apps after the password (NightdriveUnlocked: they may ask the keyring, which the password opens).
 // If this process dies while locked, Hyprland keeps the session locked (the "lockdead" screen).
-// Preview without locking: `NIGHTDRIVE_LOCK_PREVIEW=1 qs -p ~/.config/greeter/lock.qml` (checks the password, Esc closes).
+// Preview without locking: `nightdrive preview login` (checks the password, Esc closes).
 ShellRoot {
     id: root
 

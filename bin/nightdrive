@@ -1,26 +1,43 @@
 #!/bin/bash
-# The nightdrive command (linked to ~/.local/bin by link.sh). New subcommands go in the case at the bottom.
-#   nightdrive update          pull Nightdrive (and a private overlay and Deck's source, if any), relink, install new
-#                              packages, dnf upgrade, Flatpak apps, reload the desktop (launcher › Update runs this)
-#   nightdrive update check    fetch only: how many new commits are waiting. Notifies once per new count, the notification's
-#                              Update button runs the update in a terminal (nightdrive-update-check.timer, every 6 h)
-#   nightdrive topbar adjust     top bar icon and text sizes / positions a pixel at a time, live (config/topbar/adjust.conf)
-#   nightdrive topbar date [auto|dmy|mdy|iso]   the clock's date: auto = the locale's order (15.10. / 15/10 / 10/15 / 10-15)
-#   nightdrive plugins [list]   optional parts (plugins.txt) and whether each is installed; launcher › System › Install
-#   nightdrive plugins install ID|NAME   runs a plugin's installer (e.g. `nightdrive plugins install deck`)
-#   nightdrive plugins installed   the installed ones' ids (also to ~/.cache/nightdrive/plugins: the desktop hides the rest)
-#   nightdrive agent-warn ["what"]   for coding agents: warns that the launcher or a menu opens in 5 s (AGENTS.md)
-#   nightdrive theme|display|wallpaper|bar-style …   the desktop's own scripts (hypr/scripts), e.g. `nightdrive theme color teal`
-#   nightdrive sandbox up|check|shot|ipc|vnc|down …   Nightdrive in a headless container, for checks and screenshots (docs/sandbox.md)
-#   nightdrive platform [arch|name|machine|gpu|keyboard|pagesize]   what this runs on, e.g. "aarch64 asahi" or "x86_64 generic"
-#   nightdrive software-catalog   regenerate Install › Software's lists from Flathub (config/quickshell/data/software.json)
-#   nightdrive snippets [list|set|remove|status|enable|disable]   text snippets and their auto-expand (launcher › Tools › Snippets)
-# update never pulls over local changes: a repo with uncommitted work or its own commits is skipped with a note.
+# The nightdrive command (linked to ~/.local/bin by link.sh). `nightdrive help` lists the subcommands: usage() below.
+# A new subcommand goes in the case at the bottom and in usage().
 set -uo pipefail
 repo=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)
 scripts="$repo/config/hypr/scripts"
 cache="$HOME/.cache/nightdrive"
-usage() { echo "Usage:"; sed -n '3,17p' "$0" | sed 's/^# \{0,1\}//'; }
+
+# The help: grouped, one short line per command. Colour only on a terminal (and not with NO_COLOR).
+usage() {
+  local b="" v="" d="" r=""
+  if [[ -t 1 && -z ${NO_COLOR:-} ]]; then b=$'\e[1m' v=$'\e[38;2;192;113;235m' d=$'\e[2m' r=$'\e[0m'; fi
+  section() { printf '\n%s%s%s\n' "$b" "$1" "$r"; }
+  row() { printf '  %s%-28s%s %s\n' "$v" "$1" "$r" "$2"; }
+  printf '%sNightdrive%s %s· your desktop, after dark%s\n' "$b" "$r" "$d" "$r"
+  printf '\nUsage: nightdrive COMMAND [ARGS]\n'
+  section "Update"
+  row "update"                   "Update Nightdrive, its packages and apps, then reload the desktop"
+  row "update check"             "Look for new changes (runs every 6 h and notifies)"
+  section "Desktop"
+  row "theme COMMAND"            "The theme colour, e.g. nightdrive theme color teal"
+  row "wallpaper COMMAND"        "The background: list, set, add, remove"
+  row "display COMMAND"          "Screen scale: list, scale OUTPUT SCALE"
+  row "bar-style COMMAND"        "The top bar's look: opacity, icons, highlight, icon-opacity"
+  row "topbar adjust"            "Nudge the top bar's icons and text a pixel at a time, live"
+  row "topbar date [STYLE]"      "The clock's date order: auto, dmy, mdy or iso"
+  row "snippets [COMMAND]"       "Text snippets: list, set, remove, status, enable, disable"
+  section "Plugins"
+  row "plugins [list]"           "Optional parts, and which are installed"
+  row "plugins install NAME"     "Install one, e.g. nightdrive plugins install deck"
+  row "plugins installed"        "The installed ones' ids"
+  section "Preview"
+  row "preview login"            "The login screen, without locking (Esc closes)"
+  section "For developers"
+  row "platform [WHAT]"          "What this runs on: arch, name, machine, gpu, keyboard, pagesize"
+  row "sandbox COMMAND"          "Nightdrive in a headless container: up, check, shot, ipc, vnc, down"
+  row "software-catalog"         "Rebuild Install › Software's lists from Flathub"
+  row "agent-warn [\"WHAT\"]"    "For coding agents: warn before the launcher or a menu opens"
+  printf '\n'
+}
 
 # Repos to update: Nightdrive, the repos the git-ignored local slots link into (a private overlay), Deck's source
 repos() {
@@ -34,6 +51,8 @@ repos() {
 }
 behind() { git -C "$1" rev-list --count HEAD..@{upstream} 2>/dev/null || echo 0; }
 
+# update check: fetch only, count the new commits; notifies once per new count, and the notification's Update button runs
+# the update in a terminal (nightdrive-update-check.timer, every 6 h)
 check() {
   total=0
   while read -r r; do
@@ -53,6 +72,9 @@ check() {
   fi
 }
 
+# update: pull Nightdrive (and a private overlay and Deck's source, if any), relink, install new packages, dnf upgrade,
+# Flatpak apps, reload the desktop (launcher › Update runs this). Never pulls over local changes: a repo with uncommitted
+# work or its own commits is skipped with a note.
 update() {
   deck=0
   while read -r r; do
@@ -217,10 +239,16 @@ case ${1:-} in
              install) plugin_install "${3:-}" ;;
              *) usage >&2; exit 1 ;;
            esac ;;
-  agent-warn) exec "$scripts/agent-warn" "${@:2}" ;;
-  sandbox) exec "$repo/config/sandbox/sandbox" "${@:2}" ;;
+  # The login screen (config/greeter/lock.qml) without locking: it checks the password, then just closes
+  preview) case ${2:-} in
+             login) NIGHTDRIVE_LOCK_PREVIEW=1 exec qs -p "$repo/config/greeter/lock.qml" >/dev/null 2>&1 ;;
+             *) usage >&2; exit 1 ;;
+           esac ;;
+  agent-warn) exec "$scripts/agent-warn" "${@:2}" ;;                  # AGENTS.md
+  sandbox) exec "$repo/config/sandbox/sandbox" "${@:2}" ;;             # docs/sandbox.md
+  # topbar adjust: config/topbar/adjust.conf; software-catalog: config/quickshell/data/software.json
   platform|software-catalog|snippets) exec "$scripts/$1" "${@:2}" ;;
-  theme|display|wallpaper|bar-style) exec "$scripts/$1" "${@:2}" ;;
+  theme|display|wallpaper|bar-style) exec "$scripts/$1" "${@:2}" ;;    # the desktop's own scripts (hypr/scripts)
   ""|help|-h|--help) usage ;;
   *) usage >&2; exit 1 ;;
 esac
