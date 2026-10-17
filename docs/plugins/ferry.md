@@ -9,6 +9,8 @@ A mailbox between this computer and your iPhone (or any phone). Either end leave
 - A notification on the computer when the phone sends something, and on the phone when the computer does (Web Push: on an iPhone with iOS 16.4 or later, for the Home Screen app).
 - Files from the phone go to your Downloads folder. Everything leaves the box after 7 days; removing an item doesn't delete a file from Downloads.
 
+The page shows the computer by its name, the same one LocalSend and AirPlay show: change it in launcher › Settings › Computer name.
+
 Only you can use it: the page answers only the Tailscale user who owns this computer, even if others share your tailnet. It works while the computer is awake and both ends are on Tailscale; when it can't reach the computer, the page says so.
 
 **On the iPhone**: open the address shown at the bottom of Ferry's menu (or scan its QR code) in Safari, then Share › Add to Home Screen. Open Ferry from the Home Screen and tap Turn on notifications. The first time, Tailscale may need to be allowed to share the computer: if the menu says so, run `sudo tailscale set --operator=$USER` once and turn Ferry on again (`~/.config/hypr/scripts/ferry enable`).

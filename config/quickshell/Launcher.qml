@@ -58,6 +58,13 @@ PanelWindow {
     property var swCat: ({ key: "", name: "" })   // the open category (level swcat)
     property var swList: null                 // its rows (pkg-search --list), null = loading
     property string webName: ""               // Install › Webapp: the name, while asking for the address
+    // Settings › Computer name: the pretty host name, or the host name as LocalSend and Ferry show it without one
+    property string compName: ""
+    Sh {
+        id: compNameProc
+        script: 'n=$(hostnamectl --pretty 2>/dev/null); [ -n "$n" ] || { n=$(uname -n); n=${n%%.*}; n=${n^}; }; echo "$n"'
+        onResult: text => win.compName = text.trim()
+    }
     property var emojiList: []               // Emoji: [{ ch, name, kw }] (data/emoji.tsv, CLDR names in English and Finnish)
     property bool emojiLoaded: false
     property var snipList: []                // Snippets: [{ trigger, text }] (hypr/scripts/snippets list)
@@ -143,7 +150,7 @@ PanelWindow {
     readonly property bool extLevel: extOf(level) !== null
     readonly property int selIndex: list.currentIndex
     function shakeNow() { shake.restart() }
-    readonly property var parents: Object.assign({ launcherprefs: "settings", shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", battery: "settings", install: "system", remove: "system", emoji: "tools", snippets: "tools", snipkey: "snippets", sniptext: "snippets", screenshot: "tools", software: "install", swcat: "software", swsearch: "software", webapp: "install", recommended: "install", plugins: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", sounds: "settings", soundregular: "sounds", soundurgent: "sounds", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, sys.parents, home.parents, ext ? ext.parents : {})
+    readonly property var parents: Object.assign({ launcherprefs: "settings", shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", battery: "settings", install: "system", remove: "system", emoji: "tools", snippets: "tools", snipkey: "snippets", sniptext: "snippets", screenshot: "tools", software: "install", swcat: "software", swsearch: "software", webapp: "install", recommended: "install", plugins: "install", webname: "webapp", webaddr: "webname", compname: "settings", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", sounds: "settings", soundregular: "sounds", soundurgent: "sounds", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, sys.parents, home.parents, ext ? ext.parents : {})
     // Search found nothing: hint below ⌘⌥⏎ (icons) → send the text to Claude
     readonly property bool noHit: (level === "root" || level === "apps") && query.trim() !== "" && results.length === 0
     // The selected row is an app: ⌃Enter shows it in Apps (the list with an empty query) or hides it from there.
@@ -174,7 +181,8 @@ PanelWindow {
         : level === "sniptext" && query !== "" ? "Enter: save"
         : level === "webapp" && (results[list.currentIndex] || {}).ready ? ((results[list.currentIndex] || {}).installed ? "Enter: add again" : "Enter: add")
         : level === "webname" && query.trim() !== "" ? "Enter: continue to the address"
-        : level === "webaddr" && query.trim() !== "" ? "Enter: create the webapp" : ""
+        : level === "webaddr" && query.trim() !== "" ? "Enter: create the webapp"
+        : level === "compname" && query.trim() !== "" ? "Enter: rename (asks for your password)" : ""
     // The footer as key caps: "Ctrl+Enter: show in Apps  ·  Esc: back" → [{ keys: ["Ctrl", "Enter"], text: "show in Apps" }, ...].
     // "Enter creates …" (no colon) works too; a part that doesn't start with a key is plain text.
     readonly property var keyGlyphs: ({ Enter: "corner-down-left", Ctrl: "chevron-up", Shift: "arrow-big-up", Alt: "option", Cmd: "command",
@@ -193,7 +201,7 @@ PanelWindow {
     signal openMenu(string name)              // Settings: opens a Quickshell menu (wifi, bluetooth, ...)
 
     readonly property var titles: Object.assign({ apps: "Apps", music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", musicsearch: "Music › Search", artist: "Music › " + artist.name, keys: "Keybindings", screenshot: "Tools › Screenshot", settings: "Settings", display: "Settings › Display", battery: "Settings › Battery", startup: "Settings › Startup", screensaver: "Settings › Screensaver", saverafter: "Screensaver › Start after", screenoff: "Screensaver › Screen off after", saverstyle: "Screensaver › Style", sounds: "Settings › Notifications", soundregular: "Notifications › Regular sound", soundurgent: "Notifications › Urgent sound", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
-                                     launcherprefs: "Settings › Launcher", topbar: "Settings › Top bar", baropacity: "Top bar › Opacity", baricons: "Top bar › Icon colors", barhl: "Top bar › Highlight", baritems: "Top bar › Items",
+                                     launcherprefs: "Settings › Launcher", compname: "Settings › Computer name", topbar: "Settings › Top bar", baropacity: "Top bar › Opacity", baricons: "Top bar › Icon colors", barhl: "Top bar › Highlight", baritems: "Top bar › Items",
                                      system: "System", install: "System › Install", emoji: "Tools › Emoji", snippets: "Tools › Snippets", snipkey: "Snippets › Trigger", sniptext: "Snippets › “" + snipTrigger + "”", software: "Install › Software", swcat: "Software › " + swCat.name, swsearch: "Software › Search", webapp: "Install › Webapp", recommended: "Install › Recommended", plugins: "Install › Plugins", webname: "Install › Webapp › Name", webaddr: "Install › Webapp › Address", remove: "System › Remove", power: "Power", passwords: "Passwords", clipboard: "Clipboard",
                                      tools: "Tools" }, sys.titles, home.titles, ext ? ext.titles : {})
 
@@ -275,7 +283,8 @@ PanelWindow {
             { kind: "nav", name: "Top bar", glyph: "panel-top", target: "topbar" },   // its look and what it shows
             { kind: "nav", name: "Screensaver", glyph: "monitor-pause", target: "screensaver" },
             { kind: "header", name: "Behaviour" },
-            { kind: "nav", name: "Launcher", glyph: "text-search", target: "launcherprefs" }
+            { kind: "nav", name: "Launcher", glyph: "text-search", target: "launcherprefs" },
+            { kind: "nav", name: "Computer name", glyph: "laptop", target: "compname", summary: compName }   // what phones see
         ], home.settingsItems, [   // Home: only while Home Assistant is set up
             { kind: "nav", name: "Notifications", glyph: "bell-ring", target: "sounds" },
             { kind: "nav", name: "Startup", glyph: "rocket", target: "startup" }
@@ -297,6 +306,7 @@ PanelWindow {
                                               "Background": "wallpaper desktop image picture",
                                               "Top bar": "waybar panel menu bar",
                                               "Launcher": "search fuzzy typos shortcuts hints spotlight",
+                                              "Computer name": "hostname rename device localsend airplay ferry phone",
                                               "Home": "home assistant automations buttons lights types",
                                               "Opacity": "top bar waybar panel transparency transparent",
                                               "Icon colors": "top bar waybar panel white black light dark text",
@@ -534,6 +544,10 @@ PanelWindow {
         } else if (level === "webaddr") {
             if (query.trim() === "") return hint("Type the address for “" + webName + "” (e.g. web.whatsapp.com)")
             return [{ kind: "wadd", name: "Add “" + webName + "”", summary: query.trim(), glyph: "app-window", value: query.trim() }]
+        } else if (level === "compname") {
+            // Phones see it in LocalSend, AirPlay and Ferry
+            if (query.trim() === "") return hint("Now “" + compName + "”. Type a new name")
+            return [{ kind: "compset", name: "Rename to “" + query.trim() + "”", glyph: "laptop", value: query.trim() }]
         } else if (extOf(level)) {
             const r = extOf(level).items(level, q)
             if (!r.all) return r          // ready-made rows (hints, etc.)
@@ -753,6 +767,7 @@ PanelWindow {
         if (target === "emoji" && !emojiLoaded) emojiProc.running = true
         if (target === "clipboard") { clipLoaded = false; clipProc.running = true }
         if (target === "snippets") snipProc.running = true
+        if (target === "settings" || target === "compname") compNameProc.running = true
         if (target === "background") wallProc.running = true
         if (target === "topbar" || target === "baropacity" || target === "baricons" || target === "barhl") barProc.running = true
         if (target === "theme" || target === "themecolor") themeProc.running = true
@@ -947,6 +962,14 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
             Qt.callLater(() => { const i = results.findIndex(r => r.kind === "snippet" && r.trigger === t); if (i >= 0) list.currentIndex = i })
         }
         else if (item.kind === "wname") { webName = item.value; go("webaddr") }
+        else if (item.kind === "compset") {
+            // The pretty host name (systemd-hostnamed; polkit asks for the password). AirPlay Receiver reads it when it
+            // starts; LocalSend and Ferry on every use
+            win.open = false
+            Quickshell.execDetached(["bash", "-c",
+                'out=$(hostnamectl set-hostname --pretty "$1" 2>&1) && { systemctl --user try-restart nightdrive-airplay.service; notify-send -a Settings "Computer name" "$1"; } || notify-send -u critical -a Settings "Renaming failed" "$out"',
+                "_", item.value])
+        }
         else if (item.kind === "wadd") {
             win.open = false
             Quickshell.execDetached(["bash", "-c",
