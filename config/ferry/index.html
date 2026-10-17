@@ -81,7 +81,6 @@
   .item .row { margin-top: 8px; }
   .empty { color: var(--dim); font-size: 14px; padding: 4px 2px; }
   .offline .live { opacity: .45; pointer-events: none; }
-  footer { font-size: 12px; color: var(--dim); margin-top: 26px; line-height: 1.5; }
 </style>
 </head>
 <body>
@@ -92,32 +91,30 @@
 
 <div class="live">
   <section>
-    <h2>From the computer <span id="toPhoneCount"></span></h2>
+    <h2>Received</h2>
     <div id="toPhone"></div>
   </section>
 
   <section>
-    <h2>To the computer</h2>
-    <textarea id="text" placeholder="Text or a link" autocomplete="off" autocapitalize="off"></textarea>
+    <h2>Send</h2>
+    <textarea id="text" placeholder="Text or link" autocomplete="off" autocapitalize="off"></textarea>
     <div class="row">
-      <button class="primary grow" id="sendText" disabled>Send text</button>
-      <button class="grow" id="sendClip">Send clipboard</button>
+      <button class="primary grow" id="sendText" disabled>Send</button>
+      <button class="grow" id="sendClip">Clipboard</button>
     </div>
     <div class="row">
-      <label class="btn grow" for="files">Send photos or files</label>
+      <label class="btn grow" for="files">Photos &amp; files</label>
       <input type="file" id="files" multiple>
     </div>
     <div class="progress" id="progress"><div></div></div>
     <div class="note" id="note"></div>
   </section>
 
-  <section>
-    <h2>Sent from here <span id="toComputerCount"></span></h2>
+  <section id="sent" hidden>
+    <h2>Sent</h2>
     <div id="toComputer"></div>
   </section>
 </div>
-
-<footer id="footer"></footer>
 
 <script>
 "use strict"
@@ -170,14 +167,13 @@ function offline(err) {
   let what, why
   if (err && err.status === 403) {
     what = "Not allowed"
-    why = "Ferry answers only the Tailscale user who owns " + computer + "."
+    why = "Only for the computer's owner."
   } else if (err && err.status === 502) {
-    what = "Ferry isn't running on " + computer
-    why = "Tailscale reaches the computer, but the Ferry server is off. Turn it on there: launcher › System › Install › Plugins › Ferry."
+    what = "Ferry is off on " + computer
+    why = "Turn it on in the launcher: Install › Plugins."
   } else {
     what = "Can't reach " + computer
-    why = "It may be asleep or turned off, or Tailscale is off on this phone or on the computer. " +
-          "Ferry works only while the computer is awake and both are on Tailscale."
+    why = "It's asleep, or Tailscale is off."
   }
   setStatus("bad", what)
   const b = $("offline")
@@ -193,11 +189,9 @@ async function refresh() {
     localStorage.setItem("ferry.computer", computer)
     pushKey = j.push
     items = j.items || []
-    $("footer").textContent = `Things wait here until you remove them, for ${j.keep} days at most. Files from this ` +
-                              "phone go to the computer's Downloads folder."
     document.body.classList.remove("offline")
     $("offline").hidden = true
-    setStatus("ok", "Connected to " + computer)
+    setStatus("ok", computer)
     const now = JSON.stringify(items)
     if (now !== shown || Date.now() - shownAt > 60000) { shown = now; shownAt = Date.now(); render() }
     pushState()
@@ -208,10 +202,10 @@ async function refresh() {
 
 function ago(t) {
   const s = Date.now() / 1000 - t
-  if (s < 60) return "just now"
-  if (s < 3600) return Math.floor(s / 60) + " min ago"
-  if (s < 86400) return Math.floor(s / 3600) + " h ago"
-  return Math.floor(s / 86400) + " d ago"
+  if (s < 60) return "now"
+  if (s < 3600) return Math.floor(s / 60) + " min"
+  if (s < 86400) return Math.floor(s / 3600) + " h"
+  return Math.floor(s / 86400) + " d"
 }
 function size(n) {
   if (n < 1000) return n + " B"
@@ -236,7 +230,7 @@ async function copy(text, btn) {
     if (!ok) { btn.textContent = "Can't copy"; return }
   }
   const old = btn.textContent
-  btn.textContent = "Copied ✓"
+  btn.textContent = "Copied"
   setTimeout(() => btn.textContent = old, 1500)
 }
 
@@ -260,13 +254,13 @@ async function save(it, btn) {
 
 async function removeItem(it) {
   try { await api("api/remove?id=" + encodeURIComponent(it.id), { method: "POST" }); refresh() }
-  catch (e) { note("Couldn't remove: " + e.message, true) }
+  catch (e) { note("Not removed", true) }
 }
 
 function card(it) {
   const fresh = it.to === "phone" && !seenIds.has(it.id)
   const del = el("button", { class: "icon", title: "Remove", "aria-label": "Remove", onclick: () => removeItem(it) }, "×")
-  const meta = (it.kind === "file" ? size(it.size) + " · " : "") + ago(it.time) + (it.from ? " · from " + it.from : "")
+  const meta = (it.kind === "file" ? size(it.size) + " · " : "") + ago(it.time)
   let lead, main, actions = null
   if (it.kind === "text") {
     lead = el("div", { class: "kind" }, "TEXT")
@@ -275,7 +269,7 @@ function card(it) {
       const b = el("button", { class: "primary small", onclick: () => copy(it.text, b) }, "Copy")
       actions = el("div", { class: "row" }, b)
       if (/^https?:\/\/\S+$/.test(it.text.trim()))
-        actions.append(el("a", { class: "btn small", href: it.text.trim(), target: "_blank", rel: "noopener" }, "Open link"))
+        actions.append(el("a", { class: "btn small", href: it.text.trim(), target: "_blank", rel: "noopener" }, "Open"))
     }
   } else {
     const ext = (it.name.split(".").pop() || "").slice(0, 4).toUpperCase()
@@ -285,7 +279,7 @@ function card(it) {
     main = el("div", { class: "name" }, it.name)
     if (it.to === "phone") {
       prefetch(it)
-      const b = el("button", { class: "primary small", onclick: () => save(it, b) }, isImage(it) ? "Save…" : "Save / share…")
+      const b = el("button", { class: "primary small", onclick: () => save(it, b) }, "Save")
       actions = el("div", { class: "row" }, b,
                    el("a", { class: "btn small", href: "api/file/" + it.id, target: "_blank" }, "Open"))
     }
@@ -298,11 +292,9 @@ function card(it) {
 function render() {
   const toPhone = items.filter(i => i.to === "phone").reverse()
   const toComputer = items.filter(i => i.to === "computer").reverse()
-  $("toPhone").replaceChildren(...(toPhone.length ? toPhone.map(card)
-    : [el("div", { class: "empty" }, "Nothing yet. On the computer: drop files on Ferry's icon in the top bar, or Send Clipboard in its menu.")]))
-  $("toComputer").replaceChildren(...(toComputer.length ? toComputer.map(card) : [el("div", { class: "empty" }, "Nothing sent.")]))
-  $("toPhoneCount").textContent = toPhone.length ? toPhone.length : ""
-  $("toComputerCount").textContent = toComputer.length ? toComputer.length : ""
+  $("toPhone").replaceChildren(...(toPhone.length ? toPhone.map(card) : [el("div", { class: "empty" }, "Nothing yet")]))
+  $("toComputer").replaceChildren(...toComputer.map(card))
+  $("sent").hidden = !toComputer.length
   // Marked as seen once shown: the highlight stays until the next update
   setTimeout(() => { for (const i of toPhone) seenIds.add(i.id); localStorage.setItem("ferry.seen", JSON.stringify([...seenIds].slice(-200))) }, 3000)
 }
@@ -313,10 +305,10 @@ $("text").addEventListener("input", () => $("sendText").disabled = !$("text").va
 async function sendText(text) {
   try {
     await api("api/text", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) })
-    note("Sent to " + computer)
+    note("Sent")
     refresh()
     return true
-  } catch (e) { note("Not sent: " + (e.status ? e.message : "can't reach " + computer), true); return false }
+  } catch (e) { note("Not sent", true); return false }
 }
 $("sendText").onclick = async () => {
   if (await sendText($("text").value)) { $("text").value = ""; $("sendText").disabled = true }
@@ -326,11 +318,11 @@ $("sendText").onclick = async () => {
 $("sendClip").onclick = async () => {
   let text = ""
   try { text = await navigator.clipboard.readText() } catch (e) {
-    note("Can't read the clipboard here: paste into the box above (tap and hold › Paste) and press Send text.", true)
+    note("Paste into the box instead", true)
     $("text").focus()
     return
   }
-  if (!text.trim()) { note("The clipboard has no text", true); return }
+  if (!text.trim()) { note("Clipboard is empty", true); return }
   sendText(text)
 }
 
@@ -343,19 +335,19 @@ $("files").onchange = async () => {
   let done = 0
   bar.style.display = "block"
   for (const [i, f] of files.entries()) {
-    note(files.length > 1 ? `Sending ${i + 1} of ${files.length}: ${f.name}` : "Sending " + f.name)
+    note(files.length > 1 ? `Sending ${i + 1}/${files.length}` : "Sending")
     try {
       await upload(f, sent => fill.style.width = (100 * (done + sent) / Math.max(1, total)) + "%")
       done += f.size
     } catch (e) {
       bar.style.display = "none"
-      note(`${f.name} wasn't sent: ${e.message || "can't reach " + computer}`, true)
+      note(`${f.name} not sent`, true)
       refresh()
       return
     }
   }
   bar.style.display = "none"; fill.style.width = "0"
-  note(files.length > 1 ? `Sent ${files.length} files to ${computer}` : `Sent ${files[0].name} to ${computer}`)
+  note("Sent")
   refresh()
 }
 
@@ -382,8 +374,7 @@ async function pushState() {
   const box = $("pushHint")
   if (!("serviceWorker" in navigator)) { box.hidden = true; return }
   if (ios && !standalone) {
-    box.replaceChildren(el("b", {}, "Notifications: "), "add Ferry to the Home Screen (Share › Add to Home Screen) " +
-                        "and open it from there. Then you can turn on notifications for what the computer sends.")
+    box.replaceChildren("For notifications: Share › Add to Home Screen")
     box.hidden = false
     return
   }
@@ -397,12 +388,11 @@ async function pushState() {
     return
   }
   if (Notification.permission === "denied") {
-    box.replaceChildren(el("b", {}, "Notifications are off. "), "Turn them on in Settings › Notifications › Ferry.")
+    box.replaceChildren("Notifications are off in Settings")
     box.hidden = false
     return
   }
-  box.replaceChildren(el("b", {}, "Get a notification "), "when the computer sends something.",
-                      el("div", {}, el("button", { class: "primary small", onclick: enablePush }, "Turn on notifications")))
+  box.replaceChildren(el("button", { class: "primary small", onclick: enablePush }, "Turn on notifications"))
   box.hidden = false
 }
 async function enablePush() {
@@ -414,9 +404,8 @@ async function enablePush() {
     const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(pushKey) })
     await api("api/subscribe", { method: "POST", body: JSON.stringify(sub) })
     pushState.sent = true
-    await api("api/test-push", { method: "POST" })
-    note("Notifications are on: a test one is on its way")
-  } catch (e) { note("Couldn't turn notifications on: " + e.message, true) }
+    await api("api/test-push", { method: "POST" })   // the first one says it works
+  } catch (e) { note("Notifications failed", true) }
   pushState()
 }
 
@@ -431,7 +420,7 @@ function schedule() {
   if (document.visibilityState === "visible") timer = setInterval(refresh, POLL)
 }
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") refresh(); schedule() })
-setStatus("wait", "Connecting to " + computer + "…")
+setStatus("wait", computer)
 refresh()
 schedule()
 </script>

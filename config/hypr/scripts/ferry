@@ -164,8 +164,10 @@ class Tailnet:
         self.owner = (users.get(str(uid)) or {}).get("LoginName", "") if uid is not None else ""
         names = {}
         for p in list((st.get("Peer") or {}).values()) + [st.get("Self") or {}]:
+            # The tailnet name: an iPhone's HostName is "localhost"
+            name = (p.get("DNSName") or "").split(".")[0] or p.get("HostName") or ""
             for ip in p.get("TailscaleIPs") or []:
-                names[ip] = p.get("HostName") or ""
+                names[ip] = name
         self.names = names
 
     def allowed(self, login):

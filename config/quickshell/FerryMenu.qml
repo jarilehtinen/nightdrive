@@ -160,7 +160,7 @@ Column {
         visible: m.st !== null && m.items.length === 0
         width: parent.width
         wrapMode: Text.Wrap
-        text: "The box is empty. What the phone sends shows up here."
+        text: "Empty"
         color: Theme.dim
         font { family: Theme.font; pixelSize: 12 }
     }
