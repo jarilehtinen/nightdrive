@@ -57,6 +57,7 @@ for STROKE, FAMILY, OUT in FONTS:
     # icons (bluetooth) sat further left than wide ones. The real bearing centres them all in their 1000-unit advance.
     for gname in font.getGlyphOrder():
         adv, _ = font["hmtx"][gname]
+        glyf[gname].recalcBounds(glyf)                        # lucide-static's glyph headers say xMin 0 too: measure the outline
         font["hmtx"][gname] = (adv, getattr(glyf[gname], "xMin", 0))
 
     for rec in font["name"].names:
