@@ -54,14 +54,18 @@
              border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; font: inherit; font-size: 16px; }
   textarea:focus { outline: none; border-color: var(--primary); }
   .row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
-  button, .btn { appearance: none; border: 0; border-radius: 10px; padding: 10px 14px; font: inherit; font-size: 15px;
-                 background: var(--sel); color: var(--accent); cursor: pointer; text-decoration: none;
-                 display: inline-flex; align-items: center; gap: 6px; }
+  button, .btn { appearance: none; border: 0; border-radius: 12px; padding: 0 18px; min-height: 50px; font: inherit;
+                 font-size: 17px; font-weight: 500; background: var(--sel); color: var(--accent); cursor: pointer;
+                 text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+  .i { width: 22px; height: 22px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round;
+        stroke-linejoin: round; }   /* <use> inherits from here, not from the sprite */
   button.primary, .btn.primary { background: var(--primary); color: #12081a; font-weight: 600; }
   button:active, .btn:active { opacity: .7; }
   button:disabled { opacity: .45; }
-  button.small { padding: 6px 10px; font-size: 14px; }
-  button.icon { background: transparent; color: var(--dim); padding: 6px 8px; font-size: 18px; line-height: 1; }
+  button.small, .btn.small { min-height: 44px; padding: 0 16px; font-size: 16px; }
+  button.icon { background: transparent; color: var(--dim); padding: 0; min-height: 44px; width: 44px; margin: -8px -8px 0 0; }
+  @media (min-width: 700px) { button, .btn { min-height: 42px; font-size: 15px; } button.small, .btn.small { min-height: 36px; font-size: 14px; }
+                              .i { width: 18px; height: 18px; } }
   .grow { flex: 1; justify-content: center; }
   input[type=file] { display: none; }
   .progress { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; margin-top: 10px; display: none; }
@@ -84,6 +88,18 @@
 </style>
 </head>
 <body>
+<!-- Lucide icons (lucide.dev, ISC licence) used by the buttons: <svg class="i"><use href="#i-NAME"/></svg> -->
+<svg width="0" height="0" style="position:absolute" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11zm7.318-19.539l-10.94 10.939"/></symbol>
+  <symbol id="i-clipboard-paste" viewBox="0 0 24 24"><path d="M11 14h10M16 4h2a2 2 0 0 1 2 2v1.344M17 18l4-4l-4-4"/><path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 1.793-1.113"/><rect width="8" height="4" x="8" y="2" rx="1"/></symbol>
+  <symbol id="i-image-up" viewBox="0 0 24 24"><path d="M10.3 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10l-3.1-3.1a2 2 0 0 0-2.814.014L6 21"/><path d="m14 19.5l3-3l3 3M17 22v-5.5"/><circle cx="9" cy="9" r="2"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+  <symbol id="i-external-link" viewBox="0 0 24 24"><path d="M15 3h6v6m-11 5L21 3m-3 10v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 2v13m4-9l-4-4l-4 4m-4 6v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0m-10.47-5.674A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></symbol>
+  <symbol id="i-refresh-cw" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9a9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5m5 4a9 9 0 0 1-9 9a9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol>
+</svg>
 <header><img src="icon-180.png" alt=""><h1>Ferry</h1></header>
 <div class="status wait" id="status"><span class="dot"></span><span id="statusText">Connecting…</span></div>
 <div class="banner" id="offline" hidden></div>
@@ -99,11 +115,11 @@
     <h2>Send</h2>
     <textarea id="text" placeholder="Text or link" autocomplete="off" autocapitalize="off"></textarea>
     <div class="row">
-      <button class="primary grow" id="sendText" disabled>Send</button>
-      <button class="grow" id="sendClip">Clipboard</button>
+      <button class="primary grow" id="sendText" disabled><svg class="i"><use href="#i-send"/></svg>Send</button>
+      <button class="grow" id="sendClip"><svg class="i"><use href="#i-clipboard-paste"/></svg>Clipboard</button>
     </div>
     <div class="row">
-      <label class="btn grow" for="files">Photos &amp; files</label>
+      <label class="btn grow" for="files"><svg class="i"><use href="#i-image-up"/></svg>Photos &amp; files</label>
       <input type="file" id="files" multiple>
     </div>
     <div class="progress" id="progress"><div></div></div>
@@ -145,6 +161,18 @@ function el(tag, props = {}, ...kids) {
   return e
 }
 
+// A Lucide icon from the sprite above
+function icon(name) {
+  const s = document.createElementNS("http://www.w3.org/2000/svg", "svg")
+  s.setAttribute("class", "i")
+  const u = document.createElementNS("http://www.w3.org/2000/svg", "use")
+  u.setAttribute("href", "#i-" + name)
+  s.append(u)
+  return s
+}
+// A button's label is a text node after its icon: changed in place ("Copied") without losing the icon
+function label(btn, text) { btn.lastChild.textContent = text }
+
 async function api(path, opts = {}) {
   const ctl = new AbortController()
   const t = setTimeout(() => ctl.abort(), opts.timeout || TIMEOUT)
@@ -178,7 +206,7 @@ function offline(err) {
   setStatus("bad", what)
   const b = $("offline")
   b.replaceChildren(el("b", {}, what), el("div", {}, why),
-                    el("button", { class: "small", onclick: () => { setStatus("wait", "Connecting…"); refresh() } }, "Try again"))
+                    el("button", { class: "small", onclick: () => { setStatus("wait", computer); refresh() } }, icon("refresh-cw"), "Try again"))
   b.hidden = false
 }
 
@@ -227,11 +255,10 @@ async function copy(text, btn) {
     t.style.position = "fixed"; t.style.opacity = "0"
     document.body.append(t); t.select(); t.setSelectionRange(0, text.length)
     const ok = document.execCommand("copy"); t.remove()
-    if (!ok) { btn.textContent = "Can't copy"; return }
+    if (!ok) { label(btn, "Can't copy"); return }
   }
-  const old = btn.textContent
-  btn.textContent = "Copied"
-  setTimeout(() => btn.textContent = old, 1500)
+  label(btn, "Copied")
+  setTimeout(() => label(btn, "Copy"), 1500)
 }
 
 function prefetch(it) {
@@ -259,17 +286,17 @@ async function removeItem(it) {
 
 function card(it) {
   const fresh = it.to === "phone" && !seenIds.has(it.id)
-  const del = el("button", { class: "icon", title: "Remove", "aria-label": "Remove", onclick: () => removeItem(it) }, "×")
+  const del = el("button", { class: "icon", title: "Remove", "aria-label": "Remove", onclick: () => removeItem(it) }, icon("x"))
   const meta = (it.kind === "file" ? size(it.size) + " · " : "") + ago(it.time)
   let lead, main, actions = null
   if (it.kind === "text") {
     lead = el("div", { class: "kind" }, "TEXT")
     main = el("div", { class: "text" }, it.text)
     if (it.to === "phone") {
-      const b = el("button", { class: "primary small", onclick: () => copy(it.text, b) }, "Copy")
+      const b = el("button", { class: "primary small", onclick: () => copy(it.text, b) }, icon("copy"), "Copy")
       actions = el("div", { class: "row" }, b)
       if (/^https?:\/\/\S+$/.test(it.text.trim()))
-        actions.append(el("a", { class: "btn small", href: it.text.trim(), target: "_blank", rel: "noopener" }, "Open"))
+        actions.append(el("a", { class: "btn small", href: it.text.trim(), target: "_blank", rel: "noopener" }, icon("external-link"), "Open"))
     }
   } else {
     const ext = (it.name.split(".").pop() || "").slice(0, 4).toUpperCase()
@@ -279,9 +306,9 @@ function card(it) {
     main = el("div", { class: "name" }, it.name)
     if (it.to === "phone") {
       prefetch(it)
-      const b = el("button", { class: "primary small", onclick: () => save(it, b) }, "Save")
+      const b = el("button", { class: "primary small", onclick: () => save(it, b) }, icon("share"), "Save")
       actions = el("div", { class: "row" }, b,
-                   el("a", { class: "btn small", href: "api/file/" + it.id, target: "_blank" }, "Open"))
+                   el("a", { class: "btn small", href: "api/file/" + it.id, target: "_blank" }, icon("external-link"), "Open"))
     }
   }
   return el("div", { class: "item" + (fresh ? " new" : "") },
@@ -392,7 +419,7 @@ async function pushState() {
     box.hidden = false
     return
   }
-  box.replaceChildren(el("button", { class: "primary small", onclick: enablePush }, "Turn on notifications"))
+  box.replaceChildren(el("button", { class: "primary small", onclick: enablePush }, icon("bell"), "Turn on notifications"))
   box.hidden = false
 }
 async function enablePush() {
