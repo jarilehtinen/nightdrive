@@ -1,0 +1,531 @@
+#!/usr/bin/python3 -I
+"""AirDrop: receives files and links from iPhones, iPads and Macs set to "Everyone for 10 minutes".
+
+    airdrop receive [SECONDS]          visible to AirDrop for SECONDS (default 300), then hidden again
+
+The radio is omdrop-awdl's (install-airdrop.sh): awdl0, Apple's own Wi-Fi link, and omdrop-discoverable, which opens a
+window in which the computer is announced over it (polkit, no password). This is the receiver behind the announcement:
+HTTPS on port 8771, only from awdl0. A send asks first: a notification with Accept and Decline (nothing is saved
+without Accept, no answer in a minute is a Decline). Files go to the Downloads folder; a link is shown in the
+notification with Open and Copy.
+
+The protocol (Apple's, undocumented) as the phone speaks it: POST /Discover asks who is there and gets the name to
+show; POST /Ask lists the files and blocks until the user answers; POST /Upload on the same connection carries them
+as a cpio archive, zlib-compressed in blocks ("dvzip"). A self-signed certificate is enough for Everyone; a phone set
+to Contacts Only needs an Apple-issued identity and can't see this computer.
+"""
+import os
+import plistlib
+import re
+import secrets
+import shutil
+import signal
+import socket
+import ssl
+import subprocess
+import sys
+import threading
+import time
+import unicodedata
+import zlib
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+PORT = 8771                  # the port omdrop-discoverable announces
+IFACE = "awdl0"
+HELPER = "/usr/lib/omdrop/omdrop-discoverable"
+STATE = os.path.expanduser("~/.local/share/nightdrive/airdrop")   # the certificate and its key
+APP = "AirDrop"              # the notifications' app name
+ICON = "smartphone"
+ASK_TIMEOUT = 60             # seconds to answer Accept/Decline
+UPLOAD_WAIT = 60             # seconds an accepted send has to start its upload
+IDLE = 30                    # seconds a connection may stay silent
+DRAIN = 3                    # seconds to read what's left after the archive's end (an iPhone may never close it)
+META_MAX = 1 << 20           # bytes of a /Discover or /Ask body
+BLOCK_MAX = 16 << 20         # bytes of one dvzip block
+KEEP_FREE = 1 << 30          # bytes left free on the disk after a send
+CHUNK = 1 << 20
+MODEL = "MacBookPro18,3"     # the icon the phone shows (a MacBook)
+# What media the phone may send as it is. Only the version: HEIC photos and HEVC videos come converted (JPEG, H.264).
+MEDIA = b'{"Version":1}'
+
+
+def downloads():
+    try:
+        d = subprocess.run(["xdg-user-dir", "DOWNLOAD"], capture_output=True, text=True).stdout.strip()
+    except OSError:
+        d = ""
+    return d if d and d != os.path.expanduser("~") else os.path.expanduser("~/Downloads")
+
+
+def alias():
+    try:
+        pretty = subprocess.run(["hostnamectl", "--pretty"], capture_output=True, text=True).stdout.strip()
+    except OSError:
+        pretty = ""
+    name = pretty or socket.gethostname().split(".")[0].capitalize()
+    return clean(name)[:63] or "Nightdrive"
+
+
+def clean(s):
+    """Text from the other side without control, bidi and zero-width characters (they could disguise a file name)."""
+    return "".join(c for c in unicodedata.normalize("NFC", str(s)) if unicodedata.category(c) not in ("Cc", "Cf")).strip()
+
+
+def certificate():
+    cert, key = os.path.join(STATE, "cert.pem"), os.path.join(STATE, "key.pem")
+    if not (os.path.exists(cert) and os.path.exists(key)):
+        os.makedirs(STATE, mode=0o700, exist_ok=True)
+        subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "3650",
+                        "-subj", f"/CN={alias()}", "-keyout", key, "-out", cert], check=True, capture_output=True)
+        os.chmod(key, 0o600)
+    return cert, key
+
+
+def human(n):
+    for unit in ("B", "KB", "MB", "GB"):
+        if n < 1000 or unit == "GB":
+            return f"{n:.0f} {unit}" if unit == "B" else f"{n:.1f} {unit}"
+        n /= 1000
+
+
+def notify(summary, body="", actions=(), timeout=None, urgency=None):
+    """A notification. Returns (process, its id); with actions the process waits for a button."""
+    cmd = ["notify-send", "-a", APP, "-i", ICON, "-p"]
+    if urgency:
+        cmd += ["-u", urgency]
+    if timeout is not None:
+        cmd += ["-t", str(timeout)]
+    for key, label in actions:
+        cmd += ["-A", f"{key}={label}"]
+    if actions:
+        cmd.append("--wait")
+    cmd += ["--", summary, body]
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+    nid = p.stdout.readline().strip()
+    if not actions:
+        p.wait()
+    return p, nid
+
+
+def close_notification(nid):
+    if nid.isdigit():
+        subprocess.run(["gdbus", "call", "--session", "--dest", "org.freedesktop.Notifications", "--object-path",
+                        "/org/freedesktop/Notifications", "--method", "org.freedesktop.Notifications.CloseNotification",
+                        nid], capture_output=True)
+
+
+def answer(p, nid, timeout):
+    """The button pressed, or "" (closed, timed out)."""
+    try:
+        out, _ = p.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        p.kill()
+        p.communicate()
+        close_notification(nid)
+        return ""
+    return out.strip().splitlines()[-1] if out.strip() else ""
+
+
+def follow(p, nid, actions):
+    """Runs the button's command when one is pressed (a background thread)."""
+    def wait():
+        key = answer(p, nid, None)
+        if key in actions:
+            actions[key]()
+    threading.Thread(target=wait, daemon=True).start()
+
+
+def safe_path(root, name):
+    """A path from the archive inside root: subfolders kept, never "..", absolute or hidden."""
+    parts = [clean(p).lstrip(".") for p in name.replace("\\", "/").split("/")]
+    parts = [p.encode()[:255].decode(errors="ignore") for p in parts if p]
+    return os.path.join(root, *(parts or ["file"]))
+
+
+def unique(path):
+    """path, or "name (2).ext" when it exists."""
+    base, ext = os.path.splitext(path)
+    n = 1
+    while os.path.lexists(path):
+        n += 1
+        path = f"{base} ({n}){ext}"
+    return path
+
+
+# --- The upload: dvzip → cpio → files ---------------------------------------------------------------------------
+class Reader:
+    """Exact reads from an iterator of byte strings."""
+    def __init__(self, it):
+        self.it, self.buf = iter(it), bytearray()
+
+    def fill(self, n):
+        while len(self.buf) < n:
+            piece = next(self.it, None)
+            if piece is None:
+                return False
+            self.buf += piece
+        return True
+
+    def read(self, n):
+        if not self.fill(n):
+            raise ValueError("the archive ends early")
+        out = bytes(self.buf[:n])
+        del self.buf[:n]
+        return out
+
+    def pieces(self, n):
+        """n bytes as they come, without holding them all."""
+        while n > 0:
+            if not self.buf and not self.fill(1):
+                raise ValueError("the archive ends early")
+            take = min(n, len(self.buf), CHUNK)
+            out = bytes(self.buf[:take])
+            del self.buf[:take]
+            n -= take
+            yield out
+
+
+def dvzip(chunks):
+    """The upload body decoded: one gzip stream, or blocks with a 4-byte big-endian header each (low 31 bits the
+    length, the high bit set for a block stored as it is, clear for a zlib one)."""
+    r = Reader(chunks)
+    if not r.fill(2):
+        return
+    if bytes(r.buf[:2]) == b"\x1f\x8b":
+        d = zlib.decompressobj(31)
+        while r.fill(1):
+            piece = bytes(r.buf)
+            r.buf.clear()
+            yield d.decompress(piece)
+        yield d.flush()
+        return
+    while r.fill(1):
+        head = int.from_bytes(r.read(4), "big")
+        size = head & 0x7fffffff
+        if size > BLOCK_MAX:
+            raise ValueError("dvzip block too large")
+        block = r.read(size)
+        yield block if head & 0x80000000 else zlib.decompress(block)
+
+
+def cpio(data):
+    """The archive's entries as (name, mode, size, Reader for the data); odc (macOS) or newc. Stops at TRAILER!!!."""
+    r = Reader(data)
+    while True:
+        magic = r.read(6)
+        if magic == b"070707":
+            h = r.read(70)
+            mode, namesize, size = int(h[12:18], 8), int(h[53:59], 8), int(h[59:70], 8)
+            name, pad = r.read(namesize), lambda n: 0
+        elif magic in (b"070701", b"070702"):
+            h = r.read(104)
+            field = lambda i: int(h[i * 8:i * 8 + 8], 16)
+            mode, size, namesize = field(1), field(6), field(11)
+            name = r.read(namesize)
+            r.read(-(110 + namesize) % 4)
+            pad = lambda n: -n % 4
+        else:
+            raise ValueError("not a cpio archive")
+        name = name.rstrip(b"\0").decode(errors="replace")
+        if name == "TRAILER!!!":
+            return
+        yield name, mode, size, r
+        r.read(pad(size))
+
+
+class Transfer:
+    def __init__(self, tid, sender, ip, total):
+        self.id, self.sender, self.ip, self.total = tid, sender, ip, total
+        self.expires = time.monotonic() + UPLOAD_WAIT
+
+
+class Receiver:
+    def __init__(self):
+        self.name = alias()
+        self.dest = downloads()
+        self.cert, self.key = certificate()
+        self.lock = threading.Lock()
+        self.asking = False
+        self.accepted = {}        # TransferID → Transfer
+        self.active = 0           # uploads running
+
+    def info(self):
+        return plistlib.dumps({"ReceiverComputerName": self.name, "ReceiverModelName": MODEL,
+                               "ReceiverMediaCapabilities": MEDIA, "IsAirDropable": True}, fmt=plistlib.FMT_BINARY)
+
+    def busy(self):
+        with self.lock:
+            return self.asking or self.active > 0
+
+    def ask(self, ip, body):
+        """(status, response body) for an /Ask."""
+        who = clean(body.get("SenderComputerName") or "Someone")[:63] or "Someone"
+        kind = body.get("TransferType") or {}
+        if "links" in kind:
+            links = [str(u) for u in body.get("Items") or [] if re.match(r"https?://", str(u))]
+            if not links:
+                return 403, b""
+            for url in links[:4]:
+                p, nid = notify(f"Link from {who}", url, actions=[("default", "Open"), ("copy", "Copy")])
+                follow(p, nid, {"default": lambda u=url: subprocess.Popen(["xdg-open", u]),
+                                "copy": lambda u=url: subprocess.run(["wl-copy", "--", u])})
+            return 200, self.info()
+
+        files = [f for f in body.get("Files") or [] if isinstance(f, dict)]
+        tid = str((body.get("TransferID") or {}).get("id") or "")
+        if not files or not tid:
+            return 400, b""
+        names = [clean(os.path.basename(str(f.get("FileName") or "file"))) or "file" for f in files]
+        total = sum(int(f.get("FileSize") or 0) for f in files)
+        if shutil.disk_usage(self.dest).free - total < KEEP_FREE:
+            notify(f"{who} wanted to send {human(total)}", "Not enough free space", urgency="normal")
+            return 403, b""
+        with self.lock:
+            if self.asking or self.active:
+                return 403, b""
+            self.asking = True
+        try:
+            title = f"{who} wants to send {names[0]}" if len(names) == 1 else f"{who} wants to send {len(names)} files"
+            shown = names[:4] + ([f"and {len(names) - 4} more"] if len(names) > 4 else [])
+            text = (", ".join(shown) + " · " if len(names) > 1 else "") + human(total)
+            p, nid = notify(title, text, actions=[("accept", "Accept"), ("decline", "Decline")],
+                            timeout=ASK_TIMEOUT * 1000, urgency="critical")
+            choice = answer(p, nid, ASK_TIMEOUT)
+        finally:
+            with self.lock:
+                self.asking = False
+        if choice != "accept":
+            return 403, b""
+        with self.lock:
+            self.accepted[tid] = Transfer(tid, who, ip, total)
+        return 200, self.info()
+
+    def upload(self, ip, tid, chunks):
+        """Unpacks an accepted send into the Downloads folder: a hidden folder first, its contents moved out only when
+        the archive is whole. Returns the status."""
+        with self.lock:
+            t = self.accepted.pop(tid, None)
+            if not t or t.ip != ip or t.expires < time.monotonic():
+                return 403
+            self.active += 1
+        stage = os.path.join(self.dest, f".airdrop-{secrets.token_hex(4)}")
+        try:
+            os.makedirs(stage, mode=0o700)
+            limit = t.total + (64 << 20)   # the sizes the Ask listed, with room for converted media
+            got = 0
+            for name, mode, size, r in cpio(dvzip(chunks)):
+                kind = mode & 0o170000
+                if os.path.basename(name).startswith("._") or kind not in (0o100000, 0o040000):
+                    for _ in r.pieces(size):   # AppleDouble metadata, links, devices: skipped
+                        pass
+                    continue
+                path = safe_path(stage, name)
+                if kind == 0o040000:
+                    os.makedirs(path, exist_ok=True)
+                    continue
+                got += size
+                if got > limit or shutil.disk_usage(self.dest).free - size < KEEP_FREE:
+                    raise OSError("more than the send announced, or the disk is full")
+                os.makedirs(os.path.dirname(path), exist_ok=True)
+                with open(path, "xb") as out:
+                    for piece in r.pieces(size):
+                        out.write(piece)
+            saved = []
+            for entry in sorted(os.listdir(stage)):
+                target = unique(os.path.join(self.dest, entry))
+                os.rename(os.path.join(stage, entry), target)
+                saved.append(target)
+        except (OSError, ValueError, zlib.error) as e:
+            print(f"upload from {t.sender} failed: {e}", flush=True)
+            notify(f"Transfer from {t.sender} failed", "Nothing was saved", urgency="normal")
+            return 422 if isinstance(e, (ValueError, zlib.error)) else 507
+        finally:
+            shutil.rmtree(stage, ignore_errors=True)
+            with self.lock:
+                self.active -= 1
+        self.received(t.sender, saved)
+        return 200
+
+    def received(self, sender, saved):
+        if not saved:
+            return
+        if len(saved) == 1:
+            title, target = f"Received {os.path.basename(saved[0])}", saved[0]
+        else:
+            title, target = f"Received {len(saved)} files", None
+        p, nid = notify(title, f"From {sender} · {os.path.basename(self.dest)}",
+                        actions=[("default", "Open"), ("show", "Show in Files")])
+        show = (lambda: subprocess.Popen(["nautilus", "--select", target])) if target else \
+            (lambda: subprocess.Popen(["xdg-open", self.dest]))
+        opener = (lambda: subprocess.Popen(["xdg-open", target])) if target else show
+        follow(p, nid, {"default": opener, "show": show})
+
+
+def handler(r):
+    class Handler(BaseHTTPRequestHandler):
+        protocol_version = "HTTP/1.1"
+        timeout = IDLE
+
+        def log_message(self, fmt, *a):
+            print(f"{self.client_address[0]} {fmt % a}", flush=True)
+
+        def reply(self, code, body=b"", close=False):
+            self.send_response(code)
+            if body:
+                self.send_header("Content-Type", "application/octet-stream")
+            self.send_header("Content-Length", str(len(body)))
+            if close:
+                self.send_header("Connection", "close")
+                self.close_connection = True
+            self.end_headers()
+            self.wfile.write(body)
+
+        def body(self, limit=None):
+            """The request body in pieces: chunked (as the phone sends) or with a Content-Length."""
+            got = 0
+            if "chunked" in (self.headers.get("Transfer-Encoding") or "").lower():
+                while True:
+                    size = int(self.rfile.readline(130).split(b";")[0].strip() or b"x", 16)   # ValueError: broken
+                    if size == 0:
+                        while self.rfile.readline(1024).strip():   # trailers up to the empty line
+                            pass
+                        return
+                    got += size
+                    if limit and got > limit:
+                        raise ValueError("body too large")
+                    while size > 0:
+                        piece = self.rfile.read(min(CHUNK, size))
+                        if not piece:
+                            raise OSError("connection closed")
+                        size -= len(piece)
+                        yield piece
+                    self.rfile.readline(130)   # the CRLF after the chunk
+            else:
+                left = int(self.headers.get("Content-Length") or 0)
+                if limit and left > limit:
+                    raise ValueError("body too large")
+                while left > 0:
+                    piece = self.rfile.read(min(CHUNK, left))
+                    if not piece:
+                        raise OSError("connection closed")
+                    left -= len(piece)
+                    yield piece
+
+        def plist(self):
+            try:
+                body = plistlib.loads(b"".join(self.body(META_MAX)))
+                return body if isinstance(body, dict) else None
+            except (ValueError, OSError, plistlib.InvalidFileException):
+                return None
+
+        def do_GET(self):
+            self.reply(200, b"\n")
+
+        def do_POST(self):
+            path, ip = self.path.split("?")[0].rstrip("/"), self.client_address[0]
+            if path == "/Discover":
+                if self.plist() is None:
+                    return self.reply(400, close=True)
+                self.reply(200, r.info())
+            elif path == "/Ask":
+                body = self.plist()
+                code, data = r.ask(ip, body) if body is not None else (400, b"")
+                self.reply(code, data, close=code != 200)
+            elif path == "/Upload":
+                if "dvzip" not in (self.headers.get("Content-Type") or "") and \
+                        "cpio" not in (self.headers.get("Content-Type") or ""):
+                    return self.reply(415, close=True)
+                chunks = self.body()
+                code = r.upload(ip, self.headers.get("TransferID") or "", chunks)
+                # What's left after the archive's end: read it before closing, or the phone sees a reset and calls
+                # the send failed. An iPhone may never send the last chunk, so only a short wait.
+                self.connection.settimeout(DRAIN)
+                try:
+                    for _ in chunks:
+                        pass
+                except (OSError, ValueError):
+                    pass
+                self.reply(code, close=True)
+            else:
+                self.reply(400, close=True)
+    return Handler
+
+
+class Server(ThreadingHTTPServer):
+    daemon_threads = True
+    allow_reuse_address = True
+    address_family = socket.AF_INET6
+
+    def __init__(self, receiver):
+        self.index = socket.if_nametoindex(IFACE)
+        super().__init__(("::", PORT), handler(receiver))
+        self.ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        self.ctx.minimum_version = ssl.TLSVersion.TLSv1_2
+        self.ctx.load_cert_chain(receiver.cert, receiver.key)   # no client certificate asked: Everyone
+
+    def server_bind(self):
+        try:   # awdl0 only (allowed without root since Linux 5.7); verify_request checks it in any case
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_BINDTODEVICE, IFACE.encode())
+        except OSError:
+            pass
+        super().server_bind()
+
+    def verify_request(self, request, client_address):
+        return client_address[0].startswith("fe80:") and client_address[3] == self.index
+
+    def handle_error(self, request, client_address):
+        print(f"{client_address[0]} connection error: {sys.exc_info()[1]!r}", flush=True)   # e.g. the phone's reset
+
+    def finish_request(self, request, client_address):
+        # TLS in the request's own thread: a slow handshake doesn't hold up the others
+        request.settimeout(IDLE)
+        try:
+            request = self.ctx.wrap_socket(request, server_side=True)
+        except (ssl.SSLError, OSError):
+            return
+        super().finish_request(request, client_address)
+
+
+def helper(*a):
+    return subprocess.run(["pkexec", HELPER, *a], capture_output=True, text=True)
+
+
+def receive(seconds):
+    try:
+        receiver = Receiver()
+        server = Server(receiver)
+    except OSError as e:
+        print(f"AirDrop's Wi-Fi link isn't ready ({e}): sudo systemctl restart awdl0", file=sys.stderr)
+        return 1
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    stop = threading.Event()
+    signal.signal(signal.SIGTERM, lambda *_: stop.set())
+    try:
+        print(f"AirDrop: opening the window ({IFACE} :{PORT}, files to {receiver.dest})", flush=True)
+        res = helper("start", str(seconds))
+        if res.returncode not in (0, 5):   # 5: already open, extended
+            print(res.stdout.strip() or res.stderr.strip(), file=sys.stderr)
+            return 1
+        print(f"AirDrop: visible as {receiver.name} for {seconds} s", flush=True)
+        stop.wait(seconds)
+        while receiver.busy() and not stop.is_set():   # a send in progress finishes first
+            stop.wait(1)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        helper("stop")
+        server.shutdown()
+        print("AirDrop: hidden", flush=True)
+    return 0
+
+
+def main():
+    a = sys.argv[1:]
+    if a[:1] == ["receive"] and len(a) <= 2 and (len(a) == 1 or a[1].isdigit()):
+        return receive(int(a[1]) if len(a) == 2 else 300)
+    print(__doc__.split("\n\n")[1], file=sys.stderr)
+    return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
