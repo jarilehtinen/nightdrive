@@ -44,6 +44,7 @@ PanelWindow {
                 width: win.cardWidth
                 color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, win.bgOpacity)
                 onActivated: Notifs.activate(modelData)
+                onViewed: Notifs.hide(modelData.uid)   // the viewer has it now; it stays in the history
                 onDismissed: if (n) n.dismiss()
 
                 // Slides in from the right

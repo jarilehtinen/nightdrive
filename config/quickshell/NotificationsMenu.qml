@@ -128,6 +128,7 @@ Column {
                     onSwept: m.sweptOne()
                     onDraggingChanged: m.dragging += dragging ? 1 : -1
                     onDropped: m.close()
+                    onViewed: m.close()
                     onActivated: { Notifs.openApp(modelData); m.close() }
                     onDismissed: Notifs.forget(modelData.uid)
                     Binding { when: card.index === m.maxCards - 1; target: m; property: "lastShownBottom"; value: card.y + card.height }

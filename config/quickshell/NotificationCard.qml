@@ -4,7 +4,8 @@ import Quickshell.Widgets
 
 // One notification as a card: the app's icon and name with the time (× while the mouse is over it), the title, the text,
 // the notification's own picture on the right (a preview, e.g. a screenshot: small under the text), and the app's
-// actions as buttons. A preview that is a file gets Copy image and Copy path buttons of its own (also in the menu).
+// actions as buttons. A preview that is a file gets Copy image and Copy path buttons of its own (also in the menu), and a
+// double click on it opens it in the image viewer.
 // The popups (NotificationPopups.qml) and the notification menu (NotificationsMenu.qml) both draw these, so a
 // notification looks the same in both.
 // row = a history row from Notifs.qml; n = the live Notification while it's shown as a popup (its actions, updates), else null.
@@ -32,6 +33,7 @@ Rectangle {
     readonly property bool dragging: shot.Drag.active   // the preview is being dragged out (the menu lets the drop through)
     signal activated()                         // click: open
     signal dropped()                           // the dragged preview landed somewhere
+    signal viewed()                            // the preview was opened in the image viewer (double click)
     signal dismissed()                         // ×, right click or a two-finger swipe to the right
 
     // The popups slide the card in with these (NotificationPopups.qml); the swipe adds its own offset and fade
@@ -263,6 +265,19 @@ Rectangle {
             Drag.active: shotDrag.active
             Drag.onDragFinished: action => { if (action !== Qt.IgnoreAction) card.dropped() }
             DragHandler { id: shotDrag; target: null; enabled: card.fileUri !== "" }
+            // A double click opens the file in the image viewer (xdg-open: Loupe). The press doesn't reach the card's
+            // MouseArea here, so a single click opens the notification from here, once the double click's time is over.
+            TapHandler {
+                enabled: card.fileUri !== ""
+                onTapped: (point, button) => {
+                    if (tapCount === 2) {
+                        previewClick.stop()
+                        Quickshell.execDetached(["xdg-open", card.filePath])
+                        card.viewed()
+                    } else previewClick.restart()
+                }
+            }
+            Timer { id: previewClick; interval: Qt.styleHints.mouseDoubleClickInterval; onTriggered: card.activated() }
             // The picture under the pointer while dragging: a small copy of the preview
             function grabIcon() {
                 if (shotImg.status !== Image.Ready || shotClip.width <= 0) return
