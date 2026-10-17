@@ -4,8 +4,9 @@ import Quickshell.Widgets
 
 // One notification as a card: the app's icon and name with the time (× while the mouse is over it), the title, the text,
 // the notification's own picture on the right (a preview, e.g. a screenshot: small under the text), and the app's
-// actions as buttons. A preview that is a file gets Copy image and Copy path buttons of its own (also in the menu). The popups (NotificationPopups.qml) and the notification menu (NotificationsMenu.qml) both draw
-// these, so a notification looks the same in both.
+// actions as buttons. A preview that is a file gets Copy image and Copy path buttons of its own (also in the menu).
+// The popups (NotificationPopups.qml) and the notification menu (NotificationsMenu.qml) both draw these, so a
+// notification looks the same in both.
 // row = a history row from Notifs.qml; n = the live Notification while it's shown as a popup (its actions, updates), else null.
 Rectangle {
     id: card
@@ -25,7 +26,7 @@ Rectangle {
     }
     readonly property string filePath: fileUri ? decodeURIComponent(fileUri.slice(7)) : ""
     // The buttons: the preview's copies first, then the app's actions
-    readonly property var buttons: (filePath ? [{ text: "Copy image", copy: "image" }, { text: "Copy path", copy: "path" }] : [])
+    readonly property var buttons: (filePath ? [{ text: "Copy image", icon: "image", copy: "image" }, { text: "Copy path", icon: "folder", copy: "path" }] : [])
         .concat(actions.map(a => ({ text: a.text, action: a })))
     readonly property bool hovered: hover.hovered || shotDrag.active   // a drag of the preview keeps a popup up too
     readonly property bool dragging: shot.Drag.active   // the preview is being dragged out (the menu lets the drop through)
@@ -296,17 +297,32 @@ Rectangle {
                 Rectangle {
                     id: btn
                     required property var modelData
-                    property bool copied: false        // "Copied" for a moment after a copy button
-                    width: label.advanceWidth + 20; height: 26   // the label's width also while it says "Copied"
+                    property bool copied: false        // "Copied" and a check for a moment after a copy button
+                    readonly property string icon: copied ? "check" : modelData.icon || ""   // the copy buttons' glyph
+                    // The label's width also while it says "Copied"
+                    width: (icon ? btnIcon.implicitWidth + 5 : 0) + label.advanceWidth + 20; height: 26
                     TextMetrics { id: label; font: btnText.font; text: btn.modelData.text }
                     radius: 7
                     color: btnArea.containsMouse ? Theme.sel : Qt.rgba(1, 1, 1, 0.06)
-                    Text {
-                        id: btnText
+                    Row {
                         anchors.centerIn: parent
-                        text: btn.copied ? "Copied" : btn.modelData.text
-                        color: btnArea.containsMouse ? Theme.accent : Theme.text
-                        font { family: Theme.font; pixelSize: 11 }
+                        spacing: 5
+                        Text {
+                            id: btnIcon
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: btn.icon !== ""
+                            text: btn.icon ? Icons.g(btn.icon) : ""
+                            color: btnText.color
+                            opacity: btnArea.containsMouse ? 1 : 0.55   // quieter than the label
+                            font { family: Icons.family; pixelSize: 12 }
+                        }
+                        Text {
+                            id: btnText
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: btn.copied ? "Copied" : btn.modelData.text
+                            color: btnArea.containsMouse ? Theme.accent : Theme.text
+                            font { family: Theme.font; pixelSize: 11 }
+                        }
                     }
                     MouseArea {
                         id: btnArea
