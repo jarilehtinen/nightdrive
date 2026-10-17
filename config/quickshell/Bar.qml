@@ -149,6 +149,7 @@ Variants {
                     hasMenu: bar.menuOf(modelData) !== ""
                     open: hasMenu && bar.current === bar.menuOf(modelData)
                     onLeftClicked: x => bar.menuClicked(bar.menuOf(modelData), x, win.modelData)
+                    onDragOver: x => { if (hasMenu && !open) bar.menuClicked(bar.menuOf(modelData), x, win.modelData) }
                     onWidthChanged: Qt.callLater(win.layout)
                     onVisibleChanged: Qt.callLater(win.layout)
                 }

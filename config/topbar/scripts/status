@@ -77,6 +77,12 @@ case $kind in
   tailscale)
     if [[ $(tailscale status --json 2>/dev/null | jq -r '.BackendState // empty') == Running ]]; then emit tailscale ""
     else emit tailscale-off ""; fi ;;
+  ferry)
+    # Ferry (hypr/scripts/ferry): highlighted with a count while things from the phone wait unseen (opening the menu
+    # sees them); dimmed while its server isn't running
+    systemctl --user -q is-active nightdrive-ferry.service || { emit inbox "" off; exit; }
+    n=$(jq '[.items[]? | select(.to == "computer" and (.seen | not))] | length' ~/.local/share/nightdrive/ferry/items.json 2>/dev/null)
+    if (( ${n:-0} > 0 )); then emit inbox "$n" active; else emit inbox ""; fi ;;
   calendar)
     emit "" "$(~/.config/topbar/scripts/clock)" ;;
   notifications)

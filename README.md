@@ -78,7 +78,9 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
 - **Snippets**: text snippets in launcher › Tools › Snippets; Enter pastes one. Turn on auto-expand and typing a trigger
   anywhere replaces it with the text.
 - **From your phone** (experimental plugins): LocalSend receives files from a phone after you accept them in a
-  notification, and AirPlay Receiver mirrors an iPhone, iPad or Mac into a window.
+  notification, and AirPlay Receiver mirrors an iPhone, iPad or Mac into a window. [Ferry](docs/plugins/ferry.md) is a
+  mailbox over Tailscale: drop files on its top bar icon and they wait for the phone, which needs no app, only a web page
+  on its Home Screen.
 - **Screen Mirroring**: mirror the screen to an Apple TV or an AirPlay TV from the display menu or the launcher (search
   "airplay"), with sound. Google Cast works from Chromium (⋮ › Cast…). Sharing the screen, for these and video calls, asks
   in a themed window: the whole screen or one window.
@@ -116,7 +118,7 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
 | Web apps | Chromium app windows | add your own, or a ready-made one with a keybinding: WhatsApp, Slack, Teams, YouTube (Install › Webapp) |
 | Lock and idle | hyprlock, hypridle | screensaver after 10 min, lock after 30 min (screensaver and screen-off times: Settings › Screensaver) |
 | Smart home (optional) | [Home Assistant](https://www.home-assistant.io) (`install-home-assistant.sh`) | Home in the launcher: rooms and their devices, Enter turns one on/off or runs a scene, ←/→ sets a light's brightness; pinned devices in the top bar's Home menu; the webapp. Local, Tailscale and Nabu Casa addresses tried in order |
-| Phone (optional) | [LocalSend](https://localsend.org) receiver, [UxPlay](https://github.com/FDH2/UxPlay) | files and text from a phone, asked first in a notification; an iPhone, iPad or Mac mirrored into a window. Both experimental |
+| Phone (optional) | [LocalSend](https://localsend.org) receiver, [UxPlay](https://github.com/FDH2/UxPlay), Ferry (own, over `tailscale serve`) | files and text from a phone, asked first in a notification; an iPhone, iPad or Mac mirrored into a window; a mailbox both ways with a web page and Web Push. All experimental |
 | Mac text keys (optional) | [keyd](https://github.com/rvaiya/keyd) | ⌥⌫ deletes a word, ⌘⌫ to the line start (Files: to the trash) |
 | Optional parts | everything marked optional above, Jottacloud, VS Code | chosen when installing; the rest later in launcher › System › Install (Recommended: apps Nightdrive sets up; Webapp; Plugins: desktop features like Screen Mirroring) or `nightdrive plugins` (`plugins.txt`). A part that isn't installed doesn't show anywhere: no launcher level, bar icon or keybinding. One installed later (the launcher, `dnf`, Flatpak) shows up by itself |
 
@@ -162,12 +164,12 @@ Machine: PC (x86_64, graphics: amd, keyboard: us)
 
   Plugins
   13 [ ] LocalSend         Files from phones via the LocalSend app, asks first (experimental)
-  14 [ ] Screen Mirroring  AirPlay to an Apple TV (doubletake, experimental; compiled)
+  14 [ ] Ferry             Files and text both ways with an iPhone over Tailscale, no app (experimental)
    …
 
-  17 [ ] Install all       every optional part above
+  18 [ ] Install all       every optional part above
 
-  18 [x] Remove apps       112 installed packages Nightdrive doesn't use: akregator dolphin konsole kmail …
+  19 [x] Remove apps       112 installed packages Nightdrive doesn't use: akregator dolphin konsole kmail …
 ```
 
 **Trying it on the system you already use?** The removals are on by default only on a fresh install (one installed less

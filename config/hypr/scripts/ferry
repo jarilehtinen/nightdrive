@@ -1,0 +1,812 @@
+#!/usr/bin/python3
+"""Ferry: a mailbox between this computer and your phone, over Tailscale (experimental).
+
+    ferry status                  on | off
+    ferry enable | disable        the server on/off (nightdrive-ferry.service) and its address on the tailnet
+    ferry run                     the server itself (the service)
+    ferry url                     the phone's address: https://<this machine>.<tailnet>.ts.net/ferry/
+    ferry list                    what's in the box, for the top bar's menu (JSON)
+    ferry add FILE…               leaves files (or a folder's files) for the phone
+    ferry text TEXT               leaves a text for the phone
+    ferry send-clipboard          leaves the clipboard's text for the phone
+    ferry copy | open | remove ID an item: its text to the clipboard, its file opened, out of the box
+    ferry seen                    marks what came from the phone as seen (the bar's count goes)
+    ferry qr                      a QR code of the address (SVG; prints its path)
+
+Either end leaves files or text in the box, and they wait there until the other end picks them up. The phone needs no
+app: a web page served by this script, which it can add to its Home Screen (a PWA with Web Push notifications). The
+devices don't have to be on the same network, only on the same tailnet.
+
+The server listens on localhost only. `tailscale serve` publishes it on the tailnet at MOUNT with the tailnet's real
+certificate (iOS writes to the clipboard and allows a PWA and Web Push only on HTTPS), and tells it who is asking: a
+request is answered only for the Tailscale user who owns this machine (Tailscale-User-Login, which tailscale serve sets
+and a client can't). A custom header on every API call keeps other web pages on the phone from posting here (their
+cross-site request would need a CORS preflight, which isn't answered).
+
+Kept in STATE: items.json (the box), the files left for the phone (files/), the VAPID key for Web Push (made on the first
+run; python3-cryptography) and the phone's push subscriptions. Files from the phone go to Downloads. Items go after
+KEEP_DAYS days; removing one from the box doesn't delete a file in Downloads.
+"""
+import base64
+import contextlib
+import fcntl
+import hashlib
+import hmac
+import json
+import mimetypes
+import os
+import re
+import secrets
+import shutil
+import socket
+import struct
+import subprocess
+import sys
+import threading
+import time
+import urllib.parse
+import urllib.request
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+PORT = 47270                 # the local server (127.0.0.1 only: tailscale serve is the way in)
+HTTPS_PORT = 443             # tailscale serve's port on the tailnet name
+MOUNT = "/ferry"             # the page's path there (tailscale serve strips it before the request reaches us)
+STATE = os.path.expanduser("~/.local/share/nightdrive/ferry")
+QR = os.path.expanduser("~/.cache/nightdrive/ferry-qr.svg")
+WEB = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "ferry")   # the page: config/ferry
+SERVICE = "nightdrive-ferry.service"
+APP = "Ferry"                # the notifications' app name
+ICON = "inbox"
+KEEP_DAYS = 7                # an item leaves the box after this many days
+MAX_FILE = 4 << 30           # bytes per file from the phone
+MAX_TEXT = 1 << 20           # bytes of text
+CHUNK = 1 << 20
+GROUP_NOTIFY = 20            # seconds: files from the phone within this time share one notification
+PUSH_CONTACT = "https://github.com/jarilehtinen/nightdrive"   # the VAPID "sub": push services want a contact URL
+
+
+def downloads():
+    try:
+        d = subprocess.run(["xdg-user-dir", "DOWNLOAD"], capture_output=True, text=True).stdout.strip()
+    except OSError:
+        d = ""
+    return d if d and d != os.path.expanduser("~") else os.path.expanduser("~/Downloads")
+
+
+def alias():
+    try:
+        pretty = subprocess.run(["hostnamectl", "--pretty"], capture_output=True, text=True).stdout.strip()
+    except OSError:
+        pretty = ""
+    return pretty or socket.gethostname().split(".")[0].capitalize()
+
+
+def human(n):
+    for unit in ("B", "KB", "MB", "GB"):
+        if n < 1000 or unit == "GB":
+            return f"{n:.0f} {unit}" if unit == "B" else f"{n:.1f} {unit}"
+        n /= 1000
+
+
+def notify(summary, body="", actions=()):
+    """A desktop notification; with actions, {key: function} runs the pressed button's function (in a thread)."""
+    cmd = ["notify-send", "-a", APP, "-i", ICON, "-p"]
+    for key in actions:
+        cmd += ["-A", f"{key}={actions[key][0]}"]
+    if actions:
+        cmd.append("--wait")
+    try:
+        p = subprocess.Popen(cmd + ["--", summary, body], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+    except OSError:
+        return ""
+    nid = p.stdout.readline().strip()
+
+    def wait():
+        out = p.communicate()[0].strip().splitlines()
+        if out and out[-1] in actions:
+            actions[out[-1]][1]()
+    threading.Thread(target=wait, daemon=True).start()
+    return nid
+
+
+def refresh_bar():
+    try:
+        subprocess.Popen(["qs", "ipc", "call", "bar", "refreshModule", "ferry"], stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL)
+    except OSError:
+        pass
+
+
+# --- Tailscale ----------------------------------------------------------------------------------------------------
+def tailscale_status():
+    try:
+        out = subprocess.run(["tailscale", "status", "--json"], capture_output=True, text=True, timeout=5).stdout
+        return json.loads(out)
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        return {}
+
+
+def url(st=None):
+    """The page's address on the tailnet, or "" when Tailscale is off."""
+    st = st or tailscale_status()
+    name = ((st.get("Self") or {}).get("DNSName") or "").rstrip(".")
+    if st.get("BackendState") != "Running" or not name:
+        return ""
+    return f"https://{name}{'' if HTTPS_PORT == 443 else f':{HTTPS_PORT}'}{MOUNT}/"
+
+
+def serving():
+    """Whether tailscale serve publishes this server at MOUNT."""
+    try:
+        out = subprocess.run(["tailscale", "serve", "status", "--json"], capture_output=True, text=True, timeout=5).stdout
+        cfg = json.loads(out or "{}")
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        return False
+    for host, web in (cfg.get("Web") or {}).items():
+        h = (web.get("Handlers") or {}).get(MOUNT) or {}
+        if host.endswith(f":{HTTPS_PORT}") and h.get("Proxy", "").rstrip("/").endswith(f"127.0.0.1:{PORT}"):
+            return True
+    return False
+
+
+class Tailnet:
+    """Who may use the page (this machine's owner) and the names of the devices asking, refreshed now and then."""
+    def __init__(self):
+        self.owner, self.names, self.when = "", {}, 0.0
+
+    def load(self, force=False):
+        if not force and time.monotonic() - self.when < 60:
+            return
+        st = tailscale_status()
+        self.when = time.monotonic()
+        users = st.get("User") or {}
+        uid = (st.get("Self") or {}).get("UserID")
+        self.owner = (users.get(str(uid)) or {}).get("LoginName", "") if uid is not None else ""
+        names = {}
+        for p in list((st.get("Peer") or {}).values()) + [st.get("Self") or {}]:
+            for ip in p.get("TailscaleIPs") or []:
+                names[ip] = p.get("HostName") or ""
+        self.names = names
+
+    def allowed(self, login):
+        self.load()
+        if login and login != self.owner:
+            self.load(force=True)   # the owner may have just logged in
+        return bool(login) and login == self.owner
+
+    def device(self, ip):
+        self.load()
+        if ip not in self.names:
+            self.load(force=True)
+        return self.names.get(ip, "")
+
+
+# --- The box --------------------------------------------------------------------------------------------------------
+@contextlib.contextmanager
+def box(write=False):
+    """The items (newest last), under a lock shared by the server and the commands; saved after a write."""
+    os.makedirs(STATE, mode=0o700, exist_ok=True)
+    with open(os.path.join(STATE, "lock"), "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX if write else fcntl.LOCK_SH)
+        path = os.path.join(STATE, "items.json")
+        try:
+            with open(path) as f:
+                items = json.load(f).get("items") or []
+        except (OSError, ValueError, AttributeError):
+            items = []
+        kept = prune(items) if write else [i for i in items if alive(i)]
+        yield kept
+        if write:
+            tmp = path + ".tmp"
+            with open(tmp, "w") as f:
+                json.dump({"items": kept}, f, ensure_ascii=False)
+            os.replace(tmp, path)
+
+
+def alive(item):
+    return time.time() - item.get("time", 0) < KEEP_DAYS * 86400 and \
+        (item.get("kind") != "file" or os.path.exists(item.get("path", "")))
+
+
+def prune(items):
+    """Drops old items and those whose file is gone, in place; a file left for the phone goes with its item."""
+    for it in [i for i in items if not alive(i)]:
+        drop_file(it)
+        items.remove(it)
+    return items
+
+
+def drop_file(item):
+    """The copy of a file left for the phone (a file from the phone stays in Downloads)."""
+    if item.get("kind") == "file" and item.get("to") == "phone":
+        shutil.rmtree(os.path.dirname(item["path"]), ignore_errors=True)
+
+
+def new_item(**kw):
+    return dict(kw, id=secrets.token_hex(6), time=time.time())
+
+
+def safe_name(name):
+    name = re.sub(r'[\x00-\x1f/\\]', "", os.path.basename(name.replace("\\", "/"))).strip().lstrip(".")
+    return name[:200] or "file"
+
+
+def unique(path):
+    base, ext = os.path.splitext(path)
+    n = 1
+    while os.path.exists(path) or os.path.exists(path + ".part"):
+        n += 1
+        path = f"{base} ({n}){ext}"
+    return path
+
+
+def public(item):
+    """An item as the page and the menu see it (no paths for the page)."""
+    d = {k: item[k] for k in ("id", "to", "kind", "time") if k in item}
+    for k in ("text", "name", "size", "type", "from", "seen"):
+        if k in item:
+            d[k] = item[k]
+    return d
+
+
+def file_paths(paths):
+    out = []
+    for p in paths:
+        p = os.path.abspath(p)
+        if os.path.isdir(p):
+            for root, _, names in os.walk(p):
+                out += [os.path.join(root, n) for n in sorted(names) if not n.startswith(".")]
+        elif os.path.isfile(p):
+            out.append(p)
+    return out
+
+
+def add_files(paths):
+    """Leaves files for the phone: a hard link when possible (no copy of a big video), a copy otherwise."""
+    files = file_paths(paths)
+    if not files:
+        return 1
+    added = []
+    for src in files:
+        it = new_item(to="phone", kind="file", name=safe_name(os.path.basename(src)), size=os.path.getsize(src),
+                      type=mimetypes.guess_type(src)[0] or "application/octet-stream")
+        d = os.path.join(STATE, "files", it["id"])
+        os.makedirs(d, exist_ok=True)
+        it["path"] = os.path.join(d, it["name"])
+        try:
+            os.link(src, it["path"])
+        except OSError:
+            shutil.copy2(src, it["path"])
+        added.append(it)
+    with box(write=True) as items:
+        items += added
+    what = added[0]["name"] if len(added) == 1 else f"{len(added)} files"
+    notify(f"{what} is waiting for the phone", "")   # files dropped on the bar icon get no other answer
+    push_all("From " + alias(), what)
+    return 0
+
+
+def add_text(text):
+    if not text.strip():
+        return 1
+    text = text[:MAX_TEXT]
+    with box(write=True) as items:
+        items.append(new_item(to="phone", kind="text", text=text))
+    push_all("From " + alias(), text[:180])
+    return 0
+
+
+def find(item_id):
+    with box() as items:
+        return next((i for i in items if i["id"] == item_id), None)
+
+
+def remove(item_id):
+    with box(write=True) as items:
+        for it in [i for i in items if i["id"] == item_id]:
+            drop_file(it)
+            items.remove(it)
+
+
+# --- Web Push (RFC 8030 / 8291 / 8292) ------------------------------------------------------------------------------
+# python3-cryptography does the elliptic curves and AES-GCM; the rest (aes128gcm framing, VAPID's JWT) is small enough to
+# write here. Fedora has no pywebpush. Without the module everything else still works, only without notifications.
+def b64u(b):
+    return base64.urlsafe_b64encode(b).rstrip(b"=").decode()
+
+
+def unb64u(s):
+    return base64.urlsafe_b64decode(s + "=" * (-len(s) % 4))
+
+
+def vapid_key(create=False):
+    """The VAPID key (P-256), made on the first run; None without python3-cryptography."""
+    try:
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric import ec
+    except ImportError:
+        return None
+    path = os.path.join(STATE, "vapid.pem")
+    if not os.path.exists(path):
+        if not create:
+            return None
+        os.makedirs(STATE, mode=0o700, exist_ok=True)
+        pem = ec.generate_private_key(ec.SECP256R1()).private_bytes(
+            serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption())
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, "wb") as f:
+            f.write(pem)
+    with open(path, "rb") as f:
+        return serialization.load_pem_private_key(f.read(), None)
+
+
+def point(key):
+    from cryptography.hazmat.primitives import serialization
+    return key.public_key().public_bytes(serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint)
+
+
+def hkdf(salt, ikm, info, n):
+    """HKDF-SHA256 with one output block, which is all Web Push needs."""
+    prk = hmac.new(salt, ikm, hashlib.sha256).digest()
+    return hmac.new(prk, info + b"\x01", hashlib.sha256).digest()[:n]
+
+
+def encrypt(payload, p256dh, auth):
+    """The push message encrypted for one subscription (RFC 8291, aes128gcm with a single record)."""
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    ua_pub, secret = unb64u(p256dh), unb64u(auth)
+    ua = ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256R1(), ua_pub)
+    eph = ec.generate_private_key(ec.SECP256R1())
+    as_pub = point(eph)
+    ikm = hkdf(secret, eph.exchange(ec.ECDH(), ua), b"WebPush: info\x00" + ua_pub + as_pub, 32)
+    salt = os.urandom(16)
+    cek = hkdf(salt, ikm, b"Content-Encoding: aes128gcm\x00", 16)
+    nonce = hkdf(salt, ikm, b"Content-Encoding: nonce\x00", 12)
+    body = AESGCM(cek).encrypt(nonce, payload + b"\x02", None)   # \x02: the last (only) record's padding delimiter
+    return salt + struct.pack("!IB", 4096, len(as_pub)) + as_pub + body
+
+
+def vapid_auth(key, endpoint):
+    """The Authorization header: a JWT signed with the VAPID key for the push service's origin (RFC 8292)."""
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature
+    u = urllib.parse.urlsplit(endpoint)
+    head = b64u(json.dumps({"typ": "JWT", "alg": "ES256"}).encode())
+    claims = b64u(json.dumps({"aud": f"{u.scheme}://{u.netloc}", "exp": int(time.time()) + 3600,
+                              "sub": PUSH_CONTACT}).encode())
+    signing = f"{head}.{claims}".encode()
+    r, s = decode_dss_signature(key.sign(signing, ec.ECDSA(hashes.SHA256())))
+    jwt = signing.decode() + "." + b64u(r.to_bytes(32, "big") + s.to_bytes(32, "big"))
+    return f"vapid t={jwt}, k={b64u(point(key))}"
+
+
+def subscriptions(change=None):
+    """The phone's push subscriptions; change(list) edits them under the box's lock."""
+    path = os.path.join(STATE, "push.json")
+    with box(write=change is not None):
+        try:
+            with open(path) as f:
+                subs = json.load(f)
+        except (OSError, ValueError):
+            subs = []
+        if change:
+            change(subs)
+            tmp = path + ".tmp"
+            fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            with os.fdopen(fd, "w") as f:
+                json.dump(subs, f)
+            os.replace(tmp, path)
+        return subs
+
+
+def push_all(title, body):
+    """A notification on every subscribed phone. A subscription the push service no longer knows (404/410) goes."""
+    key = vapid_key()
+    subs = subscriptions() if key else []
+    gone = []
+    payload = json.dumps({"title": title, "body": body, "url": MOUNT + "/"}, ensure_ascii=False).encode()[:3000]
+    for sub in subs:
+        try:
+            data = encrypt(payload, sub["keys"]["p256dh"], sub["keys"]["auth"])
+            req = urllib.request.Request(sub["endpoint"], data, method="POST", headers={
+                "Authorization": vapid_auth(key, sub["endpoint"]), "TTL": str(KEEP_DAYS * 86400),
+                "Content-Encoding": "aes128gcm", "Content-Type": "application/octet-stream", "Urgency": "high"})
+            urllib.request.urlopen(req, timeout=10).read()
+        except urllib.error.HTTPError as e:
+            print(f"push to {urllib.parse.urlsplit(sub['endpoint']).netloc}: {e.code} {e.read()[:200]!r}",
+                  file=sys.stderr)
+            if e.code in (404, 410):
+                gone.append(sub["endpoint"])
+        except (OSError, KeyError, ValueError) as e:
+            print(f"push failed: {e!r}", file=sys.stderr)
+    if gone:
+        subscriptions(lambda s: s.__setitem__(slice(None), [x for x in s if x["endpoint"] not in gone]))
+
+
+# --- The server -----------------------------------------------------------------------------------------------------
+STATIC = {"/manifest.webmanifest": "application/manifest+json", "/sw.js": "text/javascript",
+          "/icon.svg": "image/svg+xml", "/icon-180.png": "image/png", "/icon-192.png": "image/png",
+          "/icon-512.png": "image/png"}
+
+
+class Ferry:
+    def __init__(self):
+        self.tailnet = Tailnet()
+        self.key = vapid_key(create=True)
+        self.recent = (0.0, [], "")      # (when, file paths, notification id): files from the phone in one notification
+        self.lock = threading.Lock()
+
+    def received_text(self, text, who):
+        with box(write=True) as items:
+            items.append(new_item(to="computer", kind="text", text=text, seen=False, **{"from": who}))
+        notify(f"Text from {who}", text[:300], {"copy": ("Copy", lambda: subprocess.run(["wl-copy", "--", text]))})
+        refresh_bar()
+
+    def received_file(self, path, size, kind, who):
+        with box(write=True) as items:
+            items.append(new_item(to="computer", kind="file", name=os.path.basename(path), size=size, type=kind,
+                                  path=path, seen=False, **{"from": who}))
+        with self.lock:
+            when, paths, nid = self.recent
+            paths = (paths if time.monotonic() - when < GROUP_NOTIFY else []) + [path]
+            self.recent = (time.monotonic(), paths, "")
+        if nid:
+            subprocess.run(["gdbus", "call", "--session", "--dest", "org.freedesktop.Notifications", "--object-path",
+                            "/org/freedesktop/Notifications", "--method",
+                            "org.freedesktop.Notifications.CloseNotification", nid], capture_output=True)
+        title = f"Received {os.path.basename(path)}" if len(paths) == 1 else f"Received {len(paths)} files"
+        first = paths[0]
+        nid = notify(title, f"From {who} · {os.path.basename(os.path.dirname(path))}", {
+            "default": ("Open", lambda: subprocess.Popen(["xdg-open", first if len(paths) == 1 else os.path.dirname(first)])),
+            "show": ("Show in Files", lambda: subprocess.Popen(["nautilus", "--select", first]))})
+        with self.lock:
+            if self.recent[1] is paths:
+                self.recent = (self.recent[0], paths, nid)
+        refresh_bar()
+
+
+def handler(app):
+    class Handler(BaseHTTPRequestHandler):
+        protocol_version = "HTTP/1.1"
+        server_version = "Ferry"
+
+        def log_message(self, fmt, *a):
+            print(f"{self.headers.get('X-Forwarded-For', '-') if self.headers else '-'} {fmt % a}", flush=True)
+
+        def unread(self):
+            """A request body not read yet: answering without it, the connection has to close, or tailscale serve,
+            which keeps its connection to us open, would send the next request after the leftover body."""
+            if getattr(self, "consumed", False):
+                return False
+            return int(self.headers.get("Content-Length") or 0) > 0 or \
+                "chunked" in (self.headers.get("Transfer-Encoding") or "").lower()
+
+        def send(self, code, body=b"", kind="application/json", headers=None):
+            if self.unread():
+                self.close_connection = True
+                headers = dict(headers or {}, Connection="close")
+            if isinstance(body, (dict, list)):
+                body = json.dumps(body, ensure_ascii=False).encode()
+            elif isinstance(body, str):
+                body, kind = body.encode(), "text/plain; charset=utf-8"
+            self.send_response(code)
+            self.send_header("Content-Type", kind)
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-cache")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            for k, v in (headers or {}).items():
+                self.send_header(k, v)
+            self.end_headers()
+            if self.command != "HEAD":
+                self.wfile.write(body)
+
+        def who(self):
+            """The asking device's name on the tailnet (tailscale serve gives its address)."""
+            ip = (self.headers.get("X-Forwarded-For") or "").split(",")[0].strip()
+            return app.tailnet.device(ip) or "your phone"
+
+        def gate(self, api):
+            """Only the machine's owner, and for the API only the page itself (see the module's notes)."""
+            if not app.tailnet.allowed(self.headers.get("Tailscale-User-Login", "")):
+                self.send(403, "Ferry answers only its computer's owner, through Tailscale.")
+                return False
+            if api and (self.headers.get("X-Ferry") != "1" or
+                        self.headers.get("Sec-Fetch-Site", "same-origin") not in ("same-origin", "none")):
+                self.send(403, "Not from the Ferry page")
+                return False
+            return True
+
+        def route(self):
+            self.consumed = False   # per request: the handler serves every request of a kept-alive connection
+            u = urllib.parse.urlsplit(self.path)
+            path = u.path
+            if path == MOUNT or path.startswith(MOUNT + "/"):   # in case tailscale serve leaves the mount point on
+                path = path[len(MOUNT):] or "/"
+            return path, dict(urllib.parse.parse_qsl(u.query))
+
+        def read_body(self, limit):
+            n = int(self.headers.get("Content-Length") or 0)
+            if n > limit:
+                raise ValueError("too big")
+            self.consumed = True
+            return self.rfile.read(n)
+
+        def body(self, limit):
+            """The request body in pieces: a Content-Length, or chunked."""
+            self.consumed = True   # partly read is unread too: an error ends the connection (upload())
+            if "chunked" in (self.headers.get("Transfer-Encoding") or "").lower():
+                total = 0
+                while True:
+                    size = int(self.rfile.readline(1024).split(b";")[0].strip() or b"x", 16)
+                    if size == 0:
+                        while self.rfile.readline(1024).strip():
+                            pass
+                        return
+                    total += size
+                    if total > limit:
+                        raise ValueError("too big")
+                    while size > 0:
+                        chunk = self.rfile.read(min(CHUNK, size))
+                        if not chunk:
+                            raise OSError("connection closed")
+                        size -= len(chunk)
+                        yield chunk
+                    self.rfile.readline(1024)
+            else:
+                left = int(self.headers.get("Content-Length") or 0)
+                while left > 0:
+                    chunk = self.rfile.read(min(CHUNK, left))
+                    if not chunk:
+                        raise OSError("connection closed")
+                    left -= len(chunk)
+                    yield chunk
+
+        def do_HEAD(self):
+            self.do_GET()
+
+        def do_GET(self):
+            path, q = self.route()
+            if not self.gate(api=path.startswith("/api/") and not path.startswith("/api/file/")):
+                return
+            if path == "/":
+                with open(os.path.join(WEB, "index.html"), encoding="utf-8") as f:
+                    page = f.read().replace("%BASE%", MOUNT + "/")
+                self.send(200, page.encode(), "text/html; charset=utf-8")
+            elif path in STATIC:
+                try:
+                    with open(os.path.join(WEB, path.lstrip("/")), "rb") as f:
+                        self.send(200, f.read(), STATIC[path])
+                except OSError:
+                    self.send(404, "Not found")
+            elif path == "/api/items":
+                with box() as items:
+                    out = [public(i) for i in items]
+                self.send(200, {"computer": alias(), "items": out, "keep": KEEP_DAYS,
+                                "push": b64u(point(app.key)) if app.key else None})
+            elif path.startswith("/api/file/"):
+                it = find(path.rsplit("/", 1)[1])
+                if not it or it.get("kind") != "file":
+                    return self.send(404, "Not in the box any more")
+                self.file(it, q.get("download") == "1")
+            else:
+                self.send(404, "Not found")
+
+        def file(self, it, attachment):
+            try:
+                f = open(it["path"], "rb")
+            except OSError:
+                return self.send(404, "The file is gone")
+            with f:
+                size = os.fstat(f.fileno()).st_size
+                quoted = urllib.parse.quote(it["name"])
+                self.send_response(200)
+                self.send_header("Content-Type", it.get("type") or "application/octet-stream")
+                self.send_header("Content-Length", str(size))
+                self.send_header("Content-Disposition", f"{'attachment' if attachment else 'inline'}; "
+                                                        f"filename*=UTF-8''{quoted}")
+                self.send_header("Cache-Control", "no-cache")
+                self.end_headers()
+                if self.command == "HEAD":
+                    return
+                shutil.copyfileobj(f, self.wfile, CHUNK)
+
+        def do_POST(self):
+            path, q = self.route()
+            if not self.gate(api=True):
+                return
+            try:
+                if path == "/api/text":
+                    body = json.loads(self.read_body(MAX_TEXT * 2) or b"{}")
+                    text = str(body.get("text") or "")
+                    if not text.strip():
+                        return self.send(400, "Empty text")
+                    app.received_text(text[:MAX_TEXT], self.who())
+                    self.send(200, {"ok": True})
+                elif path == "/api/upload":
+                    self.upload(q)
+                elif path == "/api/remove":
+                    remove(q.get("id", ""))
+                    refresh_bar()
+                    self.send(200, {"ok": True})
+                elif path == "/api/subscribe":
+                    sub = json.loads(self.read_body(8192) or b"{}")
+                    if not (str(sub.get("endpoint", "")).startswith("https://") and
+                            (sub.get("keys") or {}).get("p256dh") and (sub.get("keys") or {}).get("auth")):
+                        return self.send(400, "Not a push subscription")
+                    entry = {"endpoint": sub["endpoint"], "keys": {"p256dh": sub["keys"]["p256dh"],
+                             "auth": sub["keys"]["auth"]}, "device": self.who(), "time": time.time()}
+                    subscriptions(lambda s: s.__setitem__(
+                        slice(None), [x for x in s if x["endpoint"] != entry["endpoint"]] + [entry]))
+                    self.send(200, {"ok": True})
+                elif path == "/api/unsubscribe":
+                    end = str(json.loads(self.read_body(8192) or b"{}").get("endpoint", ""))
+                    subscriptions(lambda s: s.__setitem__(slice(None), [x for x in s if x["endpoint"] != end]))
+                    self.send(200, {"ok": True})
+                elif path == "/api/test-push":
+                    if not app.key:
+                        return self.send(503, "Notifications need python3-cryptography on the computer")
+                    push_all(APP, "Notifications work")
+                    self.send(200, {"ok": True})
+                else:
+                    self.send(404, "Not found")
+            except ValueError:
+                self.send(400, "Bad request")
+
+        def upload(self, q):
+            n = int(self.headers.get("Content-Length") or 0)
+            if n > MAX_FILE:
+                return self.send(413, f"Too big: {human(MAX_FILE)} at most")
+            dest = downloads()
+            os.makedirs(dest, exist_ok=True)
+            path = unique(os.path.join(dest, safe_name(q.get("name", "file"))))
+            part, size = path + ".part", 0
+            try:
+                with open(part, "wb") as out:
+                    for chunk in self.body(MAX_FILE):
+                        out.write(chunk)
+                        size += len(chunk)
+            except (OSError, ValueError) as e:
+                print(f"upload of {path} failed: {e!r}", flush=True)
+                with contextlib.suppress(OSError):
+                    os.remove(part)
+                self.consumed = False
+                return self.send(400, "Upload failed")
+            os.replace(part, path)
+            kind = q.get("type") or mimetypes.guess_type(path)[0] or "application/octet-stream"
+            app.received_file(path, size, kind, self.who())
+            self.send(200, {"ok": True, "name": os.path.basename(path)})
+    return Handler
+
+
+class Server(ThreadingHTTPServer):
+    daemon_threads = True
+    allow_reuse_address = True
+
+    def handle_error(self, request, client_address):
+        print(f"connection error: {sys.exc_info()[1]!r}", flush=True)   # a phone gone mid-request
+
+
+def run():
+    app = Ferry()
+    server = Server(("127.0.0.1", PORT), handler(app))
+    print(f"Ferry on 127.0.0.1:{PORT}{'' if app.key else ' (no Web Push: python3-cryptography is missing)'}",
+          flush=True)
+    server.serve_forever()
+
+
+# --- Commands -------------------------------------------------------------------------------------------------------
+def systemctl(*a):
+    return subprocess.run(["systemctl", "--user", *a], capture_output=True, text=True)
+
+
+def status():
+    return "on" if systemctl("is-enabled", "-q", SERVICE).returncode == 0 else "off"
+
+
+def serve(on):
+    """Publishes the server on the tailnet (tailscale serve; kept across reboots by tailscaled), or stops that."""
+    args = [f"--https={HTTPS_PORT}", f"--set-path={MOUNT}"]
+    cmd = ["tailscale", "serve", "--bg", *args, f"http://127.0.0.1:{PORT}"] if on else \
+        ["tailscale", "serve", *args, "off"]
+    try:
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return str(e)
+    out = (res.stdout + res.stderr).strip()
+    if res.returncode == 0:
+        return ""
+    if re.search(r"denied|operator", out, re.I):
+        return "Tailscale needs permission once: sudo tailscale set --operator=$USER, then: ferry enable"
+    return out.splitlines()[-1] if out else f"tailscale serve failed ({res.returncode})"
+
+
+def listing():
+    st = tailscale_status()
+    with box() as items:
+        out = [dict(public(i), path=i.get("path", "")) for i in items]
+    subs = subscriptions() if os.path.exists(os.path.join(STATE, "push.json")) else []
+    return {"on": systemctl("is-active", "-q", SERVICE).returncode == 0, "tailscale": st.get("BackendState") == "Running",
+            "url": url(st), "serving": serving(), "push": len(subs), "items": out}
+
+
+def qr():
+    u = url()
+    if not u or not shutil.which("qrencode"):
+        return 1
+    os.makedirs(os.path.dirname(QR), exist_ok=True)
+    subprocess.run(["qrencode", "-t", "SVG", "-m", "2", "--foreground=000000", "--background=FFFFFF", "-o", QR, u],
+                   check=True)
+    print(QR)
+    return 0
+
+
+def main():
+    a = sys.argv[1:]
+    cmd = a[0] if a else "status"
+    if cmd == "status":
+        print(status())
+    elif cmd == "enable":
+        if not shutil.which("tailscale"):
+            print("Tailscale is needed: install it from launcher › System › Install › Recommended", file=sys.stderr)
+            return 1
+        if not vapid_key(create=True):
+            print("No python3-cryptography: Ferry works, but without notifications on the phone", file=sys.stderr)
+        systemctl("daemon-reload")
+        res = systemctl("enable", "--now", SERVICE)
+        if res.returncode:
+            print(res.stderr.strip(), file=sys.stderr)
+            return 1
+        err = serve(True)
+        if err:
+            print(err, file=sys.stderr)
+            return 1
+        print(url() or "Ferry is on; Tailscale is off, so the page has no address yet")
+    elif cmd == "disable":
+        systemctl("disable", "--now", SERVICE)
+        err = serve(False)
+        if err:
+            print(err, file=sys.stderr)
+    elif cmd == "run":
+        run()
+    elif cmd == "url":
+        u = url()
+        print(u)
+        return 0 if u else 1
+    elif cmd == "list":
+        print(json.dumps(listing(), ensure_ascii=False))
+    elif cmd == "add" and len(a) > 1:
+        return add_files(a[1:])
+    elif cmd == "text" and len(a) > 1:
+        return add_text(" ".join(a[1:]))
+    elif cmd == "send-clipboard":
+        text = subprocess.run(["wl-paste", "--no-newline", "--type", "text"], capture_output=True, text=True).stdout
+        if add_text(text):
+            notify("The clipboard has no text", "Copy a text or a link first")
+            return 1
+    elif cmd in ("copy", "open", "remove") and len(a) > 1:
+        it = find(a[1])
+        if not it:
+            return 1
+        if cmd == "remove":
+            remove(it["id"])
+        elif cmd == "copy" and it.get("kind") == "text":
+            subprocess.run(["wl-copy", "--", it["text"]])
+        elif cmd == "open" and it.get("kind") == "file":
+            subprocess.Popen(["xdg-open", it["path"]])
+    elif cmd == "seen":
+        with box(write=True) as items:
+            for it in items:
+                if it.get("to") == "computer":
+                    it["seen"] = True
+    elif cmd == "qr":
+        return qr()
+    else:
+        print(__doc__.split("\n\n")[1], file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

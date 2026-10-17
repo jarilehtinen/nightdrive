@@ -18,6 +18,7 @@ thunderbird|Thunderbird|mail|Email (⌘⇧I)|off|sudo dnf install -y thunderbird
 apostrophe|Apostrophe|file-text|Markdown editor (Flatpak), opens .md files|off|install-apostrophe.sh|flatpak info --user org.gnome.gitlab.somas.Apostrophe|recommended
 deck|Deck|disc-3|Spotify player (needs Premium), launcher and top bar; compiled|on|install-deck.sh|test -x ~/.local/bin/deck|recommended
 localsend|LocalSend|smartphone|Files from phones via the LocalSend app, asks first (experimental)|off|sudo dnf install -y openssl nautilus-python zenity && config/hypr/scripts/localsend enable|systemctl --user -q is-enabled nightdrive-localsend.service|plugin
+ferry|Ferry|inbox|Files and text both ways with an iPhone over Tailscale, no app (experimental)|off|sudo dnf install -y python3-cryptography qrencode && config/hypr/scripts/ferry enable|systemctl --user -q is-enabled nightdrive-ferry.service|plugin
 mirroring|Screen Mirroring|screen-share|AirPlay to an Apple TV (doubletake, experimental; compiled)|off|install-doubletake.sh|test -x ~/.local/bin/doubletake|plugin
 airplay-receiver|AirPlay Receiver|cast|Mirror an iPhone, iPad or Mac here (UxPlay, experimental)|off|install-airplay-receiver.sh|systemctl --user -q is-enabled nightdrive-airplay.service|plugin
 airdrop|AirDrop|radio|AirDrop's Wi-Fi link (AWDL) on M1/M2 Macs; receiving comes later (experimental, restart after)|off|install-airdrop.sh|systemctl -q is-enabled awdl0.service|plugin

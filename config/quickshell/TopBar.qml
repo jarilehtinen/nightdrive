@@ -63,7 +63,8 @@ Singleton {
     readonly property var moduleLabels: ({ deck: ["Music (Deck)", "music"], claude: ["Claude usage", "gauge"], system: ["CPU and memory", "cpu"],
                                            tailscale: ["Tailscale", "shield-check"], bluetooth: ["Bluetooth", "bluetooth"], wifi: ["Wi-Fi", "wifi"],
                                            volume: ["Volume", "volume-2"], headphones: ["Headphones", "headphones"], display: ["Display", "monitor"], battery: ["Battery", "battery-medium"],
-                                           calendar: ["Date and time", "clock"], notifications: ["Notifications", "menu"] })
+                                           calendar: ["Date and time", "clock"], notifications: ["Notifications", "menu"],
+                                           ferry: ["Ferry (phone mailbox)", "inbox"] })
     function moduleLabel(m) { return m.label || (moduleLabels[m.name] || [])[0] || m.name.charAt(0).toUpperCase() + m.name.slice(1) }
     function moduleGlyph(m) { return (moduleLabels[m.name] || [])[1] || "panel-top" }
     property var states: ({})          // name -> {icon, text, class}
@@ -115,9 +116,10 @@ Singleton {
         if (!name) svgs = ({})
         for (const k in runners) if (!name || k === name) runners[k].run()
     }
-    // Right / middle click: the module's command, then an update of the module
-    function run(cmd, name) {
-        const p = cmdProc.createObject(tb, { command: ["bash", "-c", cmd], name: name })
+    // Right / middle click: the module's command, then an update of the module. args: extra arguments ("$@"), e.g.
+    // the files dropped on it
+    function run(cmd, name, args) {
+        const p = cmdProc.createObject(tb, { command: ["bash", "-c", args ? cmd + ' "$@"' : cmd, "_"].concat(args || []), name: name })
         p.running = true
     }
     Component {

@@ -1,0 +1,439 @@
+<!doctype html>
+<!-- Ferry's page for the phone (served by hypr/scripts/ferry, which fills in %BASE%: the path tailscale serve mounts it at).
+     Everything is relative to it, so the page works under any mount point. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<base href="%BASE%">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0b0d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ferry">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<title>Ferry</title>
+<style>
+  /* Nightdrive's menu colours (quickshell/Theme.qml, the violet theme) */
+  :root {
+    --bg: #0b0b0d; --card: #16121b; --hover: #1f1528; --sel: #35253d; --border: #3a2f45;
+    --text: #c9bdd3; --dim: #9486a3; --accent: #e0bff2; --primary: #c071eb;
+    --danger: #f7768e; --ok: #9ece6a; --warning: #ff9e64;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); }
+  body {
+    font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    padding: calc(env(safe-area-inset-top) + 14px) calc(env(safe-area-inset-right) + 16px)
+             calc(env(safe-area-inset-bottom) + 24px) calc(env(safe-area-inset-left) + 16px);
+    max-width: 640px; margin: 0 auto;
+  }
+  header { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+  header img { width: 30px; height: 30px; border-radius: 7px; }
+  h1 { font-size: 20px; margin: 0; color: var(--accent); letter-spacing: .02em; }
+  .status { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--dim); min-height: 22px; margin: 2px 0 14px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dim); flex: none; }
+  .status.ok .dot { background: var(--ok); }
+  .status.bad .dot { background: var(--danger); }
+  .status.wait .dot { animation: blink 1s infinite; }
+  @keyframes blink { 50% { opacity: .2; } }
+  .banner { background: #2a1520; border: 1px solid #5a2a3a; color: var(--text); border-radius: 12px; padding: 12px 14px;
+            margin: 0 0 14px; font-size: 14px; }
+  .banner b { color: var(--danger); }
+  .banner.info { background: var(--card); border-color: var(--border); }
+  .banner.info b { color: var(--accent); }
+  .banner button { margin-top: 10px; }
+  section { margin: 0 0 18px; }
+  h2 { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--primary);
+       margin: 18px 0 8px; display: flex; justify-content: space-between; }
+  h2 span { color: var(--dim); font-weight: 400; letter-spacing: 0; text-transform: none; }
+  textarea { width: 100%; min-height: 76px; resize: vertical; background: var(--card); color: var(--text);
+             border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; font: inherit; font-size: 16px; }
+  textarea:focus { outline: none; border-color: var(--primary); }
+  .row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  button, .btn { appearance: none; border: 0; border-radius: 10px; padding: 10px 14px; font: inherit; font-size: 15px;
+                 background: var(--sel); color: var(--accent); cursor: pointer; text-decoration: none;
+                 display: inline-flex; align-items: center; gap: 6px; }
+  button.primary, .btn.primary { background: var(--primary); color: #12081a; font-weight: 600; }
+  button:active, .btn:active { opacity: .7; }
+  button:disabled { opacity: .45; }
+  button.small { padding: 6px 10px; font-size: 14px; }
+  button.icon { background: transparent; color: var(--dim); padding: 6px 8px; font-size: 18px; line-height: 1; }
+  .grow { flex: 1; justify-content: center; }
+  input[type=file] { display: none; }
+  .progress { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; margin-top: 10px; display: none; }
+  .progress div { height: 100%; width: 0; background: var(--primary); transition: width .2s; }
+  .note { font-size: 13px; color: var(--dim); margin-top: 6px; min-height: 18px; }
+  .note.err { color: var(--danger); }
+  .item { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; }
+  .item.new { border-color: var(--primary); }
+  .item .top { display: flex; align-items: flex-start; gap: 10px; }
+  .item .body { flex: 1; min-width: 0; }
+  .item .name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .item .text { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 7.2em; overflow: hidden; }
+  .item .meta { font-size: 12px; color: var(--dim); margin-top: 2px; }
+  .item .thumb { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; background: var(--sel); flex: none; }
+  .item .kind { width: 48px; height: 48px; border-radius: 8px; background: var(--sel); color: var(--accent); flex: none;
+                display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+  .item .row { margin-top: 8px; }
+  .empty { color: var(--dim); font-size: 14px; padding: 4px 2px; }
+  .offline .live { opacity: .45; pointer-events: none; }
+  footer { font-size: 12px; color: var(--dim); margin-top: 26px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<header><img src="icon-180.png" alt=""><h1>Ferry</h1></header>
+<div class="status wait" id="status"><span class="dot"></span><span id="statusText">Connecting…</span></div>
+<div class="banner" id="offline" hidden></div>
+<div class="banner info" id="pushHint" hidden></div>
+
+<div class="live">
+  <section>
+    <h2>From the computer <span id="toPhoneCount"></span></h2>
+    <div id="toPhone"></div>
+  </section>
+
+  <section>
+    <h2>To the computer</h2>
+    <textarea id="text" placeholder="Text or a link" autocomplete="off" autocapitalize="off"></textarea>
+    <div class="row">
+      <button class="primary grow" id="sendText" disabled>Send text</button>
+      <button class="grow" id="sendClip">Send clipboard</button>
+    </div>
+    <div class="row">
+      <label class="btn grow" for="files">Send photos or files</label>
+      <input type="file" id="files" multiple>
+    </div>
+    <div class="progress" id="progress"><div></div></div>
+    <div class="note" id="note"></div>
+  </section>
+
+  <section>
+    <h2>Sent from here <span id="toComputerCount"></span></h2>
+    <div id="toComputer"></div>
+  </section>
+</div>
+
+<footer id="footer"></footer>
+
+<script>
+"use strict"
+const $ = id => document.getElementById(id)
+const POLL = 5000              // ms between updates while the page is visible
+const TIMEOUT = 8000           // ms before the computer counts as unreachable
+const PREFETCH = 30e6          // bytes: files up to this size are fetched ahead, so Save can share them at once (iOS wants
+                               // navigator.share() right in the tap, not after a download)
+const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true
+const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+
+let computer = localStorage.getItem("ferry.computer") || "the computer"
+let pushKey = null
+let items = []
+let shown = "", shownAt = 0      // what was last drawn: a poll redraws only when something changed (or the ages did)
+const blobs = new Map()        // item id -> File, fetched ahead
+const seenIds = new Set(JSON.parse(localStorage.getItem("ferry.seen") || "[]"))
+
+function el(tag, props = {}, ...kids) {
+  const e = document.createElement(tag)
+  for (const [k, v] of Object.entries(props)) {
+    if (k === "class") e.className = v
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v)
+    else if (k in e) e[k] = v
+    else e.setAttribute(k, v)
+  }
+  for (const k of kids) if (k != null) e.append(k)
+  return e
+}
+
+async function api(path, opts = {}) {
+  const ctl = new AbortController()
+  const t = setTimeout(() => ctl.abort(), opts.timeout || TIMEOUT)
+  try {
+    const r = await fetch(path, { ...opts, signal: ctl.signal, cache: "no-store",
+                                  headers: { "X-Ferry": "1", ...(opts.headers || {}) } })
+    if (!r.ok) { const e = new Error(await r.text().catch(() => "") || r.statusText); e.status = r.status; throw e }
+    return r
+  } finally { clearTimeout(t) }
+}
+
+function setStatus(kind, text) {
+  $("status").className = "status " + kind
+  $("statusText").textContent = text
+}
+
+// Unreachable: say why it may be, and keep trying. The page itself comes from the service worker's cache then.
+function offline(err) {
+  document.body.classList.add("offline")
+  let what, why
+  if (err && err.status === 403) {
+    what = "Not allowed"
+    why = "Ferry answers only the Tailscale user who owns " + computer + "."
+  } else if (err && err.status === 502) {
+    what = "Ferry isn't running on " + computer
+    why = "Tailscale reaches the computer, but the Ferry server is off. Turn it on there: launcher › System › Install › Plugins › Ferry."
+  } else {
+    what = "Can't reach " + computer
+    why = "It may be asleep or turned off, or Tailscale is off on this phone or on the computer. " +
+          "Ferry works only while the computer is awake and both are on Tailscale."
+  }
+  setStatus("bad", what)
+  const b = $("offline")
+  b.replaceChildren(el("b", {}, what), el("div", {}, why),
+                    el("button", { class: "small", onclick: () => { setStatus("wait", "Connecting…"); refresh() } }, "Try again"))
+  b.hidden = false
+}
+
+async function refresh() {
+  try {
+    const j = await (await api("api/items")).json()
+    computer = j.computer || computer
+    localStorage.setItem("ferry.computer", computer)
+    pushKey = j.push
+    items = j.items || []
+    $("footer").textContent = `Things wait here until you remove them, for ${j.keep} days at most. Files from this ` +
+                              "phone go to the computer's Downloads folder."
+    document.body.classList.remove("offline")
+    $("offline").hidden = true
+    setStatus("ok", "Connected to " + computer)
+    const now = JSON.stringify(items)
+    if (now !== shown || Date.now() - shownAt > 60000) { shown = now; shownAt = Date.now(); render() }
+    pushState()
+  } catch (e) {
+    offline(e)
+  }
+}
+
+function ago(t) {
+  const s = Date.now() / 1000 - t
+  if (s < 60) return "just now"
+  if (s < 3600) return Math.floor(s / 60) + " min ago"
+  if (s < 86400) return Math.floor(s / 3600) + " h ago"
+  return Math.floor(s / 86400) + " d ago"
+}
+function size(n) {
+  if (n < 1000) return n + " B"
+  for (const u of ["KB", "MB", "GB"]) { n /= 1000; if (n < 1000 || u === "GB") return n.toFixed(1) + " " + u }
+}
+const isImage = it => /^image\/(jpeg|png|gif|webp|heic|heif|avif)/.test(it.type || "")
+
+function note(text, err) {
+  $("note").textContent = text || ""
+  $("note").className = "note" + (err ? " err" : "")
+}
+
+async function copy(text, btn) {
+  try {
+    await navigator.clipboard.writeText(text)
+  } catch (e) {
+    // Older iOS or no permission: select a hidden field and copy that
+    const t = el("textarea", { value: text, readOnly: true })
+    t.style.position = "fixed"; t.style.opacity = "0"
+    document.body.append(t); t.select(); t.setSelectionRange(0, text.length)
+    const ok = document.execCommand("copy"); t.remove()
+    if (!ok) { btn.textContent = "Can't copy"; return }
+  }
+  const old = btn.textContent
+  btn.textContent = "Copied ✓"
+  setTimeout(() => btn.textContent = old, 1500)
+}
+
+function prefetch(it) {
+  if (blobs.has(it.id) || it.size > PREFETCH || !navigator.canShare) return
+  blobs.set(it.id, null)
+  api("api/file/" + it.id, { timeout: 120000 }).then(r => r.blob())
+    .then(b => blobs.set(it.id, new File([b], it.name, { type: it.type || b.type })))
+    .catch(() => blobs.delete(it.id))
+}
+
+async function save(it, btn) {
+  const f = blobs.get(it.id)
+  if (f && navigator.canShare && navigator.canShare({ files: [f] })) {
+    try { await navigator.share({ files: [f] }) } catch (e) { if (e.name !== "AbortError") note(e.message, true) }
+    return
+  }
+  // Too big to fetch ahead, or no file sharing: the browser's own download
+  location.href = "api/file/" + it.id + "?download=1"
+}
+
+async function removeItem(it) {
+  try { await api("api/remove?id=" + encodeURIComponent(it.id), { method: "POST" }); refresh() }
+  catch (e) { note("Couldn't remove: " + e.message, true) }
+}
+
+function card(it) {
+  const fresh = it.to === "phone" && !seenIds.has(it.id)
+  const del = el("button", { class: "icon", title: "Remove", "aria-label": "Remove", onclick: () => removeItem(it) }, "×")
+  const meta = (it.kind === "file" ? size(it.size) + " · " : "") + ago(it.time) + (it.from ? " · from " + it.from : "")
+  let lead, main, actions = null
+  if (it.kind === "text") {
+    lead = el("div", { class: "kind" }, "TEXT")
+    main = el("div", { class: "text" }, it.text)
+    if (it.to === "phone") {
+      const b = el("button", { class: "primary small", onclick: () => copy(it.text, b) }, "Copy")
+      actions = el("div", { class: "row" }, b)
+      if (/^https?:\/\/\S+$/.test(it.text.trim()))
+        actions.append(el("a", { class: "btn small", href: it.text.trim(), target: "_blank", rel: "noopener" }, "Open link"))
+    }
+  } else {
+    const ext = (it.name.split(".").pop() || "").slice(0, 4).toUpperCase()
+    lead = isImage(it) && it.to === "phone" && it.size < PREFETCH
+      ? el("img", { class: "thumb", src: "api/file/" + it.id, alt: "", loading: "lazy" })
+      : el("div", { class: "kind" }, ext || "FILE")
+    main = el("div", { class: "name" }, it.name)
+    if (it.to === "phone") {
+      prefetch(it)
+      const b = el("button", { class: "primary small", onclick: () => save(it, b) }, isImage(it) ? "Save…" : "Save / share…")
+      actions = el("div", { class: "row" }, b,
+                   el("a", { class: "btn small", href: "api/file/" + it.id, target: "_blank" }, "Open"))
+    }
+  }
+  return el("div", { class: "item" + (fresh ? " new" : "") },
+            el("div", { class: "top" }, lead, el("div", { class: "body" }, main, el("div", { class: "meta" }, meta)), del),
+            actions)
+}
+
+function render() {
+  const toPhone = items.filter(i => i.to === "phone").reverse()
+  const toComputer = items.filter(i => i.to === "computer").reverse()
+  $("toPhone").replaceChildren(...(toPhone.length ? toPhone.map(card)
+    : [el("div", { class: "empty" }, "Nothing yet. On the computer: drop files on Ferry's icon in the top bar, or Send Clipboard in its menu.")]))
+  $("toComputer").replaceChildren(...(toComputer.length ? toComputer.map(card) : [el("div", { class: "empty" }, "Nothing sent.")]))
+  $("toPhoneCount").textContent = toPhone.length ? toPhone.length : ""
+  $("toComputerCount").textContent = toComputer.length ? toComputer.length : ""
+  // Marked as seen once shown: the highlight stays until the next update
+  setTimeout(() => { for (const i of toPhone) seenIds.add(i.id); localStorage.setItem("ferry.seen", JSON.stringify([...seenIds].slice(-200))) }, 3000)
+}
+
+// --- Sending ---
+$("text").addEventListener("input", () => $("sendText").disabled = !$("text").value.trim())
+
+async function sendText(text) {
+  try {
+    await api("api/text", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) })
+    note("Sent to " + computer)
+    refresh()
+    return true
+  } catch (e) { note("Not sent: " + (e.status ? e.message : "can't reach " + computer), true); return false }
+}
+$("sendText").onclick = async () => {
+  if (await sendText($("text").value)) { $("text").value = ""; $("sendText").disabled = true }
+}
+// Reading the clipboard needs a tap: iOS shows a Paste button first. Where it can't (permission, older browsers),
+// the text box takes a paste just as well.
+$("sendClip").onclick = async () => {
+  let text = ""
+  try { text = await navigator.clipboard.readText() } catch (e) {
+    note("Can't read the clipboard here: paste into the box above (tap and hold › Paste) and press Send text.", true)
+    $("text").focus()
+    return
+  }
+  if (!text.trim()) { note("The clipboard has no text", true); return }
+  sendText(text)
+}
+
+$("files").onchange = async () => {
+  const files = [...$("files").files]
+  $("files").value = ""
+  if (!files.length) return
+  const bar = $("progress"), fill = bar.firstElementChild
+  const total = files.reduce((n, f) => n + f.size, 0)
+  let done = 0
+  bar.style.display = "block"
+  for (const [i, f] of files.entries()) {
+    note(files.length > 1 ? `Sending ${i + 1} of ${files.length}: ${f.name}` : "Sending " + f.name)
+    try {
+      await upload(f, sent => fill.style.width = (100 * (done + sent) / Math.max(1, total)) + "%")
+      done += f.size
+    } catch (e) {
+      bar.style.display = "none"
+      note(`${f.name} wasn't sent: ${e.message || "can't reach " + computer}`, true)
+      refresh()
+      return
+    }
+  }
+  bar.style.display = "none"; fill.style.width = "0"
+  note(files.length > 1 ? `Sent ${files.length} files to ${computer}` : `Sent ${files[0].name} to ${computer}`)
+  refresh()
+}
+
+// XMLHttpRequest for the progress (fetch has no upload progress)
+function upload(file, progress) {
+  return new Promise((resolve, reject) => {
+    const x = new XMLHttpRequest()
+    x.open("POST", "api/upload?" + new URLSearchParams({ name: file.name, type: file.type || "" }))
+    x.setRequestHeader("X-Ferry", "1")
+    x.setRequestHeader("Content-Type", "application/octet-stream")
+    x.upload.onprogress = e => progress(e.loaded)
+    x.onload = () => x.status === 200 ? resolve() : reject(new Error(x.responseText || "error " + x.status))
+    x.onerror = () => reject(new Error("can't reach " + computer))
+    x.send(file)
+  })
+}
+
+// --- Notifications (Web Push; on iPhone only in the Home Screen app, iOS 16.4 and later) ---
+function b64(s) {
+  const raw = atob((s + "=".repeat((4 - s.length % 4) % 4)).replace(/-/g, "+").replace(/_/g, "/"))
+  return Uint8Array.from(raw, c => c.charCodeAt(0))
+}
+async function pushState() {
+  const box = $("pushHint")
+  if (!("serviceWorker" in navigator)) { box.hidden = true; return }
+  if (ios && !standalone) {
+    box.replaceChildren(el("b", {}, "Notifications: "), "add Ferry to the Home Screen (Share › Add to Home Screen) " +
+                        "and open it from there. Then you can turn on notifications for what the computer sends.")
+    box.hidden = false
+    return
+  }
+  if (!("PushManager" in window) || !pushKey) { box.hidden = true; return }
+  const reg = await navigator.serviceWorker.ready
+  const sub = await reg.pushManager.getSubscription()
+  if (sub && Notification.permission === "granted") {
+    // Told again on every start: the computer may have lost it, or it may have changed
+    if (!pushState.sent) { pushState.sent = true; api("api/subscribe", { method: "POST", body: JSON.stringify(sub) }).catch(() => {}) }
+    box.hidden = true
+    return
+  }
+  if (Notification.permission === "denied") {
+    box.replaceChildren(el("b", {}, "Notifications are off. "), "Turn them on in Settings › Notifications › Ferry.")
+    box.hidden = false
+    return
+  }
+  box.replaceChildren(el("b", {}, "Get a notification "), "when the computer sends something.",
+                      el("div", {}, el("button", { class: "primary small", onclick: enablePush }, "Turn on notifications")))
+  box.hidden = false
+}
+async function enablePush() {
+  try {
+    // Asked right in the tap: iOS ignores a permission request that comes later
+    const perm = await Notification.requestPermission()
+    if (perm !== "granted") { pushState(); return }
+    const reg = await navigator.serviceWorker.ready
+    const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(pushKey) })
+    await api("api/subscribe", { method: "POST", body: JSON.stringify(sub) })
+    pushState.sent = true
+    await api("api/test-push", { method: "POST" })
+    note("Notifications are on: a test one is on its way")
+  } catch (e) { note("Couldn't turn notifications on: " + e.message, true) }
+  pushState()
+}
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(() => {})
+  navigator.serviceWorker.addEventListener("message", e => { if (e.data === "refresh") refresh() })
+}
+
+let timer = null
+function schedule() {
+  clearInterval(timer)
+  if (document.visibilityState === "visible") timer = setInterval(refresh, POLL)
+}
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") refresh(); schedule() })
+setStatus("wait", "Connecting to " + computer + "…")
+refresh()
+schedule()
+</script>
+</body>
+</html>

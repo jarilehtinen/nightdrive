@@ -10,6 +10,7 @@ Item {
     property bool hasMenu: false
     property real dpr: 1
     signal leftClicked(real centerX)
+    signal dragOver(real centerX)           // files dragged over a module with "drop": its menu opens (Bar.qml)
 
     readonly property string name: def.name
     readonly property var st: TopBar.states[name] || null
@@ -71,6 +72,30 @@ Item {
             font.letterSpacing: mod.def.spacing || 0   // modules.jsonc "spacing"
             x: mod.snap(mod.icon ? img.x + img.width + mod.gap : (mod.width - implicitWidth) / 2)
         }
+    }
+
+    // modules.jsonc "drop": files dropped on the icon go to its command; lingering over it opens the menu, as the shelf
+    // opens under a drag (Shelf.qml)
+    DropArea {
+        id: drop
+        anchors.fill: parent
+        enabled: !!mod.def.drop
+        keys: ["text/uri-list"]
+        onEntered: drag => { drag.accepted = true; dragOpen.restart() }
+        onExited: dragOpen.stop()
+        onDropped: d => {
+            dragOpen.stop()
+            const paths = Array.from(d.urls, u => u.toString()).filter(u => u.startsWith("file://")).map(u => decodeURIComponent(u.slice(7)))
+            if (paths.length) { TopBar.run(mod.def.drop, mod.name, paths); d.acceptProposedAction() }
+        }
+    }
+    Timer { id: dragOpen; interval: 300; onTriggered: if (drop.containsDrag) mod.dragOver(mod.mapToItem(null, mod.width / 2, 0).x) }
+    Rectangle {   // the icon takes the drop: a ring while files are over it
+        anchors.fill: parent
+        radius: 8
+        visible: drop.containsDrag
+        color: "transparent"
+        border { width: 1.5; color: TopBar.c("hlFg") }
     }
 
     MouseArea {

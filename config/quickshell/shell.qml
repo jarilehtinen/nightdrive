@@ -170,6 +170,11 @@ ShellRoot {
         // was lost until the mouse was moved.
         WlrLayershell.keyboardFocus: root.navMode && !root.viaSubmap ? WlrKeyboardFocus.Exclusive : (root.current === "wifi" ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None)
 
+        // A menu dragging a file out (FerryMenu: dragging > 0) takes input only on its card meanwhile, so the drop reaches
+        // the windows below
+        mask: loader.item && loader.item.dragging > 0 ? cardMask : null
+        property Region cardMask: Region { item: card }
+
         // Clicking outside the menu closes it
         MouseArea { anchors.fill: parent; onClicked: root.current = "" }
         Item { id: keyItem; anchors.fill: parent; focus: true; Keys.onEscapePressed: root.current = ""; Keys.onPressed: event => root.navKey(event) }
