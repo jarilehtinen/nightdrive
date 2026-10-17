@@ -6,14 +6,17 @@
 #   ./install.sh               asks which optional parts to install (1Password, Deck, web apps…, plugins.txt) and whether
 #                              to remove the apps Nightdrive doesn't use (packages-remove.txt), then runs unattended:
 #                              removes those, updates the system, installs packages, fonts, the notch setting, links the
-#                              configs, installs the Nightdrive login screen (greetd, password only, active from the next
-#                              boot) and the chosen parts. Home Assistant, if chosen, asks for its address at the end.
+#                              configs, installs the Nightdrive login screen and boot splash (active from the next boot:
+#                              the splash, then the desktop under the login screen as its lock) and the chosen parts.
+#                              Home Assistant, if chosen, asks for its address at the end.
 #                              The removals are on by default only on a fresh system (installed under 3 days ago).
 #   ./install.sh --with deck,1password   these parts on top of the defaults, without asking (ids: --dry-run lists them)
 #   ./install.sh --without youtube       the defaults without these, without asking (--with and --without combine)
 #   ./install.sh --all / --none / --defaults   every optional part / none / the defaults (Default on in plugins.txt)
 #   ./install.sh --dry-run     shows the optional parts, which would be installed and what would be removed, and stops
 #   ./install.sh --no-greeter  keeps the distribution's own login screen (pick "Hyprland" there)
+#   ./install.sh --no-autologin  the Nightdrive login screen before the desktop starts, instead of as its lock
+#   ./install.sh --no-splash   keeps Fedora's boot splash and the GRUB menu
 #   ./install.sh --keep-apps   keeps the KDE apps and system services that are otherwise removed (packages-remove*.txt)
 #   ./install.sh --debloat     removes them also on a system that isn't fresh
 #   ./install.sh --no-kde      removes Plasma entirely (needs the greeter); experimental, see config/greeter/
@@ -25,9 +28,9 @@
 set -euo pipefail
 repo=$(cd "$(dirname "$0")" && pwd)
 FRESH_DAYS=3                     # a system installed less than this many days ago gets the removals by default
-debloat=""; machine=""; nvidia=1; secureboot=0; greeter=1; nokde=0; dry=0   # debloat: 1 | 0, "" = by the system's age; machine: "" = detected
+debloat=""; machine=""; nvidia=1; secureboot=0; greeter=1; autologin=1; splash=1; nokde=0; dry=0   # debloat: 1 | 0, "" = by the system's age; machine: "" = detected
 base=""; with=""; without=""     # base: all | none | defaults, "" = ask
-usage() { sed -n '6,24p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '6,27p' "$0" | sed 's/^# \{0,1\}//'; }
 while (( $# )); do
   case $1 in
     --debloat) debloat=1 ;;
@@ -36,6 +39,8 @@ while (( $# )); do
     --no-nvidia) nvidia=0 ;;
     --greeter) ;;              # the default now; still accepted
     --no-greeter) greeter=0 ;;
+    --no-autologin) autologin=0 ;;
+    --no-splash) splash=0 ;;
     --no-kde) nokde=1 ;;
     --all) base=all ;;
     --none) base=none ;;
@@ -284,9 +289,14 @@ sudo install -Dm644 "$repo/config/system/logind-power-key.conf" /etc/systemd/log
 sudo systemctl kill -s HUP systemd-logind
 
 if (( greeter )); then
+  # Autologin: the desktop starts under the login screen as its lock, so the screen changes hands once at boot
   echo "==> Login screen (greetd + Quickshell); takes effect from the next boot"
   "$repo/config/greeter/install.sh"
-  "$repo/config/greeter/switch.sh" on
+  if (( autologin )); then "$repo/config/greeter/switch.sh" autologin; else "$repo/config/greeter/switch.sh" on; fi
+fi
+if (( splash )); then
+  echo "==> Boot splash (Plymouth, GRUB menu hidden); takes effect from the next boot"
+  "$repo/config/splash/install.sh"
 fi
 
 # Last of the unattended part. One that fails doesn't stop the rest: it's listed at the end, and can be run again from

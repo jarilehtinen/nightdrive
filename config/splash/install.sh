@@ -16,8 +16,12 @@ case ${1:-on} in
     tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
     "$here/images.sh" "$tmp" >/dev/null
     cp "$here/$THEME.plymouth" /usr/share/plymouth/themes/spinner/{bullet,capslock,entry,keyboard,keymap-render,lock}.png "$tmp/"
+    sudo rm -rf /usr/share/plymouth/themes/$THEME   # no files left from an earlier version (the title's watermark.png)
     sudo install -d -m 0755 /usr/share/plymouth/themes/$THEME
     sudo install -m 0644 "$tmp"/* /usr/share/plymouth/themes/$THEME/
+    # What it was drawn from (the git trees): `nightdrive update` installs it again when that changes
+    git -C "$here" rev-parse HEAD:./ HEAD:../greeter/background.jpg 2>/dev/null \
+      | sudo install -m 0644 /dev/stdin /usr/share/plymouth/themes/$THEME/version
     # Device pixels: the images are made for a 2x screen and would be scaled up (blurred) otherwise
     if grep -q '^DeviceScale=' "$CONF" 2>/dev/null; then
       sudo sed -i 's/^DeviceScale=.*/DeviceScale=1/' "$CONF"

@@ -140,6 +140,33 @@ LIST
   (( changed )) && sudo systemctl kill -s HUP systemd-logind
   (( copied )) || echo "    up to date"
 
+  # The login screen's and the boot splash's copies in /etc/greetd and /usr/share/plymouth: installed again when the repo's
+  # differ (their version file: the git tree they came from). An install from before both were the default (18.10.2026)
+  # is asked once whether to turn them on.
+  echo "==> Login screen and boot splash"
+  local asked=$HOME/.local/state/nightdrive/boot-asked did=0 a
+  if systemctl -q is-enabled greetd.service 2>/dev/null; then
+    if ! grep -q '^\[initial_session\]' /etc/greetd/config.toml 2>/dev/null && [[ ! -e $asked && -t 0 ]]; then
+      echo "    New: the boot splash goes straight over to the login screen, with the desktop starting behind it as its lock"
+      echo "    (no black flashes at boot). Turning it on rebuilds the initramfs, which takes a minute or two."
+      read -rp "    Turn it on? [Y/n] " a
+      mkdir -p "${asked%/*}"; echo "${a:-y}" > "$asked"
+      if [[ ! $a =~ ^[Nn] ]]; then
+        "$repo/config/splash/install.sh" | grep -v '^Done'
+        "$repo/config/greeter/switch.sh" autologin >/dev/null
+        did=1
+      fi
+    fi
+    if [[ $(cat /etc/greetd/greeter/version 2>/dev/null) != "$(git -C "$repo/config/greeter" rev-parse HEAD:./ 2>/dev/null)" ]]; then
+      echo "    login screen"; "$repo/config/greeter/install.sh" >/dev/null; did=1
+    fi
+  fi
+  if [[ $(plymouth-set-default-theme 2>/dev/null) == nightdrive ]] &&
+     [[ $(cat /usr/share/plymouth/themes/nightdrive/version 2>/dev/null) != "$(git -C "$repo/config/splash" rev-parse HEAD:./ HEAD:../greeter/background.jpg 2>/dev/null)" ]]; then
+    echo "    boot splash (rebuilds the initramfs, a minute or two)"; "$repo/config/splash/install.sh" >/dev/null; did=1
+  fi
+  (( did )) && echo "    takes effect from the next boot" || echo "    up to date"
+
   echo "==> System update"
   sudo dnf upgrade --refresh -y
 

@@ -180,16 +180,16 @@ After that it runs unattended (sudo asks for the password once at the start); th
 while. Home Assistant, if chosen, asks for its address and token at the very end. Anything you skip can be added later from
 the launcher (System › Install) or with `nightdrive plugins install ID`.
 
-Then **reboot**. The Nightdrive login screen (greetd + Quickshell) starts Hyprland; KDE stays installed as a fallback. If the
-login screen fails, press Ctrl+Alt+F3, log in and run `config/greeter/switch.sh off`.
-
-Experimental: `config/greeter/switch.sh autologin` boots straight into the desktop with the same login screen as its lock,
-so the screen goes from the boot splash to the desktop without the black flashes of a second handover. The login apps
-start after the password. `switch.sh on` goes back to the plain login screen.
+Then **reboot**. The Nightdrive boot splash goes straight over to the Nightdrive login screen (greetd + Quickshell): the
+desktop starts behind it as its lock, so the screen changes hands only once and doesn't flash black. The login apps start
+after the password. KDE stays installed as a fallback. If the login screen fails, press Ctrl+Alt+F3, log in and run
+`config/greeter/switch.sh off`. `switch.sh on` gives the plain login screen that starts the desktop after the password.
 
 | Option | What it changes |
 |---|---|
 | `--no-greeter` | Keeps the KDE login screen; pick **Hyprland** there (not *Hyprland (uwsm-managed)*) |
+| `--no-autologin` | The Nightdrive login screen starts the desktop after the password, instead of being its lock (black flashes at boot) |
+| `--no-splash` | Keeps Fedora's boot splash and the GRUB menu (`config/splash/install.sh off` later) |
 | `--keep-apps` | Keeps the KDE apps, printing, network shares, accessibility tools and other packages listed in `packages-remove.txt` (comment a line out to keep just that one) |
 | `--debloat` | Removes them also on a system that isn't fresh (without a terminal, or with `--defaults` and the like, nothing is asked) |
 | `--no-kde` | Removes Plasma completely (experimental) |
