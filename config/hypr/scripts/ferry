@@ -23,6 +23,12 @@ request is answered only for the Tailscale user who owns this machine (Tailscale
 and a client can't). A custom header on every API call keeps other web pages on the phone from posting here (their
 cross-site request would need a CORS preflight, which isn't answered).
 
+Several computers: each runs its own Ferry, and the page switches between them (the computer's name, top right). The
+page asks its own computer which of the owner's other machines answer at MOUNT (/api/machines) and then talks to the one
+picked directly: a computer answers another one's page (CORS) only if that one belongs to the same owner. A phone's push
+subscription belongs to the computer it added the page from, so the others ask that one to pass their notifications on
+(/api/relay, /api/relay-push).
+
 Kept in STATE: items.json (the box), the files left for the phone (files/), the VAPID key for Web Push (made on the first
 run; python3-cryptography) and the phone's push subscriptions. Files from the phone go to Downloads. Items go after
 KEEP_DAYS days; removing one from the box doesn't delete a file in Downloads.
@@ -155,6 +161,8 @@ class Tailnet:
     """Who may use the page (this machine's owner) and the names of the devices asking, refreshed now and then."""
     def __init__(self):
         self.owner, self.names, self.when = "", {}, 0.0
+        self.hosts = set()      # the owner's machines' tailnet names (this one too)
+        self.machines = []      # the owner's other machines that are online and could run Ferry: their tailnet names
 
     def load(self, force=False):
         if not force and time.monotonic() - self.when < 60:
@@ -164,8 +172,14 @@ class Tailnet:
         users = st.get("User") or {}
         uid = (st.get("Self") or {}).get("UserID")
         self.owner = (users.get(str(uid)) or {}).get("LoginName", "") if uid is not None else ""
+        me = st.get("Self") or {}
+        self.hosts = {(p.get("DNSName") or "").rstrip(".") for p in list((st.get("Peer") or {}).values()) + [me]
+                      if p.get("UserID") == uid and p.get("DNSName")}
+        self.machines = [p["DNSName"].rstrip(".") for p in (st.get("Peer") or {}).values()
+                         if p.get("UserID") == uid and p.get("Online") and p.get("DNSName")
+                         and p.get("OS") not in ("iOS", "android")]
         names = {}
-        for p in list((st.get("Peer") or {}).values()) + [st.get("Self") or {}]:
+        for p in list((st.get("Peer") or {}).values()) + [me]:
             # The tailnet name: an iPhone's HostName is "localhost"
             name = (p.get("DNSName") or "").split(".")[0] or p.get("HostName") or ""
             for ip in p.get("TailscaleIPs") or []:
@@ -177,6 +191,14 @@ class Tailnet:
         if login and login != self.owner:
             self.load(force=True)   # the owner may have just logged in
         return bool(login) and login == self.owner
+
+    def same_owner(self, url):
+        """Whether url (an Origin, a page's address) is on one of the owner's machines."""
+        host = urllib.parse.urlsplit(url).hostname or ""
+        self.load()
+        if host not in self.hosts:
+            self.load(force=True)
+        return url.startswith("https://") and host in self.hosts
 
     def device(self, ip):
         self.load()
@@ -405,12 +427,37 @@ def subscriptions(change=None):
         return subs
 
 
-def push_all(title, body):
-    """A notification on every subscribed phone. A subscription the push service no longer knows (404/410) goes."""
+def relays(change=None):
+    """The computers whose pages the phone was added from (their addresses): they pass this one's notifications on."""
+    path = os.path.join(STATE, "relays.json")
+    with box(write=change is not None):
+        try:
+            with open(path) as f:
+                out = json.load(f)
+        except (OSError, ValueError):
+            out = []
+        if change:
+            change(out)
+            tmp = path + ".tmp"
+            with open(tmp, "w") as f:
+                json.dump(out, f)
+            os.replace(tmp, path)
+        return out
+
+
+def push_all(title, body, machine=""):
+    """A notification on every subscribed phone, and through the relays on the phones that added another computer's
+    page. machine: the address of the computer it is about ("" = this one), so a tap opens the page on it. A
+    subscription the push service no longer knows (404/410) goes."""
+    if not machine:
+        own = url()
+        for via in relays():
+            if via != own:
+                threading.Thread(target=relay_push, args=(via, title, body, own), daemon=True).start()
     key = vapid_key()
     subs = subscriptions() if key else []
     gone = []
-    payload = json.dumps({"title": title, "body": body, "url": MOUNT + "/"}, ensure_ascii=False).encode()[:3000]
+    payload = json.dumps({"title": title, "body": body, "machine": machine}, ensure_ascii=False).encode()[:3000]
     for sub in subs:
         try:
             data = encrypt(payload, sub["keys"]["p256dh"], sub["keys"]["auth"])
@@ -427,6 +474,32 @@ def push_all(title, body):
             print(f"push failed: {e!r}", file=sys.stderr)
     if gone:
         subscriptions(lambda s: s.__setitem__(slice(None), [x for x in s if x["endpoint"] not in gone]))
+    for t in threading.enumerate():   # a command waits for its relays before it exits
+        if t.name == "relay":
+            t.join(10)
+
+
+def relay_push(via, title, body, own):
+    """Asks the computer at via to notify its phones about this one (through Tailscale: it knows who asks)."""
+    threading.current_thread().name = "relay"
+    data = json.dumps({"title": title, "body": body, "machine": own}, ensure_ascii=False).encode()
+    req = urllib.request.Request(via + "api/relay-push", data, method="POST",
+                                 headers={"X-Ferry": "1", "Content-Type": "application/json"})
+    try:
+        urllib.request.urlopen(req, timeout=10).read()
+    except (OSError, ValueError) as e:
+        print(f"relay through {via} failed: {e!r}", file=sys.stderr)
+
+
+def probe(host):
+    """The address and name of Ferry on one of the owner's machines, or None (not running, asleep)."""
+    u = f"https://{host}{'' if HTTPS_PORT == 443 else f':{HTTPS_PORT}'}{MOUNT}/"
+    try:
+        req = urllib.request.Request(u + "api/ping", headers={"X-Ferry": "1"})
+        name = json.loads(urllib.request.urlopen(req, timeout=4).read()).get("computer")
+        return {"url": u, "name": name or host.split(".")[0]}
+    except (OSError, ValueError, AttributeError):
+        return None
 
 
 # --- The server -----------------------------------------------------------------------------------------------------
@@ -441,6 +514,25 @@ class Ferry:
         self.key = vapid_key(create=True)
         self.recent = (0.0, [], "")      # (when, file paths, notification id): files from the phone in one notification
         self.lock = threading.Lock()
+        self.found = (0.0, [])           # (when, [{url, name}]): the owner's other machines running Ferry
+
+    def machines(self):
+        """This computer and the owner's other machines that answer as Ferry, found again after a minute."""
+        when, found = self.found
+        if time.monotonic() - when > 60:
+            self.tailnet.load(force=True)
+            results = [None] * len(self.tailnet.machines)
+
+            def one(i, h):
+                results[i] = probe(h)
+            threads = [threading.Thread(target=one, args=(i, h), daemon=True) for i, h in enumerate(self.tailnet.machines)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join(6)
+            found = sorted((r for r in results if r), key=lambda r: r["name"].lower())
+            self.found = (time.monotonic(), found)
+        return [{"url": url(), "name": alias(), "self": True}] + found
 
     def received_text(self, text, who):
         with box(write=True) as items:
@@ -499,6 +591,9 @@ def handler(app):
             self.send_header("Content-Type", kind)
             self.send_header("Content-Length", str(len(body)))
             headers = dict({"Cache-Control": "no-cache"}, **(headers or {}))
+            origin = self.cors()
+            if origin:
+                headers.update({"Access-Control-Allow-Origin": origin, "Vary": "Origin"})
             self.send_header("X-Content-Type-Options", "nosniff")
             for k, v in headers.items():
                 self.send_header(k, v)
@@ -511,16 +606,32 @@ def handler(app):
             ip = (self.headers.get("X-Forwarded-For") or "").split(",")[0].strip()
             return app.tailnet.device(ip) or "your phone"
 
+        def cors(self):
+            """The asking page's origin if it is another of the owner's machines (its Ferry page switched to this one)."""
+            origin = self.headers.get("Origin") or ""
+            return origin if origin and app.tailnet.same_owner(origin) else ""
+
         def gate(self, api):
-            """Only the machine's owner, and for the API only the page itself (see the module's notes)."""
+            """Only the machine's owner, and for the API only a Ferry page: this one, or one on another of the owner's
+            machines (see the module's notes)."""
             if not app.tailnet.allowed(self.headers.get("Tailscale-User-Login", "")):
                 self.send(403, "Ferry answers only its computer's owner, through Tailscale.")
                 return False
-            if api and (self.headers.get("X-Ferry") != "1" or
-                        self.headers.get("Sec-Fetch-Site", "same-origin") not in ("same-origin", "none")):
+            site = self.headers.get("Sec-Fetch-Site", "same-origin")
+            if api and (self.headers.get("X-Ferry") != "1" or (site not in ("same-origin", "none") and not self.cors())):
                 self.send(403, "Not from the Ferry page")
                 return False
             return True
+
+        def do_OPTIONS(self):
+            """A CORS preflight from the Ferry page on another of the owner's machines."""
+            self.route()
+            origin = self.cors()
+            if not origin or not app.tailnet.allowed(self.headers.get("Tailscale-User-Login", "")):
+                return self.send(403, "Not allowed")
+            self.send(204, b"", "text/plain", {"Access-Control-Allow-Methods": "GET, POST",
+                                              "Access-Control-Allow-Headers": "X-Ferry, Content-Type",
+                                              "Access-Control-Max-Age": "600"})
 
         def route(self):
             self.consumed = False   # per request: the handler serves every request of a kept-alive connection
@@ -595,6 +706,10 @@ def handler(app):
                         self.send(200, f.read(), "font/otf", {"Cache-Control": "max-age=604800"})
                 except OSError:
                     self.send(404, "Not found")   # the page falls back to the system font
+            elif path == "/api/ping":
+                self.send(200, {"computer": alias()})
+            elif path == "/api/machines":
+                self.send(200, {"machines": app.machines(), "push": b64u(point(app.key)) if app.key else None})
             elif path.startswith("/api/file/"):
                 it = find(path.rsplit("/", 1)[1])
                 if not it or it.get("kind") != "file":
@@ -616,6 +731,10 @@ def handler(app):
                 self.send_header("Content-Length", str(size))
                 self.send_header("Content-Disposition", f"{'attachment' if attachment else 'inline'}; "
                                                         f"filename*=UTF-8''{quoted}")
+                origin = self.cors()
+                if origin:
+                    self.send_header("Access-Control-Allow-Origin", origin)
+                    self.send_header("Vary", "Origin")
                 self.send_header("Cache-Control", "no-cache")
                 self.end_headers()
                 if self.command == "HEAD":
@@ -653,6 +772,21 @@ def handler(app):
                 elif path == "/api/unsubscribe":
                     end = str(json.loads(self.read_body(8192) or b"{}").get("endpoint", ""))
                     subscriptions(lambda s: s.__setitem__(slice(None), [x for x in s if x["endpoint"] != end]))
+                    self.send(200, {"ok": True})
+                elif path == "/api/relay":
+                    # The page from the computer at via, switched to this one: notifications go through via
+                    via = str(json.loads(self.read_body(8192) or b"{}").get("via", ""))
+                    if not (app.tailnet.same_owner(via) and via.endswith(MOUNT + "/")) or via == url():
+                        return self.send(400, "Not a Ferry page of yours")
+                    relays(lambda r: r.append(via) if via not in r else None)
+                    self.send(200, {"ok": True})
+                elif path == "/api/relay-push":
+                    # Another of the owner's computers (Tailscale says who asks) notifies this one's phones about itself
+                    msg = json.loads(self.read_body(8192) or b"{}")
+                    machine = str(msg.get("machine", ""))
+                    if not app.tailnet.same_owner(machine):
+                        return self.send(400, "Not a Ferry page of yours")
+                    push_all(str(msg.get("title", ""))[:200], str(msg.get("body", ""))[:300], machine)
                     self.send(200, {"ok": True})
                 elif path == "/api/test-push":
                     if not app.key:

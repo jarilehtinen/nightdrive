@@ -38,7 +38,16 @@
   header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
   header img { width: 34px; height: 34px; border-radius: 8px; }
   h1 { font-size: 22px; margin: 0; color: var(--accent); letter-spacing: .02em; }
-  .status { display: flex; align-items: center; gap: 8px; font-size: 15px; color: var(--dim); margin-left: auto; min-width: 0; }
+  header { position: relative; }
+  .status { display: flex; align-items: center; gap: 8px; font-size: 15px; color: var(--dim); margin-left: auto; min-width: 0;
+            background: transparent; min-height: 40px; padding: 0 4px 0 10px; font-weight: 400; }
+  .status .i { width: 18px; height: 18px; }
+  /* The computers: a list under the name */
+  #machines { position: absolute; right: 0; top: 100%; z-index: 10; min-width: 240px; max-width: 90vw; padding: 6px;
+              background: var(--sel); border-radius: 14px; box-shadow: 0 12px 32px #000a; }
+  #machines button { width: 100%; justify-content: flex-start; background: transparent; color: var(--text); min-height: 48px;
+                     padding: 0 12px; font-weight: 400; }
+  #machines button .i { margin-left: auto; color: var(--accent); }
   #statusText { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dim); flex: none; }
   .status.ok .dot { background: var(--ok); }
@@ -98,15 +107,15 @@
   .swipe.armed.left .bin.r, .swipe.armed.right .bin.l { opacity: 1; }
   .item { position: relative; background: var(--card); border-radius: 14px; padding: 12px 14px; touch-action: pan-y; }
   .item.new { background: var(--hover); }   /* not seen yet */
-  .item .top { display: flex; align-items: flex-start; gap: 10px; }
+  .item .top { display: flex; align-items: flex-start; gap: 14px; }
   .item .body { flex: 1; min-width: 0; }
   .item .name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .item .text { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 7.2em; overflow: hidden; }
   .item .meta { font-size: 12px; color: var(--dim); margin-top: 2px; }
-  .item .thumb { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; background: var(--sel); flex: none; }
-  .item .kind { width: 48px; height: 48px; border-radius: 8px; background: var(--sel); color: var(--accent); flex: none;
+  .item .thumb { width: 64px; height: 64px; border-radius: 10px; object-fit: cover; background: var(--sel); flex: none; }
+  .item .kind { width: 64px; height: 64px; border-radius: 10px; background: var(--sel); color: var(--accent); flex: none;
                 display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
-  .item .row { margin-top: 8px; }
+  .item .row { margin-top: 10px; }   /* under the name, not under the preview */
   .empty { color: var(--dim); font-size: 14px; padding: 4px 2px; }
   .offline .live { opacity: .45; pointer-events: none; }
 </style>
@@ -121,11 +130,15 @@
   <symbol id="i-external-link" viewBox="0 0 24 24"><path d="M15 3h6v6m-11 5L21 3m-3 10v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
   <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 15V3m9 12v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10l5 5l5-5"/></symbol>
   <symbol id="i-trash-2" viewBox="0 0 24 24"><path d="M10 11v6m4-6v6m5-11v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol>
+  <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9l6 6l6-6"/></symbol>
   <symbol id="i-bell" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0m-10.47-5.674A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></symbol>
   <symbol id="i-refresh-cw" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9a9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5m5 4a9 9 0 0 1-9 9a9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol>
 </svg>
 <header><img src="icon-180.png" alt=""><h1>Ferry</h1>
-  <div class="status wait" id="status"><span class="dot"></span><span id="statusText"></span></div></header>
+  <button class="status wait" id="status"><span class="dot"></span><span id="statusText"></span>
+    <svg class="i" id="chevron" hidden><use href="#i-chevron-down"/></svg></button>
+  <div id="machines" hidden></div></header>
 <div class="banner" id="offline" hidden></div>
 <div class="banner info" id="pushHint" hidden></div>
 
@@ -166,7 +179,16 @@ const PREFETCH = 30e6          // bytes: files up to this size are fetched ahead
 const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true
 const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
 
-let computer = localStorage.getItem("ferry.computer") || "the computer"
+// Several computers: this page's own one (HOME) finds the owner's others running Ferry; the page talks to the one picked
+// (base: its address, "" for HOME). Push subscriptions stay with HOME, which passes the others' notifications on.
+const HOME = new URL(document.baseURI).href
+let machines = JSON.parse(localStorage.getItem("ferry.machines") || "[]")   // [{ url, name, self }]
+let base = ""
+{
+  const m = new URLSearchParams(location.search).get("m") || localStorage.getItem("ferry.base") || ""
+  if (m && m !== HOME && machines.some(x => x.url === m)) base = m
+}
+let computer = (machines.find(x => x.url === (base || HOME)) || {}).name || localStorage.getItem("ferry.computer") || "the computer"
 let pushKey = null
 let items = []
 let shown = "", shownAt = 0      // what was last drawn: a poll redraws only when something changed (or the ages did)
@@ -197,11 +219,12 @@ function icon(name) {
 // A button's label is a text node after its icon: changed in place ("Copied") without losing the icon
 function label(btn, text) { btn.lastChild.textContent = text }
 
+// A call to the computer picked (opts.home: to this page's own)
 async function api(path, opts = {}) {
   const ctl = new AbortController()
   const t = setTimeout(() => ctl.abort(), opts.timeout || TIMEOUT)
   try {
-    const r = await fetch(path, { ...opts, signal: ctl.signal, cache: "no-store",
+    const r = await fetch((opts.home ? "" : base) + path, { ...opts, signal: ctl.signal, cache: "no-store",
                                   headers: { "X-Ferry": "1", ...(opts.headers || {}) } })
     if (!r.ok) { const e = new Error(await r.text().catch(() => "") || r.statusText); e.status = r.status; throw e }
     return r
@@ -238,8 +261,7 @@ async function refresh() {
   try {
     const j = await (await api("api/items")).json()
     computer = j.computer || computer
-    localStorage.setItem("ferry.computer", computer)
-    pushKey = j.push
+    if (!base) { localStorage.setItem("ferry.computer", computer); pushKey = j.push }
     items = j.items || []
     document.body.classList.remove("offline")
     $("offline").hidden = true
@@ -300,7 +322,7 @@ async function save(it, btn) {
     return
   }
   // Too big to fetch ahead, or no file sharing: the browser's own download
-  location.href = "api/file/" + it.id + "?download=1"
+  location.href = base + "api/file/" + it.id + "?download=1"
 }
 
 async function removeItem(it) {
@@ -324,19 +346,18 @@ function card(it) {
   } else {
     const ext = (it.name.split(".").pop() || "").slice(0, 4).toUpperCase()
     lead = isImage(it) && it.to === "phone" && it.size < PREFETCH
-      ? el("img", { class: "thumb", src: "api/file/" + it.id, alt: "", loading: "lazy" })
+      ? el("img", { class: "thumb", src: base + "api/file/" + it.id, alt: "", loading: "lazy" })
       : el("div", { class: "kind" }, ext || "FILE")
     main = el("div", { class: "name" }, it.name)
     if (it.to === "phone") {
       prefetch(it)
       const b = el("button", { class: "primary small", onclick: () => save(it, b) }, icon("download"), "Save")
       actions = el("div", { class: "row" }, b,
-                   el("a", { class: "btn small", href: "api/file/" + it.id, target: "_blank" }, icon("external-link"), "Open"))
+                   el("a", { class: "btn small", href: base + "api/file/" + it.id, target: "_blank" }, icon("external-link"), "Open"))
     }
   }
   const c = el("div", { class: "item" + (fresh ? " new" : "") },
-               el("div", { class: "top" }, lead, el("div", { class: "body" }, main, el("div", { class: "meta" }, meta))),
-               actions)
+               el("div", { class: "top" }, lead, el("div", { class: "body" }, main, el("div", { class: "meta" }, meta), actions)))
   const wrap = el("div", { class: "swipe" }, el("div", { class: "bin l" }, icon("trash-2")),
                   el("div", { class: "bin r" }, icon("trash-2")), c)
   swipeable(wrap, c, () => removeItem(it))
@@ -456,7 +477,7 @@ $("files").onchange = async () => {
 function upload(file, progress) {
   return new Promise((resolve, reject) => {
     const x = new XMLHttpRequest()
-    x.open("POST", "api/upload?" + new URLSearchParams({ name: file.name, type: file.type || "" }))
+    x.open("POST", base + "api/upload?" + new URLSearchParams({ name: file.name, type: file.type || "" }))
     x.setRequestHeader("X-Ferry", "1")
     x.setRequestHeader("Content-Type", "application/octet-stream")
     x.upload.onprogress = e => progress(e.loaded)
@@ -484,7 +505,8 @@ async function pushState() {
   const sub = await reg.pushManager.getSubscription()
   if (sub && Notification.permission === "granted") {
     // Told again on every start: the computer may have lost it, or it may have changed
-    if (!pushState.sent) { pushState.sent = true; api("api/subscribe", { method: "POST", body: JSON.stringify(sub) }).catch(() => {}) }
+    if (!pushState.sent) { pushState.sent = true; api("api/subscribe", { home: true, method: "POST", body: JSON.stringify(sub) }).catch(() => {}) }
+    relayAll()
     box.hidden = true
     return
   }
@@ -503,16 +525,60 @@ async function enablePush() {
     if (perm !== "granted") { pushState(); return }
     const reg = await navigator.serviceWorker.ready
     const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(pushKey) })
-    await api("api/subscribe", { method: "POST", body: JSON.stringify(sub) })
+    await api("api/subscribe", { home: true, method: "POST", body: JSON.stringify(sub) })
     pushState.sent = true
-    await api("api/test-push", { method: "POST" })   // the first one says it works
+    relayAll()
+    await api("api/test-push", { home: true, method: "POST" })   // the first one says it works
   } catch (e) { note("Notifications failed", true) }
   pushState()
 }
 
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js").catch(() => {})
-  navigator.serviceWorker.addEventListener("message", e => { if (e.data === "refresh") refresh() })
+  navigator.serviceWorker.addEventListener("message", e => {
+    if (e.data === "refresh") refresh()
+    else if (e.data && e.data.machine !== undefined) pick(e.data.machine || HOME)   // a tapped notification
+  })
+}
+
+// --- Computers ---
+async function loadMachines() {
+  try {
+    const j = await (await api("api/machines", { home: true, timeout: 15000 })).json()
+    machines = j.machines || []
+    if (j.push) pushKey = j.push
+    localStorage.setItem("ferry.machines", JSON.stringify(machines))
+    drawMachines()
+    relayAll()
+  } catch (e) {}   // this page's computer is away: the list from last time
+}
+function drawMachines() {
+  const many = machines.length > 1
+  $("chevron").hidden = !many
+  $("machines").replaceChildren(...machines.map(m => el("button", { onclick: () => pick(m.url) }, m.name,
+                                                       m.url === (base || HOME) ? icon("check") : null)))
+}
+function pick(u) {
+  $("machines").hidden = true
+  const b = u === HOME ? "" : u
+  if (b === base) return
+  base = b
+  localStorage.setItem("ferry.base", base)
+  computer = (machines.find(x => x.url === u) || {}).name || "the computer"
+  items = []; shown = ""; blobs.clear()
+  render(); drawMachines(); note("")
+  setStatus("wait", computer)
+  refresh()
+}
+$("status").onclick = e => { e.stopPropagation(); if (machines.length > 1) $("machines").hidden = !$("machines").hidden }
+document.addEventListener("click", e => { if (!$("machines").contains(e.target)) $("machines").hidden = true })
+// The other computers send their notifications through this one, once notifications are on here
+async function relayAll() {
+  if (!pushState.sent || relayAll.done) return
+  relayAll.done = true
+  for (const m of machines.filter(m => !m.self))
+    fetch(m.url + "api/relay", { method: "POST", headers: { "X-Ferry": "1", "Content-Type": "application/json" },
+                                 body: JSON.stringify({ via: HOME }) }).catch(() => { relayAll.done = false })
 }
 
 let timer = null
@@ -522,7 +588,9 @@ function schedule() {
 }
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") refresh(); schedule() })
 setStatus("wait", computer)
+drawMachines()
 refresh()
+loadMachines()
 schedule()
 </script>
 </body>
