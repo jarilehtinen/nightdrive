@@ -100,10 +100,10 @@ hl.bind(mod .. " + C", hl.dsp.send_shortcut({ mods = "CTRL",  key = "Insert" }))
 hl.bind(mod .. " + V", hl.dsp.send_shortcut({ mods = "SHIFT", key = "Insert" }))
 hl.bind(mod .. " + X", hl.dsp.send_shortcut({ mods = "CTRL",  key = "X" }))
 
--- Undo / redo / select all ⌘Z / ⌘⇧Z / ⌘A. Not in terminals (kitty and its floating windows): there Ctrl+Z would
--- suspend the running program and Ctrl+A jumps to the start of the line
+-- Undo / redo / select all / save ⌘Z / ⌘⇧Z / ⌘A / ⌘S. Not in terminals (kitty and its floating windows): there Ctrl+Z
+-- would suspend the running program, Ctrl+A jumps to the start of the line and Ctrl+S freezes the output (XOFF)
 local TERMINAL_CLASSES = { ["kitty"] = true, ["floating-tui"] = true, ["floating-help"] = true, ["deck"] = true }
-for _, k in ipairs({ { "", "Z" }, { " SHIFT", "Z" }, { "", "A" } }) do
+for _, k in ipairs({ { "", "Z" }, { " SHIFT", "Z" }, { "", "A" }, { "", "S" } }) do
     local shift, key = k[1], k[2]
     hl.bind(mod .. (shift ~= "" and " +" .. shift or "") .. " + " .. key, function ()
         local w = hl.get_active_window()
@@ -230,11 +230,11 @@ hl.bind(mod .. " + TAB",         hl.dsp.focus({ workspace = "e+1" }))
 hl.bind(mod .. " + SHIFT + TAB", hl.dsp.focus({ workspace = "e-1" }))
 
 -- Drawer: a special workspace that slides up over the windows (look in hyprland.lua)
--- ⌘S puts the active window in the drawer, or takes it back out; ⌘D shows/hides the drawer
--- A window remembers where it came from (until Hyprland reloads its config): ⌘S in the drawer takes it back to that
+-- ⌘⇧D puts the active window in the drawer, or takes it back out; ⌘D shows/hides the drawer (⌘S is Save, above)
+-- A window remembers where it came from (until Hyprland reloads its config): ⌘⇧D in the drawer takes it back to that
 -- workspace, a floating one to its old place and size, a tiled one next to the window now at its old place
 local drawerOrigin = {}   -- window address -> { ws, floating, x, y, w, h }
--- ⌘S throws the window down off the screen before it goes into the drawer: it floats at its own place, slides down
+-- ⌘⇧D throws the window down off the screen before it goes into the drawer: it floats at its own place, slides down
 -- (only this move is animated, windows otherwise switch instantly) and is tiled again in the drawer
 hl.curve("throw", { type = "bezier", points = { {0.5, 0}, {0.75, 0} } })   -- ease in: speeds up as it falls
 local function drawer_throw(w)
@@ -306,7 +306,7 @@ local function drawer_send()
         drawer_throw(w)
     end
 end
-hl.bind(mod .. " + S", drawer_send)
+hl.bind(mod .. " + SHIFT + D", drawer_send)
 hl.bind(mod .. " + D", hl.dsp.workspace.toggle_special("drawer"))   -- empty, it shows a hint (quickshell/Drawer.qml)
 
 -- Mouse: ⌘+drag moves, ⌘+right-drag resizes

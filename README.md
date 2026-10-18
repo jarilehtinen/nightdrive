@@ -21,8 +21,9 @@ of help from Claude Code.
 [Hyprland](https://hypr.land) is a great tiling compositor, but on its own it's a toolkit: no bar, launcher, theme or apps.
 Nightdrive puts all of that together into one opinionated desktop.
 
-- **⌘ is the main key.** ⌘ is the Super key: Command on a Mac, the Windows key on a PC, and Caps Lock is a second one.
-  ⌘C / ⌘V / ⌘X work in every app, including the terminal. ⌘W closes, ⌘Q quits, ⌘Space opens the launcher.
+- **⌘ is the main key.** ⌘ is the Super key: Command on a Mac, the Windows key on a PC.
+  ⌘C / ⌘V / ⌘X work in every app, including the terminal. ⌘S saves, ⌘W closes, ⌘Q quits, ⌘Space opens the launcher.
+  Caps Lock is Hyper, a key of its own that no app uses: free for your own shortcuts.
 - **Fits the machine it's on.** The installer recognises an Apple Silicon Mac, a PC or a virtual machine and sets it up to
   match: the keyboard layout you picked when installing Fedora, the graphics driver (NVIDIA too), the display scale. On a
   MacBook the top bar sits in the notch area, the top-row keys control volume, brightness, the keyboard backlight and
@@ -65,8 +66,8 @@ Updates come in a notification with an **Update** button, which updates Nightdri
 
 ### A drawer for what you want at hand
 
-⌘S drops the active window into the drawer, and ⌘D slides the drawer up over your windows, dimming and blurring the rest.
-⌘D again puts it away. ⌘S in the drawer sends the window back to the workspace and place it came from. It suits notes,
+⌘⇧D drops the active window into the drawer, and ⌘D slides the drawer up over your windows, dimming and blurring the rest.
+⌘D again puts it away. ⌘⇧D in the drawer sends the window back to the workspace and place it came from. It suits notes,
 a to-do list or a chat you want one keystroke away without giving them a workspace of their own.
 
 ![The drawer empty, and with a terminal and Files in it](docs/screenshots/drawer.jpg)
@@ -248,17 +249,18 @@ The same `nightdrive` command reaches the settings from a terminal (`nightdrive`
 
 ## Keys
 
-⌘ is the Super key (Command on a Mac, the Windows key on a PC), and Caps Lock works as a second ⌘.
+⌘ is the Super key (Command on a Mac, the Windows key on a PC). Caps Lock is Hyper, a modifier of its own that no app
+uses, left free for your own shortcuts ([Make it yours](#make-it-yours)).
 
 | Keys | Action |
 |---|---|
 | ⌘ Space · ⌘ Enter | Launcher · terminal |
 | ⌘ ⌥ Enter | Claude Code (with text typed in the launcher: sends it as the prompt) |
-| ⌘ C / V / X | Copy / paste / cut, in every app |
+| ⌘ C / V / X · ⌘ S | Copy / paste / cut, in every app · save |
 | ⌘ W · ⌘ Q | Close (background apps are only hidden) · really quit |
 | ⌘ F · ⌘ T · ⌘ J | Fullscreen · floating · split direction |
 | ⌘ 1…0 · ⌘ ⇧ 1…0 | Go to workspace · move the window there |
-| ⌘ D · ⌘ S | Drawer: show / hide · put the window in it, or take it back out |
+| ⌘ D · ⌘ ⇧ D | Drawer: show / hide · put the window in it, or take it back out |
 | ⌘ ⇧ V · ⌘ ⇧ E | Clipboard history · emoji |
 | ⌘ R · ⌘ ⇧ R | Screenshot of a region · of a window, to the clipboard |
 | ⌘ ⇧ B / F / P / M / I | Browser / Files / 1Password / Music / Mail |
@@ -277,7 +279,8 @@ The full list is in [`config/hypr/SHORTCUTS.md`](config/hypr/SHORTCUTS.md).
   set, in a VM settings for it, on a Mac the layout unless it's Finnish. The login screen uses the same layout. A scale picked in the
   launcher (Settings › Display) wins over both.
 - **Per-machine overrides** go to `config/hypr/local.lua`, which git ignores.
-- **Keybindings** are in [`config/hypr/bindings.lua`](config/hypr/bindings.lua), a plugin's in its own folder.
+- **Keybindings** are in [`config/hypr/bindings.lua`](config/hypr/bindings.lua), a plugin's in its own folder. Hyper
+  (Caps Lock) is yours: Nightdrive binds nothing to it, so `hl.bind("MOD3 + D", …)` in `local.lua` can't clash with anything.
 - **Optional parts** (recommended apps, ready-made web apps, plugins): a one-line part, such as a web app or an app from
   dnf or Flathub, is a line in [`plugins.txt`](plugins.txt), with its keybinding in `bindings.lua`'s `optional` list and
   SHORTCUTS.md (with an `{id}` tag). A part with files of its own (a top bar module and menu, keys, a service, commands)

@@ -22,6 +22,7 @@
   ⌘ C / ⌘ V / ⌘ X    Copy / paste / cut
   ⌘ Z / ⌘ ⇧ Z        Undo / redo (not in the terminal)
   ⌘ A                Select all (not in the terminal)
+  ⌘ S                Save (not in the terminal)
   ⌘ ⌫                Move file to trash (in Files) {!keyd}
   ⌘ ⇧ V              Clipboard history (Enter pastes into the active window, ⇧ Enter copies only)
   ⌘ ⇧ E              Emoji picker (Enter pastes, ⇧ Enter copies only)
@@ -47,7 +48,7 @@
   4-finger swipe     Move window in the swipe direction
   ⌘ D                Drawer: show / hide (slides up over the windows)
   3-finger swipe ↑ ↓ Drawer: show / hide
-  ⌘ S                Put the window in the drawer / take it back out
+  ⌘ ⇧ D              Put the window in the drawer / take it back out
 
 ## Screenshots
   ⌘ R                Region to the clipboard
@@ -55,6 +56,7 @@
   ⌘ Space → Tools › Screenshot   Region, window or whole screen (saved to a file and the clipboard)
 
 ## Other
+  Hyper (Caps Lock)  Free for your own keys: a modifier no app uses ("MOD3 + D" in local.lua)
   ⌘ ⌫ / Delete in Settings › Background   Delete the selected own background (press twice; moves it to the trash)
   Top-row keys       Volume, screen brightness (F1/F2); keyboard backlight = ⌘F1/⌘F2
   F3                 Notification center (hamburger menu)
