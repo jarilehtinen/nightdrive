@@ -94,8 +94,8 @@ link "$repo/config/systemd/user/nightdrive-session.target" "$HOME/.config/system
 # Snippets, LocalSend, AirPlay Receiver and Ferry: linked only, started when turned on (hypr/scripts/snippets enable,
 # localsend enable, airplay-receiver enable, ferry enable)
 # A unit that now comes from somewhere else (e.g. dev's plugin folder before) is restarted if it runs, so it runs this file.
-restart=()
-for u in nightdrive-update-check.service nightdrive-update-check.timer nightdrive-snippets.service nightdrive-localsend.service nightdrive-airplay.service nightdrive-ferry.service; do
+restart=() units=(nightdrive-update-check.service nightdrive-update-check.timer nightdrive-snippets.service nightdrive-localsend.service nightdrive-airplay.service nightdrive-ferry.service)
+for u in "${units[@]}"; do
   [[ $(readlink "$HOME/.config/systemd/user/$u") == "$repo/config/systemd/user/$u" ]] || restart+=("$u")
   link "$repo/config/systemd/user/$u" "$HOME/.config/systemd/user/$u"
 done
@@ -105,6 +105,15 @@ for u in "${reenable[@]}"; do
   [[ -e $HOME/.config/systemd/user/$u ]] && systemctl --user enable "$u" 2>/dev/null && echo "enabled     $u (again)"
 done
 (( ${#restart[@]} )) && { systemctl --user try-restart "${restart[@]}" 2>/dev/null || true; }
+# A unit that failed stays failed, and neither enable nor try-restart starts it: e.g. one that systemd kept restarting on
+# its old path until a branch switch removed the file hit the start limit ("Start request repeated too quickly"). An
+# enabled one starts again (a static one, like the update check's service, is the timer's to start).
+for u in "${units[@]}" "${reenable[@]}"; do
+  [[ $(systemctl --user is-enabled "$u" 2>/dev/null) == enabled ]] && systemctl --user -q is-failed "$u" 2>/dev/null || continue
+  systemctl --user reset-failed "$u" 2>/dev/null || true
+  if systemctl --user start "$u" 2>/dev/null; then echo "started     $u (it had failed)"
+  else echo "failed      $u: see systemctl --user status $u"; fi
+done
 
 # The nightdrive command (bin/nightdrive)
 mkdir -p "$HOME/.local/bin"
