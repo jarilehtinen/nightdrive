@@ -336,14 +336,17 @@ Nightdrive is work in progress, and help of almost any kind moves it forward:
   personal (that goes in the git-ignored local slots, see [Make it yours](#make-it-yours)). [`AGENTS.md`](AGENTS.md) has the
   working notes, handy for people and coding agents alike. Not running Nightdrive yourself? `nightdrive sandbox` runs the
   desktop in a headless container on Linux with Podman and a GPU, for checks and screenshots ([docs/sandbox.md](docs/sandbox.md)).
-- **Make wallpapers.** See below.
+- **Wallpaper artists welcome.** There's only so much time, and wallpapers are where I'd most love a hand. The ones in Nightdrive
+  were made with ChatGPT image generation for now, and I'd much rather ship art by real artists. If you make synthwave
+  art, or know someone who does, and would like to see it on Nightdrive desktops, say hello in
+  [Discussions](https://github.com/jarilehtinen/nightdrive/discussions).
 
 ## Credits
 
 Inspired by [Omarchy](https://omarchy.org). Built on [Hyprland](https://hypr.land) and [Quickshell](https://quickshell.org), on top of the [Asahi Linux](https://asahilinux.org) team's work. The colours start
 from the [Tokyo Night](https://github.com/enkia/tokyo-night-vscode-theme) palette, and the icons are [Lucide](https://lucide.dev) (ISC).
-The wallpapers were made with ChatGPT image generation for now. I'd much rather ship wallpapers by real artists, so if you make
-synthwave art (or know someone who does) and would like it included, please get in touch in Discussions. The Tailscale logo in the bar is Tailscale's trademark.
+The wallpapers were made with ChatGPT image generation for now (artists welcome, see [Want to participate?](#want-to-participate)).
+The Tailscale logo in the bar is Tailscale's trademark.
 
 ## License
 
