@@ -1,0 +1,4 @@
+// Home Assistant's top bar module: a house, faded while Home Assistant doesn't answer (bin/home-assistant bar); a click
+// opens HomeMenu.qml (the pinned devices), a right click the webapp. At the left end, before Deck's (or Claude's).
+{ "name": "home", "interval": 30, "status": "bin/home-assistant bar 2>/dev/null", "right": "bin/home-assistant open",
+  "before": ["deck", "claude"], "size": 16, "label": "Home Assistant", "glyph": "house" }

@@ -3,7 +3,6 @@
 # repo). Starts at login (launcher › Settings › Startup): the SSH agent, `op` and the launcher's Passwords need it running.
 # Run as a regular user; sudo asks for the password.
 set -euo pipefail
-repo=$(cd "$(dirname "$0")" && pwd)
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
 
 # 1Password publishes tarballs for both: aarch64 (the MacBook) and x86_64
@@ -40,6 +39,6 @@ sudo dnf install -y 1password-cli
 
 # Start at login. A fresh install seeds this on the first login (hypr/scripts/autostart); an install that already has
 # its list (1Password added later from the launcher) gets it here.
-"$repo/config/hypr/scripts/autostart" add com.onepassword.OnePassword.desktop
-"$repo/config/fuzzel/sync-apps" >/dev/null 2>&1 || true
+"$HOME/.config/hypr/scripts/autostart" add com.onepassword.OnePassword.desktop
+"$HOME/.config/fuzzel/sync-apps" >/dev/null 2>&1 || true
 echo "1Password installed. Firefox: the 1Password extension from addons.mozilla.org."

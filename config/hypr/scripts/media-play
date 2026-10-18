@@ -1,7 +1,7 @@
 #!/bin/bash
 # F8 / play: if some player (Deck, browser…) is on MPRIS -> play/pause; otherwise start Deck (or bring its window up),
-# if it is installed (an optional part).
+# if it is installed (plugins/deck, whose bin/deck-open is linked to ~/.local/bin).
 if playerctl -l 2>/dev/null | grep -q . || [[ ! -x $HOME/.local/bin/deck ]]; then
   exec playerctl play-pause
 fi
-exec "$(dirname "$(readlink -f "$0")")/deck-open"
+exec "$HOME/.local/bin/deck-open"

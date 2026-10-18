@@ -10,8 +10,8 @@
 //   spacing   optional: letter spacing of its text in px (- = tighter)
 //   needs     optional: an optional part's id (plugins.txt); without it installed the module isn't run or listed
 //             (a plugin folder's module, plugins/<id>/module.jsonc, has its own id as needs, and these keys too:
-//             after = the module it goes right of, size = its icon size, label and glyph for Settings › Top bar › Items;
-//             plugins/README.md)
+//             after / before = the module it goes right / left of (or a list: the first one in the bar), size = its icon
+//             size, label and glyph for Settings › Top bar › Items; plugins/README.md)
 //   drop      optional: a shell command that takes files dropped on the icon as arguments; dragging files over the icon
 //             also opens its menu, so they can be dropped there
 //
@@ -23,9 +23,6 @@
 //   class  optional: off (dimmed), warning (orange), critical (red), active (highlighted background), stale (faded)
 // No icon and no text hides the module.
 [
-  { "name": "home",          "interval": 30, "needs": "home-assistant", "status": "~/.config/hypr/scripts/home-assistant bar 2>/dev/null",
-                             "right": "~/.config/hypr/scripts/home-assistant open" },
-  { "name": "deck",          "interval": 2,  "needs": "deck", "right": "~/.config/hypr/scripts/deck-open" },
   { "name": "claude",        "interval": 60, "middle": "xdg-open https://claude.ai/settings/usage" },
   { "name": "system",        "interval": 3 },
   { "name": "bluetooth",     "interval": 5,  "right": "blueman-manager" },

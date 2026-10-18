@@ -6,7 +6,7 @@ import Quickshell
 // Other devices). Searching on Home finds rooms and devices at once.
 // Enter turns a device on/off or runs a scene / script, and the launcher stays open; Shift+Enter pins it to the top bar's
 // Home menu. A light that's on has a yellow icon; a dimmable one shows its brightness as a ring around it: ←/→ steps 10 %, a sideways drag sets it.
-// Shown only when Home Assistant is set up (install-home-assistant.sh). Data: Home.qml.
+// Shown only when Home Assistant is set up and on (plugins/home-assistant; nightdrive plugins off hides it). Data: Home.qml.
 // Launcher.qml asks it like SystemLevels (levels, titles, parents, items, activate, footer, entered).
 Item {
     id: x
@@ -16,9 +16,10 @@ Item {
     readonly property var levels: ["home", "homeroom", "homeprefs"]
     readonly property var titles: ({ home: "Home", homeroom: "Home › " + room, homeprefs: "Settings › Home" })
     readonly property var parents: ({ homeroom: "home", homeprefs: "settings" })
+    readonly property bool on: Home.configured && Plugins.has("home-assistant")
     // Settings › Home, in Launcher.qml's Settings list (Behaviour) while Home Assistant is set up
-    readonly property var settingsItems: Home.configured ? [{ kind: "nav", name: "Home", glyph: "house", target: "homeprefs" }] : []
-    readonly property var rootItems: Home.configured ? [{ kind: "nav", name: "Home", glyph: "house", target: "home", extra: "home assistant hass lights rooms" }] : []
+    readonly property var settingsItems: on ? [{ kind: "nav", name: "Home", glyph: "house", target: "homeprefs" }] : []
+    readonly property var rootItems: on ? [{ kind: "nav", name: "Home", glyph: "house", target: "home", extra: "home assistant hass lights rooms" }] : []
 
     function footer(level, query) {
         const cur = launcher.results[launcher.selIndex] || {}
@@ -80,7 +81,7 @@ Item {
     }
     // Every room and device for the root level's search ("olohuone" → the room and its lights), tagged HOME
     function rootRows() {
-        if (!Home.configured) return []
+        if (!on) return []
         return rooms().map(n => ({ item: Object.assign(roomRow(n), { from: "Home", summary: undefined }), text: n, extra: "room home" }))
             .concat(Home.shown.map(e => searchRow(e, "Home")))
     }

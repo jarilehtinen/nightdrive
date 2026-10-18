@@ -6,9 +6,6 @@
   ⌘ Space            App launcher (↑↓ select, Enter open, Esc close; on an app ⌃Enter adds/removes it in Apps, ⌥Enter starts it at login)
   ⌘ ⇧ Enter / ⌘ ⇧ B  Browser
   ⌘ ⇧ F              Files
-  ⌘ ⇧ P              1Password {1password}
-  ⌘ ⇧ M              Music (Deck, Spotify): floating window in the centre {deck}
-  F8 (play)          Play/pause; starts Deck if no player is running {deck}
   F8 (play)          Play/pause {!deck}
   ⌘ ⇧ W              WhatsApp {whatsapp}
   ⌘ ⇧ S              Slack {slack}
@@ -25,11 +22,7 @@
   ⌘ C / ⌘ V / ⌘ X    Copy / paste / cut
   ⌘ Z / ⌘ ⇧ Z        Undo / redo (not in the terminal)
   ⌘ A                Select all (not in the terminal)
-  ⌘ ⌫                Move file to trash (in Files)
-  Enter              Rename file (in Files; F2 too) {keyd}
-  ⌘ O                Open file (in Files) {keyd}
-  ⌥ ⌫                Delete the previous word {keyd}
-  ⌘ ⌫                Delete to the start of the line (Thunderbird: delete the message) {keyd}
+  ⌘ ⌫                Move file to trash (in Files) {!keyd}
   ⌘ ⇧ V              Clipboard history (Enter pastes into the active window, ⇧ Enter copies only)
   ⌘ ⇧ E              Emoji picker (Enter pastes, ⇧ Enter copies only)
 

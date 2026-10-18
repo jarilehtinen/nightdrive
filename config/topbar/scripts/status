@@ -57,12 +57,6 @@ case $kind in
       if (( pct < 40 )); then icon=battery-low; elif (( pct < 60 )); then icon=battery-medium; else icon=battery-full; fi
     fi
     emit "$icon" "$pct%" "$cls" ;;
-  deck)
-    # Dimmed when Deck isn't running or has nothing loaded; highlighted while playing
-    f="${XDG_RUNTIME_DIR:-/tmp}/deck/state.json"
-    pid=$(jq -r '.pid // empty' "$f" 2>/dev/null)
-    if [[ -z $pid || ! -d /proc/$pid ]] || [[ $(jq -c '.info' "$f") == null ]]; then emit music "" off; exit; fi
-    if [[ $(jq -r .info.playing "$f") == true ]]; then emit music "" active; else emit music ""; fi ;;
   claude)
     u=$(~/.config/topbar/scripts/claude-usage)
     sess=$(jq -r '(.windows // [] | map(select(.key == "session")) | first // {}).percent // -1' <<<"$u")

@@ -1,0 +1,3 @@
+-- Deck's keys (plugins/README.md › Keys). F8 stays in the core (hypr/scripts/media-play): it starts Deck when no player runs.
+local p = ...
+hl.bind(p.mod .. " + SHIFT + M", hl.dsp.exec_cmd(p.dir .. "/bin/deck-open"))   -- Deck's window, started if it isn't running

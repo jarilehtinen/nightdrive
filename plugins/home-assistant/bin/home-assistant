@@ -1,5 +1,6 @@
 #!/usr/bin/python3 -I
-"""Home Assistant for the launcher (Home), the top bar's Home menu and the bar icon. Set up with ./install-home-assistant.sh.
+"""Home Assistant for the launcher (Home), the top bar's Home menu and the bar icon (plugins/home-assistant; linked to
+~/.local/bin, where Home.qml runs it). Set up with the plugin's install.sh.
 
   home-assistant configured        exit status 0 when set up (the launcher and the bar show Home only then)
   home-assistant states            the controllable devices as JSON: [{id, name, domain, state, on, area, fav, detail,
@@ -9,7 +10,7 @@
   home-assistant fav ID [on|off]   pins a device to the top bar's Home menu (no on/off: flips it)
   home-assistant bar               the top bar module's state line (modules.jsonc format)
   home-assistant open              opens the Home Assistant webapp (focuses it if already open)
-  home-assistant test URL TOKEN    checks an address and a token (install-home-assistant.sh uses this)
+  home-assistant test URL TOKEN    checks an address and a token (install.sh uses this)
 
 Config: ~/.config/nightdrive/home-assistant (KEY=value, mode 600):
   HA_URLS="http://homeassistant.local:8123 http://ha:8123 https://xxxx.ui.nabu.casa"   tried in order, like the
@@ -105,7 +106,7 @@ class Client:
         self.urls = cfg.get("HA_URLS", "").split()
         self.tok = token(cfg)
         if not self.urls or not self.tok:
-            die("Home Assistant isn't set up: run install-home-assistant.sh", 3)
+            die("Home Assistant isn't set up: nightdrive plugins install home-assistant", 3)
         self.base = None
 
     def pick(self):
@@ -275,7 +276,7 @@ def bar():
 def open_webapp():
     desktop = f"{HOME}/.local/share/applications/webapp-{WEBAPP}.desktop"
     if not os.path.exists(desktop):
-        die("No Home Assistant webapp: run install-home-assistant.sh")
+        die("No Home Assistant webapp: nightdrive plugins install home-assistant")
     wmclass = next((l.split("=", 1)[1].strip() for l in open(desktop) if l.startswith("StartupWMClass=")), "")
     os.execv(f"{HOME}/.config/hypr/scripts/launch-or-focus", ["launch-or-focus", "^" + wmclass + "$", "gtk-launch", f"webapp-{WEBAPP}"])
 

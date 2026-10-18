@@ -48,13 +48,19 @@ cp -n "$repo/config/easyeffects/db/easyeffectsrc" "$HOME/.config/easyeffects/db/
 
 link "$repo/config/wireplumber/wireplumber.conf.d/51-bt-no-headset-autoswitch.conf" "$HOME/.config/wireplumber/wireplumber.conf.d/51-bt-no-headset-autoswitch.conf"   # don't make the BT headset mic the default
 
-link "$repo/config/nautilus-python/mac-keys.py" "$HOME/.local/share/nautilus-python/extensions/mac-keys.py"   # Files: Enter renames, ⌘O opens (while the keyd plugin is on)
 link "$repo/config/applications/nm-connection-editor.desktop" "$HOME/.local/share/applications/nm-connection-editor.desktop"   # Fedora ships none
 # macbook_mic alias for dictation (voxtype): the MacBook's mic on Apple Silicon, the default mic elsewhere
 if [[ $("$repo/config/hypr/scripts/platform" name) == asahi ]]; then asound=asoundrc; else asound=asoundrc.generic; fi
 link "$repo/config/alsa/$asound" "$HOME/.config/alsa/asoundrc"
-# Mac Keyboard Shortcuts plugin (install-keyd.sh): keyd-application-mapper's per-app keys
-[[ -f /etc/keyd/default.conf ]] && link "$repo/config/keyd/app.conf" "$HOME/.config/keyd/app.conf"
+# Mac Keyboard Shortcuts plugin (plugins/keyd): keyd-application-mapper's per-app keys. The link from before the folder
+# (config/keyd, 18.10.2026) is dead: it goes first, or link() would keep it as a .bak file.
+[[ -L $HOME/.config/keyd/app.conf && ! -e $HOME/.config/keyd/app.conf ]] && rm "$HOME/.config/keyd/app.conf"
+[[ -f /etc/keyd/default.conf ]] && link "$repo/plugins/keyd/app.conf" "$HOME/.config/keyd/app.conf"
+# Deck's desktop file from before its folder (18.10.2026) runs hypr/scripts/deck-open, now plugins/deck/bin (~/.local/bin)
+deck_desktop=$HOME/.local/share/applications/deck.desktop
+if [[ -f $deck_desktop ]] && grep -q '/\.config/hypr/scripts/deck-open' "$deck_desktop"; then
+  sed -i 's#/\.config/hypr/scripts/deck-open#/.local/bin/deck-open#' "$deck_desktop" && echo "fixed       $deck_desktop"
+fi
 
 # Links into the repo whose file is gone (it moved or was removed, e.g. Ferry into plugins/ferry, 18.10.2026) go before
 # anything is linked again: link() would move a dead one aside as a .bak file, which in ~/.local/bin is a command. A unit

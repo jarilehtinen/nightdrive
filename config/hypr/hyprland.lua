@@ -14,9 +14,6 @@ local KB_VARIANT    = "mac"
 
 local HOME = os.getenv("HOME")
 
--- Deck's floating window size (float-deck rule below; ⌘T in bindings.lua resets the window to it)
-DECK_SIZE = { w = 720, h = 440 }
-
 ------------------
 ---- DISPLAY ----
 ------------------
@@ -61,6 +58,7 @@ local function session_locked()
     return (LOCKED_START or exists(LOCKED_FLAG)) and not exists(UNLOCKED_FLAG)
 end
 local update_corners   -- DECORATION below: the screen's rounded corners, off under the login screen
+local plugin_starts = {}   -- PLUGINS below: the commands the plugins that are on start with the session (p.start)
 
 local function once(flag)
     local f = io.open(flag)
@@ -84,9 +82,6 @@ function NightdriveLocked()
     hl.exec_cmd("sh -c '\"$HOME/.config/hypr/scripts/theme\" apply; exec qs'")
     hl.exec_cmd(HOME .. "/.config/hypr/scripts/wallpaper restore")   -- swaybg with the remembered wallpaper (change: launcher › Settings › Background)
     hl.exec_cmd("env PATH=" .. HOME .. "/.local/bin:" .. os.getenv("PATH") .. " " .. HOME .. "/.local/bin/voxtype-onnx daemon")   -- speech to text (F5), Parakeet
-    -- AirPlay screen mirroring (plugins/mirroring): the daemon finds the receivers; Settings › Display › Screen Mirroring.
-    -- Not while the plugin is off (nightdrive plugins off mirroring)
-    hl.exec_cmd("sh -c '[ -x \"$HOME/.local/bin/doubletake\" ] && [ ! -e \"$HOME/.local/state/nightdrive/plugins-off/mirroring\" ] && exec \"$HOME/.local/bin/doubletake\" -daemonize'")
     hl.exec_cmd(HOME .. "/.config/hypr/scripts/idle start")   -- hypridle with the screensaver and screen-off times (launcher › Settings › Screensaver)
     hl.exec_cmd("easyeffects --service-mode -w")   -- headphone EQ in the background (presets: config/easyeffects, picked from the headphone icon in the top bar)
     hl.exec_cmd(HOME .. "/.config/hypr/scripts/bt-audio-follow")   -- Bluetooth headphones become the output when they connect
@@ -97,6 +92,7 @@ function NightdriveLocked()
     hl.exec_cmd("blueman-applet")
     hl.exec_cmd("wl-paste --type text --watch cliphist store")
     hl.exec_cmd("wl-paste --type image --watch cliphist store")
+    for _, cmd in ipairs(plugin_starts) do hl.exec_cmd(cmd) end
 end
 
 -- The login apps: after the password at an autologin start, as they may ask the keyring (the lock's PAM opens it)
@@ -318,31 +314,14 @@ hl.window_rule({
     float = true,
     size  = "760 520",
 })
--- Deck: small floating window on top of everything, centred; ⌘T moves it into the tiling layout (and back to floating)
-hl.window_rule({
-    name  = "float-deck",
-    match = { class = "^deck$" },
-    float = true,
-    size  = DECK_SIZE.w .. " " .. DECK_SIZE.h,
-    center = true,
-})
 hl.window_rule({
     name  = "float-help",
     match = { class = "^floating-help$" },
     float = true,
     size  = "900 750",
 })
--- iPhone mirroring (UxPlay, plugins/airplay-receiver; app id uxplay with waylandsink): floating along the right edge, full
--- height below the top bar, a phone's width (19.5:9 portrait). Floating so it can be moved anywhere.
-local MIRROR_TOP = 37 + 10   -- the top bar's reserved height + gaps_out
-hl.window_rule({
-    name  = "float-uxplay",
-    match = { class = "^uxplay$" },
-    float = true,
-    size  = "(monitor_h-" .. MIRROR_TOP + 10 .. ")*0.462 monitor_h-" .. MIRROR_TOP + 10,
-    move  = "monitor_w-window_w-10 " .. MIRROR_TOP,
-})
--- 1Password: floating window centred on screen (bigger than Deck), hidden from screen sharing
+-- 1Password: floating window centred on screen, hidden from screen sharing. Here rather than in plugins/1password: the app
+-- may run while the plugin is off (it starts at login), and it must stay out of a shared screen then too.
 hl.window_rule({
     name  = "1password",
     match = { class = "^(1[pP]assword|com\\.onepassword\\.OnePassword)$" },
@@ -461,6 +440,34 @@ hl.on("window.active", function ()
     raise_pending = true
     hl.timer(raise_from_background, { timeout = 50, type = "oneshot" })
 end)
+
+-----------------
+---- PLUGINS ----
+-----------------
+-- The plugin folders that are on (plugins/<id>/, ~/.local/share/nightdrive/plugins/<id>/; `nightdrive plugins installed`
+-- lists them in plugins.d/active): their hyprland.lua, with window rules and the like. It gets { id, dir, scripts, start }
+-- as its ...: start(cmd) runs cmd once when the session starts, with the programs above (NightdriveLocked). One that
+-- fails is left out with a line in Hyprland's log. Their keys are in bindings.lua.
+do
+    local f = io.open(HOME .. "/.cache/nightdrive/plugins.d/active")
+    if f then
+        for line in f:lines() do
+            local id, dir = line:match("^([^\t]+)\t(.+)$")
+            local path = dir and dir .. "/hyprland.lua"
+            local exists = path and io.open(path)
+            if exists then
+                exists:close()
+                local chunk, err = loadfile(path)
+                local ok = chunk and true
+                local p = { id = id, dir = dir, scripts = HOME .. "/.config/hypr/scripts",
+                            start = function (cmd) table.insert(plugin_starts, cmd) end }
+                if chunk then ok, err = pcall(chunk, p) end
+                if not ok then print("nightdrive: plugin " .. id .. ": " .. tostring(err)) end
+            end
+        end
+        f:close()
+    end
+end
 
 -- Per-machine overrides: ~/.config/hypr/local.lua (not in the repo, see .gitignore). `./install.sh --vm` creates it for a virtual machine.
 pcall(require, "local")

@@ -1,6 +1,6 @@
 # libinput tweaks for the MacBook's (Asahi) internal keyboard and trackpad, in /etc/libinput/local-overrides.quirks.
-# Installed by install.sh (install-keyd.sh adds its own section to the same file). Takes effect after logging out and
-# back in (Hyprland reads the quirks at startup).
+# Installed by install.sh (the keyd plugin's install.sh adds its own section to the same file). Takes effect after
+# logging out and back in (Hyprland reads the quirks at startup).
 
 # The Apple MTP keyboard may not be detected as internal, so libinput's disable-while-typing (palm rejection while
 # typing) doesn't pair it with the internal touchpad. This marks the keyboard as internal.

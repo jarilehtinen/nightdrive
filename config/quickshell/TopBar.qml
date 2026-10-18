@@ -31,15 +31,28 @@ Singleton {
         }
         onLoadFailed: tb.plugin = ({ modules: [], menus: ({}), sizes: ({}) })
     }
-    // The files' order: a plugin's module goes right of the one its "after" names (at the right end without one). Plugins
-    // after the same module keep the folders' order (Ferry, then Tailscale, after System), as they were in modules.jsonc.
+    // The files' order: a plugin's module goes right of the one its "after" names, or left of its "before" (at the right
+    // end without either). Either can be a list: the first name in the bar counts (Home Assistant: before Deck, or before
+    // Claude without Deck). Plugins after (or before) the same module keep the folders' order (Ferry, then Tailscale, after
+    // System), as they were in modules.jsonc.
     function withPlugins(list) {
         const out = list.slice()
+        const names = v => Array.isArray(v) ? v : (v ? [v] : [])
+        const place = (m, key) => {      // { i: index, n: name } of the first of its names in the bar, or null
+            for (const n of names(m[key])) {
+                const i = out.findIndex(o => o.name === n)
+                if (i >= 0) return { i: i, n: n }
+            }
+            return null
+        }
         for (const m of plugin.modules) {
-            let i = out.findIndex(o => o.name === m.after)
-            if (i < 0) { out.push(m); continue }
-            while (i + 1 < out.length && out[i + 1].after === m.after) i++
-            out.splice(i + 1, 0, m)
+            const a = place(m, "after"), b = a ? null : place(m, "before")
+            if (a) {
+                let i = a.i
+                while (i + 1 < out.length && names(out[i + 1].after).indexOf(a.n) >= 0) i++
+                out.splice(i + 1, 0, m)
+            } else if (b) out.splice(b.i, 0, m)   // right of the earlier folders' modules before the same one
+            else out.push(m)
         }
         return out
     }
@@ -85,7 +98,7 @@ Singleton {
         return j
     }
     // Names and glyphs for the launcher's list; a module can give its own "label" and "glyph" in modules.jsonc
-    readonly property var moduleLabels: ({ deck: ["Music (Deck)", "music"], claude: ["Claude usage", "gauge"], system: ["CPU and memory", "cpu"],
+    readonly property var moduleLabels: ({ claude: ["Claude usage", "gauge"], system: ["CPU and memory", "cpu"],
                                            bluetooth: ["Bluetooth", "bluetooth"], wifi: ["Wi-Fi", "wifi"],
                                            volume: ["Volume", "volume-2"], headphones: ["Headphones", "headphones"], display: ["Display", "monitor"], battery: ["Battery", "battery-medium"],
                                            calendar: ["Date and time", "clock"], notifications: ["Notifications", "menu"] })

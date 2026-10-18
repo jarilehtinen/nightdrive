@@ -4,10 +4,12 @@
 A plugin folder (the repo's plugins/<id>/ and the external ones): plugin.conf (known keys, the required ones, values,
 a unique id, install and installed parse as shell), its icon, README.md (# title = the name, at least one fact line
 and the fact lines last: Homepage:, Needs:, Keys: (needed with bindings.lua), each - item on one line, the images it
-shows), module.jsonc (parses, known keys, no needs, a label, the status command is executable), the icons status emits
+shows), module.jsonc (parses, known keys, no needs, a label, after or before as a name or a list, the status command is
+executable), the icons status emits
 (Lucide, the bar's own or the folder's icons/), the menus (a <Name>Menu.qml opens from a module of its own; MenuHeader
 before the rows; no hex colours or font names: Theme.* and Theme.font / Icons.family), SHORTCUTS.md (lines the key list
-reads), the scripts' syntax (bash -n, ast.parse, luac -p if there is a luac). A plugins.txt line: its fields, icon, default and group, and
+reads), hyprland.lua (no keys: those go in bindings.lua), the scripts' syntax (bash -n, ast.parse, luac -p if there is
+a luac). A plugins.txt line: its fields, icon, default and group, and
 docs/plugins/<id>.md as a README. Findings as file:line: message, one per line; exit 1 if any, 2 for an unknown id."""
 import ast, glob, json, os, re, shutil, subprocess, sys
 
@@ -17,11 +19,11 @@ ICONS_QML = os.path.join(REPO, "config/quickshell/Icons.qml")     # the launcher
 BAR_ICONS = os.path.join(REPO, "config/topbar/icons")             # the bar's own SVGs, on top of Lucide (status)
 CORE_MODULES = os.path.join(REPO, "config/topbar/modules.jsonc")
 
-CONF_KEYS = ("name", "icon", "description", "default", "install", "installed", "group")
+CONF_KEYS = ("name", "icon", "description", "default", "install", "installed", "group", "order")
 CONF_NEEDED = ("name", "icon", "description", "installed")   # without installed it never counts as installed
 GROUPS = ("recommended", "webapp", "plugin")
-MODULE_KEYS = {"name", "interval", "status", "menu", "right", "middle", "spacing", "drop", "after", "size", "label",
-               "glyph"}                                           # modules.jsonc's header; needs is implied
+MODULE_KEYS = {"name", "interval", "status", "menu", "right", "middle", "spacing", "drop", "after", "before", "size",
+               "label", "glyph"}                                           # modules.jsonc's header; needs is implied
 FACTS = ("Homepage", "Needs", "Keys")                             # in this order, the last lines of a README
 ID = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 HEX = re.compile(r"""["'`]#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})["'`]""")
@@ -109,6 +111,8 @@ def check_conf(d, pid, icons):
         find(path, at["default"], f"default={conf['default']}: on or off")
     if "group" in conf and conf["group"] not in GROUPS:
         find(path, at["group"], f"group={conf['group']}: {', '.join(GROUPS)}")
+    if "order" in conf and not re.match(r"^[0-9]+$", conf["order"]):
+        find(path, at["order"], f"order={conf['order']}: a number (default 50; lower installs first)")
     if conf.get("icon") and conf["icon"] not in icons:
         find(path, at["icon"], f"unknown icon {conf['icon']} (a Lucide name: lucide.dev/icons; config/quickshell/Icons.qml)")
     for k in ("install", "installed"):
@@ -193,6 +197,12 @@ def check_modules(d, pid, icons):
                 find(path, line_of(path, '"needs"'), "needs: implied (the plugin's own id), leave it out")
             elif k not in MODULE_KEYS:
                 find(path, line_of(path, f'"{k}"'), f"unknown key {k} (keys: config/topbar/modules.jsonc)")
+        for k in ("after", "before"):
+            v = m.get(k)
+            if v is not None and not (isinstance(v, str) or isinstance(v, list) and v and all(isinstance(x, str) for x in v)):
+                find(path, line_of(path, f'"{k}"'), f"{k}: a module's name, or a list of names (the first one in the bar counts)")
+        if "after" in m and "before" in m:
+            find(path, line_of(path, '"before"'), "after and before both: give one of them")
         if m.get("glyph") and m["glyph"] not in icons:
             find(path, line_of(path, '"glyph"'), f"unknown icon {m['glyph']} (glyph: a Lucide name)")
         if "label" not in m:
@@ -279,6 +289,16 @@ def check_shortcuts(d):
             find(path, n, "not a key list line: '## Section', or two spaces, the keys, two or more spaces, what they do")
 
 
+def check_hyprland(d):
+    """hyprland.lua: window rules and start(); keys belong in bindings.lua, which the top bar menu's submap repeats."""
+    path = os.path.join(d, "hyprland.lua")
+    if not os.path.exists(path):
+        return
+    for n, l in enumerate(open(path, errors="replace").read().split("\n"), 1):
+        if re.search(r"\bhl\.bind\s*\(", l.split("--")[0]):
+            find(path, n, "a key in hyprland.lua: keys go in bindings.lua (the top bar menu repeats those while it's open)")
+
+
 def check_scripts(d):
     """The syntax of its scripts: by extension or #! line. web/ and other data files are left alone."""
     luac = next((c for c in ("luac", "luac5.4", "luac5.5", "luac5.3") if shutil.which(c)), None)
@@ -322,6 +342,7 @@ def check_folder(pid, d, src, taken, icons):
     check_status_icons(d, icons)
     check_menus(d, opens)
     check_shortcuts(d)
+    check_hyprland(d)
     check_scripts(d)
 
 

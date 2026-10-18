@@ -1,6 +1,7 @@
 #!/bin/bash
 # Screen Mirroring over AirPlay (doubletake, plugins/mirroring/install.sh): Settings › Display › Screen Mirroring in the
-# launcher and the top bar's display menu. The daemon (`doubletake -daemonize`, started by hyprland.lua) finds the receivers.
+# launcher and the top bar's display menu. The daemon (`doubletake -daemonize`, started by the plugin's hyprland.lua)
+# finds the receivers.
 #   mirroring connect <ip>   starts mirroring and follows it: a receiver that asks for its on-screen code opens the
 #                            launcher's code field (Display › Screen Mirroring › Code); a notification when it starts or fails
 #   mirroring pin <code>     sends the code (the launcher's code field)

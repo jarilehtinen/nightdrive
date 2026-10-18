@@ -217,6 +217,7 @@ PanelWindow {
     property var deckOverride: ({})           // pending local changes (playing, liked)
     readonly property string scripts: Quickshell.env("HOME") + "/.config/hypr/scripts"
     readonly property string deckBin: Quickshell.env("HOME") + "/.local/bin/deck"
+    readonly property string bin: Quickshell.env("HOME") + "/.local/bin"   // plugins' commands (deck-ctl, deck-open: plugins/deck/bin)
     readonly property bool deckPlaying: deckOverride.playing !== undefined ? deckOverride.playing : (deckInfo !== null && deckInfo.playing)
     readonly property var deckLiked: deckOverride.liked !== undefined ? deckOverride.liked : (deckInfo ? deckInfo.liked : null)
     signal openMenu(string name)              // Settings: opens a Quickshell menu (wifi, bluetooth, ...)
@@ -936,14 +937,14 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
             else if (item.entry) item.entry.execute(); else Quickshell.execDetached(["gio", "launch", item.path])
         }
         else if (item.kind === "clip") clipPick(item, true)
-        else if (item.kind === "album") { win.open = false; Quickshell.execDetached([scripts + "/deck-ctl", "play-album", item.uri]) }
+        else if (item.kind === "album") { win.open = false; Quickshell.execDetached([bin + "/deck-ctl", "play-album", item.uri]) }
         else if (item.kind === "spotifyartist") {
             artist = { id: item.id, name: item.name, albums: null }
             artistProc.environment = { "ID": item.id }
             artistProc.running = true
             go("artist")
         }
-        else if (item.kind === "decksearch") { win.open = false; Quickshell.execDetached([scripts + "/deck-ctl", "search", item.value]) }
+        else if (item.kind === "decksearch") { win.open = false; Quickshell.execDetached([bin + "/deck-ctl", "search", item.value]) }
         else if (item.kind === "emoji") emojiPick(item, true)
         else if (item.kind === "stat" && item.copy !== undefined) sys.copyText(item.copy)   // Public IP, Local IP, Router: as ⌘C
         else if (item.kind === "brightness" || item.kind === "stat") shake.restart()   // brightness: ←/→ or the slider; stat: information only
@@ -1172,7 +1173,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
     }
     function launchDeck() {
         win.open = false
-        Quickshell.execDetached([scripts + "/deck-open"])
+        Quickshell.execDetached([bin + "/deck-open"])
     }
     // Play: something playing → play/pause; nothing playing → start / bring up Deck
     function deckPlayPress() { if (deckInfo === null) launchDeck(); else deckCtl("toggle") }
@@ -1882,7 +1883,7 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                         if (event.key === Qt.Key_Escape) { if (text !== "") text = ""; else win.back(); event.accepted = true }
                         else if (ctrl && event.key === Qt.Key_Space) { if (win.hasDeck) win.deckPlayPress(); event.accepted = true }
                         // Delete: removes your own wallpaper in Background, the selected snippet in Snippets (empty search). ⌘⌫
-                        // arrives as ⇧Home + Delete with the keyd plugin (config/keyd/app.conf), so it does the same
+                        // arrives as ⇧Home + Delete with the keyd plugin (plugins/keyd/app.conf), so it does the same
                         else if (event.key === Qt.Key_Delete && win.level === "background" && win.wallLoaded) { win.deleteWall(); event.accepted = true }
                         else if (event.key === Qt.Key_Delete && win.level === "snippets" && text === "") { win.deleteSnippet(); event.accepted = true }
                         // Backspace with an empty search goes back; Ctrl+⌫ (⌥⌫ with keyd: delete a word) doesn't

@@ -4,11 +4,12 @@ import Quickshell
 import Quickshell.Io
 
 // Home Assistant's devices for the launcher's Home level (HomeLevels.qml) and the top bar's Home menu (HomeMenu.qml):
-// one copy of the states, so a toggle in one shows in the other. Data and actions: hypr/scripts/home-assistant.
+// one copy of the states, so a toggle in one shows in the other. Data and actions: the Home Assistant plugin's
+// bin/home-assistant (plugins/home-assistant, linked to ~/.local/bin).
 // Nothing is polled on its own: the launcher level and the menu call refresh() while they're open.
 QtObject {
     id: h
-    readonly property string bin: Quickshell.env("HOME") + "/.config/hypr/scripts/home-assistant"
+    readonly property string bin: Quickshell.env("HOME") + "/.local/bin/home-assistant"
 
     property bool configured: false
     property var states: []          // [{ id, name, domain, state, on, area, fav, detail, dimmable, bright }]

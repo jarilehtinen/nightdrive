@@ -5,7 +5,7 @@
 #   autostart              start the listed apps (hyprland.lua runs this at login)
 #   autostart list         print the ids
 #   autostart toggle ID    add the id, or remove it if it's there
-#   autostart add ID       add the id if it isn't there (an installer: install-1password.sh)
+#   autostart add ID       add the id if it isn't there (an installer: plugins/1password/install.sh)
 f=$HOME/.local/state/nightdrive/autostart
 # On by default when installed: 1Password's SSH agent, `op` and the launcher's Passwords level need it running
 DEFAULT=com.onepassword.OnePassword.desktop

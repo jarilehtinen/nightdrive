@@ -207,10 +207,10 @@ logind-ignore-sleep-key.conf /etc/systemd/logind.conf.d/50-ignore-sleep-key.conf
 logind-power-key.conf /etc/systemd/logind.conf.d/50-power-key.conf 644
 nightdrive.actions /etc/dnf/libdnf5-plugins/actions.d/nightdrive.actions 644
 LIST
-  # Mac Keyboard Shortcuts (plugin keyd): its /etc config follows the repo's, if the plugin is installed
-  if [[ -f /etc/keyd/default.conf ]] && ! cmp -s "$repo/config/keyd/default.conf" /etc/keyd/default.conf; then
+  # Mac Keyboard Shortcuts (plugins/keyd): its /etc config follows the repo's, if the plugin is installed
+  if [[ -f /etc/keyd/default.conf ]] && ! cmp -s "$repo/plugins/keyd/default.conf" /etc/keyd/default.conf; then
     echo "    /etc/keyd/default.conf"; copied=1
-    sudo install -Dm644 "$repo/config/keyd/default.conf" /etc/keyd/default.conf && sudo keyd reload
+    sudo install -Dm644 "$repo/plugins/keyd/default.conf" /etc/keyd/default.conf && sudo keyd reload
   fi
   # The file the dnf hook touches; Quickshell watches it only if it exists when it starts (restarted below)
   [[ -e /var/lib/nightdrive/dnf-changed ]] || sudo install -Dm644 /dev/null /var/lib/nightdrive/dnf-changed
@@ -254,7 +254,7 @@ LIST
   [[ -n $flatpaks ]] && flatpak install --user -y --noninteractive flathub $flatpaks   # already installed ones are skipped
   flatpak update --user -y --noninteractive
 
-  (( deck )) && { echo "==> Deck (rebuild)"; DECK_SRC=${DECK_SRC:-$HOME/.local/src/deck} "$repo/install-deck.sh"; }
+  (( deck )) && { echo "==> Deck (rebuild)"; DECK_SRC=${DECK_SRC:-$HOME/.local/src/deck} "$repo/plugins/deck/install.sh"; }
 
   plugins_installed >/dev/null     # the optional parts' list, before the reload reads it (hypr/bindings.lua)
   "$repo/config/fuzzel/sync-apps" >/dev/null 2>&1 || true   # the launcher's app list, as at the end of install.sh
@@ -280,23 +280,27 @@ LIST
 # Plugins: the lines of plugins.txt, and plugin folders with a plugin.conf (the same fields as key=value; both formats
 # are explained in plugins.txt): the repo's plugins/<id>/ and the external ones in ~/.local/share/nightdrive/plugins/<id>/.
 # Ids are unique: a folder with an id already taken (by plugins.txt, the repo, or an earlier external one) is skipped.
-# Folders come first (their installers run first in install.sh; Home Assistant, which asks things, stays last).
+# Sorted by plugin.conf's order (default 50; a plugins.txt line has 50), and within the same order folders first, then
+# the lines: install.sh installs them in this order, so Home Assistant (order=90), which asks things, stays last.
 # One line each, fields separated by \x1f (none may be empty for read's sake, so a missing folder is "-"): id, name,
 # icon, description, default, installer, installed test, group, folder
 plugin_rows() {
-  local d id k v seen
+  local d id k v seen order
   seen=" $(grep -vE '^\s*(#|$)' "$repo/plugins.txt" | cut -d'|' -f1 | tr '\n' ' ')"
-  for d in "$repo"/plugins/*/ "$external"/*/; do
-    d=${d%/}; id=${d##*/}
-    [[ -f $d/plugin.conf && $seen != *" $id "* ]] || continue
-    seen+="$id "
-    local -A c=()
-    while IFS='=' read -r k v; do [[ $k =~ ^[a-z]+$ ]] && c[$k]=$v; done < "$d/plugin.conf"
-    printf '%s\x1f' "$id" "${c[name]:-$id}" "${c[icon]:-puzzle}" "${c[description]:-}" "${c[default]:-off}" \
-      "${c[install]:-true}" "${c[installed]:-false}" "${c[group]:-plugin}"
-    printf '%s\n' "$d"
-  done
-  grep -vE '^\s*(#|$)' "$repo/plugins.txt" | awk -F'|' -v OFS=$'\x1f' '{ NF = 8; print $0, "-" }'
+  {
+    for d in "$repo"/plugins/*/ "$external"/*/; do
+      d=${d%/}; id=${d##*/}
+      [[ -f $d/plugin.conf && $seen != *" $id "* ]] || continue
+      seen+="$id "
+      local -A c=()
+      while IFS='=' read -r k v; do [[ $k =~ ^[a-z]+$ ]] && c[$k]=$v; done < "$d/plugin.conf"
+      order=${c[order]:-50}; [[ $order =~ ^[0-9]+$ ]] || order=50
+      printf '%s\x1f' "$order" "$id" "${c[name]:-$id}" "${c[icon]:-puzzle}" "${c[description]:-}" "${c[default]:-off}" \
+        "${c[install]:-true}" "${c[installed]:-false}" "${c[group]:-plugin}"
+      printf '%s\n' "$d"
+    done
+    grep -vE '^\s*(#|$)' "$repo/plugins.txt" | awk -F'|' -v OFS=$'\x1f' '{ NF = 8; print 50, $0, "-" }'
+  } | sort -s -t $'\x1f' -k1,1n | cut -d $'\x1f' -f2-
 }
 # One tab-separated line each: id, name, icon, description, default (on/off), installer, installed (1/0), group, folder
 # (empty for a plugins.txt line), off (1/0: plugins off), source (repo, or external: plugins add). The tests run side by

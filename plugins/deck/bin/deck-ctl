@@ -1,5 +1,6 @@
 #!/bin/bash
-# deck-ctl play-album <spotify:album:…> | search <query>: the launcher's Music level talks to Deck through this.
+# deck-ctl play-album <spotify:album:…> | search <query>: the launcher's Music level talks to Deck through this
+# (~/.local/bin/deck-ctl).
 # Starts Deck first if it isn't running (and waits for its control socket); a search also brings Deck's window up.
 cmd=${1:?usage: deck-ctl play-album <uri> | search <query>}; shift
 deck="$HOME/.local/bin/deck"

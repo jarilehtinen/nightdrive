@@ -105,8 +105,8 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
 | Terminal | [kitty](https://sw.kovidgoyal.net/kitty/) | ⌘Enter; Mac copy and paste |
 | Browser | Firefox | tabs below the address bar, themed UI |
 | Mail (optional) | Thunderbird | themed, with a minimal toolbar ([details](docs/thunderbird.md)) |
-| Music (optional) | [Deck](https://github.com/jarilehtinen/deck) (Spotify in the terminal, needs Spotify Premium) | bar icon, music menu, player row in the launcher, media keys |
-| Passwords (optional) | 1Password + `op` CLI | Passwords level in the launcher, SSH agent |
+| Music (optional) | [Deck](plugins/deck/README.md) (Spotify in the terminal, needs Spotify Premium) | bar icon, music menu, player row in the launcher, media keys |
+| Passwords (optional) | [1Password](plugins/1password/README.md) + `op` CLI | Passwords level in the launcher, SSH agent |
 | AI | [Claude Code](https://claude.com/claude-code) | ⌘⌥Enter, ask from the launcher, usage limits in the bar |
 | Dictation | [Voxtype](https://github.com/peteonrails/voxtype) (Parakeet) | F5 / Fn push-to-talk, recording card on screen |
 | Network | NetworkManager, BlueZ, [Tailscale](plugins/tailscale/README.md) (optional) | Wi-Fi, Bluetooth and Tailscale menus |
@@ -118,9 +118,9 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
 | Messaging | [Telegram Desktop](https://desktop.telegram.org) (Flatpak, install it from Install › Software) | native Wayland app, keeps running in the background like 1Password |
 | Web apps | Chromium app windows | add your own, or a ready-made one with a keybinding: WhatsApp, Slack, Teams, YouTube (Install › Webapp) |
 | Lock and idle | hyprlock, hypridle | screensaver after 10 min, lock after 30 min (screensaver and screen-off times: Settings › Screensaver) |
-| Smart home (optional) | [Home Assistant](https://www.home-assistant.io) (`install-home-assistant.sh`) | Home in the launcher: rooms and their devices, Enter turns one on/off or runs a scene, ←/→ sets a light's brightness; pinned devices in the top bar's Home menu; the webapp. Local, Tailscale and Nabu Casa addresses tried in order |
+| Smart home (optional) | [Home Assistant](plugins/home-assistant/README.md) | Home in the launcher: rooms and their devices, Enter turns one on/off or runs a scene, ←/→ sets a light's brightness; pinned devices in the top bar's Home menu; the webapp. Local, Tailscale and Nabu Casa addresses tried in order |
 | Phone (optional) | [LocalSend](https://localsend.org) receiver, [UxPlay](https://github.com/FDH2/UxPlay), Ferry (own, over `tailscale serve`) | files and text from a phone, asked first in a notification; an iPhone, iPad or Mac mirrored into a window; a mailbox both ways with a web page and Web Push. All experimental |
-| Mac Keyboard Shortcuts (optional) | [keyd](https://github.com/rvaiya/keyd), a Nautilus extension | ⌥⌫ deletes a word, ⌘⌫ to the line start; Files like Finder: Enter renames, ⌘O opens, ⌘⌫ to the trash |
+| [Mac Keyboard Shortcuts](plugins/keyd/README.md) (optional) | [keyd](https://github.com/rvaiya/keyd), a Nautilus extension | ⌥⌫ deletes a word, ⌘⌫ to the line start; Files like Finder: Enter renames, ⌘O opens, ⌘⌫ to the trash |
 | Optional parts | everything marked optional above, Jottacloud, VS Code | chosen when installing; the rest later in launcher › System › Install (Recommended: apps Nightdrive sets up; Webapp; Plugins: desktop features like Screen Mirroring) or `nightdrive plugins` (`plugins.txt` and [`plugins/`](plugins/README.md)). A part that isn't installed doesn't show anywhere: no launcher level, bar icon or keybinding. One installed later (the launcher, `dnf`, Flatpak) shows up by itself |
 
 ## Requirements
@@ -153,10 +153,9 @@ It tells which machine it's on and asks first which optional parts you want (num
 Machine: PC (x86_64, graphics: amd, keyboard: us)
 
   Recommended apps
-   1 [x] Tailscale         VPN, in the top bar (log in afterwards: sudo tailscale up)
-   2 [ ] 1Password         Password manager: launcher › Passwords, op CLI, SSH agent
-   …
-   5 [x] Deck              Spotify player (needs Premium), launcher and top bar; compiled
+   1 [ ] 1Password         Password manager: launcher › Passwords, op CLI, SSH agent
+   2 [x] Deck              Spotify player (needs Premium), launcher and top bar; compiled
+   3 [x] Tailscale         VPN, in the top bar (log in afterwards: sudo tailscale up)
    …
 
   Web apps
@@ -166,7 +165,7 @@ Machine: PC (x86_64, graphics: amd, keyboard: us)
   Plugins
   13 [ ] AirPlay Receiver  Mirror an iPhone, iPad or Mac here (UxPlay, experimental)
   14 [ ] Ferry             Files and text both ways with an iPhone over Tailscale, no app (experimental)
-  15 [ ] LocalSend         Files from phones via the LocalSend app, asks first (experimental)
+  15 [ ] Mac Keyboard Shortcuts ⌥⌫ deletes a word, ⌘⌫ to the line start; Files: Enter renames, ⌘O opens, ⌘⌫ to the trash
    …
 
   18 [ ] Install all       every optional part above

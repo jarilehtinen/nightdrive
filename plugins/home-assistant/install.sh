@@ -1,11 +1,11 @@
 #!/bin/bash
-# Home Assistant: the webapp, the launcher's Home level and the top bar's Home icon (config/hypr/scripts/home-assistant).
+# Home Assistant: the webapp, the launcher's Home level and the top bar's Home icon (bin/home-assistant).
 # Asks for the addresses and a token, writes ~/.config/nightdrive/home-assistant and adds the webapp. Safe to run again.
 # Remove: rm ~/.config/nightdrive/home-assistant (Home disappears from the bar and the launcher), and the webapp from
 # the launcher's Remove.
 set -euo pipefail
-repo=$(cd "$(dirname "$0")" && pwd)
-ha="$repo/config/hypr/scripts/home-assistant"
+here=$(cd "$(dirname "$0")" && pwd)
+ha="$here/bin/home-assistant"
 conf="$HOME/.config/nightdrive/home-assistant"
 
 echo "==> Home Assistant"
@@ -60,7 +60,7 @@ done
 mkdir -p "${conf%/*}"
 umask 077
 {
-  echo "# Home Assistant (install-home-assistant.sh; format: config/hypr/scripts/home-assistant)"
+  echo "# Home Assistant (plugins/home-assistant: install.sh; format: bin/home-assistant)"
   echo "HA_URLS=\"${urls}\""
   if [[ -n ${ref:-} ]]; then echo "HA_TOKEN_CMD=\"op read '$ref'\""; else echo "HA_TOKEN=$tok"; fi
 } > "$conf"
@@ -74,8 +74,8 @@ read -erp "Address for the webapp: " -i "$last" web
 web=${web:-$last}
 icon=$(mktemp --suffix=.png); trap 'rm -f "$icon"' EXIT
 curl -sfL -m 5 -o "$icon" "$web/static/icons/favicon-192x192.png" || icon=
-"$repo/config/hypr/scripts/webapp-add" "Home Assistant" "$web" ${icon:+"$icon"}
-"$repo/config/fuzzel/sync-apps" >/dev/null 2>&1 || true
+"$HOME/.config/hypr/scripts/webapp-add" "Home Assistant" "$web" ${icon:+"$icon"}
+"$HOME/.config/fuzzel/sync-apps" >/dev/null 2>&1 || true
 
 qs ipc call bar refresh >/dev/null 2>&1 || true
 cat <<'MSG'

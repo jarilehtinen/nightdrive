@@ -1,0 +1,3 @@
+-- 1Password's key (plugins/README.md › Keys): its window, started if it isn't running (it usually runs hidden from login)
+local p = ...
+hl.bind(p.mod .. " + SHIFT + P", hl.dsp.exec_cmd(p.scripts .. "/launch-or-focus '^(1[pP]assword|com\\.onepassword\\.OnePassword)$' 1password"))

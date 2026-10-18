@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell
+import qs
 
 // Deck (Spotify): track, cover art, playhead, controls and like.
 // State is read from $XDG_RUNTIME_DIR/deck/state.json (written by Deck's Linux helper process) and commands
@@ -17,7 +18,7 @@ Column {
     property bool outOpen: false       // output device list open
     signal close()
     function openDeck() {
-        Quickshell.execDetached([Quickshell.env("HOME") + "/.config/hypr/scripts/deck-open"])
+        Quickshell.execDetached([Quickshell.env("HOME") + "/.local/bin/deck-open"])
         m.close()
     }
 

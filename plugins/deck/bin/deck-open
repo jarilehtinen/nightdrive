@@ -1,0 +1,4 @@
+#!/bin/bash
+# Brings Deck (Spotify in the terminal, the Deck plugin's install.sh) to the front, or starts it in its own kitty window.
+# The launcher, the bar, ⌘⇧M and F8 (hypr/scripts/media-play) run it as ~/.local/bin/deck-open.
+exec "$HOME/.config/hypr/scripts/launch-or-focus" '^deck$' kitty --class deck -e "$HOME/.local/bin/deck"

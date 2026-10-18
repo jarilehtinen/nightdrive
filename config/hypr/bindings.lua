@@ -54,7 +54,6 @@ hl.bind(mod .. " + SHIFT + B",   hl.dsp.exec_cmd(browser))
 hl.bind(mod .. " + SHIFT + RETURN", hl.dsp.exec_cmd(browser))
 -- Optional parts' apps (plugins.txt ids; SHORTCUTS.md tags the same lines with {id})
 local optional = {
-    { "1password",   "P", "'^(1[pP]assword|com\\.onepassword\\.OnePassword)$' 1password" },
     { "whatsapp",    "W", "'^chrome-web\\.whatsapp\\.com' gtk-launch webapp-whatsapp" },   -- WhatsApp webapp
     { "slack",       "S", "'^chrome-app\\.slack\\.com' gtk-launch webapp-slack" },         -- Slack webapp
     { "youtube",     "Y", "'^chrome-www\\.youtube\\.com' gtk-launch webapp-youtube" },     -- YouTube webapp
@@ -91,7 +90,6 @@ hl.bind(mod .. " + SHIFT + V",   hl.dsp.exec_cmd("qs ipc call launcher openLevel
 hl.bind(mod .. " + SHIFT + T",   hl.dsp.exec_cmd("qs ipc call shelf toggle"))   -- Shelf: file shelf (dragging to the top edge of the screen also opens it)
 hl.bind(mod .. " + ESCAPE",      hl.dsp.exec_cmd("qs ipc call menu toggle notifications"))
 hl.bind(mod .. " + CTRL + L",    hl.dsp.exec_cmd("loginctl lock-session"))
-if plugins.deck then hl.bind(mod .. " + SHIFT + M", hl.dsp.exec_cmd(scripts .. "/deck-open")) end   -- Deck (Spotify)
 hl.bind(mod .. " + R",           hl.dsp.exec_cmd(scripts .. "/screenshot clip"))   -- region screenshot to clipboard
 hl.bind(mod .. " + SHIFT + R",   hl.dsp.exec_cmd(scripts .. "/screenshot winclip"))   -- window screenshot to clipboard
 hl.bind(mod .. " + SHIFT + SPACE", hl.dsp.exec_cmd("qs ipc call menu nav"))   -- top bar via keyboard: ←/→ menu, ↑/↓ row, Enter, Esc
@@ -116,11 +114,9 @@ end
 
 -- ⌘⌫ = Delete (move to trash) in the file manager, like in macOS Finder. Elsewhere it messages the launcher:
 -- in Settings › Background it removes the selected custom wallpaper (otherwise it does nothing).
--- With the Mac Keyboard Shortcuts plugin (keyd, install-keyd.sh) keyd does ⌘⌫ and ⌥⌫ instead, as real key presses, per app
--- (config/keyd/app.conf): Hyprland's synthetic Delete could get stuck repeating. Its app mapper starts with Hyprland.
-if plugins.keyd then
-    hl.on("hyprland.start", function () hl.exec_cmd("keyd-application-mapper -d") end)
-else
+-- With the Mac Keyboard Shortcuts plugin (plugins/keyd) keyd does ⌘⌫ and ⌥⌫ instead, as real key presses, per app
+-- (its app.conf): Hyprland's synthetic Delete could get stuck repeating. The plugin's hyprland.lua starts its app mapper.
+if not plugins.keyd then
     hl.bind(mod .. " + BACKSPACE", function ()
         local w = hl.get_active_window()
         if w and (w.class == "org.gnome.Nautilus" or w.class == "nautilus") then
@@ -167,19 +163,19 @@ hl.bind(mod .. " + W",          hl.dsp.exec_cmd(scripts .. "/close-or-hide"))   
 hl.bind(mod .. " + Q",           hl.dsp.exec_cmd(scripts .. "/quit-app"))   -- quits the app for real, background apps too (Deck, WhatsApp…); ⌘W hides them
 hl.bind(mod .. " + F",           hl.dsp.window.fullscreen())
 -- ⌘T: toggle floating. For Deck: tiled -> floating at its default size, centred; floating but moved/resized ->
--- back to default size, centred; floating already at default position -> tiled. (Size: DECK_SIZE in hyprland.lua)
-local DECK_W, DECK_H = DECK_SIZE.w, DECK_SIZE.h
+-- back to default size, centred; floating already at default position -> tiled. (Size: DECK_SIZE, which the Deck plugin's
+-- hyprland.lua sets after this file has run, so it's read at the key press)
 local function xy(t) return t.x or t[1], t.y or t[2] end
 local function deck_reset(w)
-    hl.dispatch(hl.dsp.window.resize({ x = DECK_W, y = DECK_H, exact = true, window = "address:" .. w.address }))
+    hl.dispatch(hl.dsp.window.resize({ x = DECK_SIZE.w, y = DECK_SIZE.h, exact = true, window = "address:" .. w.address }))
     hl.dispatch(hl.dsp.window.center({ window = "address:" .. w.address }))
 end
 local function deck_at_default(w)
     local sw, sh = xy(w.size)
     local x, y = xy(w.at)
     local m = w.monitor
-    local cx, cy = (m.width / m.scale - DECK_W) / 2, (m.height / m.scale - DECK_H) / 2
-    return sw == DECK_W and sh == DECK_H and math.abs(x - cx) <= 3 and math.abs(y - cy) <= 30   -- y: the bar shifts the centre a little
+    local cx, cy = (m.width / m.scale - DECK_SIZE.w) / 2, (m.height / m.scale - DECK_SIZE.h) / 2
+    return sw == DECK_SIZE.w and sh == DECK_SIZE.h and math.abs(x - cx) <= 3 and math.abs(y - cy) <= 30   -- y: the bar shifts the centre a little
 end
 -- A window floated with ⌘T is always centred. A screen-sized one (e.g. a lone window: geometry stays screen-sized and
 -- the border disappears off the left/top) is first shrunk to 70 % x 75 %
@@ -195,7 +191,7 @@ local function tame_float(w)
 end
 local function deck_toggle_float()
     local w = hl.get_active_window()
-    if w and w.class == "deck" then
+    if w and w.class == "deck" and DECK_SIZE then
         if not w.floating then
             hl.dispatch(hl.dsp.window.float({ action = "toggle" }))
             deck_reset(w)

@@ -1,7 +1,7 @@
 #!/bin/bash
 # Installs the Deck player (Spotify, https://github.com/jarilehtinen/deck).
-# Source: ~/.local/src/deck (another clone: DECK_SRC=~/path/to/deck ./install-deck.sh), binary: ~/.local/bin/deck,
-# launch: Deck (⌘Space) and ⌘M.
+# Source: ~/.local/src/deck (another clone: DECK_SRC=~/path/to/deck ./install.sh), binary: ~/.local/bin/deck,
+# launch: Deck (⌘Space) and ⌘⇧M (bin/deck-open). `nightdrive update` runs this again when Deck's source changes.
 # Needs Spotify Premium and the Client ID of your own Spotify app (~/.config/deck/config.toml), see Deck's README.
 set -euo pipefail
 src=${DECK_SRC:-$HOME/.local/src/deck}
@@ -20,7 +20,7 @@ cat > "$HOME/.local/share/applications/deck.desktop" <<DESK
 Type=Application
 Name=Deck
 Comment=Spotify player for the terminal
-Exec=$HOME/.config/hypr/scripts/deck-open
+Exec=$HOME/.local/bin/deck-open
 Icon=deck
 Terminal=false
 Categories=AudioVideo;Audio;Player;
@@ -28,4 +28,4 @@ StartupWMClass=deck
 DESK
 "$HOME/.config/fuzzel/sync-apps" >/dev/null 2>&1 || true     # visibility in the launcher
 echo "Deck installed: ~/.local/bin/deck"
-echo "Open it with ⌘M or from the launcher."
+echo "Open it with ⌘⇧M or from the launcher."

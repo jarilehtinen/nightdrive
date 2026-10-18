@@ -1,9 +1,10 @@
 import QtQuick
 import Quickshell
+import qs
 
 // Home Assistant: the pinned devices (a click turns one on/off or runs a scene; a light that's on is yellow, a dimmable one
 // shows its brightness as a ring around the bulb and takes the scroll wheel), and the webapp. Devices are pinned in
-// the launcher: ⌘Space › Home, Shift+Enter. Data: Home.qml (hypr/scripts/home-assistant).
+// the launcher: ⌘Space › Home, Shift+Enter. Data: Home.qml (bin/home-assistant).
 Column {
     id: m
     width: parent ? parent.width : 300

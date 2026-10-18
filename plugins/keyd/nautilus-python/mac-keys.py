@@ -1,6 +1,6 @@
-# Files (Nautilus) with Finder's keys, part of the Mac Keyboard Shortcuts plugin (install-keyd.sh): Enter renames the
+# Files (Nautilus) with Finder's keys, part of the Mac Keyboard Shortcuts plugin (plugins/keyd): Enter renames the
 # selection, ⌘O opens it (F2 still renames too). Linked by link.sh to ~/.local/share/nautilus-python/extensions; works
-# only while the plugin is on.
+# only while the plugin is installed and on (not turned off with `nightdrive plugins off keyd`).
 # Nautilus has no extension API for keys: a capture-phase key controller on each Files window catches the keys before
 # the file view does, and only when the focus is in the file view (not in a text field, the rename popover or the
 # sidebar). It runs the view's own actions (view.rename, view.open-with-default-application); if a Nautilus update
@@ -10,6 +10,7 @@ import os
 from gi.repository import Gdk, GLib, GObject, Gtk, Nautilus
 
 ENABLED = "/etc/systemd/system/multi-user.target.wants/keyd.service"   # the plugin's test: systemctl is-enabled keyd
+OFF = os.path.expanduser("~/.local/state/nightdrive/plugins-off/keyd")
 ENTER = {Gdk.KEY_Return, Gdk.KEY_KP_Enter, Gdk.KEY_ISO_Enter}
 MODS = Gdk.ModifierType.SHIFT_MASK | Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.ALT_MASK | Gdk.ModifierType.SUPER_MASK
 
@@ -35,7 +36,7 @@ def on_key(controller, keyval, keycode, state):
         action = "view.open-with-default-application"
     else:
         return False
-    if not os.path.exists(ENABLED):
+    if not os.path.exists(ENABLED) or os.path.exists(OFF):
         return False
     view = file_view(controller.get_widget().get_focus())
     return view is not None and view.activate_action(action, None)

@@ -24,8 +24,9 @@ Only `plugin.conf` and `README.md` are required. The other files are used only w
 | `status` | The module's state, one line of JSON | [status](ferry/status) |
 | `icons/` | The module's own SVG icons, for a logo Lucide hasn't got | — (Tailscale's [icons/](tailscale/icons)) |
 | `<Name>Menu.qml` | The menu a click on the module opens (more `.qml` files beside it if it needs them) | [FerryMenu.qml](ferry/FerryMenu.qml) |
-| `bindings.lua` | Keys | — |
-| `SHORTCUTS.md` | Its lines in the key list (⌘⇧K, launcher › Keybindings) | — |
+| `bindings.lua` | Keys | — (Deck's [bindings.lua](deck/bindings.lua)) |
+| `SHORTCUTS.md` | Its lines in the key list (⌘⇧K, launcher › Keybindings) | — (Deck's [SHORTCUTS.md](deck/SHORTCUTS.md)) |
+| `hyprland.lua` | Hyprland settings: window rules, and programs that start with the session | — (Deck's [hyprland.lua](deck/hyprland.lua)) |
 | `systemd/` | User units, linked to `~/.config/systemd/user` | [nightdrive-ferry.service](ferry/systemd/nightdrive-ferry.service) |
 | `bin/` | Commands, linked to `~/.local/bin` | [ferry](ferry/bin/ferry) |
 | `nautilus-python/` | Files extensions, linked to `~/.local/share/nautilus-python/extensions` | — (LocalSend's [localsend.py](localsend/nautilus-python/localsend.py)) |
@@ -33,13 +34,14 @@ Only `plugin.conf` and `README.md` are required. The other files are used only w
 
 `link.sh` links `bin/`, `systemd/` and `nautilus-python/` whether the plugin is installed or not, so its installer can
 use them. The rest is picked up by `nightdrive plugins installed`, which installing and turning a plugin off or on run: it
-lists the plugins that are on, with their modules, menus and icons, in `~/.cache/nightdrive/plugins.d/`. The bar reads its modules from there,
-and Hyprland and the key list read `bindings.lua` and `SHORTCUTS.md` straight from the folders listed. Nothing is
-written into the repo.
+lists the plugins that are on, with their modules, menus and icons, in `~/.cache/nightdrive/plugins.d/`. The bar reads its
+modules from there, and Hyprland and the key list read `bindings.lua`, `hyprland.lua` and `SHORTCUTS.md` straight from
+the folders listed. Nothing is written into the repo.
 
 ## plugin.conf
 
-`key=value` lines; a `#` line is a comment. The keys mean the same as the columns of `plugins.txt`. `name`, `icon`,
+`key=value` lines; a `#` line is a comment. The keys mean the same as the columns of `plugins.txt` (`order` is the
+folders' own). `name`, `icon`,
 `description` and `installed` are required (`nightdrive plugin check` says so); the rest have defaults.
 
 ```
@@ -62,6 +64,7 @@ group=plugin
 | `install` | A shell command, or a script in the folder, run in the folder in a terminal (it may ask things, and `sudo` works). Running it again must be safe. Default: nothing to install |
 | `installed` | A shell test, run in the folder: the plugin is installed while it succeeds. Make it quick: every `nightdrive plugins` runs all of them |
 | `group` | Where it is listed: `plugin` (default, Install › Plugins: a feature of the desktop), `recommended` (Install › Recommended: an app Nightdrive sets up) or `webapp` |
+| `order` | A number, default 50: `install.sh` installs the plugins in this order, and the lists show them in it. Lower goes first; the same order keeps the folders' (alphabetical) order, then `plugins.txt`'s lines. Home Assistant has 90: its installer asks for addresses, so it runs last |
 
 Pick `installed` so it follows what the installer did: a unit that is enabled, a command that exists. A plugin with
 nothing to install can use `installed=true`, but then everyone who has the folder has it on, which suits an external
@@ -73,7 +76,9 @@ plugin (adding it is the choice) better than one in this repo.
 explains every key), with a few differences:
 
 - `name` defaults to the id. `needs` is implied (the id: the module goes when the plugin does), so leave it out.
-- `after`: the module it goes right of (`"system"`, `"tailscale"` …); without it, at the right end.
+- `after`: the module it goes right of (`"system"`, `"tailscale"` …), or `before`: the one it goes left of. Either can be
+  a list, and the first one that is in the bar counts: Home Assistant's `"before": ["deck", "claude"]`. Without them, at
+  the right end.
 - `size`: its icon size in px.
 - `label` (required) and `glyph` (a Lucide name): its row in launcher › Settings › Top bar › Items, where it can be
   hidden.
@@ -191,6 +196,28 @@ column 22, as in the core's file). Its lines show only while the plugin is on, s
 Hyprland reloads by itself when `nightdrive plugins installed` changes the list of plugins that are on. After editing
 `bindings.lua` of a plugin that is already on, run `hyprctl reload`.
 
+## Hyprland settings: hyprland.lua
+
+`hyprland.lua` holds the plugin's other Hyprland settings, such as a window rule. Hyprland's config runs it while the
+plugin is on, after the core's settings and before your `local.lua`. It gets `{ id, dir, scripts, start }` as `...`:
+`start(cmd)` runs a command once when the session starts, with the desktop's other programs (at the login screen's
+autologin, once it is unlocked). One that fails is left out with a line in Hyprland's log.
+
+```lua
+-- Deck's window: floating, centred
+hl.window_rule({ name = "float-deck", match = { class = "^deck$" }, float = true, size = "720 440", center = true })
+```
+
+```lua
+-- Screen Mirroring: doubletake's daemon, with the session
+local p = ...
+p.start("sh -c '[ -x \"$HOME/.local/bin/doubletake\" ] && exec \"$HOME/.local/bin/doubletake\" -daemonize'")
+```
+
+A program started with `start` runs from the next login on: the installer starts it for the session it runs in, if
+it's needed right away. Keys go in `bindings.lua`, not here (the top bar menu repeats those while it's open). Name a
+window rule after the plugin, so it can't replace one of the core's. After editing it, `hyprctl reload`.
+
 ## Services and commands: systemd/, bin/ and nautilus-python/
 
 Units in `systemd/` are linked to `~/.config/systemd/user`, files in `bin/` to `~/.local/bin` and Files extensions in
@@ -208,7 +235,7 @@ plugin is on or not, so it checks that itself (LocalSend's tests its unit and `~
 nightdrive plugins install disk    # runs its installer in a terminal, then gathers its parts
 nightdrive plugins installed       # after changing module.jsonc, or adding a menu file
 qs kill; setsid -f qs              # after changing its menu
-hyprctl reload                     # after changing its bindings.lua (SHORTCUTS.md shows right away)
+hyprctl reload                     # after changing its bindings.lua or hyprland.lua (SHORTCUTS.md shows right away)
 nightdrive plugin check disk       # the rules on this page
 ```
 
@@ -223,17 +250,19 @@ something is off. `nightdrive sandbox check` runs it too. It checks a plugin fol
 
 - The id: the folder's name is letters, digits, `-` and `_`, and no other plugin (or `plugins.txt` line) has it.
 - `plugin.conf`: only `key=value` lines and known keys, each once; `name`, `icon`, `description` and `installed` are
-  there; `default` is `on` or `off` and `group` one of the three; `install` and `installed` parse as shell (`bash -n`).
+  there; `default` is `on` or `off`, `group` one of the three and `order` a number; `install` and `installed` parse as
+  shell (`bash -n`).
 - The icons are Lucide names: plugin.conf's `icon`, module.jsonc's `glyph`, and the ones `status` prints with `emit`
   (or one of the bar's own in `config/topbar/icons`; a `pack:name` isn't checked).
 - `README.md` is there: the `# Name` title is plugin.conf's `name`; at least one fact line, all of them last, each once
   and in order, none empty; `Keys:` when the plugin has `bindings.lua`; each `- ` item on one line; and the pictures
   it shows exist.
-- `module.jsonc` parses and has only known keys, no `needs` and a `label`; the module has a `status` key or an
-  executable `./status`.
+- `module.jsonc` parses and has only known keys, no `needs` and a `label`; `after` or `before` (not both) is a name or a
+  list of names; the module has a `status` key or an executable `./status`.
 - Each `<Name>Menu.qml` opens from a module of the plugin's, and has `MenuHeader` before the rows.
 - The QML files have no hex colours or font names.
 - `SHORTCUTS.md`'s lines are ones the key list reads (the format above).
+- `hyprland.lua` binds no keys: those go in `bindings.lua`.
 - The scripts' syntax: `bash -n`, Python's `ast.parse`, and `luac -p` for Lua only where `luac` is installed
   (without it, a note lists the files left unchecked: `sudo dnf install lua`).
 
@@ -250,9 +279,9 @@ nightdrive plugins off ferry    # the desktop treats it as not installed, and it
 nightdrive plugins on ferry     # back as it was
 ```
 
-Off hides its module, menu, launcher rows, keys and shortcut lines, and stops the units in its `systemd/`. They stay
-enabled, so its `installed` test still succeeds, and a drop-in keeps them from starting until it's on again. The state
-is an empty file, `~/.local/state/nightdrive/plugins-off/<id>`. The same switch is on the plugin's page in the launcher
+Off hides its module, menu, launcher rows, keys and shortcut lines, leaves out its `hyprland.lua`, and stops the units in
+its `systemd/`. They stay enabled, so its `installed` test still succeeds, and a drop-in keeps them from starting until
+it's on again. The state is an empty file, `~/.local/state/nightdrive/plugins-off/<id>`. The same switch is on the plugin's page in the launcher
 (Tab to it). The commands work even when the bar is stuck: every plugin's QML runs in the same Quickshell, with no
 isolation, so a terminal is the way out.
 
