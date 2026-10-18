@@ -2,10 +2,11 @@
 """Details of an optional part (plugins.txt, or a plugin folder's plugin.conf) for the launcher's detail view, as JSON on
 stdout: the same shape as pkg-info's, so Install › Recommended and Plugins open the same page as Install › Software.
   plugin-info <id>
-Output: { name, summary, installed, off, external, icon, screenshot, paragraphs: [text], fields: [[label, value]] }
+Output: { name, summary, installed, off, external, icon, screenshot, paragraphs: [text | {code: [line]}], fields: [[label, value]] }
 (off: turned off with `nightdrive plugins off`; external: added with `nightdrive plugins add`, from Source)
 The long text is the folder's README.md, or docs/plugins/<id>.md for a plugins.txt line (GitHub shows the same file): the
-# title is left out, paragraphs are split at blank lines, a "- " item is a paragraph of its own, the first image ![…](file)
+# title is left out, paragraphs are split at blank lines, a "- " item is a paragraph of its own, a code block (indented or
+in ``` fences) is one with its lines as they are ({code: [line]}, shown in a box), the first image ![…](file)
 is the screenshot and lines "Homepage: …" / "Needs: …" / "Keys: …" go to the facts. Without the file the page has the
 one-line description."""
 import json, os, re, subprocess, sys
@@ -47,18 +48,48 @@ def plain(t):
 
 
 def doc(path):
-    paragraphs, fields, shot, cur = [], [], "", []
+    paragraphs, fields, shot, cur, code, fence, blank = [], [], "", [], None, "", True
     try:
         lines = open(path).read().split("\n")
     except OSError:
         return paragraphs, fields, shot
 
     def flush():
+        nonlocal code
         if cur:
             paragraphs.append(plain(" ".join(cur)))
             cur.clear()
+        if code is not None:
+            while code and not code[-1].strip():
+                code.pop()
+            if code:
+                paragraphs.append({"code": code})
+            code = None
     for line in lines:
         s = line.strip()
+        after_blank, blank = blank, not s
+        # A code block keeps its lines as they are: in ``` fences, or indented by 4 spaces (or a tab) after a blank line
+        # (Markdown's indented block can't go on from a paragraph or an item); a blank line inside one stays in it.
+        # plugin-check finds the same lines.
+        if fence:
+            if s.startswith(fence):
+                fence = ""
+                flush()
+            else:
+                code.append(line.rstrip())
+            continue
+        opening = re.match(r"(`{3,}|~{3,})", s)
+        if opening:
+            flush()
+            fence, code = opening.group(1), []
+            continue
+        if line.startswith(("    ", "\t")) and s and (code is not None or after_blank) or code is not None and not s:
+            if code is None:
+                code = []
+            code.append(line.rstrip()[4 if line.startswith("    ") else 1:])
+            continue
+        if code is not None:
+            flush()
         img = re.match(r"!\[[^\]]*\]\(([^)\s]+)", s)
         field = re.match(r"(%s): (.+)$" % "|".join(FIELDS), s)
         if not s or s.startswith("#"):

@@ -2,7 +2,7 @@
 # AirPlay Receiver (UxPlay, plugins/airplay-receiver/install.sh): an iPhone, iPad or Mac mirrors its screen to a window here.
 #   airplay-receiver run              the receiver itself (nightdrive-airplay.service)
 #   airplay-receiver enable|disable   on/off; it starts with the session
-#   airplay-receiver status           on | off
+#   airplay-receiver status           on, or off and why (turned off as a plugin, the receiver not running)
 #   airplay-receiver name             the name the iPhone shows (the host name, like LocalSend's)
 # The window is floating along the right edge (hyprland.lua, float-uxplay). UxPlay crashes (SIGSEGV) when its window
 # is closed (⌘W); run starts it again itself, so the receiver is back in a second and the unit never goes failed
@@ -11,6 +11,7 @@ SERVICE=nightdrive-airplay.service
 # The unit in the plugin's folder (this file is linked to ~/.local/bin): enabled by its path, which links it again after a
 # disable (systemctl disable removes a linked unit's link too)
 UNIT=$(dirname "$(dirname "$(readlink -f "$0")")")/systemd/$SERVICE
+OFF=$HOME/.local/state/nightdrive/plugins-off/airplay-receiver   # nightdrive plugins off airplay-receiver
 PORT=50000   # UxPlay's TCP/UDP 50000-50002: inside the firewall's open range (its default ports aren't)
 
 name() {
@@ -36,7 +37,12 @@ case ${1:-status} in
     systemctl --user daemon-reload
     systemctl --user enable --now "$UNIT" ;;
   disable) systemctl --user disable --now "$SERVICE" ;;
-  status)  systemctl --user -q is-enabled "$SERVICE" 2>/dev/null && echo on || echo off ;;
+  status)
+    # plugins off stops the unit but leaves it enabled (the installed test): enabled alone isn't on
+    if [[ -e $OFF ]]; then echo "off (turned off: nightdrive plugins on airplay-receiver)"
+    elif ! systemctl --user -q is-enabled "$SERVICE" 2>/dev/null; then echo off
+    elif ! systemctl --user -q is-active "$SERVICE" 2>/dev/null; then echo "off (not running: airplay-receiver enable starts it)"
+    else echo on; fi ;;
   name)    name ;;
   *)       sed -n '2,6p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
 esac

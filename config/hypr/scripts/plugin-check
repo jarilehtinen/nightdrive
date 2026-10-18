@@ -4,8 +4,8 @@
 A plugin folder (the repo's plugins/<id>/ and the external ones): plugin.conf (known keys, the required ones, values,
 a unique id, install and installed parse as shell), its icon, README.md (# title = the name, at least one fact line
 and the fact lines last: Homepage:, Needs:, Keys: (needed with bindings.lua), each - item on one line, the images it
-shows), module.jsonc (parses, known keys, no needs, a label, after or before as a name or a list, the status command is
-executable), the icons status emits
+shows, ``` code blocks closed), module.jsonc (parses, known keys, no needs, a label, after or before as a name or a
+list, the status command is executable), the icons status emits
 (Lucide, the bar's own or the folder's icons/), the menus (a <Name>Menu.qml opens from a module of its own; MenuHeader
 before the rows; no hex colours or font names: Theme.* and Theme.font / Icons.family), SHORTCUTS.md (lines the key list
 reads), hyprland.lua (no keys: those go in bindings.lua), the scripts' syntax (bash -n, ast.parse, luac -p if there is
@@ -126,6 +126,28 @@ def shell_syntax(cmd, cwd):
     return "" if r.returncode == 0 else (r.stderr.strip().split("\n") or ["bash -n failed"])[-1].replace("bash: -c: ", "")
 
 
+def code_lines(lines):
+    """The line numbers of a README's code blocks, which plugin-info shows as they are: ``` fences (with the fence
+    lines), and lines indented by 4 spaces or a tab after a blank line. Also the line of a fence that isn't closed."""
+    code, fence, start, inside, blank = set(), "", 0, False, True
+    for n, l in enumerate(lines, 1):
+        s = l.strip()
+        after_blank, blank = blank, not s
+        if fence:
+            code.add(n)
+            if s.startswith(fence):
+                fence = ""
+        elif re.match(r"(`{3,}|~{3,})", s):
+            fence, start, inside = re.match(r"(`{3,}|~{3,})", s).group(1), n, False
+            code.add(n)
+        elif l.startswith(("    ", "\t")) and s and (inside or after_blank) or inside and not s:
+            inside = True
+            code.add(n)
+        else:
+            inside = False
+    return code, (start if fence else 0)
+
+
 def check_readme(path, name, keys_needed):
     try:
         lines = open(path).read().rstrip("\n").split("\n")
@@ -133,6 +155,9 @@ def check_readme(path, name, keys_needed):
         find(path, 1, "missing: the plugin's page (# Name, a paragraph, Homepage:/Needs:/Keys: lines last)")
         return
     first = next((n for n, l in enumerate(lines, 1) if l.strip()), 0)
+    code, unclosed = code_lines(lines)
+    if unclosed:
+        find(path, unclosed, "a ``` code block that isn't closed: the rest of the page would show as code")
     if not first or not lines[first - 1].startswith("# "):
         find(path, first or 1, f"the first line should be the title: # {name}")
     elif name and lines[first - 1][2:].strip() != name:
@@ -143,11 +168,11 @@ def check_readme(path, name, keys_needed):
     while end and not lines[end - 1].strip():
         end -= 1
     start = end
-    while start and fact.match(lines[start - 1]):
+    while start and fact.match(lines[start - 1]) and start not in code:
         start -= 1
     tail = [(n + 1, fact.match(lines[n]).group(1), fact.match(lines[n]).group(2)) for n in range(start, end)]
     for n, l in enumerate(lines[:start], 1):
-        if fact.match(l):
+        if fact.match(l) and n not in code:
             find(path, n, f"{l.split(':')[0]}: belongs in the fact lines at the end")
     if not tail:
         find(path, end or 1, "no fact lines at the end (Homepage: / Needs: / Keys:, each on its own line)")
@@ -163,7 +188,9 @@ def check_readme(path, name, keys_needed):
     item = 0
     for n, l in enumerate(lines, 1):
         s = l.strip()
-        if s.startswith(("- ", "* ")):
+        if n in code:
+            item = 0
+        elif s.startswith(("- ", "* ")):
             item = n
         elif item and s and not s.startswith(("#", "![")) and not re.match(r"(%s): .+$" % "|".join(FACTS), s):
             find(path, n, f"the - item on line {item} goes on here: the launcher ends an item at the line break")
@@ -171,7 +198,7 @@ def check_readme(path, name, keys_needed):
         else:
             item = 0
     for n, l in enumerate(lines, 1):
-        for img in re.findall(r"!\[[^\]]*\]\(([^)\s]+)", l):
+        for img in [] if n in code else re.findall(r"!\[[^\]]*\]\(([^)\s]+)", l):
             if not re.match(r"https?://", img) and not os.path.exists(os.path.join(os.path.dirname(path), img)):
                 find(path, n, f"image not found: {img}")
 

@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 """LocalSend: receives files and text from phones and other computers running LocalSend (https://localsend.org).
 
-    localsend status                   on | off
+    localsend status                   on, or off and why (turned off as a plugin, the receiver not running)
     localsend enable | disable         the receiver on/off (nightdrive-localsend.service, starts with the session)
     localsend run                      the receiver itself (the service)
     localsend devices                  the devices on the network (JSON), after asking them to answer
@@ -46,6 +46,7 @@ SERVICE = "nightdrive-localsend.service"
 # The unit in the plugin's folder (this file is linked to ~/.local/bin): enabled by its path, which links it again after a
 # disable (systemctl disable removes a linked unit's link too)
 UNIT = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "systemd", SERVICE)
+OFF = os.path.expanduser("~/.local/state/nightdrive/plugins-off/localsend")   # nightdrive plugins off localsend
 APP = "LocalSend"       # the notifications' app name
 ICON = "smartphone"
 ASK_TIMEOUT = 60             # seconds to answer Accept/Decline
@@ -547,8 +548,10 @@ def discover():
 
 
 def pick_device():
-    if status() != "on":
-        notify("LocalSend is off", "Turn it on in the launcher: Install › Plugins › LocalSend", urgency="normal")
+    st = status()
+    if st != "on":      # off, or off with why and what turns it on
+        notify("LocalSend is off", st[5:-1].capitalize() if st.startswith("off (") else
+               "Turn it on in the launcher: Install › Plugins › LocalSend", urgency="normal")
         return None
     devs = discover()
     if not devs:
@@ -689,7 +692,15 @@ def systemctl(*a):
 
 
 def status():
-    return "on" if systemctl("is-enabled", "-q", SERVICE).returncode == 0 else "off"
+    """on, or off and why. `nightdrive plugins off localsend` stops the unit but leaves it enabled (its installed test), so
+    enabled alone isn't on: the server has to be running too."""
+    if os.path.exists(OFF):
+        return "off (turned off: nightdrive plugins on localsend)"
+    if systemctl("is-enabled", "-q", SERVICE).returncode:
+        return "off"
+    if systemctl("is-active", "-q", SERVICE).returncode:
+        return "off (not running: localsend enable starts it)"
+    return "on"
 
 
 def main():

@@ -8,7 +8,7 @@
     ferry rm N…                   items out of the box (a received file stays in Downloads)
     ferry clear [received|sent]   everything, or one direction, out of the box
     ferry url | qr                the phone's address (https://<this machine>.<tailnet>.ts.net/ferry/), or its QR code
-    ferry status                  on | off
+    ferry status                  on, or off and why (turned off as a plugin, the server not running)
     ferry enable | disable        the server on/off (nightdrive-ferry.service) and its address on the tailnet
     ferry run                     the server itself (the service)
     ferry list --json             the box and Ferry's state, for the top bar's menu
@@ -77,6 +77,7 @@ SERVICE = "nightdrive-ferry.service"
 # The unit in the plugin's folder (this file is linked to ~/.local/bin): enabled by its path, which links it again after a
 # disable (systemctl disable removes a linked unit's link too)
 UNIT = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "systemd", SERVICE)
+OFF = os.path.expanduser("~/.local/state/nightdrive/plugins-off/ferry")   # nightdrive plugins off ferry
 APP = "Ferry"                # the notifications' app name
 ICON = "inbox"
 KEEP_DAYS = 7                # an item leaves the box after this many days
@@ -908,7 +909,15 @@ def systemctl(*a):
 
 
 def status():
-    return "on" if systemctl("is-enabled", "-q", SERVICE).returncode == 0 else "off"
+    """on, or off and why. `nightdrive plugins off ferry` stops the unit but leaves it enabled (its installed test), so
+    enabled alone isn't on: the server has to be running too."""
+    if os.path.exists(OFF):
+        return "off (turned off: nightdrive plugins on ferry)"
+    if systemctl("is-enabled", "-q", SERVICE).returncode:
+        return "off"
+    if systemctl("is-active", "-q", SERVICE).returncode:
+        return "off (not running: ferry enable starts it)"
+    return "on"
 
 
 def serve(on):
@@ -1058,8 +1067,9 @@ def send(args):
         text = " ".join(args)
         add_text(text)
         print(f'Sent "{oneline(text, 60)}"', flush=True)
-    if status() == "off":
-        print("Ferry is off, so the phone can't pick it up yet: ferry enable", file=sys.stderr)
+    st = status()
+    if st != "on":      # off, or off with why and what turns it on
+        print(f"Ferry is {st}, so the phone can't pick it up yet" + ("" if "(" in st else ": ferry enable"), file=sys.stderr)
     return 0
 
 

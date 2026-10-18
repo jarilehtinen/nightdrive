@@ -172,6 +172,10 @@ The launcher shows each paragraph and each `- ` item as plain text: links keep t
 each `- ` item on one line, however long (as Ferry's README does): the launcher ends an item at the line break, and the
 rest of it would be a paragraph of its own (`nightdrive plugin check` points out the line).
 
+Commands go in a code block, indented by 4 spaces after a blank line (or in ``` fences), one command a line. The
+launcher shows it in a box with its lines as they are, and a `command   # comment` line with the comment dimmed in a
+column beside the commands (under the command when there isn't room), so keep the comments short, as Ferry's are.
+
 ## Keys: bindings.lua and SHORTCUTS.md
 
 `bindings.lua` is run by Hyprland's config while the plugin is on. It gets `{ id, dir, mod, scripts }` as `...`: `mod`

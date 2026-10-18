@@ -2385,16 +2385,85 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                         width: parent.width - 20
                         spacing: 10
                         Repeater {
+                            // A paragraph is a string, or a README's code block, { code: [line] } (plugin-info)
                             model: detailView.info ? detailView.info.paragraphs : []
-                            Text {
-                                required property string modelData
+                            Item {
+                                id: para
+                                required property var modelData
+                                readonly property bool isCode: typeof modelData === "object" && modelData !== null && modelData.code !== undefined
                                 width: parent.width
-                                wrapMode: Text.Wrap
-                                textFormat: Text.PlainText
-                                lineHeight: 1.15
-                                text: win.keySpaced(modelData)
-                                color: Theme.text
-                                font { family: Theme.font; pixelSize: win.fontSize - 3; weight: win.fontWeight }
+                                height: isCode ? codeBox.height : paraText.height
+                                Text {
+                                    id: paraText
+                                    visible: !para.isCode
+                                    width: parent.width
+                                    wrapMode: Text.Wrap
+                                    textFormat: Text.PlainText
+                                    lineHeight: 1.15
+                                    text: para.isCode ? "" : win.keySpaced(String(para.modelData))
+                                    color: Theme.text
+                                    font { family: Theme.font; pixelSize: win.fontSize - 3; weight: win.fontWeight }
+                                }
+                                // A code block: a line each, in a box. A "command   # comment" line has the comment
+                                // dimmed beside it, the comments in a column, so a command isn't wrapped in the middle;
+                                // without room for both, the comment goes under its command
+                                Rectangle {
+                                    id: codeBox
+                                    visible: para.isCode
+                                    width: parent.width
+                                    height: visible ? codeCol.height + 2 * pad : 0
+                                    radius: 8
+                                    color: Theme.hover
+                                    readonly property int pad: 10
+                                    readonly property var lines: para.isCode ? Array.from(para.modelData.code, l => {
+                                        const m = /^(.*?\S)\s{2,}(#\s.*)$/.exec(l)
+                                        return m ? { cmd: m[1], note: m[2] } : { cmd: String(l), note: "" }
+                                    }) : []
+                                    readonly property real gap: codeFm.advanceWidth("  ")
+                                    readonly property real cmdWidth: Math.max(0, ...lines.filter(l => l.note).map(l => codeFm.advanceWidth(l.cmd)))
+                                    // beside: the commands and at least 24 characters of comment fit side by side
+                                    readonly property bool beside: cmdWidth + gap + codeFm.advanceWidth("m".repeat(24)) <= codeCol.width
+                                    FontMetrics { id: codeFm; font: codeSample.font }
+                                    Text { id: codeSample; visible: false; font { family: Theme.font; pixelSize: win.fontSize - 4; weight: win.fontWeight } }
+                                    Column {
+                                        id: codeCol
+                                        x: codeBox.pad
+                                        y: codeBox.pad
+                                        width: codeBox.width - 2 * codeBox.pad
+                                        spacing: 3
+                                        Repeater {
+                                            model: codeBox.lines
+                                            Item {
+                                                id: codeLine
+                                                required property var modelData
+                                                width: codeCol.width
+                                                height: codeBox.beside ? Math.max(cmdText.height, noteText.height)
+                                                                       : cmdText.height + (noteText.visible ? noteText.height : 0)
+                                                Text {
+                                                    id: cmdText
+                                                    width: codeBox.beside && codeLine.modelData.note ? codeBox.cmdWidth + 1 : parent.width
+                                                    wrapMode: Text.Wrap
+                                                    textFormat: Text.PlainText
+                                                    text: codeLine.modelData.cmd
+                                                    color: Theme.accent
+                                                    font: codeSample.font
+                                                }
+                                                Text {
+                                                    id: noteText
+                                                    visible: codeLine.modelData.note !== ""
+                                                    x: codeBox.beside ? codeBox.cmdWidth + codeBox.gap : codeBox.gap
+                                                    y: codeBox.beside ? 0 : cmdText.height
+                                                    width: parent.width - x
+                                                    wrapMode: Text.Wrap
+                                                    textFormat: Text.PlainText
+                                                    text: codeLine.modelData.note
+                                                    color: Theme.dim
+                                                    font: codeSample.font
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
