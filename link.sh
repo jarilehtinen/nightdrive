@@ -97,7 +97,8 @@ fi
 link "$repo/config/systemd/user/nightdrive-session.target" "$HOME/.config/systemd/user/nightdrive-session.target"
 # Update check: every 6 h a fetch, and a notification when new commits are waiting (nightdrive update check).
 # Snippets: linked only, started when turned on (nightdrive snippets enable). The plugin folders' units are linked below.
-for u in nightdrive-update-check.service nightdrive-update-check.timer nightdrive-snippets.service; do link "$repo/config/systemd/user/$u" "$HOME/.config/systemd/user/$u"; done
+units=(nightdrive-update-check.service nightdrive-update-check.timer nightdrive-snippets.service)
+for u in "${units[@]}"; do link "$repo/config/systemd/user/$u" "$HOME/.config/systemd/user/$u"; done
 
 # The nightdrive command (bin/nightdrive)
 mkdir -p "$HOME/.local/bin"
@@ -110,6 +111,7 @@ for f in "$repo"/bin/*; do link "$f" "$HOME/.local/bin/$(basename "$f")"; done
 # skipped, as bin/nightdrive skips it, and its files never replace one that is already there (link() would move that
 # aside): it can't take over the repo's commands or units.
 restart=()
+declare -A owner=()   # a plugin folder's unit -> the plugin's id (one that is off isn't started below)
 taken=" $(grep -vE '^\s*(#|$)' "$repo/plugins.txt" | cut -d'|' -f1 | tr '\n' ' ')"
 held() {   # $2 is there and isn't $1's link, while $1 is an external plugin's file
   [[ $1 == "$external/"* && ( -e $2 || -L $2 ) && $(readlink -f "$2") != "$(readlink -f "$1")" ]] || return 1
@@ -133,6 +135,7 @@ for d in "$repo"/plugins/*/ "$external"/*/; do
     held "$f" "$u" && continue
     [[ $(readlink "$u") == "$f" ]] || restart+=("$(basename "$f")")
     link "$f" "$u"
+    units+=("$(basename "$f")"); owner[$(basename "$f")]=$(basename "$d")
   done
 done
 systemctl --user daemon-reload 2>/dev/null || true
@@ -141,6 +144,17 @@ for u in "${reenable[@]}"; do
   [[ -e $HOME/.config/systemd/user/$u ]] && systemctl --user enable "$u" 2>/dev/null && echo "enabled     $u (again)"
 done
 (( ${#restart[@]} )) && { systemctl --user try-restart "${restart[@]}" 2>/dev/null || true; }
+# A unit that failed stays failed, and neither enable nor try-restart starts it: e.g. one that systemd kept restarting on
+# its old path until a branch switch removed the file hit the start limit ("Start request repeated too quickly"). An
+# enabled one starts again (a static one, like the update check's service, is the timer's to start), unless its plugin
+# is off (nightdrive plugins off).
+for u in "${units[@]}" "${reenable[@]}"; do
+  [[ -n ${owner[$u]:-} && -e $HOME/.local/state/nightdrive/plugins-off/${owner[$u]} ]] && continue
+  [[ $(systemctl --user is-enabled "$u" 2>/dev/null) == enabled ]] && systemctl --user -q is-failed "$u" 2>/dev/null || continue
+  systemctl --user reset-failed "$u" 2>/dev/null || true
+  if systemctl --user start "$u" 2>/dev/null; then echo "started     $u (it had failed)"
+  else echo "failed      $u: see systemctl --user status $u"; fi
+done
 
 link "$repo/wallpapers" "$HOME/.local/share/wallpapers"   # wallpapers (chosen via: launcher › Settings › Background, hypr/scripts/wallpaper)
 link "$repo/sounds" "$HOME/.local/share/nightdrive/sounds"   # notification sounds (launcher › Settings › Notifications, hypr/scripts/sounds)
