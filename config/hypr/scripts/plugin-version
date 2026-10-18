@@ -1,0 +1,65 @@
+#!/usr/bin/python3 -I
+"""Plugin versions for a release: `nightdrive plugins bump`. A plugin folder's plugin.conf has version=MAJOR.MINOR.PATCH;
+before dev is merged into main, this raises it for every plugin in the repo whose folder has changed since its version
+was last set (a commit after the one that last changed the version= line touched the folder).
+  plugin-version bump [ID…] [--minor | --major] [--dry-run]
+Without ids: every plugin that changed, patch by default (--minor / --major for a bigger step, usually with an id).
+--dry-run only lists what would change. It edits plugin.conf and leaves committing to you. External plugins
+(nightdrive plugins add) are their own repos: their authors set their versions."""
+import os, re, subprocess, sys
+
+REPO = os.path.realpath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../.."))
+VERSION = re.compile(r"^version=(\d+)\.(\d+)\.(\d+)\s*$", re.M)
+
+
+def git(*a):
+    return subprocess.run(["git", "-C", REPO, *a], capture_output=True, text=True).stdout.strip()
+
+
+def changed(pid):
+    """The commits since the version was set that touched the folder ([] if none, None if the version isn't committed)."""
+    folder = f"plugins/{pid}"
+    since = git("log", "-1", "--format=%H", "-G", "^version=", "--", f"{folder}/plugin.conf")
+    if not since:
+        return None
+    return git("log", "--format=%h %s", f"{since}..HEAD", "--", folder).splitlines()
+
+
+def main(argv):
+    step = "major" if "--major" in argv else "minor" if "--minor" in argv else "patch"
+    dry = "--dry-run" in argv
+    ids = [a for a in argv if not a.startswith("--")]
+    every = sorted(d for d in os.listdir(os.path.join(REPO, "plugins")) if os.path.isfile(os.path.join(REPO, "plugins", d, "plugin.conf")))
+    for pid in ids:
+        if pid not in every:
+            print(f"Unknown plugin: {pid} (the repo's plugins/: {', '.join(every)})", file=sys.stderr)
+            return 2
+    bumped = 0
+    for pid in ids or every:
+        path = os.path.join(REPO, "plugins", pid, "plugin.conf")
+        text = open(path).read()
+        m = VERSION.search(text)
+        if not m:
+            print(f"{pid}: no version= in plugin.conf (add version=1.0.0)", file=sys.stderr)
+            continue
+        commits = changed(pid)
+        if not ids and not commits:           # unchanged since its version, or the version isn't committed yet
+            continue
+        major, minor, patch = map(int, m.groups())
+        new = {"major": f"{major + 1}.0.0", "minor": f"{major}.{minor + 1}.0", "patch": f"{major}.{minor}.{patch + 1}"}[step]
+        why = f" ({len(commits)} commit{'s' if len(commits) != 1 else ''}: {commits[0]}{' …' if len(commits) > 1 else ''})" if commits else ""
+        print(f"{pid:18} {'.'.join(m.groups())} → {new}{why}")
+        if not dry:
+            open(path, "w").write(text[:m.start()] + f"version={new}" + text[m.end():].lstrip(" \t"))
+        bumped += 1
+    if not bumped:
+        print("No plugin has changed since its version was set.")
+    elif not dry:
+        print("Commit these plugin.conf changes with the release.")
+    return 0
+
+
+if len(sys.argv) < 2 or sys.argv[1] != "bump":
+    print(__doc__.split("\n")[2], file=sys.stderr)
+    sys.exit(1)
+sys.exit(main(sys.argv[2:]))

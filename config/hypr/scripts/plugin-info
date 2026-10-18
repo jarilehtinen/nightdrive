@@ -3,6 +3,7 @@
 stdout: the same shape as pkg-info's, so Install › Recommended and Plugins open the same page as Install › Software.
   plugin-info <id>
 Output: { name, summary, installed, off, external, icon, screenshot, paragraphs: [text | {code: [line]}], fields: [[label, value]] }
+(a plugin folder's fields include its Version and Author from plugin.conf, for bug reports)
 (off: turned off with `nightdrive plugins off`; external: added with `nightdrive plugins add`, from Source)
 The long text is the folder's README.md, or docs/plugins/<id>.md for a plugins.txt line (GitHub shows the same file): the
 # title is left out, paragraphs are split at blank lines, a "- " item is a paragraph of its own, a code block (indented or
@@ -37,7 +38,7 @@ def row(pid):
             continue
         c = dict(l.split("=", 1) for l in lines if re.match(r"[a-z]+=", l))
         defaults = {"name": pid, "icon": "puzzle", "default": "off", "install": "true", "installed": "false", "group": "plugin"}
-        return [pid] + [c.get(k, defaults.get(k, "")) for k in KEYS], d, os.path.join(d, "README.md")
+        return [pid] + [c.get(k, defaults.get(k, "")) for k in KEYS] + [c.get("version", ""), c.get("author", "")], d, os.path.join(d, "README.md")
     return None, REPO, ""
 
 
@@ -135,6 +136,10 @@ external = os.path.dirname(folder) == EXTERNAL
 paragraphs, extra, shot = doc(readme)
 fields = [["Status", ("installed" if installed else "not installed") + (", turned off" if off else "")],
           ["Type", { "plugin": "Desktop feature", "recommended": "App Nightdrive sets up", "webapp": "Web app" }.get(group, group)]]
+if len(p) > 9 and p[8]:     # a plugin folder's version and author (plugins.txt lines have none)
+    fields.append(["Version", p[8]])
+if len(p) > 9 and p[9]:
+    fields.append(["Author", p[9]])
 if external:      # where it came from: the clone's origin (plugins add), else just the folder
     origin = subprocess.run(["git", "-C", folder, "remote", "get-url", "origin"], capture_output=True, text=True).stdout.strip()
     fields.append(["Source", "external, " + (origin or folder)])

@@ -40,9 +40,9 @@ the folders listed. Nothing is written into the repo.
 
 ## plugin.conf
 
-`key=value` lines; a `#` line is a comment. The keys mean the same as the columns of `plugins.txt` (`order` is the
-folders' own). `name`, `icon`,
-`description` and `installed` are required (`nightdrive plugin check` says so); the rest have defaults.
+`key=value` lines; a `#` line is a comment. The keys mean the same as the columns of `plugins.txt` (`version`, `author`
+and `order` are the folders' own). `name`, `icon`, `description`, `installed`, `version` and `author` are required
+(`nightdrive plugin check` says so); the rest have defaults.
 
 ```
 # Ferry (README.md). install and installed run in this folder.
@@ -53,6 +53,8 @@ default=off
 install=sudo dnf install -y python3-cryptography qrencode && bin/ferry enable
 installed=systemctl --user -q is-enabled nightdrive-ferry.service
 group=plugin
+version=0.1.0
+author=@jarilehtinen
 ```
 
 | Key | What it is |
@@ -64,6 +66,8 @@ group=plugin
 | `install` | A shell command, or a script in the folder, run in the folder in a terminal (it may ask things, and `sudo` works). Running it again must be safe. Default: nothing to install |
 | `installed` | A shell test, run in the folder: the plugin is installed while it succeeds. Make it quick: every `nightdrive plugins` runs all of them |
 | `group` | Where it is listed: `plugin` (default, Install › Plugins: a feature of the desktop), `recommended` (Install › Recommended: an app Nightdrive sets up) or `webapp` |
+| `version` | `MAJOR.MINOR.PATCH`, e.g. `1.0.0` (`0.x` while it's experimental). It shows on the plugin's page in the launcher and on the website, so a bug report can name it. See [Versions](#versions) |
+| `author` | Who made it: a GitHub user (`@name`) or a name |
 | `order` | A number, default 50: `install.sh` installs the plugins in this order, and the lists show them in it. Lower goes first; the same order keeps the folders' (alphabetical) order, then `plugins.txt`'s lines. Home Assistant has 90: its installer asks for addresses, so it runs last |
 
 Pick `installed` so it follows what the installer did: a unit that is enabled, a command that exists. A plugin with
@@ -253,9 +257,9 @@ installed test can be faked there.
 something is off. `nightdrive sandbox check` runs it too. It checks a plugin folder (the repo's and the external ones):
 
 - The id: the folder's name is letters, digits, `-` and `_`, and no other plugin (or `plugins.txt` line) has it.
-- `plugin.conf`: only `key=value` lines and known keys, each once; `name`, `icon`, `description` and `installed` are
-  there; `default` is `on` or `off`, `group` one of the three and `order` a number; `install` and `installed` parse as
-  shell (`bash -n`).
+- `plugin.conf`: only `key=value` lines and known keys, each once; `name`, `icon`, `description`, `installed`,
+  `version` and `author` are there; `default` is `on` or `off`, `group` one of the three, `version` is
+  `MAJOR.MINOR.PATCH` and `order` a number; `install` and `installed` parse as shell (`bash -n`).
 - The icons are Lucide names: plugin.conf's `icon`, module.jsonc's `glyph`, and the ones `status` prints with `emit`
   (or one of the bar's own in `config/topbar/icons`; a `pack:name` isn't checked).
 - `README.md` is there: the `# Name` title is plugin.conf's `name`; at least one fact line, all of them last, each once
@@ -290,6 +294,28 @@ it's on again. The state is an empty file, `~/.local/state/nightdrive/plugins-of
 isolation, so a terminal is the way out.
 
 `nightdrive update check` doesn't count commits that only touch the folders of plugins that aren't installed or are off.
+
+## Versions
+
+A plugin's `version` names what a user has, for a bug report: the launcher shows it on the plugin's page, and
+`nightdrive plugins` lists it. Raise it when a release changes the plugin, by these rules:
+
+- **PATCH** (`1.0.0` → `1.0.1`): fixes and small changes. This is the usual step.
+- **MINOR** (`1.0.1` → `1.1.0`): something new the user can see or do.
+- **MAJOR** (`1.1.0` → `2.0.0`): a change that needs the user to do something, such as running its installer again.
+  A plugin starts at `0.1.0` while it's experimental, and goes to `1.0.0` when it isn't.
+
+For the plugins in this repo the release does it: before `dev` is merged into `main`, `nightdrive plugins bump` raises
+the patch version of every plugin whose folder has changed since its version was last set, and the bumped
+`plugin.conf` files are committed with the release. A plugin that got something new takes a bigger step by name.
+
+```sh
+nightdrive plugins bump --dry-run        # what a release would raise, and the commits behind it
+nightdrive plugins bump                  # patch for every plugin that changed
+nightdrive plugins bump ferry --minor    # one plugin, a bigger step (--major too)
+```
+
+An external plugin is its own repo, and its author sets its version in the same way.
 
 ## A plugin of your own, in its own repo
 
@@ -329,6 +355,8 @@ default=off
 install=sudo dnf install -y ncdu
 installed=command -v ncdu
 group=plugin
+version=0.1.0
+author=@you
 ```
 
 `module.jsonc`

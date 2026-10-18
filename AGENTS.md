@@ -29,6 +29,8 @@ check` (exit 1 with the findings) and `nightdrive sandbox shot NAME`, `ipc …` 
 - Check the branch before committing (`git branch --show-current`). A fix to what users run goes to `main` (then merge
   `main` into `dev`); a feature or unfinished change goes to `dev`.
 - Merging `dev` into `main` and pushing are the user's decisions: don't do either unasked.
+- Before `dev` is merged into `main`: `nightdrive plugins bump` raises the version of every plugin that changed, and
+  the bumped `plugin.conf` files go in with the release (plugins/README.md › Versions).
 
 **Conventions**
 - English comments that explain *why*.

@@ -1,7 +1,8 @@
 #!/usr/bin/python3 -I
 """Checks plugins against the rules in plugins/README.md: `nightdrive plugin check [ID]` (all of them without an id).
   plugin-check [ID]
-A plugin folder (the repo's plugins/<id>/ and the external ones): plugin.conf (known keys, the required ones, values,
+A plugin folder (the repo's plugins/<id>/ and the external ones): plugin.conf (known keys, the required ones, values
+such as version=MAJOR.MINOR.PATCH and author,
 a unique id, install and installed parse as shell), its icon, README.md (# title = the name, at least one fact line
 and the fact lines last: Homepage:, Needs:, Keys: (needed with bindings.lua), each - item on one line, the images it
 shows, ``` code blocks closed), module.jsonc (parses, known keys, no needs, a label, after or before as a name or a
@@ -19,8 +20,9 @@ ICONS_QML = os.path.join(REPO, "config/quickshell/Icons.qml")     # the launcher
 BAR_ICONS = os.path.join(REPO, "config/topbar/icons")             # the bar's own SVGs, on top of Lucide (status)
 CORE_MODULES = os.path.join(REPO, "config/topbar/modules.jsonc")
 
-CONF_KEYS = ("name", "icon", "description", "default", "install", "installed", "group", "order")
-CONF_NEEDED = ("name", "icon", "description", "installed")   # without installed it never counts as installed
+CONF_KEYS = ("name", "icon", "description", "default", "install", "installed", "group", "version", "author", "order")
+CONF_NEEDED = ("name", "icon", "description", "installed", "version", "author")   # without installed it never counts
+                                                             # as installed; version and author go in bug reports
 GROUPS = ("recommended", "webapp", "plugin")
 MODULE_KEYS = {"name", "interval", "status", "menu", "right", "middle", "spacing", "drop", "after", "before", "size",
                "label", "glyph"}                                           # modules.jsonc's header; needs is implied
@@ -111,6 +113,10 @@ def check_conf(d, pid, icons):
         find(path, at["default"], f"default={conf['default']}: on or off")
     if "group" in conf and conf["group"] not in GROUPS:
         find(path, at["group"], f"group={conf['group']}: {', '.join(GROUPS)}")
+    if conf.get("version") and not re.match(r"^[0-9]+\.[0-9]+\.[0-9]+$", conf["version"]):
+        find(path, at["version"], f"version={conf['version']}: MAJOR.MINOR.PATCH, e.g. 1.0.0")
+    if conf.get("author") and not re.match(r"^@?[A-Za-z0-9][\w.-]*( <[^>]+>)?$|^[^@\n]{2,}$", conf["author"]):
+        find(path, at["author"], f"author={conf['author']}: a GitHub user (@name) or a name")
     if "order" in conf and not re.match(r"^[0-9]+$", conf["order"]):
         find(path, at["order"], f"order={conf['order']}: a number (default 50; lower installs first)")
     if conf.get("icon") and conf["icon"] not in icons:

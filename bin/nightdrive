@@ -35,6 +35,7 @@ usage() {
   row "plugins add GIT-URL [ID]" "Add one from elsewhere (an external plugin; install it afterwards)"
   row "plugins remove NAME"      "Turn an external one off and delete its folder"
   row "plugins installed"        "The installed ones' ids (those that are on)"
+  row "plugins bump [NAME…]"     "Before a release: raise the version of every plugin that changed since its last (--dry-run lists)"
   row "plugin check [NAME]"       "Check plugins against the rules (plugins/README.md): file:line findings, exit 1"
   section "Preview"
   row "preview login"            "The login screen, without locking (Esc closes)"
@@ -374,7 +375,9 @@ plugins() {
 # `nightdrive plugins` on a terminal: one line each with its state (the launcher and scripts get the fields above)
 plugins_table() {
   plugins | awk -F'\t' '{ st = $7 == 1 ? ($10 == 1 ? "off" : "on") : ($10 == 1 ? "not installed, off" : "not installed")
-                          l = sprintf("%-18s %-26s %-14s %s", $1, $2, st, $11 == "external" ? "external: " $9 : ""); sub(/ +$/, "", l); print l }'
+                          v = ""; if ($9 != "") { f = $9 "/plugin.conf"                # a folder: its version
+                            while ((getline line < f) > 0) if (line ~ /^version=/) v = substr(line, 9); close(f) }
+                          l = sprintf("%-18s %-26s %-8s %-14s %s", $1, $2, v, st, $11 == "external" ? "external: " $9 : ""); sub(/ +$/, "", l); print l }'
 }
 # The installed ones that are on: their ids, also to ~/.cache/nightdrive/plugins (Plugins.qml watches it,
 # hypr/bindings.lua reads it). One that is off (plugins off) is left out, so the desktop treats it as not installed.
@@ -568,6 +571,7 @@ case ${1:-} in
              off|on) plugin_switch "$2" "${3:-}" ;;
              add) plugin_add "${3:-}" "${4:-}" ;;
              remove) plugin_remove "${@:3}" ;;
+             bump) exec "$scripts/plugin-version" bump "${@:3}" ;;      # plugins/README.md › Versions
              *) usage >&2; exit 1 ;;
            esac ;;
   plugin) case ${2:-} in
