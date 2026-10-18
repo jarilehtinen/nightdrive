@@ -1,8 +1,10 @@
 # Thunderbird
 
-Email, calendar and contacts. Nightdrive themes it in the desktop's colours, with a minimal toolbar.
+Email, calendar and contacts in one app, dressed to match the desktop: Tokyo Night colours, the desktop's font and a minimal toolbar.
 
-Open it with ⌘⇧I. With the Mac Keyboard Shortcuts plugin, ⌘⌫ deletes the selected message.
+- ⌘⇧I opens Thunderbird, or brings it to the front if it's already open.
+- A toolbar button shows or hides the folder pane.
+- With the Mac Keyboard Shortcuts plugin, ⌘⌫ deletes the selected message.
 
 Homepage: https://www.thunderbird.net
 Keys: ⌘⇧I

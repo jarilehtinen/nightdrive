@@ -1,7 +1,9 @@
 # Apostrophe
 
-A calm, distraction-free Markdown editor. Nightdrive themes it in the desktop's colours and makes `.md` files open in it, so notes and READMEs open straight into a readable page.
+A calm, distraction-free Markdown editor, so notes and READMEs open straight into a readable page.
 
-Installed from Flathub, for your user only.
+- Markdown files (`.md`) open in Apostrophe when you open them from Files.
+- It has the desktop's Tokyo Night colours.
+- Installed from Flathub, for your user only.
 
 Homepage: https://apps.gnome.org/Apostrophe/
