@@ -225,12 +225,17 @@ nightdrive update   # pulls Nightdrive (and Deck), relinks, installs new package
 It never overwrites your own edits: a repo with uncommitted changes is skipped with a note. On an install older than the
 command, run it once as `~/dotfiles/bin/nightdrive update` (a plain `git pull` misses the new links and packages).
 
+Updates come from the **Stable** channel (the `main` branch) unless you pick **Development** (`dev`), which gets the bigger
+changes before they are tested into Stable: in the launcher under **Settings › Update channel**, or `nightdrive channel dev`
+(`nightdrive channel stable` goes back). Switching stops with a note instead of going over your own changes.
+
 The same `nightdrive` command reaches the settings from a terminal (`nightdrive` alone lists everything):
 
 | Command | What it does |
 |---|---|
 | `nightdrive update` | Updates Nightdrive and the system (above) |
 | `nightdrive update check` | Only looks for new changes (what the six-hourly check runs) |
+| `nightdrive channel` | The update channel, stable or dev; `nightdrive channel dev` switches to it |
 | `nightdrive theme color teal` | Theme colour: violet, blue, teal, green, amber, rose or graphite |
 | `nightdrive wallpaper set <image>` | Changes the wallpaper; `nightdrive wallpaper current` prints it |
 | `nightdrive display list` | Each screen's even scales; `nightdrive display scale eDP-1 2` sets one |

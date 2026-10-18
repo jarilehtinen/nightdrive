@@ -17,6 +17,7 @@ usage() {
   section "Update"
   row "update"                   "Update Nightdrive, its packages and apps, then reload the desktop"
   row "update check"             "Look for new changes (runs every 6 h and notifies)"
+  row "channel [stable|dev]"     "Which branch updates follow: stable (main) or dev, the bigger changes first"
   section "Desktop"
   row "theme COMMAND"            "The theme colour, e.g. nightdrive theme color teal"
   row "wallpaper COMMAND"        "The background: list, set, add, remove"
@@ -49,7 +50,61 @@ repos() {
   done | sort -u
   [[ -d ${DECK_SRC:-$HOME/.local/src/deck}/.git ]] && readlink -f "${DECK_SRC:-$HOME/.local/src/deck}"
 }
-behind() { git -C "$1" rev-list --count HEAD..@{upstream} 2>/dev/null || echo 0; }
+# What a repo updates to: Nightdrive follows its channel's branch on origin (channel below), the others their upstream
+upstream() {
+  local b
+  b=$(git -C "$1" branch --show-current 2>/dev/null)
+  if [[ $1 == "$repo" && $b =~ ^(main|dev)$ ]] && git -C "$1" rev-parse -q --verify "refs/remotes/origin/$b" >/dev/null; then
+    echo "origin/$b"
+  else
+    echo "@{upstream}"
+  fi
+}
+behind() { git -C "$1" rev-list --count "HEAD..$(upstream "$1")" 2>/dev/null || echo 0; }
+
+# The update channel is the branch the Nightdrive checkout is on: main is stable, dev gets the bigger changes before they
+# are merged into main (AGENTS.md › Branches). No setting of its own, so the two can't disagree.
+channel() {
+  local cur want ahead rc
+  cur=$(git -C "$repo" branch --show-current)
+  if [[ -z ${1:-} ]]; then
+    case $cur in
+      main) echo "stable (branch main)" ;;
+      dev) echo "dev (branch dev)" ;;
+      *) echo "custom (${cur:+branch }${cur:-no branch})" ;;
+    esac
+    return
+  fi
+  case $1 in
+    stable|main) want=main ;;
+    dev|development) want=dev ;;
+    *) echo "Unknown channel: $1 (stable or dev)" >&2; return 1 ;;
+  esac
+  [[ $cur == "$want" ]] && { echo "Already on the $1 channel (branch $want)."; return 0; }
+  # Asked from origin itself: a leftover origin/dev from before the branch was removed doesn't count
+  git -C "$repo" ls-remote -q --exit-code --heads origin "$want" >/dev/null 2>&1; rc=$?
+  if (( rc == 2 )); then
+    echo "The $1 channel's branch ($want) isn't on origin yet: nothing changed." >&2; return 1
+  elif (( rc != 0 )); then
+    echo "Couldn't reach origin: nothing changed." >&2; return 1
+  fi
+  # Never switched over the user's own work: uncommitted changes, or commits that aren't on origin (they'd stay behind
+  # on the old branch, out of sight)
+  if [[ -n $(git -C "$repo" status --porcelain --untracked-files=no) ]]; then
+    echo "Nightdrive has uncommitted changes: nothing changed (commit or stash them, then run this again)." >&2; return 1
+  fi
+  ahead=$(git -C "$repo" rev-list --count HEAD --not --remotes=origin)
+  if (( ahead > 0 )); then
+    echo "${cur:-This checkout} has $ahead commit(s) that aren't on origin: nothing changed (push or move them first)." >&2; return 1
+  fi
+  git -C "$repo" fetch -q origin "$want" || { echo "Couldn't fetch $want: nothing changed." >&2; return 1; }
+  if git -C "$repo" rev-parse -q --verify "refs/heads/$want" >/dev/null; then
+    git -C "$repo" switch -q "$want" && git -C "$repo" branch -q -u "origin/$want" "$want"
+  else
+    git -C "$repo" switch -q -c "$want" --track "origin/$want"
+  fi || { echo "Couldn't switch to $want: nothing changed." >&2; return 1; }
+  echo "Now on the $1 channel (branch $want). Run nightdrive update to finish: links, packages, a desktop reload."
+}
 
 # update check: fetch only, count the new commits; notifies once per new count, and the notification's Update button runs
 # the update in a terminal (nightdrive-update-check.timer, every 6 h)
@@ -86,8 +141,9 @@ update() {
     if [[ -n $(git -C "$r" status --porcelain --untracked-files=no) ]]; then
       echo "    $n new, but it has uncommitted changes: skipped (commit or stash them, then run this again)"; continue
     fi
-    git -C "$r" --no-pager log --format='    %s' HEAD..@{upstream}
-    git -C "$r" merge -q --ff-only @{upstream} || { echo "    has its own commits: skipped (rebase it by hand)"; continue; }
+    u=$(upstream "$r")
+    git -C "$r" --no-pager log --format='    %s' "HEAD..$u"
+    git -C "$r" merge -q --ff-only "$u" || { echo "    has its own commits: skipped (rebase it by hand)"; continue; }
     [[ $r == "$(readlink -f "${DECK_SRC:-$HOME/.local/src/deck}")" ]] && deck=1
   done < <(repos | sort -u)
 
@@ -255,6 +311,7 @@ plugin_install() {
 
 case ${1:-} in
   update) if [[ ${2:-} == check ]]; then check; else update; fi ;;
+  channel) channel "${2:-}" ;;
   topbar) case ${2:-} in
             adjust) exec "$repo/config/topbar/scripts/adjust" "${@:3}" ;;
             date) exec "$repo/config/topbar/scripts/clock" style "${@:3}" ;;

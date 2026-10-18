@@ -23,6 +23,13 @@ check` (exit 1 with the findings) and `nightdrive sandbox shot NAME`, `ipc …` 
 - Quickshell's reload on save keeps the old version of a component in its own file (e.g. `TouchScroll.qml`, listed in
   `qmldir`): restart it to test a change there (`qs kill; setsid -f qs`).
 
+**Branches**
+- `main` is stable: stable-channel users get it with `nightdrive update`. Bigger changes are made in `dev` and merged into
+  `main` once tested. Users pick their channel with `nightdrive channel` (stable or dev).
+- Check the branch before committing (`git branch --show-current`). A fix to what users run goes to `main` (then merge
+  `main` into `dev`); a feature or unfinished change goes to `dev`.
+- Merging `dev` into `main` and pushing are the user's decisions: don't do either unasked.
+
 **Conventions**
 - English comments that explain *why*.
 - Colours come from `Theme.*` in QML, and the bar's from `TopBar.c()` (bar-style; source: `THEMES` in `hypr/scripts/theme`).

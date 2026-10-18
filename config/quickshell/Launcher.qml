@@ -68,6 +68,20 @@ PanelWindow {
         script: 'n=$(hostnamectl --pretty 2>/dev/null); [ -n "$n" ] || { n=$(uname -n); n=${n%%.*}; n=${n^}; }; echo "$n"'
         onResult: text => win.compName = text.trim()
     }
+    // Settings › Update channel: stable | dev | custom (nightdrive channel; the channel is the checkout's branch)
+    property string channel: ""
+    property string channelBranch: ""
+    readonly property var channels: [["stable", "Stable", "shield-check"], ["dev", "Development", "flask-conical"]]
+    Sh {
+        id: channelProc
+        script: '"$HOME/.local/bin/nightdrive" channel'
+        onResult: text => {
+            const m = text.trim().match(/^(\S+)(?: \(branch (.+)\))?/)
+            win.channel = m ? m[1] : ""
+            win.channelBranch = m && m[2] ? m[2] : ""
+            if (win.level === "channel" && win.query === "") win.selectWhere(r => r.value === win.channel)
+        }
+    }
     property var emojiList: []               // Emoji: [{ ch, name, kw }] (data/emoji.tsv, CLDR names in English and Finnish)
     property bool emojiLoaded: false
     property var snipList: []                // Snippets: [{ trigger, text }] (hypr/scripts/snippets list)
@@ -153,7 +167,7 @@ PanelWindow {
     readonly property bool extLevel: extOf(level) !== null
     readonly property int selIndex: list.currentIndex
     function shakeNow() { shake.restart() }
-    readonly property var parents: Object.assign({ launcherprefs: "settings", shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", battery: "settings", install: "system", remove: "system", emoji: "tools", snippets: "tools", snipkey: "snippets", sniptext: "snippets", screenshot: "tools", software: "install", swcat: "software", swsearch: "software", webapp: "install", recommended: "install", plugins: "install", webname: "webapp", webaddr: "webname", compname: "settings", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", sounds: "settings", soundregular: "sounds", soundurgent: "sounds", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, sys.parents, home.parents, ext ? ext.parents : {})
+    readonly property var parents: Object.assign({ launcherprefs: "settings", shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", battery: "settings", install: "system", remove: "system", emoji: "tools", snippets: "tools", snipkey: "snippets", sniptext: "snippets", screenshot: "tools", software: "install", swcat: "software", swsearch: "software", webapp: "install", recommended: "install", plugins: "install", webname: "webapp", webaddr: "webname", compname: "settings", channel: "settings", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", sounds: "settings", soundregular: "sounds", soundurgent: "sounds", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, sys.parents, home.parents, ext ? ext.parents : {})
     // Search found nothing: hint below ⌘⌥⏎ (icons) → send the text to Claude
     readonly property bool noHit: (level === "root" || level === "apps") && query.trim() !== "" && results.length === 0
     // The selected row is an app: ⌃Enter shows it in Apps (the list with an empty query) or hides it from there.
@@ -204,7 +218,7 @@ PanelWindow {
     readonly property var deckLiked: deckOverride.liked !== undefined ? deckOverride.liked : (deckInfo ? deckInfo.liked : null)
     signal openMenu(string name)              // Settings: opens a Quickshell menu (wifi, bluetooth, ...)
 
-    readonly property var titles: Object.assign({ apps: "Apps", music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", musicsearch: "Music › Search", artist: "Music › " + artist.name, keys: "Keybindings", screenshot: "Tools › Screenshot", settings: "Settings", display: "Settings › Display", battery: "Settings › Battery", startup: "Settings › Startup", screensaver: "Settings › Screensaver", saverafter: "Screensaver › Start after", screenoff: "Screensaver › Screen off after", saverstyle: "Screensaver › Style", sounds: "Settings › Notifications", soundregular: "Notifications › Regular sound", soundurgent: "Notifications › Urgent sound", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
+    readonly property var titles: Object.assign({ apps: "Apps", music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", musicsearch: "Music › Search", artist: "Music › " + artist.name, keys: "Keybindings", screenshot: "Tools › Screenshot", settings: "Settings", display: "Settings › Display", battery: "Settings › Battery", startup: "Settings › Startup", channel: "Settings › Update channel", screensaver: "Settings › Screensaver", saverafter: "Screensaver › Start after", screenoff: "Screensaver › Screen off after", saverstyle: "Screensaver › Style", sounds: "Settings › Notifications", soundregular: "Notifications › Regular sound", soundurgent: "Notifications › Urgent sound", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
                                      launcherprefs: "Settings › Launcher", compname: "Settings › Computer name", topbar: "Settings › Top bar", baropacity: "Top bar › Opacity", baricons: "Top bar › Icon colors", barhl: "Top bar › Highlight", baritems: "Top bar › Items",
                                      system: "System", install: "System › Install", emoji: "Tools › Emoji", snippets: "Tools › Snippets", snipkey: "Snippets › Trigger", sniptext: "Snippets › “" + snipTrigger + "”", software: "Install › Software", swcat: "Software › " + swCat.name, swsearch: "Software › Search", webapp: "Install › Webapp", recommended: "Install › Recommended", plugins: "Install › Plugins", webname: "Install › Webapp › Name", webaddr: "Install › Webapp › Address", remove: "System › Remove", power: "Power", passwords: "Passwords", clipboard: "Clipboard",
                                      tools: "Tools" }, sys.titles, home.titles, ext ? ext.titles : {})
@@ -292,7 +306,9 @@ PanelWindow {
             { kind: "nav", name: "Computer name", glyph: "laptop", target: "compname", summary: compName }   // what phones see
         ], home.settingsItems, [   // Home: only while Home Assistant is set up
             { kind: "nav", name: "Notifications", glyph: "bell-ring", target: "sounds" },
-            { kind: "nav", name: "Startup", glyph: "rocket", target: "startup" }
+            { kind: "nav", name: "Startup", glyph: "rocket", target: "startup" },
+            { kind: "nav", name: "Update channel", glyph: "git-branch", target: "channel",
+              summary: channel === "dev" ? "development" : (channel === "custom" ? channelBranch || "custom" : channel || undefined) }
         ]),
         power: [
             { kind: "action", name: "Lock", glyph: "lock", cmd: ["loginctl", "lock-session"] },
@@ -312,6 +328,7 @@ PanelWindow {
                                               "Top bar": "waybar panel menu bar",
                                               "Launcher": "search fuzzy typos shortcuts hints spotlight",
                                               "Computer name": "hostname rename device localsend airplay ferry phone",
+                                              "Update channel": "stable development dev beta branch updates",
                                               "Home": "home assistant automations buttons lights types",
                                               "Opacity": "top bar waybar panel transparency transparent",
                                               "Icon colors": "top bar waybar panel white black light dark text",
@@ -654,6 +671,12 @@ PanelWindow {
             const cur = which === "regular" ? soundRegular : soundUrgent
             return soundChoices[which].concat([["none", "None", "bell-off"]]).map(t => ({ kind: "sound", which: which, value: t[0], name: t[1],
                 glyph: t[0] === cur ? "check" : t[2], summary: t[0] === cur ? "current" : (t[0] === soundDefaults[which] ? "default" : undefined) }))
+        } else if (level === "channel") {
+            // Choosing the other one switches the branch and updates in a terminal (it says why if it can't, e.g. own changes)
+            return channels.map(t => ({ kind: "channel", value: t[0], name: t[1], glyph: t[0] === channel ? "check" : t[2],
+                                        summary: t[0] === channel ? "current" : (t[0] === "stable" ? "default" : undefined) }))
+                .concat(hint(channel === "custom" ? "On a branch of its own (" + (channelBranch || "none") + "): choosing one switches to it"
+                                                  : "Development gets the bigger changes before Stable"))
         } else if (level === "saverstyle") {
             return saverStyles.map(t => ({ kind: "idlestyle", value: t[0], name: t[1], glyph: t[0] === idleStyle ? "check" : t[2],
                                            summary: t[0] === idleStyle ? "current" : (t[0] === "random" ? "default" : undefined) }))
@@ -773,6 +796,7 @@ PanelWindow {
         if (target === "clipboard") { clipLoaded = false; clipProc.running = true }
         if (target === "snippets") snipProc.running = true
         if (target === "settings" || target === "compname") compNameProc.running = true
+        if (target === "settings" || target === "channel") channelProc.running = true
         if (target === "background") wallProc.running = true
         if (target === "topbar" || target === "baropacity" || target === "baricons" || target === "barhl") barProc.running = true
         if (target === "theme" || target === "themecolor") themeProc.running = true
@@ -956,6 +980,12 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         else if (item.kind === "snipauto") {
             win.open = false
             Quickshell.execDetached(term('"$HOME/.local/bin/nightdrive" snippets ' + (snipAuto === "off" ? "enable" : "disable")))
+        }
+        else if (item.kind === "channel") {
+            if (item.value === channel) { shake.restart(); return }
+            if (armed !== item.name) { armed = item.name; disarm.restart(); return }
+            armed = ""; win.open = false
+            Quickshell.execDetached(term('"$HOME/.local/bin/nightdrive" channel "$1" && "$HOME/.local/bin/nightdrive" update', item.value))
         }
         else if (item.kind === "snipk") { snipTrigger = item.value; go("sniptext") }
         else if (item.kind === "snipadd") {
@@ -1899,7 +1929,7 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                     readonly property bool isHeader: modelData.kind === "header"
                     readonly property bool current: !isHeader && !win.playerFocused && index === list.currentIndex
                     readonly property bool noIcon: modelData.kind === "key" || modelData.kind === "hint" || modelData.kind === "header"
-                    readonly property bool armedNow: (modelData.kind === "action" && modelData.confirm === true && win.armed === modelData.name)
+                    readonly property bool armedNow: ((modelData.kind === "action" && modelData.confirm === true || modelData.kind === "channel") && win.armed === modelData.name)
                                                     || (modelData.armKey !== undefined && win.armed === modelData.armKey)
                     readonly property bool chevron: modelData.kind === "nav" || modelData.kind === "menu" || modelData.chevron === true
                     width: list.width
