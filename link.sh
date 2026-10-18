@@ -13,6 +13,26 @@ link() {
   echo "linked      $dst -> $src"
 }
 
+# Links into the repo whose file is gone (a branch switch moved it, e.g. dev's plugin folders, or it was removed) go
+# before anything is linked again: link() would move a dead one aside as a .bak file, which in ~/.local/bin is a command
+# and in ~/.config/systemd/user a unit. Only where link.sh (and dev's plugins installed) links, and only dead links into
+# the repo (or an external plugin's folder): a link of your own to somewhere else stays. A Nightdrive unit's dead .wants
+# link goes too (enable points it at the unit's file in the repo, not at the link), and the unit is enabled again once
+# its new link is in place (below): otherwise it wouldn't start at the next login.
+external=$HOME/.local/share/nightdrive/plugins   # plugins from elsewhere (nightdrive plugins add)
+reenable=()
+for l in "$HOME"/.config/* "$HOME"/.config/{systemd/user,keyd,alsa,voxtype,gtk-3.0,gtk-4.0}/* \
+  "$HOME"/.config/systemd/user/*.wants/* "$HOME"/.config/fontconfig/conf.d/* "$HOME"/.config/wireplumber/wireplumber.conf.d/* \
+  "$HOME"/.local/bin/* "$HOME"/.local/share/* "$HOME"/.local/share/{applications,nightdrive,easyeffects/output,voxtype/quickshell}/* \
+  "$HOME"/.local/share/nautilus-python/extensions/* "$HOME"/.bashrc.d/* "$HOME"/.cache/nightdrive/plugins.d/icons/*; do
+  [[ -L $l && ! -e $l ]] || continue
+  t=$(readlink "$l")
+  if [[ $l == *.wants/* && ${l##*/} == nightdrive-* ]] || [[ $t == "$repo/"* || $t == "$external/"* ]]; then
+    [[ $l == *.wants/* ]] && reenable+=("${l##*/}")
+    rm "$l" && echo "removed     $l (its file is gone)"
+  fi
+done
+
 for d in hypr topbar fuzzel kitty quickshell screensaver greeter; do   # greeter: the lock at startup (greeter/lock.qml) and the preview
   link "$repo/config/$d" "$HOME/.config/$d"
 done
@@ -59,7 +79,10 @@ link "$repo/config/alsa/$asound" "$HOME/.config/alsa/asoundrc"
 # again here. It reads the windows from Hyprland, so only inside a Hyprland session.
 if [[ -f /etc/keyd/default.conf ]]; then
   link "$repo/config/keyd/app.conf" "$HOME/.config/keyd/app.conf"
-  if [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]] && ! pgrep -f '[k]eyd-application-mapper' >/dev/null; then
+  # The mapper is a Python script: its command line starts with python3 and its path. Matching the name anywhere would
+  # count any process that mentions it (a grep, an editor), and another user's mapper doesn't read this app.conf.
+  if [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]] \
+    && ! pgrep -u "$UID" -f '^([^ ]*/)?python3?[0-9.]* ([^ ]*/)?keyd-application-mapper( |$)' >/dev/null; then
     setsid sg keyd -c "keyd-application-mapper -d" </dev/null >/dev/null 2>&1 &
     echo "started     keyd-application-mapper"
   fi
@@ -70,9 +93,18 @@ link "$repo/config/systemd/user/nightdrive-session.target" "$HOME/.config/system
 # Update check: every 6 h a fetch, and a notification when new commits are waiting (nightdrive update check).
 # Snippets, LocalSend, AirPlay Receiver and Ferry: linked only, started when turned on (hypr/scripts/snippets enable,
 # localsend enable, airplay-receiver enable, ferry enable)
-for u in nightdrive-update-check.service nightdrive-update-check.timer nightdrive-snippets.service nightdrive-localsend.service nightdrive-airplay.service nightdrive-ferry.service; do link "$repo/config/systemd/user/$u" "$HOME/.config/systemd/user/$u"; done
+# A unit that now comes from somewhere else (e.g. dev's plugin folder before) is restarted if it runs, so it runs this file.
+restart=()
+for u in nightdrive-update-check.service nightdrive-update-check.timer nightdrive-snippets.service nightdrive-localsend.service nightdrive-airplay.service nightdrive-ferry.service; do
+  [[ $(readlink "$HOME/.config/systemd/user/$u") == "$repo/config/systemd/user/$u" ]] || restart+=("$u")
+  link "$repo/config/systemd/user/$u" "$HOME/.config/systemd/user/$u"
+done
 systemctl --user daemon-reload 2>/dev/null || true
 systemctl --user enable --now nightdrive-update-check.timer 2>/dev/null || true
+for u in "${reenable[@]}"; do
+  [[ -e $HOME/.config/systemd/user/$u ]] && systemctl --user enable "$u" 2>/dev/null && echo "enabled     $u (again)"
+done
+(( ${#restart[@]} )) && { systemctl --user try-restart "${restart[@]}" 2>/dev/null || true; }
 
 # The nightdrive command (bin/nightdrive)
 mkdir -p "$HOME/.local/bin"
