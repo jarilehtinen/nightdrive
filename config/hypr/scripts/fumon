@@ -1,0 +1,24 @@
+#!/bin/bash
+# uwsm's failed unit monitor (launcher › Settings › Notifications): FUMonitor's "Failed unit detected" and "Unit recovered"
+# notifications. uwsm up to 0.26 enables fumon.service globally with a preset (/etc/systemd/user), which a user's
+# `disable` can't undo, so off masks it (~/.config/systemd/user/fumon.service -> /dev/null): no package update, link.sh
+# or install.sh touches that, so the choice stays. uwsm 0.27 (arcaneon/arcos) no longer has fumon at all.
+#   fumon status       on | off | none (no fumon on this machine)
+#   fumon on|off
+unit=fumon.service
+bin=fumon            # the unit's ExecStart, in uwsm's package
+case ${1:-} in
+  status)
+    command -v "$bin" >/dev/null || { echo none; exit 0; }
+    case $(systemctl --user is-enabled "$unit" 2>/dev/null) in
+      masked*|disabled) echo off ;;
+      *)                echo on ;;
+    esac ;;
+  # Enabled for the user only where the preset wasn't applied (on means it runs). Starting needs graphical-session.target
+  # (Requisite), so it can fail outside the session: the next login starts it.
+  on)  systemctl --user unmask "$unit" || exit
+       [[ $(systemctl --user is-enabled "$unit" 2>/dev/null) == disabled ]] && systemctl --user enable "$unit"
+       systemctl --user start "$unit" 2>/dev/null || true ;;
+  off) systemctl --user mask "$unit" && { systemctl --user stop "$unit" 2>/dev/null || true; } ;;
+  *)   sed -n '2,7p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+esac
