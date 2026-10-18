@@ -1,12 +1,12 @@
-# Ferry's server (hypr/scripts/ferry: the phone's page, localhost only; tailscale serve publishes it on the tailnet).
-# Off until turned on (ferry enable, plugins.txt).
+# Ferry's server (plugins/ferry/bin/ferry: the phone's page, localhost only; tailscale serve publishes it on the tailnet).
+# Off until turned on (ferry enable: the plugin's installer).
 [Unit]
 Description=Nightdrive Ferry (a mailbox between this computer and your phone)
 PartOf=nightdrive-session.target
 After=nightdrive-session.target
 
 [Service]
-ExecStart=%h/.config/hypr/scripts/ferry run
+ExecStart=%h/.local/bin/ferry run
 Restart=on-failure
 RestartSec=3
 

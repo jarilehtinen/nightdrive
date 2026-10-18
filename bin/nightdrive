@@ -256,29 +256,57 @@ LIST
   echo "Nightdrive is up to date."
 }
 
-# Plugins (plugins.txt, its format is explained there): one tab-separated line each, id, name, icon, description,
-# default (on/off), installer, installed (1/0), group. The tests run side by side: `flatpak info` takes a moment.
-plugin_rows() { grep -vE '^\s*(#|$)' "$repo/plugins.txt"; }
+# Plugins: the lines of plugins.txt, and plugin folders with a plugin.conf (the same fields as key=value; both formats
+# are explained in plugins.txt): the repo's plugins/<id>/ and the external ones in ~/.local/share/nightdrive/plugins/<id>/.
+# Ids are unique: a folder with an id already taken (by plugins.txt, the repo, or an earlier external one) is skipped.
+# Folders come first (their installers run first in install.sh; Home Assistant, which asks things, stays last).
+external="$HOME/.local/share/nightdrive/plugins"
+# One line each, fields separated by \x1f (none may be empty for read's sake, so a missing folder is "-"): id, name,
+# icon, description, default, installer, installed test, group, folder
+plugin_rows() {
+  local d id k v seen
+  seen=" $(grep -vE '^\s*(#|$)' "$repo/plugins.txt" | cut -d'|' -f1 | tr '\n' ' ')"
+  for d in "$repo"/plugins/*/ "$external"/*/; do
+    d=${d%/}; id=${d##*/}
+    [[ -f $d/plugin.conf && $seen != *" $id "* ]] || continue
+    seen+="$id "
+    local -A c=()
+    while IFS='=' read -r k v; do [[ $k =~ ^[a-z]+$ ]] && c[$k]=$v; done < "$d/plugin.conf"
+    printf '%s\x1f' "$id" "${c[name]:-$id}" "${c[icon]:-puzzle}" "${c[description]:-}" "${c[default]:-off}" \
+      "${c[install]:-true}" "${c[installed]:-false}" "${c[group]:-plugin}"
+    printf '%s\n' "$d"
+  done
+  grep -vE '^\s*(#|$)' "$repo/plugins.txt" | awk -F'|' -v OFS=$'\x1f' '{ NF = 8; print $0, "-" }'
+}
+# One tab-separated line each: id, name, icon, description, default (on/off), installer, installed (1/0), group, folder
+# (empty for a plugins.txt line). The tests run side by side, in the plugin's folder (the repo for plugins.txt): `flatpak
+# info` takes a moment.
 plugins() {
-  local tmp id name icon desc def inst test group i=0
+  local tmp rows id name icon desc def inst test group dir i=0
   tmp=$(mktemp -d)
-  while IFS='|' read -r id name icon desc def inst test group; do
-    (cd "$repo" && bash -c "$test" >/dev/null 2>&1 && touch "$tmp/$i") &
+  rows=$(plugin_rows)
+  while IFS=$'\x1f' read -r id name icon desc def inst test group dir; do
+    [[ $dir == - ]] && dir=$repo
+    (cd "$dir" && bash -c "$test" >/dev/null 2>&1 && touch "$tmp/$i") &
     i=$((i + 1))
-  done < <(plugin_rows)
+  done <<<"$rows"
   wait
   i=0
-  while IFS='|' read -r id name icon desc def inst test group; do
-    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$id" "$name" "$icon" "$desc" "$def" "$inst" "$([[ -e $tmp/$i ]] && echo 1 || echo 0)" "$group"
+  while IFS=$'\x1f' read -r id name icon desc def inst test group dir; do
+    [[ $dir == - ]] && dir=
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$id" "$name" "$icon" "$desc" "$def" "$inst" "$([[ -e $tmp/$i ]] && echo 1 || echo 0)" "$group" "$dir"
     i=$((i + 1))
-  done < <(plugin_rows)
+  done <<<"$rows"
   rm -rf "$tmp"
 }
 # The installed ones' ids, also to ~/.cache/nightdrive/plugins (Plugins.qml watches it, hypr/bindings.lua reads it).
-# When the list changes, Hyprland reloads: the keybindings of an added or removed part.
+# When the list changes, Hyprland reloads: the keybindings of an added or removed part. The installed plugin folders'
+# parts (bar module, menus, keys, shortcut lines) are gathered in ~/.cache/nightdrive/plugins.d (hypr/scripts/plugin-parts).
 plugins_installed() {
-  local ids old
-  ids=$(plugins | awk -F'\t' '$7 == 1 { print $1 }')
+  local list ids old
+  list=$(plugins | awk -F'\t' '$7 == 1')
+  ids=$(cut -f1 <<<"$list")
+  awk -F'\t' '$9 != "" { print $1 "\t" $9 }' <<<"$list" | "$scripts/plugin-parts"
   mkdir -p "$cache"
   old=$(cat "$cache/plugins" 2>/dev/null) || old=__none__
   if [[ $ids != "$old" ]]; then
@@ -287,11 +315,12 @@ plugins_installed() {
   fi
   printf '%s\n' "$ids" | sed '/^$/d'
 }
-# Runs a plugin's installer (by id or name), then refreshes the list
+# Runs a plugin's installer (by id or name) in its folder (the repo for plugins.txt), then refreshes the list
 plugin_install() {
-  local id name inst rc
-  IFS=$'\t' read -r id name inst < <(plugins | awk -F'\t' -v n="$1" 'tolower($1) == tolower(n) || tolower($2) == tolower(n) { print $1 "\t" $2 "\t" $6; exit }')
+  local id name inst dir rc
+  IFS=$'\t' read -r id name inst dir < <(plugins | awk -F'\t' -v n="$1" 'tolower($1) == tolower(n) || tolower($2) == tolower(n) { print $1 "\t" $2 "\t" $6 "\t" ($9 == "" ? "-" : $9); exit }')
   [[ -n ${id:-} ]] || { echo "Unknown plugin: ${1:-} (see: nightdrive plugins)" >&2; exit 1; }
+  [[ $dir == - ]] && dir=$repo
   echo "==> $name"
   case $inst in
     "flatpak "*)
@@ -300,8 +329,8 @@ plugin_install() {
     "webapp "*)
       "$scripts/webapp-add" "$name" "${inst#webapp }" && { "$repo/config/fuzzel/sync-apps" >/dev/null 2>&1 || true; } ;;
     *)
-      [[ -f $repo/${inst%% *} ]] && inst="./$inst"      # install-<name>.sh in the repo root
-      (cd "$repo" && bash -c "$inst") ;;
+      [[ -f $dir/${inst%% *} && ${inst%% *} != */* ]] && inst="./$inst"      # install-<name>.sh in the repo root, or a plugin folder's script
+      (cd "$dir" && bash -c "$inst") ;;
   esac
   rc=$?
   plugins_installed >/dev/null

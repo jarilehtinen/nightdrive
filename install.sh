@@ -92,11 +92,11 @@ age_days=$(( ( $(date +%s) - $(stat -c %Y /etc/machine-id 2>/dev/null || echo 0)
 fresh=$(( age_days < FRESH_DAYS ))
 [[ -n $debloat ]] || debloat=$fresh
 
-# --- Optional parts (plugins.txt): chosen now, installed at the end ---
+# --- Optional parts (plugins.txt and the plugin folders, plugins/<id>/): chosen now, installed at the end ---
 ids=(); names=(); descs=(); groups=(); on=()
-while IFS='|' read -r id name _ desc def _ _ group; do
+while IFS=$'\t' read -r id name _ desc def _ _ group _; do
   ids+=("$id"); names+=("$name"); descs+=("$desc"); groups+=("$group"); on+=("$([[ $def == on ]] && echo 1 || echo 0)")
-done < <(grep -vE '^\s*(#|$)' "$repo/plugins.txt")
+done < <("$repo/bin/nightdrive" plugins)
 # Shown by group like the launcher's Install menu; installed in the file's order. order: row number - 1 → index
 order=()
 for g in recommended webapp plugin; do

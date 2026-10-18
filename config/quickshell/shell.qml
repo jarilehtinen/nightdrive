@@ -15,9 +15,11 @@ ShellRoot {
 
     // --- Keyboard navigation (⌘⇧Space): ←/→ switch menu (in the bar's order), ↑/↓ select a row, Enter activates, Esc closes ---
     property bool navMode: false
-    // Menus: <Name>Menu.qml here, and a private overlay's in local/ (not in the repo; its bar modules come from
-    // ~/.config/topbar/local.modules.jsonc). local/LauncherExtension.qml extends the launcher.
-    property var menus: []
+    // Menus: <Name>Menu.qml here, a private overlay's in local/ (not in the repo; its bar modules come from
+    // ~/.config/topbar/local.modules.jsonc) and the installed plugin folders' (TopBar.plugin.menus: name → path).
+    // local/LauncherExtension.qml extends the launcher.
+    property var ownMenus: []
+    readonly property var menus: ownMenus.concat(Object.keys(TopBar.plugin.menus))
     property var localMenus: []
     property bool localLauncher: false
     Sh {
@@ -27,7 +29,7 @@ ShellRoot {
             const parts = text.split("--\n")
             const names = t => (t || "").split("\n").filter(f => /^[A-Z]\w*Menu\.qml$/.test(f)).map(f => f.charAt(0).toLowerCase() + f.slice(1, -8))
             root.localMenus = names(parts[1])
-            root.menus = names(parts[0]).concat(root.localMenus)
+            root.ownMenus = names(parts[0]).concat(root.localMenus)
             root.localLauncher = (parts[1] || "").split("\n").indexOf("LauncherExtension.qml") >= 0
         }
     }
@@ -102,6 +104,8 @@ ShellRoot {
         function toggleAt(name: string, x: int): void { root.clickMenu(name, x, null) }
         // toggle: opened by a shortcut (e.g. ⌘Esc -> power). Opens in keyboard mode so Esc closes and arrows/Enter work.
         function toggle(name: string): void {
+            // Only a menu that exists: a plugin's isn't listed while the plugin isn't installed
+            if (root.current !== name && root.menus.indexOf(name) < 0) return
             root.anchorX = bar.xOf(name)      // below its bar icon; -1 (no icon in the bar) = the right edge
             root.menuScreen = null
             const opening = root.current !== name
@@ -203,6 +207,7 @@ ShellRoot {
                 anchors { top: parent.top; left: parent.left; right: parent.right; leftMargin: card.bare ? 0 : 16; rightMargin: card.bare ? 0 : 16
                           topMargin: card.bare ? 0 : 10 }
                 source: root.current === "" ? ""
+                      : TopBar.plugin.menus[root.current] ? "file://" + TopBar.plugin.menus[root.current]
                       : (root.localMenus.indexOf(root.current) >= 0 ? "local/" : "") + root.current.charAt(0).toUpperCase() + root.current.slice(1) + "Menu.qml"
             }
             Connections {

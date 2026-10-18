@@ -1,7 +1,8 @@
 #!/bin/bash
 # Top bar module states. Prints one line of JSON {icon, text, class} (format: modules.jsonc); Quickshell's bar runs this
 # per module on its interval, and `qs ipc call bar refresh` makes it run every module at once.
-# Usage: status <name>   (the names in modules.jsonc; a private overlay's modules come from status.local)
+# Usage: status <name>   (the names in modules.jsonc; a private overlay's modules come from status.local, a plugin
+# folder's from its own status script)
 kind=${1:?usage: status <name>}
 
 # The machine's own battery as UPower names it (MacBook: battery_macsmc_battery). Found in /sys/class/power_supply,
@@ -14,9 +15,7 @@ battery() {
   done
 }
 
-emit() {  # emit ICON TEXT [CLASS]   (no icon and no text = hidden)
-  jq -nc --arg i "$1" --arg t "$2" --arg c "${3:-}" '{icon: $i, text: $t, class: $c}'
-}
+. "$(dirname "$0")/emit"   # emit ICON TEXT [CLASS]   (no icon and no text = hidden)
 
 case $kind in
   wifi)
@@ -77,12 +76,6 @@ case $kind in
   tailscale)
     if [[ $(tailscale status --json 2>/dev/null | jq -r '.BackendState // empty') == Running ]]; then emit tailscale ""
     else emit tailscale-off ""; fi ;;
-  ferry)
-    # Ferry (hypr/scripts/ferry): highlighted with a count while things from the phone wait unseen (opening the menu
-    # sees them); dimmed while its server isn't running
-    systemctl --user -q is-active nightdrive-ferry.service || { emit inbox "" off; exit; }
-    n=$(jq '[.items[]? | select(.to == "computer" and (.seen | not))] | length' ~/.local/share/nightdrive/ferry/items.json 2>/dev/null)
-    if (( ${n:-0} > 0 )); then emit inbox "$n" active; else emit inbox ""; fi ;;
   calendar)
     emit "" "$(~/.config/topbar/scripts/clock)" ;;
   notifications)

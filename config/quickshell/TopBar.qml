@@ -6,6 +6,8 @@ import Quickshell.Io
 // The top bar's data (Bar.qml draws it). Everything is read from files that are watched, so edits show at once:
 //   ~/.config/topbar/modules.jsonc (+ local.modules.jsonc)   the modules, in order
 //   ~/.config/topbar/adjust.conf   (+ local.adjust.conf)     icon and text sizes
+//   ~/.cache/nightdrive/plugins.d/bar.json                    the installed plugin folders' modules, menus and icon sizes
+//                                                             (hypr/scripts/plugin-parts)
 //   ~/.cache/nightdrive/bar.json                              colours (hypr/scripts/bar-style)
 //   ~/.local/state/nightdrive/bar-items.json                  {hidden, order}: modules turned off and their order
 //                                                             (launcher › Settings › Top bar › Items)
@@ -18,10 +20,30 @@ Singleton {
     // --- Modules ---
     property var publicModules: []
     property var localModules: []
+    // The plugin folders' parts: { modules, menus: { name: path of its <Name>Menu.qml }, sizes: { name: px } }
+    property var plugin: ({ modules: [], menus: ({}), sizes: ({}) })
+    FileView {
+        path: Quickshell.env("HOME") + "/.cache/nightdrive/plugins.d/bar.json"; watchChanges: true; onFileChanged: reload(); printErrors: false
+        onLoaded: {
+            let v = null
+            try { v = JSON.parse(text()) } catch (e) {}
+            if (v) tb.plugin = { modules: v.modules || [], menus: v.menus || {}, sizes: v.sizes || {} }
+        }
+        onLoadFailed: tb.plugin = ({ modules: [], menus: ({}), sizes: ({}) })
+    }
+    // The files' order: a plugin's module goes right of the one its "after" names (at the right end without one)
+    function withPlugins(list) {
+        const out = list.slice()
+        for (const m of plugin.modules) {
+            const i = out.findIndex(o => o.name === m.after)
+            if (i >= 0) out.splice(i + 1, 0, m); else out.push(m)
+        }
+        return out
+    }
     // In your order (Items: Ctrl+arrows), then modules not in it in the files' order (a new one goes to the right end).
     // A module whose optional part isn't installed ("needs") isn't listed at all.
     readonly property var allModules: {
-        const def = localModules.concat(publicModules).filter(m => !m.needs || Plugins.has(m.needs))
+        const def = localModules.concat(withPlugins(publicModules)).filter(m => !m.needs || Plugins.has(m.needs))
         const key = m => { const i = items.order.indexOf(m.name); return i >= 0 ? i : items.order.length + def.indexOf(m) }
         return def.slice().sort((a, b) => key(a) - key(b))
     }
@@ -59,14 +81,13 @@ Singleton {
         saveItems({ hidden: items.hidden, order: names })
         return j
     }
-    // Names and glyphs for the launcher's list; a module can give its own "label" in modules.jsonc
+    // Names and glyphs for the launcher's list; a module can give its own "label" and "glyph" in modules.jsonc
     readonly property var moduleLabels: ({ deck: ["Music (Deck)", "music"], claude: ["Claude usage", "gauge"], system: ["CPU and memory", "cpu"],
                                            tailscale: ["Tailscale", "shield-check"], bluetooth: ["Bluetooth", "bluetooth"], wifi: ["Wi-Fi", "wifi"],
                                            volume: ["Volume", "volume-2"], headphones: ["Headphones", "headphones"], display: ["Display", "monitor"], battery: ["Battery", "battery-medium"],
-                                           calendar: ["Date and time", "clock"], notifications: ["Notifications", "menu"],
-                                           ferry: ["Ferry (phone mailbox)", "inbox"] })
+                                           calendar: ["Date and time", "clock"], notifications: ["Notifications", "menu"] })
     function moduleLabel(m) { return m.label || (moduleLabels[m.name] || [])[0] || m.name.charAt(0).toUpperCase() + m.name.slice(1) }
-    function moduleGlyph(m) { return (moduleLabels[m.name] || [])[1] || "panel-top" }
+    function moduleGlyph(m) { return m.glyph || (moduleLabels[m.name] || [])[1] || "panel-top" }
     property var states: ({})          // name -> {icon, text, class}
     function parseJsonc(t) {
         try { return JSON.parse(t.split("\n").filter(l => !/^\s*\/\//.test(l)).join("\n")) } catch (e) { return null }
@@ -131,7 +152,7 @@ Singleton {
     }
 
     // --- Sizes: rows "element size" (an old third column, y, is ignored); text = every text, icon = icons without a row
-    // of their own ---
+    // of their own (or a plugin module's "size") ---
     property var sizesPublic: ({})
     property var sizesLocal: ({})
     function parseSizes(t) {
@@ -152,7 +173,8 @@ Singleton {
         onLoadFailed: tb.sizesLocal = ({})
     }
     function size(el) {
-        return sizesLocal[el] || sizesPublic[el] || (el === "text" ? { size: 13 } : sizesPublic.icon || { size: 16 })
+        return sizesLocal[el] || sizesPublic[el] || (plugin.sizes[el] ? { size: plugin.sizes[el] } : null)
+            || (el === "text" ? { size: 13 } : sizesPublic.icon || { size: 16 })
     }
 
     // --- Colours (bar-style); defaults = white icons on black ---

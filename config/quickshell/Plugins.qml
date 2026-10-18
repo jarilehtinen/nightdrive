@@ -3,7 +3,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// Which optional parts (plugins.txt) are installed: the ids in ~/.cache/nightdrive/plugins, written by `nightdrive plugins
+// Which optional parts (plugins.txt, plugin folders) are installed: the ids in ~/.cache/nightdrive/plugins, written by `nightdrive plugins
 // installed`. A part that isn't installed doesn't show: Plugins.has("deck") hides the launcher's Music, the player row and
 // Ctrl+Space, a top bar module with "needs": "deck" isn't run. hypr/bindings.lua and hypr/scripts/shortcuts read the
 // same file. check() runs the tests again when something may have changed: on start, when the launcher opens, when an

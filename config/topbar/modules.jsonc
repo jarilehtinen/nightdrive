@@ -9,6 +9,8 @@
 //   right, middle  optional: shell commands for a right / middle click (the module updates right after)
 //   spacing   optional: letter spacing of its text in px (- = tighter)
 //   needs     optional: an optional part's id (plugins.txt); without it installed the module isn't run or listed
+//             (a plugin folder's module, plugins/<id>/module.jsonc, has its own id as needs, and these keys too:
+//             after = the module it goes right of, size = its icon size, label and glyph for Settings › Top bar › Items)
 //   drop      optional: a shell command that takes files dropped on the icon as arguments; dragging files over the icon
 //             also opens its menu, so they can be dropped there
 //
@@ -25,7 +27,6 @@
   { "name": "deck",          "interval": 2,  "needs": "deck", "right": "~/.config/hypr/scripts/deck-open" },
   { "name": "claude",        "interval": 60, "middle": "xdg-open https://claude.ai/settings/usage" },
   { "name": "system",        "interval": 3 },
-  { "name": "ferry",         "interval": 5,  "needs": "ferry", "drop": "~/.config/hypr/scripts/ferry add" },
   { "name": "tailscale",     "interval": 5,  "needs": "tailscale", "right": "~/.config/topbar/scripts/tailscale toggle" },
   { "name": "bluetooth",     "interval": 5,  "right": "blueman-manager" },
   { "name": "wifi",          "interval": 5,  "right": "nm-connection-editor" },

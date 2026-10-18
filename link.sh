@@ -57,18 +57,47 @@ link "$repo/config/alsa/$asound" "$HOME/.config/alsa/asoundrc"
 # Mac Keyboard Shortcuts plugin (install-keyd.sh): keyd-application-mapper's per-app keys
 [[ -f /etc/keyd/default.conf ]] && link "$repo/config/keyd/app.conf" "$HOME/.config/keyd/app.conf"
 
+# Links into the repo whose file is gone (it moved or was removed, e.g. Ferry into plugins/ferry, 18.10.2026) go before
+# anything is linked again: link() would move a dead one aside as a .bak file, which in ~/.local/bin is a command. A unit
+# that was enabled (its .wants link was dead too) is enabled again once its new link is in place, below.
+reenable=()
+for l in "$HOME"/.local/bin/* "$HOME"/.config/systemd/user/* "$HOME"/.config/systemd/user/*.wants/*; do
+  [[ -L $l && ! -e $l && $(readlink "$l") == "$repo/"* ]] || continue
+  [[ $l == *.wants/* ]] && reenable+=("${l##*/}")
+  rm "$l" && echo "removed     $l (its file is gone)"
+done
+
 # Session target: brings up graphical-session.target, which xdg-desktop-portal needs (started by hyprland.lua)
 link "$repo/config/systemd/user/nightdrive-session.target" "$HOME/.config/systemd/user/nightdrive-session.target"
 # Update check: every 6 h a fetch, and a notification when new commits are waiting (nightdrive update check).
-# Snippets, LocalSend, AirPlay Receiver and Ferry: linked only, started when turned on (hypr/scripts/snippets enable,
-# localsend enable, airplay-receiver enable, ferry enable)
-for u in nightdrive-update-check.service nightdrive-update-check.timer nightdrive-snippets.service nightdrive-localsend.service nightdrive-airplay.service nightdrive-ferry.service; do link "$repo/config/systemd/user/$u" "$HOME/.config/systemd/user/$u"; done
-systemctl --user daemon-reload 2>/dev/null || true
-systemctl --user enable --now nightdrive-update-check.timer 2>/dev/null || true
+# Snippets, LocalSend and AirPlay Receiver: linked only, started when turned on (hypr/scripts/snippets enable, localsend
+# enable, airplay-receiver enable). The plugin folders' units are linked below.
+for u in nightdrive-update-check.service nightdrive-update-check.timer nightdrive-snippets.service nightdrive-localsend.service nightdrive-airplay.service; do link "$repo/config/systemd/user/$u" "$HOME/.config/systemd/user/$u"; done
 
 # The nightdrive command (bin/nightdrive)
 mkdir -p "$HOME/.local/bin"
 for f in "$repo"/bin/*; do link "$f" "$HOME/.local/bin/$(basename "$f")"; done
+
+# Plugin folders (plugins/<id>/ and the external ones, plugins.txt explains them): their commands (bin/) and user units
+# (systemd/), whether installed or not: an installer runs its own command and enables its unit. A unit that now comes
+# from somewhere else is restarted if it runs, so it runs the new file.
+restart=()
+for d in "$repo"/plugins/*/ "$HOME"/.local/share/nightdrive/plugins/*/; do
+  [[ -f $d/plugin.conf ]] || continue
+  for f in "$d"bin/*; do [[ -f $f ]] && link "${f%/}" "$HOME/.local/bin/$(basename "$f")"; done
+  for f in "$d"systemd/*; do
+    [[ -f $f ]] || continue
+    u=$HOME/.config/systemd/user/$(basename "$f")
+    [[ $(readlink "$u") == "$f" ]] || restart+=("$(basename "$f")")
+    link "$f" "$u"
+  done
+done
+systemctl --user daemon-reload 2>/dev/null || true
+systemctl --user enable --now nightdrive-update-check.timer 2>/dev/null || true
+for u in "${reenable[@]}"; do
+  [[ -e $HOME/.config/systemd/user/$u ]] && systemctl --user enable "$u" 2>/dev/null && echo "enabled     $u (again)"
+done
+(( ${#restart[@]} )) && { systemctl --user try-restart "${restart[@]}" 2>/dev/null || true; }
 
 link "$repo/wallpapers" "$HOME/.local/share/wallpapers"   # wallpapers (chosen via: launcher › Settings › Background, hypr/scripts/wallpaper)
 link "$repo/sounds" "$HOME/.local/share/nightdrive/sounds"   # notification sounds (launcher › Settings › Notifications, hypr/scripts/sounds)
@@ -111,6 +140,9 @@ for p in "$HOME"/.config/thunderbird/*.default-release; do
   (cd "$repo/config/thunderbird/folderpane-toggle" && zip -qj "$xpi" manifest.json background.js sidebar.svg)
   echo "built       $xpi"
 done
+
+# The installed parts' list, and the installed plugin folders' parts gathered where the desktop reads them
+"$repo/bin/nightdrive" plugins installed >/dev/null 2>&1 || true
 
 mkdir -p "$HOME/.local/share/fonts"
 cp -u "$repo"/fonts/*.ttf "$HOME/.local/share/fonts/"   # -u: an updated font in the repo replaces the old one

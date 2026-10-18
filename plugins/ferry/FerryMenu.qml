@@ -1,8 +1,9 @@
 import QtQuick
 import QtQuick.Shapes
 import Quickshell
+import qs
 
-// Ferry (hypr/scripts/ferry): a mailbox between this computer and the owner's other devices (the phone, another
+// Ferry (bin/ferry): a mailbox between this computer and the owner's other devices (the phone, another
 // computer's Ferry page). Files dropped here (or on the bar icon, which opens this menu, or chosen with a click on the
 // empty box's drop zone) and the clipboard sent with Send Clipboard wait in the box for them; a moment's "Sent" over the
 // list says so, and the menu lists only what the other devices sent here: a click copies a text or opens a file, a file
@@ -15,7 +16,9 @@ Column {
     readonly property int preferredWidth: 340
     signal close()
 
-    readonly property string ferry: Quickshell.env("HOME") + "/.config/hypr/scripts/ferry"
+    // The plugin's own command, next to this file (a plugin's menu is loaded from its folder; `import qs` brings the
+    // shared parts: Theme, MenuRow, Sh…)
+    readonly property string ferry: decodeURIComponent(Qt.resolvedUrl("bin/ferry").toString().replace(/^file:\/\//, ""))
     property var st: null              // `ferry list`: { on, tailscale, url, serving, push, items: [{ id, to, kind, … }] }
     readonly property var items: st ? st.items : []
     readonly property var received: items.filter(i => i.to === "computer").reverse()
@@ -79,7 +82,7 @@ Column {
         readonly property string why: !m.st ? ""
             : !m.st.on ? "Ferry's server isn't running. Turn it on: launcher › System › Install › Plugins › Ferry."
             : !m.st.tailscale ? "Tailscale is off: your other devices can't reach this computer."
-            : !m.st.serving ? "Not on the tailnet yet. Run once: sudo tailscale set --operator=$USER, then ~/.config/hypr/scripts/ferry enable"
+            : !m.st.serving ? "Not on the tailnet yet. Run once: sudo tailscale set --operator=$USER, then: ferry enable"
             : ""
         visible: why !== ""
         width: parent.width

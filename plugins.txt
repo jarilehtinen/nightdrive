@@ -3,6 +3,15 @@
 # later. The desktop hides a part that isn't installed: the launcher (Plugins.has), the top bar ("needs" in
 # topbar/modules.jsonc), the keybindings (hypr/bindings.lua) and their lines in SHORTCUTS.md (an {id} at the end).
 #
+# This file holds the one-line parts (web apps, an app from dnf or Flathub). A part with files of its own is a folder,
+# plugins/<id>/ (or ~/.local/share/nightdrive/plugins/<id>/ for one from elsewhere), with these fields in plugin.conf as
+# key=value lines: name, icon, description, default, install, installed, group (install and installed run in the
+# folder). Its other files, used only while it is installed: README.md (the launcher's page), module.jsonc and status
+# (a top bar module: modules.jsonc's keys, plus after = the module it goes right of, size = its icon size, label and
+# glyph for Settings › Top bar › Items; its commands run in the folder), <Name>Menu.qml (its menu; `import qs` brings
+# Theme, MenuRow…), bindings.lua (keys; gets {id, dir, mod, scripts} as ...), SHORTCUTS.md (lines for the key list),
+# and bin/ and systemd/ (linked to ~/.local/bin and ~/.config/systemd/user by link.sh). Ids are unique across both.
+#
 # id|Name|Lucide icon|One-line description|Default (on/off)|Installer|Installed when this shell test succeeds|Group
 #   Installer: a script in the repo root (install-<name>.sh), `flatpak APP-ID` (Flathub, per user), `webapp URL` (a
 #   Chromium app window named after the Name column), or any other shell command; run in the repo root.
@@ -18,7 +27,6 @@ thunderbird|Thunderbird|mail|Email (⌘⇧I)|off|sudo dnf install -y thunderbird
 apostrophe|Apostrophe|file-text|Markdown editor (Flatpak), opens .md files|off|install-apostrophe.sh|flatpak info --user org.gnome.gitlab.somas.Apostrophe|recommended
 deck|Deck|disc-3|Spotify player (needs Premium), launcher and top bar; compiled|on|install-deck.sh|test -x ~/.local/bin/deck|recommended
 localsend|LocalSend|smartphone|Files from phones via the LocalSend app, asks first (experimental)|off|sudo dnf install -y openssl nautilus-python zenity && config/hypr/scripts/localsend enable|systemctl --user -q is-enabled nightdrive-localsend.service|plugin
-ferry|Ferry|inbox|Files and text both ways with an iPhone over Tailscale, no app (experimental)|off|sudo dnf install -y python3-cryptography qrencode && config/hypr/scripts/ferry enable|systemctl --user -q is-enabled nightdrive-ferry.service|plugin
 mirroring|Screen Mirroring|screen-share|AirPlay to an Apple TV (doubletake, experimental; compiled)|off|install-doubletake.sh|test -x ~/.local/bin/doubletake|plugin
 airplay-receiver|AirPlay Receiver|cast|Mirror an iPhone, iPad or Mac here (UxPlay, experimental)|off|install-airplay-receiver.sh|systemctl --user -q is-enabled nightdrive-airplay.service|plugin
 keyd|Mac Keyboard Shortcuts|keyboard|⌥⌫ deletes a word, ⌘⌫ to the line start; Files: Enter renames, ⌘O opens, ⌘⌫ to the trash|off|install-keyd.sh|systemctl -q is-enabled keyd|plugin

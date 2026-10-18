@@ -78,7 +78,7 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
 - **Snippets**: text snippets in launcher › Tools › Snippets; Enter pastes one. Turn on auto-expand and typing a trigger
   anywhere replaces it with the text.
 - **From your phone** (experimental plugins): LocalSend receives files from a phone after you accept them in a
-  notification, and AirPlay Receiver mirrors an iPhone, iPad or Mac into a window. [Ferry](docs/plugins/ferry.md) is a
+  notification, and AirPlay Receiver mirrors an iPhone, iPad or Mac into a window. [Ferry](plugins/ferry/README.md) is a
   mailbox over Tailscale: drop files on its top bar icon and they wait for the phone, which needs no app, only a web page
   on its Home Screen.
 - **Screen Mirroring**: mirror the screen to an Apple TV or an AirPlay TV from the display menu or the launcher (search
@@ -163,8 +163,8 @@ Machine: PC (x86_64, graphics: amd, keyboard: us)
    …
 
   Plugins
-  13 [ ] LocalSend         Files from phones via the LocalSend app, asks first (experimental)
-  14 [ ] Ferry             Files and text both ways with an iPhone over Tailscale, no app (experimental)
+  13 [ ] Ferry             Files and text both ways with an iPhone over Tailscale, no app (experimental)
+  14 [ ] LocalSend         Files from phones via the LocalSend app, asks first (experimental)
    …
 
   18 [ ] Install all       every optional part above
@@ -277,7 +277,9 @@ The full list is in [`config/hypr/SHORTCUTS.md`](config/hypr/SHORTCUTS.md).
 - **Keybindings** are all in [`config/hypr/bindings.lua`](config/hypr/bindings.lua).
 - **Optional parts** (recommended apps, ready-made web apps, plugins) are listed in [`plugins.txt`](plugins.txt), its last
   column says which: a new one is a line there, its
-  keybinding goes in `bindings.lua`'s `optional` list and SHORTCUTS.md (with an `{id}` tag). Apps that ⌘W should only hide are in
+  keybinding goes in `bindings.lua`'s `optional` list and SHORTCUTS.md (with an `{id}` tag). A part with files of its own
+  (a top bar module and menu, a service, commands) is a folder in [`plugins/`](plugins), like
+  [`plugins/ferry`](plugins/ferry): plugins.txt's header explains its files. Apps that ⌘W should only hide are in
   [`config/hypr/background-apps`](config/hypr/background-apps).
 - **Launcher apps**: only the apps in [`config/fuzzel/apps-allow.txt`](config/fuzzel/apps-allow.txt) are listed. Search finds
   the rest.

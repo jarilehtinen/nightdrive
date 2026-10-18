@@ -24,9 +24,12 @@ quirks apply: it doesn't watch `shell.qml` once that file has been replaced by a
 mounted over the repo's, so your own `local.lua` doesn't apply there.
 
 The container matches a MacBook Pro 14" as far as Hyprland goes, not the hardware: battery, Bluetooth, Wi-Fi and sound stay
-empty. None of the optional parts (`plugins.txt`) is installed, so the desktop is the one you get with `install.sh --none`.
-To see a part's rows, bar module and keys, fake its installed test: e.g. `nightdrive sandbox exec sh -c 'printf
-"#!/bin/sh\n" > ~/.local/bin/deck && chmod +x ~/.local/bin/deck && nightdrive plugins installed'`.
+empty. None of the optional parts (`plugins.txt`, `plugins/`) is installed, so the desktop is the one you get with
+`install.sh --none`. To see a part's rows, bar module and keys, fake its installed test: e.g. `nightdrive sandbox exec sh -c
+'printf "#!/bin/sh\n" > ~/.local/bin/deck && chmod +x ~/.local/bin/deck && nightdrive plugins installed'`. A test that asks
+systemd works too, as there's no user manager to start anything: `nightdrive sandbox exec sh -c 'systemctl --user enable
+nightdrive-ferry.service && nightdrive plugins installed'` (Ferry). A plugin folder put in the container's
+`~/.local/share/nightdrive/plugins/` is picked up like one of the repo's, which is handy for trying one out.
 
 ## Display and VNC
 

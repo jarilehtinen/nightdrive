@@ -1,0 +1,9 @@
+#!/bin/bash
+# A top bar module's state as the bar reads it: one line of JSON {icon, text, class} (format: modules.jsonc).
+#   emit ICON TEXT [CLASS]        as a command (no icon and no text = hidden)
+#   . ~/.config/topbar/scripts/emit   sourced: defines emit() for a status script (scripts/status, a plugin's status)
+emit() {
+  jq -nc --arg i "$1" --arg t "$2" --arg c "${3:-}" '{icon: $i, text: $t, class: $c}'
+}
+[[ ${BASH_SOURCE[0]} == "$0" ]] && emit "$@"
+true

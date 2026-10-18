@@ -1,11 +1,18 @@
 #!/bin/bash
-# Prints SHORTCUTS.md (+ SHORTCUTS.local.md) for the installed optional parts: a line ending in {id} only shows when that
-# part (plugins.txt) is installed, one ending in {!id} only when it isn't; the tag itself isn't shown. The launcher's
-# Keybindings level and the ⌘⇧K help read this.
+# Prints SHORTCUTS.md (+ the installed plugin folders' SHORTCUTS.md, + SHORTCUTS.local.md) for the installed optional
+# parts: a line ending in {id} only shows when that part (plugins.txt, a plugin folder) is installed, one ending in {!id}
+# only when it isn't; the tag itself isn't shown. The launcher's Keybindings level and the ⌘⇧K help read this.
 d=$HOME/.config/hypr
 list=$HOME/.cache/nightdrive/plugins
+active=$HOME/.cache/nightdrive/plugins.d/active   # id<TAB>folder of the installed plugin folders (nightdrive plugins installed)
 [[ -e $list ]] || "$HOME/.local/bin/nightdrive" plugins installed >/dev/null 2>&1
-cat "$d/SHORTCUTS.md" "$d/SHORTCUTS.local.md" 2>/dev/null | awk -v list="$list" '
+{
+  cat "$d/SHORTCUTS.md" 2>/dev/null
+  while IFS=$'\t' read -r _ dir; do
+    [[ -f $dir/SHORTCUTS.md ]] && { echo; cat "$dir/SHORTCUTS.md"; }
+  done < <(cat "$active" 2>/dev/null)
+  cat "$d/SHORTCUTS.local.md" 2>/dev/null
+} | awk -v list="$list" '
   BEGIN { while ((getline id < list) > 0) if (id != "") have[id] = 1 }
   match($0, / *\{!?[a-z0-9-]+\}$/) {
     tag = substr($0, RSTART, RLENGTH); sub(/^ *\{/, "", tag); sub(/\}$/, "", tag)

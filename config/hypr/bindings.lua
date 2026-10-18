@@ -64,6 +64,27 @@ local optional = {
 for _, o in ipairs(optional) do
     if plugins[o[1]] then hl.bind(mod .. " + SHIFT + " .. o[2], hl.dsp.exec_cmd(scripts .. "/launch-or-focus " .. o[3])) end
 end
+-- Installed plugin folders (plugins/<id>/, ~/.local/share/nightdrive/plugins/<id>/): their own bindings.lua, which gets
+-- { id, dir, mod, scripts } as its ... (`nightdrive plugins installed` lists them in plugins.d/active). One that fails is
+-- left out with a line in Hyprland's log, so it can't take the rest of the keys with it.
+do
+    local f = io.open(os.getenv("HOME") .. "/.cache/nightdrive/plugins.d/active")
+    if f then
+        for line in f:lines() do
+            local id, dir = line:match("^([^\t]+)\t(.+)$")
+            local path = dir and dir .. "/bindings.lua"
+            local exists = path and io.open(path)
+            if exists then
+                exists:close()
+                local chunk, err = loadfile(path)
+                local ok = chunk and true
+                if chunk then ok, err = pcall(chunk, { id = id, dir = dir, mod = mod, scripts = scripts }) end
+                if not ok then print("nightdrive: plugin " .. id .. ": " .. tostring(err)) end
+            end
+        end
+        f:close()
+    end
+end
 hl.bind(mod .. " + SHIFT + F",   hl.dsp.exec_cmd(fileManager))
 hl.bind(mod .. " + SHIFT + E",   hl.dsp.exec_cmd("qs ipc call launcher openLevel emoji"))   -- emoji picker
 hl.bind(mod .. " + SHIFT + V",   hl.dsp.exec_cmd("qs ipc call launcher openLevel clipboard"))   -- clipboard history

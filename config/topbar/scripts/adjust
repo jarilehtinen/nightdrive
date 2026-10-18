@@ -2,12 +2,13 @@
 # Top bar sizes (adjust.conf + a private overlay's local.adjust.conf): `nightdrive topbar adjust`.
 # A terminal UI: pick a row, change its size half a pixel at a time. Every change is saved at once and the bar
 # (Quickshell, which watches the files) redraws immediately. Modules without a row of their own are listed too
-# (with the `icon` defaults); changing one adds its row.
+# (with the `icon` defaults, or a plugin module's own size); changing one adds its row.
 import curses, json, os, sys
 
 TOP = os.path.expanduser("~/.config/topbar")
 CONF, LOCAL_CONF = os.path.join(TOP, "adjust.conf"), os.path.join(TOP, "local.adjust.conf")
 MODULES, LOCAL_MODULES = os.path.join(TOP, "modules.jsonc"), os.path.join(TOP, "local.modules.jsonc")
+PLUGINS = os.path.expanduser("~/.cache/nightdrive/plugins.d/bar.json")   # the installed plugin folders' modules
 
 
 def fmt(v):
@@ -21,6 +22,15 @@ def modules(path):
         return [m["name"] for m in json.loads(text)]
     except (OSError, ValueError, KeyError):
         return []
+
+
+def plugin_modules():
+    """The installed plugin folders' module names and their module.jsonc sizes (hypr/scripts/plugin-parts)."""
+    try:
+        v = json.load(open(PLUGINS))
+        return [m["name"] for m in v["modules"]], v.get("sizes", {})
+    except (OSError, ValueError, KeyError, TypeError):
+        return [], {}
 
 
 class Row:
@@ -42,11 +52,12 @@ def load():
     have = {r.el for r in rows}
     icon = next((r for r in rows if r.el == "icon"), Row(CONF, None, "icon", 16))
     local, public = modules(LOCAL_MODULES), modules(MODULES)
-    for name in local + public:
+    plugins, plugin_sizes = plugin_modules()
+    for name in local + public + plugins:
         if name not in have and name != "calendar":      # calendar is text only
             p = LOCAL_CONF if name in local and LOCAL_CONF in lines else CONF
-            rows.append(Row(p, None, name, icon.size))
-    order = ["text", "workspaces", "icon"] + local + public
+            rows.append(Row(p, None, name, plugin_sizes.get(name, icon.size)))
+    order = ["text", "workspaces", "icon"] + local + public + plugins
     rows.sort(key=lambda r: order.index(r.el) if r.el in order else len(order))
     return rows, lines
 

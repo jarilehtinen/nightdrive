@@ -1,25 +1,41 @@
 #!/usr/bin/python3 -I
-"""Details of an optional part (plugins.txt) for the launcher's detail view, as JSON on stdout: the same shape as
-pkg-info's, so Install › Recommended and Plugins open the same page as Install › Software.
+"""Details of an optional part (plugins.txt, or a plugin folder's plugin.conf) for the launcher's detail view, as JSON on
+stdout: the same shape as pkg-info's, so Install › Recommended and Plugins open the same page as Install › Software.
   plugin-info <id>
 Output: { name, summary, installed, icon, screenshot, paragraphs: [text], fields: [[label, value]] }
-The long text is docs/plugins/<id>.md (GitHub shows the same file): the # title is left out, paragraphs are split at
-blank lines, a "- " item is a paragraph of its own, the first image ![…](file) is the screenshot and lines
-"Homepage: …" / "Needs: …" / "Keys: …" go to the facts. Without the file the page has plugins.txt's one line."""
+The long text is the folder's README.md, or docs/plugins/<id>.md for a plugins.txt line (GitHub shows the same file): the
+# title is left out, paragraphs are split at blank lines, a "- " item is a paragraph of its own, the first image ![…](file)
+is the screenshot and lines "Homepage: …" / "Needs: …" / "Keys: …" go to the facts. Without the file the page has the
+one-line description."""
 import json, os, re, subprocess, sys
 
 REPO = os.path.realpath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../.."))
 FIELDS = ("Homepage", "Needs", "Keys")
 
 
+EXTERNAL = os.path.expanduser("~/.local/share/nightdrive/plugins")
+KEYS = ("name", "icon", "description", "default", "install", "installed", "group")
+
+
 def row(pid):
+    """plugins.txt's fields for the id, and the folder its installer and test run in (and its README.md is in): a
+    plugins.txt line first, then the repo's plugins/<id>/, then an external one (bin/nightdrive's order)."""
     with open(os.path.join(REPO, "plugins.txt")) as f:
         for line in f:
             if line.strip() and not line.lstrip().startswith("#"):
                 p = line.rstrip("\n").split("|")
                 if len(p) >= 8 and p[0] == pid:
-                    return p
-    return None
+                    return p, REPO, os.path.join(REPO, "docs/plugins", pid + ".md")
+    for base in (os.path.join(REPO, "plugins"), EXTERNAL):
+        d = os.path.join(base, pid)
+        try:
+            lines = open(os.path.join(d, "plugin.conf")).read().split("\n")
+        except OSError:
+            continue
+        c = dict(l.split("=", 1) for l in lines if re.match(r"[a-z]+=", l))
+        defaults = {"name": pid, "icon": "puzzle", "default": "off", "install": "true", "installed": "false", "group": "plugin"}
+        return [pid] + [c.get(k, defaults.get(k, "")) for k in KEYS], d, os.path.join(d, "README.md")
+    return None, REPO, ""
 
 
 def plain(t):
@@ -28,9 +44,8 @@ def plain(t):
     return t.replace("**", "").replace("`", "").strip()
 
 
-def doc(pid):
+def doc(path):
     paragraphs, fields, shot, cur = [], [], "", []
-    path = os.path.join(REPO, "docs/plugins", pid + ".md")
     try:
         lines = open(path).read().split("\n")
     except OSError:
@@ -75,14 +90,14 @@ def installer(inst):
 if len(sys.argv) != 2:
     print(__doc__.split("\n")[2], file=sys.stderr)
     sys.exit(1)
-p = row(sys.argv[1])
+p, folder, readme = row(sys.argv[1])
 if p is None:
     print(json.dumps({ "name": sys.argv[1], "summary": "", "installed": False, "icon": "", "screenshot": "",
                        "paragraphs": [], "fields": [["Details", "not available"]] }))
     sys.exit(0)
 pid, name, icon, desc, default, inst, test, group = p[:8]
-installed = subprocess.run(["bash", "-c", test], cwd=REPO, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
-paragraphs, extra, shot = doc(pid)
+installed = subprocess.run(["bash", "-c", test], cwd=folder, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+paragraphs, extra, shot = doc(readme)
 fields = [["Status", "installed" if installed else "not installed"],
           ["Type", { "plugin": "Desktop feature", "recommended": "App Nightdrive sets up", "webapp": "Web app" }.get(group, group)]] \
          + extra + [["Installer", installer(inst)]]

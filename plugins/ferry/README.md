@@ -2,7 +2,7 @@
 
 A mailbox between your computers and your iPhone (or any phone). Either end leaves photos, files, text or a link in the box, and they wait there until the other end picks them up. Unlike LocalSend, the phone needs no app, and they don't have to be on the same network: Ferry goes over Tailscale, so it works from anywhere.
 
-![Ferry's menu in the top bar](../screenshots/ferry.jpg)
+![Ferry's menu in the top bar](ferry.jpg)
 
 - On the computer: drop files on the inbox icon in the top bar (holding them over it opens its menu, where you can drop them too), or press Send Clipboard in the menu. The menu lists both directions: a click copies a text or opens a file, a file can be dragged out into another app, and × takes an item out of the box.
 - On the phone: a web page you add to the Home Screen. Received has what your computers left there: Copy for a text, Save for a file (the share sheet, with Save Image for a photo). Send takes a text, the clipboard, photos and files. Swipe a card sideways to remove it; Clear empties a list.
