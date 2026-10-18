@@ -137,6 +137,7 @@ PanelWindow {
                  ["arpeggio", "Arpeggio", "bell-ring"], ["pulse", "Pulse", "bell-ring"]]
     })
     readonly property var soundDefaults: ({ regular: "plip", urgent: "double-plip" })
+    property string fumon: ""                 // uwsm's failed unit monitor (hypr/scripts/fumon): on | off | none, "" = not read yet
     function soundName(which, v) { return v === "none" ? "none" : (soundChoices[which].find(t => t[0] === v) || [])[1] }
     readonly property var saverStyles: [["random", "Random", "shuffle"], ["saver", "Synthwave", "sunset"], ["rain", "Rain", "cloud-rain"], ["clock", "Clock", "clock"]]
     property int barOpacity: -1               // Settings › Top bar opacity: current value (hypr/scripts/bar-style), -1 = not read yet
@@ -188,6 +189,7 @@ PanelWindow {
         : (results[list.currentIndex] || {}).kind === "mirrordev" ? sys.footer(level, query)
         : (results[list.currentIndex] || {}).kind === "haent" ? home.footer(level, query)
         : (results[list.currentIndex] || {}).kind === "nightlight" ? "Enter: night light on/off"
+        : (results[list.currentIndex] || {}).kind === "fumon" ? "Enter: on/off"
         : (results[list.currentIndex] || {}).kind === "sound" ? "Enter: choose  ·  Shift+Enter: listen"
         : level === "baritems" ? "Enter: show / hide  ·  Ctrl+Up+Down: reorder"
         : level === "passwords" && pwState === "ready" ? "Enter: password  ·  Shift+Enter: username  ·  Ctrl+Enter: one-time code"
@@ -365,7 +367,9 @@ PanelWindow {
         return [
             { kind: "nav", name: "Regular sound", glyph: "bell", target: "soundregular", summary: soundName("regular", soundRegular) },
             { kind: "nav", name: "Urgent sound", glyph: "bell-ring", target: "soundurgent", summary: soundName("urgent", soundUrgent) }
-        ]
+        ].concat(fumon === "on" || fumon === "off" ? [   // only where uwsm has fumon (up to 0.26)
+            { kind: "fumon", name: "Failed service alerts", glyph: "triangle-alert", switchOn: fumon === "on",
+              sub: "FUMonitor’s “Failed unit detected” and “Unit recovered”" }] : [])
     }
     // Settings › Display for the root search: the brightness slider row itself (←/→ work there too), the night light toggle
     // and Scale (opens Display)
@@ -395,10 +399,12 @@ PanelWindow {
 
     // Lower case without diacritics: "keittio" finds Keittiö, "ylavalo" Ylävalo
     function fold(s) { return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "") }
-    // 0 = starts with query, 1 = word start, 2 = contains, -1 = no match (q folded)
+    // 0 = the whole name, 0.5 = starts with query, 1 = word start, 2 = contains, -1 = no match (q folded). The whole name
+    // first: "code" puts Code before Code - OSS, whatever their order in the list.
     function score(text, q) {
         const t = fold(text)
-        if (t.startsWith(q)) return 0
+        if (t === q) return 0
+        if (t.startsWith(q)) return 0.5
         if (t.split(/[\s\-_.\/]+/).some(w => w.startsWith(q))) return 1
         if (t.includes(q)) return 2
         return -1
@@ -734,12 +740,16 @@ PanelWindow {
             // "experimental" in the description becomes a tag after the name (plugins.txt keeps it in the text for install.sh)
             const exp = /\bexperimental\b/i
             const plain = d => d.replace(/\s*\(experimental\)/i, "").replace(/,\s*experimental(?=[;)])/i, "").replace(/\(experimental;\s*/i, "(")
-            all = pluginList.filter(p => p.group === (level === "plugins" ? "plugin" : "recommended")).map(p => ({ item: { kind: "action", name: p.name, glyph: p.icon, sub: plain(p.desc), installed: p.installed,
+            const rows = (group, from) => pluginList.filter(p => p.group === group).map(p => ({ item: { kind: "action", name: p.name, glyph: p.icon, sub: plain(p.desc), installed: p.installed,
                                                  experimental: exp.test(p.desc), external: p.external,
-                                                 src: "plugin", id: p.id, rerun: true,
+                                                 src: "plugin", id: p.id, rerun: true, from: from,
                                                  summary: p.installed ? (p.off ? "off" : "installed") : undefined,
                                                  cmd: term('"$HOME/.local/bin/nightdrive" plugins install "$1"', p.id) },
                                          text: p.name, extra: p.desc }))
+            // A search also finds the other group's rows, tagged with it: whether something is a plugin or a recommended app
+            // isn't obvious ("tailscale" in Plugins found only Ferry, whose description mentions it; Tailscale is Recommended)
+            all = level === "plugins" ? rows("plugin").concat(q !== "" ? rows("recommended", "Recommended") : [])
+                                      : rows("recommended").concat(q !== "" ? rows("plugin", "Plugins") : [])
         } else if (level === "webapp") {
             // Your own first, then the ready-made ones (plugins.txt, group webapp): added without a terminal, nothing to ask
             const ready = (pluginList || []).filter(p => p.group === "webapp").map(p => ({
@@ -808,6 +818,7 @@ PanelWindow {
         if (target === "battery") { battProc.running = true; battDetailProc.running = true }
         if (target === "screensaver" || target === "saverafter" || target === "screenoff" || target === "saverstyle") idleProc.running = true
         if (target === "sounds" || target === "soundregular" || target === "soundurgent") soundsProc.running = true
+        if (target === "sounds") fumonProc.running = true
         if (extOf(target)) extOf(target).entered(target)
         if (target === "passwords") { pwState = pwItems.length ? "ready" : "loading"; pwProc.running = true }
     }
@@ -949,6 +960,11 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         else if (item.kind === "stat" && item.copy !== undefined) sys.copyText(item.copy)   // Public IP, Local IP, Router: as ⌘C
         else if (item.kind === "brightness" || item.kind === "stat") shake.restart()   // brightness: ←/→ or the slider; stat: information only
         else if (item.kind === "lpref") { keepSelection(); setPref(item.key, !prefs[item.key]) }
+        else if (item.kind === "fumon") {
+            keepSelection()
+            fumon = fumon === "on" ? "off" : "on"
+            Quickshell.execDetached([scripts + "/fumon", fumon])
+        }
         else if (item.kind === "nightlight") {
             keepSelection()
             night = night === "on" ? "off" : "on"
@@ -1507,6 +1523,12 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
             if ((win.level === "soundregular" || win.level === "soundurgent") && win.query === "")
                 win.selectWhere(r => r.value === (win.level === "soundregular" ? win.soundRegular : win.soundUrgent))
         }
+    }
+    // Settings › Notifications: whether FUMonitor runs (its row shows only where uwsm has it)
+    Sh {
+        id: fumonProc
+        script: '"$HOME/.config/hypr/scripts/fumon" status'
+        onResult: text => { win.fumon = text.trim() }
     }
     // Settings › Top bar opacity / icons: current values; select the current one
     Sh {
