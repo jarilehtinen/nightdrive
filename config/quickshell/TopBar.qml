@@ -205,8 +205,11 @@ Singleton {
     }
 
     // --- Icons: SVG text by name ("" = not found); fetched once, then cached ---
+    // A missing one is asked again after 5 s and 30 s: a branch switch removes a plugin's icon links for a moment
+    // (link.sh puts them back), and the bar reloading in between would otherwise keep the icon blank.
     property var svgs: ({})
     property var loading: ({})
+    property var misses: ({})
     function svg(ref) {
         if (!ref) return ""
         if (svgs[ref] !== undefined) return svgs[ref]
@@ -226,10 +229,26 @@ Singleton {
             command: [tb.dir + "/scripts/icon", ref]
             stdout: StdioCollector {
                 onStreamFinished: {
-                    const n = Object.assign({}, tb.svgs); n[ip.ref] = text.indexOf("<svg") >= 0 ? text : ""; tb.svgs = n
+                    const found = text.indexOf("<svg") >= 0
+                    const n = Object.assign({}, tb.svgs); n[ip.ref] = found ? text : ""; tb.svgs = n
                     delete tb.loading[ip.ref]
+                    const tries = found ? 0 : (tb.misses[ip.ref] || 0) + 1
+                    tb.misses[ip.ref] = tries
+                    if (tries === 1 || tries === 2) iconRetry.createObject(tb, { ref: ip.ref, interval: tries === 1 ? 5000 : 30000 })
                     ip.destroy()
                 }
+            }
+        }
+    }
+    Component {     // drops a missing icon from the cache, so the next svg() asks for it again
+        id: iconRetry
+        Timer {
+            id: ir
+            property string ref
+            running: true
+            onTriggered: {
+                const n = Object.assign({}, tb.svgs); delete n[ir.ref]; tb.svgs = n
+                ir.destroy()
             }
         }
     }
