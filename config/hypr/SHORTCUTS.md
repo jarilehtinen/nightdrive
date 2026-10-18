@@ -33,7 +33,7 @@
   ⌘ W                Close window; background apps (Deck, WhatsApp, Telegram, Slack, Teams, 1Password) are only hidden and keep running (green dot in the launcher; their shortcut or the launcher brings them back)
   ⌘ Q                Quit the app for real: closes all its windows, and an app left running in the tray is asked to quit too (also the background apps; in Deck `q` does the same)
   ⌘ ⇧ F              Fullscreen
-  ⌘ ⇧ T              Toggle floating, floating window in the centre (Deck: tiled → floating at start size in the centre; moved → back to centre; already there → tiles)
+  ⌘ ⇧ T              Tile or float the window; a floating one goes to the centre (Deck: tiled → floating at start size in the centre; moved → back to centre; already there → tiles)
   ⌘ ⇧ J              Toggle split direction (vertical/horizontal)
   ⌘ arrows           Move focus between windows
   ⌘ ⇧ arrows         Move window
