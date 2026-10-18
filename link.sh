@@ -54,8 +54,18 @@ if [[ $("$repo/config/hypr/scripts/platform" name) == asahi ]]; then asound=asou
 link "$repo/config/alsa/$asound" "$HOME/.config/alsa/asoundrc"
 # Mac Keyboard Shortcuts plugin (plugins/keyd): keyd-application-mapper's per-app keys. The link from before the folder
 # (config/keyd, 18.10.2026) is dead: it goes first, or link() would keep it as a .bak file.
+# The mapper dies when its app.conf goes for a moment (a branch switch moves the file), and the plugin's hyprland.lua
+# starts it only with Hyprland: it starts again here while the plugin is on. It reads the windows from Hyprland, so
+# only inside a Hyprland session.
 [[ -L $HOME/.config/keyd/app.conf && ! -e $HOME/.config/keyd/app.conf ]] && rm "$HOME/.config/keyd/app.conf"
-[[ -f /etc/keyd/default.conf ]] && link "$repo/plugins/keyd/app.conf" "$HOME/.config/keyd/app.conf"
+if [[ -f /etc/keyd/default.conf ]]; then
+  link "$repo/plugins/keyd/app.conf" "$HOME/.config/keyd/app.conf"
+  if [[ ! -e $HOME/.local/state/nightdrive/plugins-off/keyd && -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]] \
+    && ! pgrep -f '[k]eyd-application-mapper' >/dev/null; then
+    setsid sg keyd -c "keyd-application-mapper -d" </dev/null >/dev/null 2>&1 &
+    echo "started     keyd-application-mapper"
+  fi
+fi
 # Deck's desktop file from before its folder (18.10.2026) runs hypr/scripts/deck-open, now plugins/deck/bin (~/.local/bin)
 deck_desktop=$HOME/.local/share/applications/deck.desktop
 if [[ -f $deck_desktop ]] && grep -q '/\.config/hypr/scripts/deck-open' "$deck_desktop"; then
