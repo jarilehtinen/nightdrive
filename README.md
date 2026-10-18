@@ -77,11 +77,12 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
 - **Dictation**: hold F5 (or Fn on a Mac), speak, and let go. It runs fully offline with Voxtype and Parakeet ([setup](docs/dictation.md)).
 - **Snippets**: text snippets in launcher › Tools › Snippets; Enter pastes one. Turn on auto-expand and typing a trigger
   anywhere replaces it with the text.
-- **From your phone** (experimental plugins): LocalSend receives files from a phone after you accept them in a
-  notification, and AirPlay Receiver mirrors an iPhone, iPad or Mac into a window. [Ferry](plugins/ferry/README.md) is a
+- **From your phone** (experimental plugins): [LocalSend](plugins/localsend/README.md) receives files from a phone after
+  you accept them in a notification, and [AirPlay Receiver](plugins/airplay-receiver/README.md) mirrors an iPhone, iPad or
+  Mac into a window. [Ferry](plugins/ferry/README.md) is a
   mailbox over Tailscale: drop files on its top bar icon and they wait for the phone, which needs no app, only a web page
   on its Home Screen.
-- **Screen Mirroring**: mirror the screen to an Apple TV or an AirPlay TV from the display menu or the launcher (search
+- **[Screen Mirroring](plugins/mirroring/README.md)**: mirror the screen to an Apple TV or an AirPlay TV from the display menu or the launcher (search
   "airplay"), with sound. Google Cast works from Chromium (⋮ › Cast…). Sharing the screen, for these and video calls, asks
   in a themed window: the whole screen or one window.
 - **Themes**: seven colours that change the whole desktop at once, two synthwave wallpapers and your own (Settings › Theme).
@@ -108,9 +109,9 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
 | Passwords (optional) | 1Password + `op` CLI | Passwords level in the launcher, SSH agent |
 | AI | [Claude Code](https://claude.com/claude-code) | ⌘⌥Enter, ask from the launcher, usage limits in the bar |
 | Dictation | [Voxtype](https://github.com/peteonrails/voxtype) (Parakeet) | F5 / Fn push-to-talk, recording card on screen |
-| Network | NetworkManager, BlueZ, [Tailscale](https://tailscale.com) (optional) | Wi-Fi, Bluetooth and Tailscale menus |
+| Network | NetworkManager, BlueZ, [Tailscale](plugins/tailscale/README.md) (optional) | Wi-Fi, Bluetooth and Tailscale menus |
 | Audio | PipeWire, [EasyEffects](https://github.com/wwmm/easyeffects) | output switching (AirPlay speakers too), EQ presets for headphones; Sony and AirPods listening mode, AirPods battery per pod and case and their own settings |
-| Screen Mirroring (optional) | [doubletake](https://github.com/omarroth/doubletake) (AirPlay, built by `install-doubletake.sh`) | Settings › Display; experimental, picture limited to 1080p (no hardware encoder on Asahi) |
+| Screen Mirroring (optional) | [doubletake](https://github.com/omarroth/doubletake) (AirPlay, built by `plugins/mirroring/install.sh`) | Settings › Display; experimental, picture limited to 1080p (no hardware encoder on Asahi) |
 | Notifications | Quickshell | app icon and time on every notification, history and do not disturb in the bar |
 | Files and images | Nautilus, Loupe | images open in Loupe, a simple viewer like Preview |
 | Markdown (optional) | [Apostrophe](https://apps.gnome.org/Apostrophe/) (Flatpak) | `.md` files open in it, themed editor |
@@ -152,8 +153,8 @@ It tells which machine it's on and asks first which optional parts you want (num
 Machine: PC (x86_64, graphics: amd, keyboard: us)
 
   Recommended apps
-   1 [ ] 1Password         Password manager: launcher › Passwords, op CLI, SSH agent
-   2 [x] Tailscale         VPN, in the top bar (log in afterwards: sudo tailscale up)
+   1 [x] Tailscale         VPN, in the top bar (log in afterwards: sudo tailscale up)
+   2 [ ] 1Password         Password manager: launcher › Passwords, op CLI, SSH agent
    …
    5 [x] Deck              Spotify player (needs Premium), launcher and top bar; compiled
    …
@@ -163,8 +164,9 @@ Machine: PC (x86_64, graphics: amd, keyboard: us)
    …
 
   Plugins
-  13 [ ] Ferry             Files and text both ways with an iPhone over Tailscale, no app (experimental)
-  14 [ ] LocalSend         Files from phones via the LocalSend app, asks first (experimental)
+  13 [ ] AirPlay Receiver  Mirror an iPhone, iPad or Mac here (UxPlay, experimental)
+  14 [ ] Ferry             Files and text both ways with an iPhone over Tailscale, no app (experimental)
+  15 [ ] LocalSend         Files from phones via the LocalSend app, asks first (experimental)
    …
 
   18 [ ] Install all       every optional part above

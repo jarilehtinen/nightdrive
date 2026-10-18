@@ -48,7 +48,6 @@ cp -n "$repo/config/easyeffects/db/easyeffectsrc" "$HOME/.config/easyeffects/db/
 
 link "$repo/config/wireplumber/wireplumber.conf.d/51-bt-no-headset-autoswitch.conf" "$HOME/.config/wireplumber/wireplumber.conf.d/51-bt-no-headset-autoswitch.conf"   # don't make the BT headset mic the default
 
-link "$repo/config/nautilus-python/localsend.py" "$HOME/.local/share/nautilus-python/extensions/localsend.py"   # Files › Send with LocalSend (shown while the plugin is on)
 link "$repo/config/nautilus-python/mac-keys.py" "$HOME/.local/share/nautilus-python/extensions/mac-keys.py"   # Files: Enter renames, ⌘O opens (while the keyd plugin is on)
 link "$repo/config/applications/nm-connection-editor.desktop" "$HOME/.local/share/applications/nm-connection-editor.desktop"   # Fedora ships none
 # macbook_mic alias for dictation (voxtype): the MacBook's mic on Apple Silicon, the default mic elsewhere
@@ -62,7 +61,7 @@ link "$repo/config/alsa/$asound" "$HOME/.config/alsa/asoundrc"
 # that was enabled (its .wants link was dead too) is enabled again once its new link is in place, below.
 reenable=()
 external=$HOME/.local/share/nightdrive/plugins   # plugins from elsewhere (nightdrive plugins add); a removed one's links go too
-for l in "$HOME"/.local/bin/* "$HOME"/.config/systemd/user/* "$HOME"/.config/systemd/user/*.wants/*; do
+for l in "$HOME"/.local/bin/* "$HOME"/.config/systemd/user/* "$HOME"/.config/systemd/user/*.wants/* "$HOME"/.local/share/nautilus-python/extensions/*; do
   [[ -L $l && ! -e $l && ( $(readlink "$l") == "$repo/"* || $(readlink "$l") == "$external/"* ) ]] || continue
   [[ $l == *.wants/* ]] && reenable+=("${l##*/}")
   rm "$l" && echo "removed     $l (its file is gone)"
@@ -71,16 +70,16 @@ done
 # Session target: brings up graphical-session.target, which xdg-desktop-portal needs (started by hyprland.lua)
 link "$repo/config/systemd/user/nightdrive-session.target" "$HOME/.config/systemd/user/nightdrive-session.target"
 # Update check: every 6 h a fetch, and a notification when new commits are waiting (nightdrive update check).
-# Snippets, LocalSend and AirPlay Receiver: linked only, started when turned on (hypr/scripts/snippets enable, localsend
-# enable, airplay-receiver enable). The plugin folders' units are linked below.
-for u in nightdrive-update-check.service nightdrive-update-check.timer nightdrive-snippets.service nightdrive-localsend.service nightdrive-airplay.service; do link "$repo/config/systemd/user/$u" "$HOME/.config/systemd/user/$u"; done
+# Snippets: linked only, started when turned on (nightdrive snippets enable). The plugin folders' units are linked below.
+for u in nightdrive-update-check.service nightdrive-update-check.timer nightdrive-snippets.service; do link "$repo/config/systemd/user/$u" "$HOME/.config/systemd/user/$u"; done
 
 # The nightdrive command (bin/nightdrive)
 mkdir -p "$HOME/.local/bin"
 for f in "$repo"/bin/*; do link "$f" "$HOME/.local/bin/$(basename "$f")"; done
 
-# Plugin folders (plugins/<id>/ and the external ones, see plugins/README.md): their commands (bin/) and user units
-# (systemd/), whether installed or not: an installer runs its own command and enables its unit. A unit that now comes
+# Plugin folders (plugins/<id>/ and the external ones, see plugins/README.md): their commands (bin/), user units
+# (systemd/) and Files extensions (nautilus-python/, which show only while the plugin is on), whether installed or not: an
+# installer runs its own command and enables its unit. A unit that now comes
 # from somewhere else is restarted if it runs, so it runs the new file. An external one whose id the repo already has is
 # skipped, as bin/nightdrive skips it, and its files never replace one that is already there (link() would move that
 # aside): it can't take over the repo's commands or units.
@@ -96,6 +95,11 @@ for d in "$repo"/plugins/*/ "$external"/*/; do
   for f in "$d"bin/*; do
     [[ -f $f ]] || continue
     held "$f" "$HOME/.local/bin/$(basename "$f")" || link "$f" "$HOME/.local/bin/$(basename "$f")"
+  done
+  for f in "$d"nautilus-python/*.py; do
+    [[ -f $f ]] || continue
+    held "$f" "$HOME/.local/share/nautilus-python/extensions/$(basename "$f")" \
+      || link "$f" "$HOME/.local/share/nautilus-python/extensions/$(basename "$f")"
   done
   for f in "$d"systemd/*; do
     [[ -f $f ]] || continue

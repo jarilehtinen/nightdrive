@@ -2,7 +2,7 @@ import QtQuick
 import Quickshell
 
 // The launcher's Settings › Wi-Fi, Bluetooth, Sound, Headphones and Tailscale, and Status (the top bar's System and Claude usage): the
-// same things as the top bar's menus (WifiMenu, BluetoothMenu, VolumeMenu, HeadphonesMenu, TailscaleMenu, SystemMenu, ClaudeMenu) as
+// same things as the top bar's menus (WifiMenu, BluetoothMenu, VolumeMenu, HeadphonesMenu, plugins/tailscale's TailscaleMenu, SystemMenu, ClaudeMenu) as
 // launcher rows, so the launcher doesn't hand over to a menu.
 // Launcher.qml asks it like its private extension (levels, titles, parents, items, activate, footer, entered).
 // The data is read while one of these levels is open; rows use the launcher's kinds (header, hint, stat, action) and a few
@@ -631,7 +631,7 @@ done; true'
         onResult: () => { hpProc.running = true; TopBar.refresh("headphones") }
     }
 
-    // ================= Tailscale (as in TailscaleMenu) =================
+    // ================= Tailscale (as in the Tailscale plugin's menu, plugins/tailscale/TailscaleMenu.qml) =================
     property bool tsRunning: LastState.tailscale
     onTsRunningChanged: LastState.tailscale = tsRunning
     property string selfIp: ""
@@ -766,9 +766,10 @@ done; true'
         }
     }
 
-    // ================= Screen Mirroring (AirPlay with doubletake; hypr/scripts/mirror) =================
-    // Rows for Settings › Display (Launcher.qml adds them under Screen Mirroring). Nothing while doubletake isn't installed.
-    readonly property string mirrorScript: Quickshell.env("HOME") + "/.config/hypr/scripts/mirror"
+    // ================= Screen Mirroring (AirPlay with doubletake; the mirroring plugin, plugins/mirroring) =================
+    // Rows for Settings › Display (Launcher.qml adds them under Screen Mirroring). Nothing while the plugin isn't installed
+    // or is off.
+    readonly property string mirrorScript: Quickshell.env("HOME") + "/.local/bin/mirroring"
     property bool mirrorAvail: false
     property var mirrorDevices: []   // [{ name, model, ip }]
     property string mirrorState: "idle"   // idle | connecting | pin_required | streaming
@@ -795,7 +796,7 @@ done; true'
             const parts = text.trim().split(/\n(?=\{)/)   // two JSON objects: status, then devices
             let st = null, dev = null
             try { st = JSON.parse(parts[0]); dev = JSON.parse(parts[1]) } catch (e) {}
-            const avail = st !== null && st.ok === true
+            const avail = Plugins.has("mirroring") && st !== null && st.ok === true   // off: hidden, though doubletake runs
             const devices = dev && dev.devices ? dev.devices.map(d => ({ name: d.name, model: d.model || "", ip: d.ip })) : []
             const state = st && st.state ? st.state : "idle"
             const ip = st && st.device_ip ? st.device_ip : ""

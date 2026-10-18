@@ -1,0 +1,3 @@
+// Tailscale's top bar module: connected or not (./status, its own icons in icons/); a click opens TailscaleMenu.qml, a
+// right click turns it on or off (./toggle)
+{ "interval": 5, "right": "./toggle", "after": "system", "size": 18, "label": "Tailscale", "glyph": "shield-check" }

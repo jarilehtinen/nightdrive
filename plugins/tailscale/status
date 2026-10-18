@@ -1,0 +1,5 @@
+#!/bin/bash
+# Tailscale's top bar module (module.jsonc): its logo while connected, the crossed-out one otherwise (icons/)
+. ~/.config/topbar/scripts/emit
+if [[ $(tailscale status --json 2>/dev/null | jq -r '.BackendState // empty') == Running ]]; then emit tailscale ""
+else emit tailscale-off ""; fi

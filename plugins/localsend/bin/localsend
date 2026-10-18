@@ -43,6 +43,9 @@ PORT = 53317                 # LocalSend's port, for both the multicast discover
 GROUP = "224.0.0.167"        # LocalSend's multicast group
 STATE = os.path.expanduser("~/.local/share/nightdrive/localsend")   # the certificate and its key
 SERVICE = "nightdrive-localsend.service"
+# The unit in the plugin's folder (this file is linked to ~/.local/bin): enabled by its path, which links it again after a
+# disable (systemctl disable removes a linked unit's link too)
+UNIT = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "systemd", SERVICE)
 APP = "LocalSend"       # the notifications' app name
 ICON = "smartphone"
 ASK_TIMEOUT = 60             # seconds to answer Accept/Decline
@@ -700,7 +703,7 @@ def main():
             return 1
         certificate()
         systemctl("daemon-reload")
-        res = systemctl("enable", "--now", SERVICE)
+        res = systemctl("enable", "--now", UNIT)
         if res.returncode:
             print(res.stderr.strip(), file=sys.stderr)
             return 1

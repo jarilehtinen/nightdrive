@@ -1,5 +1,5 @@
 # Fedora packages (from the official repos). Hyprland packages come from a COPR repo, see install.sh. Optional apps
-# (Tailscale, Thunderbird…) are plugins: plugins.txt.
+# (Tailscale, Thunderbird…) are plugins: plugins.txt and plugins/.
 kitty
 firefox
 quickshell

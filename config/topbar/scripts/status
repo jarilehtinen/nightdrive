@@ -40,9 +40,11 @@ case $kind in
     pactl list short sinks 2>/dev/null | grep -q bluez_output || { emit "" ""; exit; }
     emit headphones "" ;;
   display)
-    # Brightness, night light, Screen Mirroring and scale are in the menu (DisplayMenu.qml). Mirroring: highlighted
-    # screen-share icon; otherwise a dot on the monitor while the night light is on
-    if [[ -x ~/.local/bin/doubletake-ctl && $(~/.local/bin/doubletake-ctl status 2>/dev/null | jq -r .state) == streaming ]]; then emit screen-share "" active
+    # Brightness, night light, Screen Mirroring and scale are in the menu (DisplayMenu.qml). Mirroring (the mirroring
+    # plugin, installed and on: ~/.cache/nightdrive/plugins): highlighted screen-share icon; otherwise a dot on the monitor
+    # while the night light is on
+    if grep -qx mirroring ~/.cache/nightdrive/plugins 2>/dev/null \
+       && [[ $(~/.local/bin/doubletake-ctl status 2>/dev/null | jq -r .state) == streaming ]]; then emit screen-share "" active
     elif [[ $(~/.config/hypr/scripts/nightlight status) == on ]]; then emit monitor-dot ""; else emit monitor ""; fi ;;
   battery)
     dev=$(battery); [[ -z $dev ]] && { emit "" ""; exit; }
@@ -73,9 +75,6 @@ case $kind in
     IFS=$'\t' read -r _ _ cls < <(~/.config/topbar/scripts/sysinfo bar)
     [[ $cls == high ]] && cls=critical
     emit cpu "" "$cls" ;;
-  tailscale)
-    if [[ $(tailscale status --json 2>/dev/null | jq -r '.BackendState // empty') == Running ]]; then emit tailscale ""
-    else emit tailscale-off ""; fi ;;
   calendar)
     emit "" "$(~/.config/topbar/scripts/clock)" ;;
   notifications)

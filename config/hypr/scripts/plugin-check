@@ -4,10 +4,10 @@
 A plugin folder (the repo's plugins/<id>/ and the external ones): plugin.conf (known keys, the required ones, values,
 a unique id, install and installed parse as shell), its icon, README.md (# title = the name, at least one fact line
 and the fact lines last: Homepage:, Needs:, Keys: (needed with bindings.lua), each - item on one line, the images it
-shows), module.jsonc (parses, known keys, no needs, a label, the status command is executable), the icons status emits,
-the menus (a <Name>Menu.qml opens from a module of its own; MenuHeader before the rows; no hex colours or font names:
-Theme.* and Theme.font / Icons.family), SHORTCUTS.md (lines the key list reads), the scripts' syntax (bash -n,
-ast.parse, luac -p if there is a luac). A plugins.txt line: its fields, icon, default and group, and
+shows), module.jsonc (parses, known keys, no needs, a label, the status command is executable), the icons status emits
+(Lucide, the bar's own or the folder's icons/), the menus (a <Name>Menu.qml opens from a module of its own; MenuHeader
+before the rows; no hex colours or font names: Theme.* and Theme.font / Icons.family), SHORTCUTS.md (lines the key list
+reads), the scripts' syntax (bash -n, ast.parse, luac -p if there is a luac). A plugins.txt line: its fields, icon, default and group, and
 docs/plugins/<id>.md as a README. Findings as file:line: message, one per line; exit 1 if any, 2 for an unknown id."""
 import ast, glob, json, os, re, shutil, subprocess, sys
 
@@ -214,16 +214,17 @@ def line_of(path, needle):
 
 
 def check_status_icons(d, icons):
-    """status: the icons it emits as plain words (emit NAME …), a Lucide name or one of the bar's own SVGs."""
+    """status: the icons it emits as plain words (emit NAME …), a Lucide name, one of the bar's own SVGs or one of the
+    plugin's (icons/NAME.svg)."""
     path = os.path.join(d, "status")
     if not os.path.isfile(path):
         return
-    own = {os.path.basename(f)[:-4] for f in glob.glob(os.path.join(BAR_ICONS, "*.svg"))}
+    own = {os.path.basename(f)[:-4] for f in glob.glob(os.path.join(BAR_ICONS, "*.svg")) + glob.glob(os.path.join(d, "icons", "*.svg"))}
     for n, l in enumerate(open(path, errors="replace").read().split("\n"), 1):
         for name in re.findall(r"\bemit\s+['\"]?([a-z0-9-]+)['\"]?(?=\s|$)", l.split("#")[0]):
             for part in name.split("|"):
                 if part not in icons and part not in own and not part.startswith("gauge"):
-                    find(path, n, f"unknown icon {part} (a Lucide name, or pack:name: config/topbar/scripts/icon)")
+                    find(path, n, f"unknown icon {part} (a Lucide name, the plugin's icons/{part}.svg, or pack:name: config/topbar/scripts/icon)")
 
 
 def check_menus(d, opens):

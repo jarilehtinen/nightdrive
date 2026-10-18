@@ -84,8 +84,9 @@ function NightdriveLocked()
     hl.exec_cmd("sh -c '\"$HOME/.config/hypr/scripts/theme\" apply; exec qs'")
     hl.exec_cmd(HOME .. "/.config/hypr/scripts/wallpaper restore")   -- swaybg with the remembered wallpaper (change: launcher › Settings › Background)
     hl.exec_cmd("env PATH=" .. HOME .. "/.local/bin:" .. os.getenv("PATH") .. " " .. HOME .. "/.local/bin/voxtype-onnx daemon")   -- speech to text (F5), Parakeet
-    -- AirPlay screen mirroring (install-doubletake.sh): the daemon finds the receivers; Settings › Display › Screen Mirroring
-    hl.exec_cmd("sh -c '[ -x \"$HOME/.local/bin/doubletake\" ] && exec \"$HOME/.local/bin/doubletake\" -daemonize'")
+    -- AirPlay screen mirroring (plugins/mirroring): the daemon finds the receivers; Settings › Display › Screen Mirroring.
+    -- Not while the plugin is off (nightdrive plugins off mirroring)
+    hl.exec_cmd("sh -c '[ -x \"$HOME/.local/bin/doubletake\" ] && [ ! -e \"$HOME/.local/state/nightdrive/plugins-off/mirroring\" ] && exec \"$HOME/.local/bin/doubletake\" -daemonize'")
     hl.exec_cmd(HOME .. "/.config/hypr/scripts/idle start")   -- hypridle with the screensaver and screen-off times (launcher › Settings › Screensaver)
     hl.exec_cmd("easyeffects --service-mode -w")   -- headphone EQ in the background (presets: config/easyeffects, picked from the headphone icon in the top bar)
     hl.exec_cmd(HOME .. "/.config/hypr/scripts/bt-audio-follow")   -- Bluetooth headphones become the output when they connect
@@ -331,7 +332,7 @@ hl.window_rule({
     float = true,
     size  = "900 750",
 })
--- iPhone mirroring (UxPlay, AirPlay receiver; app id uxplay with waylandsink): floating along the right edge, full
+-- iPhone mirroring (UxPlay, plugins/airplay-receiver; app id uxplay with waylandsink): floating along the right edge, full
 -- height below the top bar, a phone's width (19.5:9 portrait). Floating so it can be moved anywhere.
 local MIRROR_TOP = 37 + 10   -- the top bar's reserved height + gaps_out
 hl.window_rule({

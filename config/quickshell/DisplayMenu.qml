@@ -2,7 +2,7 @@ import QtQuick
 import Quickshell
 
 // Display: screen brightness (brightnessctl), night light (hypr/scripts/nightlight), Screen Mirroring over AirPlay
-// (doubletake, hypr/scripts/mirror; hidden without it) and the scale of each output (hypr/scripts/display: only scales the
+// (the mirroring plugin: plugins/mirroring, bin/mirroring; hidden without it or while it's off) and the scale of each output (hypr/scripts/display: only scales the
 // panel divides evenly, shown as the resulting desktop size).
 // The launcher's Settings › Display has the same settings.
 Column {
@@ -18,7 +18,7 @@ Column {
     property var mirrorDevices: []   // [{ name, model, ip }] (doubletake-ctl devices)
     property string mirrorState: "idle"   // idle | connecting | pin_required | streaming
     property string mirrorIp: ""
-    readonly property string mirrorScript: Quickshell.env("HOME") + "/.config/hypr/scripts/mirror"
+    readonly property string mirrorScript: Quickshell.env("HOME") + "/.local/bin/mirroring"
     signal close()
 
     function refresh() { briProc.running = true; nightProc.running = true; mirrorProc.running = true }
@@ -55,7 +55,7 @@ Column {
             const parts = text.trim().split(/\n(?=\{)/)   // two JSON objects: status, then devices
             let st = null, dev = null
             try { st = JSON.parse(parts[0]); dev = JSON.parse(parts[1]) } catch (e) {}
-            m.mirrorAvail = st !== null && st.ok === true
+            m.mirrorAvail = Plugins.has("mirroring") && st !== null && st.ok === true   // off: hidden, though doubletake runs
             m.mirrorState = st && st.state ? st.state : "idle"
             m.mirrorIp = st && st.device_ip ? st.device_ip : ""
             m.mirrorDevices = dev && dev.devices ? dev.devices.map(d => ({ name: d.name, model: d.model || "", ip: d.ip })) : []

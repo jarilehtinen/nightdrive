@@ -31,12 +31,15 @@ Singleton {
         }
         onLoadFailed: tb.plugin = ({ modules: [], menus: ({}), sizes: ({}) })
     }
-    // The files' order: a plugin's module goes right of the one its "after" names (at the right end without one)
+    // The files' order: a plugin's module goes right of the one its "after" names (at the right end without one). Plugins
+    // after the same module keep the folders' order (Ferry, then Tailscale, after System), as they were in modules.jsonc.
     function withPlugins(list) {
         const out = list.slice()
         for (const m of plugin.modules) {
-            const i = out.findIndex(o => o.name === m.after)
-            if (i >= 0) out.splice(i + 1, 0, m); else out.push(m)
+            let i = out.findIndex(o => o.name === m.after)
+            if (i < 0) { out.push(m); continue }
+            while (i + 1 < out.length && out[i + 1].after === m.after) i++
+            out.splice(i + 1, 0, m)
         }
         return out
     }
@@ -83,7 +86,7 @@ Singleton {
     }
     // Names and glyphs for the launcher's list; a module can give its own "label" and "glyph" in modules.jsonc
     readonly property var moduleLabels: ({ deck: ["Music (Deck)", "music"], claude: ["Claude usage", "gauge"], system: ["CPU and memory", "cpu"],
-                                           tailscale: ["Tailscale", "shield-check"], bluetooth: ["Bluetooth", "bluetooth"], wifi: ["Wi-Fi", "wifi"],
+                                           bluetooth: ["Bluetooth", "bluetooth"], wifi: ["Wi-Fi", "wifi"],
                                            volume: ["Volume", "volume-2"], headphones: ["Headphones", "headphones"], display: ["Display", "monitor"], battery: ["Battery", "battery-medium"],
                                            calendar: ["Date and time", "clock"], notifications: ["Notifications", "menu"] })
     function moduleLabel(m) { return m.label || (moduleLabels[m.name] || [])[0] || m.name.charAt(0).toUpperCase() + m.name.slice(1) }

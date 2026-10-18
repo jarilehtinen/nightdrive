@@ -7,8 +7,10 @@ Writes, in ~/.cache/nightdrive/plugins.d (only when the content changes, so the 
             its SHORTCUTS.md
   bar.json  {modules, menus, sizes} for Quickshell (TopBar.qml, shell.qml): module.jsonc's modules, with their commands
             run in the plugin's folder; the folder's <Name>Menu.qml files by menu name; the modules' icon sizes
-Outside the repo, so a read-only checkout (nightdrive sandbox) works too. Folders that aren't on aren't in either file,
-so their module, menu, keys and shortcut lines don't show anywhere."""
+  icons/    links to the folders' own bar icons (icons/<name>.svg), which topbar/scripts/icon looks up after the core's:
+            a plugin's icon can't replace a Lucide one or the bar's own
+Outside the repo, so a read-only checkout (nightdrive sandbox) works too. Folders that aren't on aren't in any of them,
+so their module, menu, icons, keys and shortcut lines don't show anywhere."""
 import glob, json, os, shlex, sys
 
 OUT = os.path.expanduser("~/.cache/nightdrive/plugins.d")
@@ -31,6 +33,23 @@ def write(name, text):
     with open(path + ".tmp", "w") as f:
         f.write(text)
     os.replace(path + ".tmp", path)
+
+
+def icons(folders):
+    """plugins.d/icons: a link per SVG in the folders' icons/, the first folder winning a name; stale links go."""
+    out = os.path.join(OUT, "icons")
+    want = {}
+    for _pid, d in folders:
+        for f in sorted(glob.glob(os.path.join(d, "icons", "*.svg"))):
+            want.setdefault(os.path.basename(f), f)
+    os.makedirs(out, exist_ok=True)
+    for name in os.listdir(out):
+        path = os.path.join(out, name)
+        if not (os.path.islink(path) and os.readlink(path) == want.get(name)):
+            os.remove(path)
+    for name, f in want.items():
+        if not os.path.lexists(os.path.join(out, name)):
+            os.symlink(f, os.path.join(out, name))
 
 
 def main():
@@ -63,6 +82,7 @@ def main():
             base = os.path.basename(f)[:-len("Menu.qml")]
             menus[base[0].lower() + base[1:]] = f
     os.makedirs(OUT, exist_ok=True)
+    icons(folders)
     write("active", "".join(f"{pid}\t{d}\n" for pid, d in folders))
     write("bar.json", json.dumps({"modules": modules, "menus": menus, "sizes": sizes}, indent=1) + "\n")
 

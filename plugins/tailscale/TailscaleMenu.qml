@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell
+import qs
 
 // Tailscale: on/off, this machine and the other machines on the network, online and offline (click copies the IP address).
 // On/off requires running this once: sudo tailscale set --operator=$USER

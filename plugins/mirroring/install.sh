@@ -1,8 +1,9 @@
 #!/bin/bash
 # Installs doubletake (AirPlay screen mirroring to an Apple TV or an AirPlay TV, https://github.com/omarroth/doubletake):
 # Settings › Display › Screen Mirroring in the launcher and the top bar's display menu. hyprland.lua starts its daemon
-# (`doubletake -daemonize`), the menus talk to it with doubletake-ctl.
-# Source: ~/.local/src/doubletake at a tested commit (another one: DOUBLETAKE_REF=<commit or branch> ./install-doubletake.sh),
+# (`doubletake -daemonize`), the menus talk to it with doubletake-ctl (bin/mirroring). `nightdrive update` runs this again
+# when ref below changes.
+# Source: ~/.local/src/doubletake at a tested commit (another one: DOUBLETAKE_REF=<commit or branch> ./install.sh),
 # binaries: ~/.local/bin/doubletake and doubletake-ctl.
 # Video is encoded with OpenH264 (Fedora's openh264 repo): Asahi has no hardware encoder, and x264 isn't in Fedora.
 set -euo pipefail

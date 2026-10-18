@@ -184,13 +184,13 @@ update() {
   missing=$(for p in $want; do rpm -q --whatprovides "$p" >/dev/null 2>&1 || echo "$p"; done)
   if [[ -n $missing ]]; then echo "    $(echo $missing)"; sudo dnf install -y $missing; else echo "    none"; fi
 
-  # doubletake (Screen Mirroring, an optional part): built again when the tested commit in install-doubletake.sh changes.
+  # doubletake (Screen Mirroring, plugins/mirroring): built again when the tested commit in its install.sh changes.
   # Not installed when missing: it was left out at install time (or not added in Install › Plugins).
   if [[ -x $HOME/.local/bin/doubletake ]]; then
     echo "==> doubletake (Screen Mirroring)"
-    dt_want=$(sed -nE 's/^ref=\$\{DOUBLETAKE_REF:-([0-9a-f]+)\}.*/\1/p' "$repo/install-doubletake.sh")
+    dt_want=$(sed -nE 's/^ref=\$\{DOUBLETAKE_REF:-([0-9a-f]+)\}.*/\1/p' "$repo/plugins/mirroring/install.sh")
     dt_have=$(git -C "$HOME/.local/src/doubletake" rev-parse HEAD 2>/dev/null || true)
-    if [[ -z $dt_want || $dt_have != "$dt_want"* ]]; then "$repo/install-doubletake.sh"; else echo "    up to date"; fi
+    if [[ -z $dt_want || $dt_have != "$dt_want"* ]]; then "$repo/plugins/mirroring/install.sh"; else echo "    up to date"; fi
   fi
 
   # The system files install.sh puts in place: copied again when the repo's version differs (or is missing), so an

@@ -74,6 +74,9 @@ WEB = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "web")   #
 FONTS = "/usr/share/fonts/jetbrains-mono-fonts"   # Nightdrive's font for the page too (packages.txt: jetbrains-mono-fonts-all)
 FONT_FILES = ("JetBrainsMono-Regular.otf", "JetBrainsMono-Medium.otf", "JetBrainsMono-Bold.otf")
 SERVICE = "nightdrive-ferry.service"
+# The unit in the plugin's folder (this file is linked to ~/.local/bin): enabled by its path, which links it again after a
+# disable (systemctl disable removes a linked unit's link too)
+UNIT = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "systemd", SERVICE)
 APP = "Ferry"                # the notifications' app name
 ICON = "inbox"
 KEEP_DAYS = 7                # an item leaves the box after this many days
@@ -1076,7 +1079,7 @@ def main():
         if not vapid_key(create=True):
             print("No python3-cryptography: Ferry works, but without notifications on the phone", file=sys.stderr)
         systemctl("daemon-reload")
-        res = systemctl("enable", "--now", SERVICE)
+        res = systemctl("enable", "--now", UNIT)
         if res.returncode:
             print(res.stderr.strip(), file=sys.stderr)
             return 1

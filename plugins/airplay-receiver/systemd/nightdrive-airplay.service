@@ -1,4 +1,4 @@
-# AirPlay Receiver (hypr/scripts/airplay-receiver). Off until turned on (install-airplay-receiver.sh, plugins.txt).
+# AirPlay Receiver (plugins/airplay-receiver, bin/airplay-receiver). Off until turned on (its install.sh, airplay-receiver enable).
 # The ⌘W crash is restarted by airplay-receiver run itself; Restart=always covers anything else.
 [Unit]
 Description=Nightdrive AirPlay Receiver (UxPlay)
@@ -6,7 +6,7 @@ PartOf=nightdrive-session.target
 After=nightdrive-session.target
 
 [Service]
-ExecStart=%h/.config/hypr/scripts/airplay-receiver run
+ExecStart=%h/.local/bin/airplay-receiver run
 Restart=always
 RestartSec=1
 

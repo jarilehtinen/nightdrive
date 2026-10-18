@@ -1,13 +1,13 @@
 #!/bin/bash
-# Screen Mirroring over AirPlay (doubletake, install-doubletake.sh): Settings › Display › Screen Mirroring in the launcher and
-# the top bar's display menu. The daemon (`doubletake -daemonize`, started by hyprland.lua) finds the receivers.
-#   mirror connect <ip>    starts mirroring and follows it: a receiver that asks for its on-screen code opens the launcher's
-#                          code field (Display › Screen Mirroring › Code); a notification when it starts or fails
-#   mirror pin <code>      sends the code (the launcher's code field)
-#   mirror stop            stops mirroring
+# Screen Mirroring over AirPlay (doubletake, plugins/mirroring/install.sh): Settings › Display › Screen Mirroring in the
+# launcher and the top bar's display menu. The daemon (`doubletake -daemonize`, started by hyprland.lua) finds the receivers.
+#   mirroring connect <ip>   starts mirroring and follows it: a receiver that asks for its on-screen code opens the
+#                            launcher's code field (Display › Screen Mirroring › Code); a notification when it starts or fails
+#   mirroring pin <code>     sends the code (the launcher's code field)
+#   mirroring stop           stops mirroring
 # Pairing is saved by doubletake (~/.config/doubletake), so the code is asked only once per receiver.
 ctl="$HOME/.local/bin/doubletake-ctl"
-[[ -x $ctl ]] || { echo "doubletake isn't installed (install-doubletake.sh)" >&2; exit 1; }
+[[ -x $ctl ]] || { echo "doubletake isn't installed (nightdrive plugins install mirroring)" >&2; exit 1; }
 note() { notify-send -a "Screen Mirroring" -h string:x-dunst-stack-tag:mirror "$@"; }   # each replaces the last
 refresh() { qs ipc call bar refreshModule display >/dev/null 2>&1; }
 

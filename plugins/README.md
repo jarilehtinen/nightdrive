@@ -14,7 +14,7 @@ One-line parts (a web app, an app from dnf or Flathub, with no files of their ow
 ## What a folder can hold
 
 Only `plugin.conf` and `README.md` are required. The other files are used only while the plugin is installed and on
-(`bin/` and `systemd/` are linked either way, see below).
+(`bin/`, `systemd/` and `nautilus-python/` are linked either way, see below).
 
 | File | What it is | Ferry's |
 | --- | --- | --- |
@@ -22,16 +22,18 @@ Only `plugin.conf` and `README.md` are required. The other files are used only w
 | `README.md` | Its page: the launcher shows it, and GitHub (and later the website) the same file. Pictures go in the folder | [README.md](ferry/README.md), [ferry.jpg](ferry/ferry.jpg) |
 | `module.jsonc` | A top bar module | [module.jsonc](ferry/module.jsonc) |
 | `status` | The module's state, one line of JSON | [status](ferry/status) |
+| `icons/` | The module's own SVG icons, for a logo Lucide hasn't got | — (Tailscale's [icons/](tailscale/icons)) |
 | `<Name>Menu.qml` | The menu a click on the module opens (more `.qml` files beside it if it needs them) | [FerryMenu.qml](ferry/FerryMenu.qml) |
 | `bindings.lua` | Keys | — |
 | `SHORTCUTS.md` | Its lines in the key list (⌘⇧K, launcher › Keybindings) | — |
 | `systemd/` | User units, linked to `~/.config/systemd/user` | [nightdrive-ferry.service](ferry/systemd/nightdrive-ferry.service) |
 | `bin/` | Commands, linked to `~/.local/bin` | [ferry](ferry/bin/ferry) |
+| `nautilus-python/` | Files extensions, linked to `~/.local/share/nautilus-python/extensions` | — (LocalSend's [localsend.py](localsend/nautilus-python/localsend.py)) |
 | anything else | Whatever it needs, used by its own files | [web/](ferry/web) (the phone's page) |
 
-`link.sh` links `bin/` and `systemd/` whether the plugin is installed or not, so its installer can use them. The rest is
-picked up by `nightdrive plugins installed`, which installing and turning a plugin off or on run: it lists the plugins
-that are on, with their modules and menus, in `~/.cache/nightdrive/plugins.d/`. The bar reads its modules from there,
+`link.sh` links `bin/`, `systemd/` and `nautilus-python/` whether the plugin is installed or not, so its installer can
+use them. The rest is picked up by `nightdrive plugins installed`, which installing and turning a plugin off or on run: it
+lists the plugins that are on, with their modules, menus and icons, in `~/.cache/nightdrive/plugins.d/`. The bar reads its modules from there,
 and Hyprland and the key list read `bindings.lua` and `SHORTCUTS.md` straight from the folders listed. Nothing is
 written into the repo.
 
@@ -84,8 +86,8 @@ explains every key), with a few differences:
 ```
 
 `status` is an executable script in the folder (the module runs it without a `status` key). It prints one line of JSON,
-`{"icon": "inbox", "text": "2", "class": "active"}`: the icon is a Lucide name (or `pack:name` from Iconify), the text
-comes after it, and the class is one of `off` (dimmed), `warning`, `critical`, `active` (highlighted) or `stale`. No
+`{"icon": "inbox", "text": "2", "class": "active"}`: the icon is a Lucide name (or `pack:name` from Iconify, or the name
+of an SVG in the plugin's `icons/`, drawn in `currentColor`: Tailscale's logo), the text comes after it, and the class is one of `off` (dimmed), `warning`, `critical`, `active` (highlighted) or `stale`. No
 icon and no text hides the module. The shared helper prints that line:
 
 ```bash
@@ -189,13 +191,16 @@ column 22, as in the core's file). Its lines show only while the plugin is on, s
 Hyprland reloads by itself when `nightdrive plugins installed` changes the list of plugins that are on. After editing
 `bindings.lua` of a plugin that is already on, run `hyprctl reload`.
 
-## Services and commands: systemd/ and bin/
+## Services and commands: systemd/, bin/ and nautilus-python/
 
-Units in `systemd/` are linked to `~/.config/systemd/user`, and files in `bin/` to `~/.local/bin`, by `link.sh` (and
-`nightdrive plugins add` for an external one). A name that something else already has is left alone, so an external
-plugin can't replace Nightdrive's commands or services. The installer enables the units (Ferry's `bin/ferry enable`),
-and `installed` usually tests for that. Name them so they can't clash: `nightdrive-<id>.service`, a command named after
-the plugin.
+Units in `systemd/` are linked to `~/.config/systemd/user`, files in `bin/` to `~/.local/bin` and Files extensions in
+`nautilus-python/` to `~/.local/share/nautilus-python/extensions`, by `link.sh` (and `nightdrive plugins add` for an
+external one). A name that something else already has is left alone, so an external plugin can't replace Nightdrive's
+commands or services. The installer enables the units (Ferry's `bin/ferry enable`), and `installed` usually tests for
+that. Enable a unit by its path in the folder (`systemctl --user enable --now …/systemd/nightdrive-ferry.service`, as
+`ferry enable` does): `systemctl --user disable` removes a linked unit's link too, and the path links it again. Name them
+so they can't clash: `nightdrive-<id>.service`, a command named after the plugin. A Files extension runs whether the
+plugin is on or not, so it checks that itself (LocalSend's tests its unit and `~/.local/state/nightdrive/plugins-off/<id>`).
 
 ## Trying it out
 
