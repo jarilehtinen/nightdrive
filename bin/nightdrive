@@ -35,6 +35,7 @@ usage() {
   row "plugins add GIT-URL [ID]" "Add one from elsewhere (an external plugin; install it afterwards)"
   row "plugins remove NAME"      "Turn an external one off and delete its folder"
   row "plugins installed"        "The installed ones' ids (those that are on)"
+  row "plugin check [NAME]"       "Check plugins against the rules (plugins/README.md): file:line findings, exit 1"
   section "Preview"
   row "preview login"            "The login screen, without locking (Esc closes)"
   section "For developers"
@@ -518,6 +519,10 @@ case ${1:-} in
              remove) plugin_remove "${@:3}" ;;
              *) usage >&2; exit 1 ;;
            esac ;;
+  plugin) case ${2:-} in
+            check) exec "$scripts/plugin-check" "${@:3}" ;;             # all of them without a name
+            *) usage >&2; exit 1 ;;
+          esac ;;
   # The login screen (config/greeter/lock.qml) without locking: it checks the password, then just closes
   preview) case ${2:-} in
              login) NIGHTDRIVE_LOCK_PREVIEW=1 exec qs -p "$repo/config/greeter/lock.qml" >/dev/null 2>&1 ;;

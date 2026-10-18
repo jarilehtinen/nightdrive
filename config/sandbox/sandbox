@@ -2,7 +2,8 @@
 # nightdrive sandbox: Nightdrive in a headless rootless Podman container, to check a change and take screenshots of it on
 # a machine without Hyprland, or without taking over the desktop's keyboard. How it works and why: docs/sandbox.md.
 #   nightdrive sandbox up          builds the image when needed, starts KWin, Hyprland, Quickshell and swaybg in it
-#   nightdrive sandbox check       Hyprland --verify-config, hyprctl configerrors, Quickshell's errors: exit 1 if any
+#   nightdrive sandbox check       Hyprland --verify-config, hyprctl configerrors, Quickshell's errors, plugin check:
+#                                  exit 1 if any
 #   nightdrive sandbox shot [NAME] screenshot -> prints the path of NAME.png
 #   nightdrive sandbox ipc ARGS…   qs ipc call ARGS… (or `ipc show`)
 #   nightdrive sandbox exec CMD…   a command in the session (hyprctl, qs, …); `shell` for an interactive one
@@ -25,7 +26,7 @@ here=$(cd "$(dirname "$(readlink -f "$0")")" && pwd)
 repo=$(cd "$here/../.." && pwd)
 state=${XDG_CACHE_HOME:-$HOME/.cache}/nightdrive/sandbox
 inside=/home/nd/nightdrive/config/sandbox/inside   # the same file as $here/inside, through the container's mount
-usage() { sed -n '4,13p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '4,14p' "$0" | sed 's/^# \{0,1\}//'; }
 die() { echo "nightdrive sandbox: $*" >&2; exit 2; }
 running() { [[ $(podman container inspect -f '{{.State.Running}}' "$NAME" 2>/dev/null) == true ]]; }
 in_box() { podman exec "$NAME" "$inside" "$@"; }

@@ -2,7 +2,8 @@
 # Runs inside the sandbox container (config/sandbox/sandbox calls it through podman exec): starts the session and does the
 # checks, screenshots and VNC there. The repo is mounted read-only at ~/nightdrive, so this file is always the repo's own.
 #   inside start W H      D-Bus, KWin's virtual screen (W x H), Hyprland nested in it; waits for Quickshell
-#   inside check          Hyprland --verify-config, hyprctl configerrors, Quickshell's errors since its last (re)load
+#   inside check          Hyprland --verify-config, hyprctl configerrors, Quickshell's errors since its last (re)load,
+#                         nightdrive plugin check
 #   inside shot FILE      grim of Hyprland's output
 #   inside vnc start|stop wayvnc on the container's port 5900 (the host publishes it on the tailnet address only)
 #   inside exec CMD…      a command with the session's environment (hyprctl, qs, …)
@@ -62,7 +63,8 @@ check() {
                END { for (i = 1; i <= n; i++) print l[i] }')
   if [[ -n $out ]]; then echo "== qs log (since the last reload)"; echo "$out"; fail=1; fi
   if ! pgrep -x qs >/dev/null; then echo "== Quickshell isn't running (qs log | tail)"; fail=1; fi
-  (( fail )) || echo "ok: Hyprland config, hyprctl configerrors, Quickshell"
+  if ! out=$(~/nightdrive/bin/nightdrive plugin check 2>&1); then echo "== nightdrive plugin check"; echo "$out"; fail=1; fi
+  (( fail )) || echo "ok: Hyprland config, hyprctl configerrors, Quickshell, plugin check"
   exit $fail
 }
 

@@ -1,0 +1,365 @@
+#!/usr/bin/python3 -I
+"""Checks plugins against the rules in plugins/README.md: `nightdrive plugin check [ID]` (all of them without an id).
+  plugin-check [ID]
+A plugin folder (the repo's plugins/<id>/ and the external ones): plugin.conf (known keys, values, a unique id), its
+icon, README.md (# title = the name, the fact lines last: Homepage:, Needs:, Keys:, the images it shows), module.jsonc
+(parses, known keys, the status command is executable), the menus (a <Name>Menu.qml opens from a module of its own;
+MenuHeader before the rows; no hex colours or font names: Theme.* and Theme.font / Icons.family), SHORTCUTS.md (lines the
+key list reads), the scripts' syntax (bash -n, ast.parse, luac -p). A plugins.txt line: its icon, and docs/plugins/<id>.md
+as a README. Findings as file:line: message, one per line; exit 1 if any, 2 for an unknown id."""
+import ast, glob, json, os, re, shutil, subprocess, sys
+
+REPO = os.path.realpath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../.."))
+EXTERNAL = os.path.expanduser("~/.local/share/nightdrive/plugins")
+ICONS_QML = os.path.join(REPO, "config/quickshell/Icons.qml")     # the launcher's Lucide names (plugin.conf, glyph)
+BAR_ICONS = os.path.join(REPO, "config/topbar/icons")             # the bar's own SVGs, on top of Lucide (status)
+CORE_MODULES = os.path.join(REPO, "config/topbar/modules.jsonc")
+
+CONF_KEYS = ("name", "icon", "description", "default", "install", "installed", "group")
+CONF_NEEDED = ("name", "icon", "description", "installed")   # without installed it never counts as installed
+GROUPS = ("recommended", "webapp", "plugin")
+MODULE_KEYS = {"name", "interval", "status", "menu", "right", "middle", "spacing", "drop", "after", "size", "label",
+               "glyph"}                                           # modules.jsonc's header; needs is implied
+FACTS = ("Homepage", "Needs", "Keys")                             # in this order, the last lines of a README
+ID = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
+HEX = re.compile(r"""["'`]#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})["'`]""")
+FONT = re.compile(r"""\bfamily\s*:\s*["'`]""")
+ROWS = re.compile(r"\b(MenuRow|MenuSection|MenuNote)\s*\{")
+
+findings = []
+unchecked = []       # .lua files, on a machine without luac
+
+
+def show(path):
+    """A path as the findings print it: relative to the repo, ~ for home."""
+    if path.startswith(REPO + "/"):
+        return path[len(REPO) + 1:]
+    home = os.path.expanduser("~")
+    return "~" + path[len(home):] if path.startswith(home + "/") else path
+
+
+def find(path, line, msg):
+    findings.append(f"{show(path)}:{line}: {msg}")
+
+
+def code(line):
+    """A QML/JS line without its // comment (not inside a string, roughly: a // after a quote-free prefix)."""
+    m = re.match(r"""^((?:[^"'`/]|"[^"]*"|'[^']*'|`[^`]*`|/(?!/))*)//""", line)
+    return m.group(1) if m else line
+
+
+def lucide():
+    try:
+        return set(re.findall(r'^\s*"([a-z0-9-]+)":\s*\d+', open(ICONS_QML).read(), re.M))
+    except OSError:
+        return set()
+
+
+def jsonc(path):
+    """modules.jsonc's format: JSON with whole-line // comments (plugin-parts reads it the same way)."""
+    with open(path) as f:
+        return json.loads("\n".join("" if l.lstrip().startswith("//") else l for l in f.read().split("\n")))
+
+
+def rows_txt():
+    """plugins.txt's lines: [(fields, line number)]."""
+    out = []
+    with open(os.path.join(REPO, "plugins.txt")) as f:
+        for n, line in enumerate(f, 1):
+            if line.strip() and not line.lstrip().startswith("#"):
+                out.append((line.rstrip("\n").split("|"), n))
+    return out
+
+
+def folders():
+    """[(id, folder, source)]: the repo's plugins/*/ and the external ones, those with a plugin.conf."""
+    out = []
+    for base, src in ((os.path.join(REPO, "plugins"), "repo"), (EXTERNAL, "external")):
+        for d in sorted(glob.glob(os.path.join(base, "*/"))):
+            d = d.rstrip("/")
+            if os.path.isfile(os.path.join(d, "plugin.conf")):
+                out.append((os.path.basename(d), d, src))
+    return out
+
+
+def check_conf(d, pid, icons):
+    path = os.path.join(d, "plugin.conf")
+    conf, at = {}, {}
+    for n, line in enumerate(open(path).read().split("\n"), 1):
+        s = line.strip()
+        if not s or s.startswith("#"):
+            continue
+        m = re.match(r"([a-z]+)=(.*)$", line)
+        if not m:
+            find(path, n, f"not a key=value line: {s[:60]}")
+            continue
+        k, v = m.groups()
+        if k not in CONF_KEYS:
+            find(path, n, f"unknown key {k} (keys: {', '.join(CONF_KEYS)})")
+        elif k in conf:
+            find(path, n, f"{k} twice (the first one counts)")
+            continue
+        conf[k], at[k] = v, n
+    for k in CONF_NEEDED:
+        if not conf.get(k, "").strip():
+            find(path, 1, f"no {k}=")
+    if "default" in conf and conf["default"] not in ("on", "off"):
+        find(path, at["default"], f"default={conf['default']}: on or off")
+    if "group" in conf and conf["group"] not in GROUPS:
+        find(path, at["group"], f"group={conf['group']}: {', '.join(GROUPS)}")
+    if conf.get("icon") and conf["icon"] not in icons:
+        find(path, at["icon"], f"unknown icon {conf['icon']} (a Lucide name: lucide.dev/icons; config/quickshell/Icons.qml)")
+    for k in ("install", "installed"):
+        if conf.get(k) and (err := shell_syntax(conf[k], d)):
+            find(path, at[k], f"{k}: {err}")
+    return conf
+
+
+def shell_syntax(cmd, cwd):
+    r = subprocess.run(["bash", "-n", "-c", cmd], cwd=cwd, capture_output=True, text=True)
+    return "" if r.returncode == 0 else (r.stderr.strip().split("\n") or ["bash -n failed"])[-1].replace("bash: -c: ", "")
+
+
+def check_readme(path, name, keys_needed):
+    try:
+        lines = open(path).read().rstrip("\n").split("\n")
+    except OSError:
+        find(path, 1, "missing: the plugin's page (# Name, a paragraph, Homepage:/Needs:/Keys: lines last)")
+        return
+    first = next((n for n, l in enumerate(lines, 1) if l.strip()), 0)
+    if not first or not lines[first - 1].startswith("# "):
+        find(path, first or 1, f"the first line should be the title: # {name}")
+    elif name and lines[first - 1][2:].strip() != name:
+        find(path, first, f"title {lines[first - 1][2:].strip()!r} isn't the name in plugin.conf/plugins.txt ({name!r})")
+    # The fact lines: one block at the end, each once, in FACTS' order
+    fact = re.compile(r"^(%s):\s*(.*)$" % "|".join(FACTS))
+    end = len(lines)
+    while end and not lines[end - 1].strip():
+        end -= 1
+    start = end
+    while start and fact.match(lines[start - 1]):
+        start -= 1
+    tail = [(n + 1, fact.match(lines[n]).group(1), fact.match(lines[n]).group(2)) for n in range(start, end)]
+    for n, l in enumerate(lines[:start], 1):
+        if fact.match(l):
+            find(path, n, f"{l.split(':')[0]}: belongs in the fact lines at the end")
+    if not tail:
+        find(path, end or 1, "no fact lines at the end (Homepage: / Needs: / Keys:, each on its own line)")
+    order = [FACTS.index(k) for _, k, _ in tail]
+    for (n, k, v), prev in zip(tail, [-1] + order):
+        if FACTS.index(k) <= prev:
+            find(path, n, f"{k}: out of order or twice (the order: {', '.join(FACTS)})")
+        if not v.strip():
+            find(path, n, f"{k}: empty")
+    if keys_needed and "Keys" not in [k for _, k, _ in tail]:
+        find(path, end or 1, "no Keys: line, but the plugin has bindings.lua")
+    for n, l in enumerate(lines, 1):
+        for img in re.findall(r"!\[[^\]]*\]\(([^)\s]+)", l):
+            if not re.match(r"https?://", img) and not os.path.exists(os.path.join(os.path.dirname(path), img)):
+                find(path, n, f"image not found: {img}")
+
+
+def check_modules(d, pid, icons):
+    """module.jsonc; returns the menu names its modules open (None if it doesn't parse: the menus aren't matched then)."""
+    path = os.path.join(d, "module.jsonc")
+    opens = set()
+    if not os.path.exists(path):
+        return opens
+    try:
+        defs = jsonc(path)
+    except ValueError as e:
+        find(path, getattr(e, "lineno", 1), f"doesn't parse: {getattr(e, 'msg', e)} (JSON with whole-line // comments)")
+        return None
+    for m in defs if isinstance(defs, list) else [defs]:
+        if not isinstance(m, dict):
+            find(path, 1, "a module is a { … } object")
+            continue
+        name = m.get("name", pid)
+        for k in m:
+            if k == "needs":
+                find(path, line_of(path, '"needs"'), "needs: implied (the plugin's own id), leave it out")
+            elif k not in MODULE_KEYS:
+                find(path, line_of(path, f'"{k}"'), f"unknown key {k} (keys: config/topbar/modules.jsonc)")
+        if m.get("glyph") and m["glyph"] not in icons:
+            find(path, line_of(path, '"glyph"'), f"unknown icon {m['glyph']} (glyph: a Lucide name)")
+        if "label" not in m:
+            find(path, 1, f"module {name}: no label (Settings › Top bar › Items lists it by that)")
+        if "status" not in m and not os.access(os.path.join(d, "status"), os.X_OK):
+            if os.path.exists(os.path.join(d, "status")):
+                find(os.path.join(d, "status"), 1, "not executable (chmod +x): the module's state comes from it")
+            else:
+                find(path, 1, f"module {name}: no status key and no executable ./status")
+        opens.add(m["menu"] if isinstance(m.get("menu"), str) else name)
+    return opens
+
+
+def line_of(path, needle):
+    for n, l in enumerate(open(path).read().split("\n"), 1):
+        if needle in l and not l.lstrip().startswith("//"):
+            return n
+    return 1
+
+
+def check_status_icons(d, icons):
+    """status: the icons it emits as plain words (emit NAME …), a Lucide name or one of the bar's own SVGs."""
+    path = os.path.join(d, "status")
+    if not os.path.isfile(path):
+        return
+    own = {os.path.basename(f)[:-4] for f in glob.glob(os.path.join(BAR_ICONS, "*.svg"))}
+    for n, l in enumerate(open(path, errors="replace").read().split("\n"), 1):
+        for name in re.findall(r"\bemit\s+['\"]?([a-z0-9-]+)['\"]?(?=\s|$)", l.split("#")[0]):
+            for part in name.split("|"):
+                if part not in icons and part not in own and not part.startswith("gauge"):
+                    find(path, n, f"unknown icon {part} (a Lucide name, or pack:name: config/topbar/scripts/icon)")
+
+
+def check_menus(d, opens):
+    for f in sorted(glob.glob(os.path.join(d, "*.qml"))):
+        base = os.path.basename(f)
+        lines = open(f, errors="replace").read().split("\n")
+        is_menu = re.match(r"[A-Z]\w*Menu\.qml$", base)
+        header = rows = 0
+        block = False
+        for n, raw in enumerate(lines, 1):
+            l = raw
+            if block:
+                if "*/" not in l:
+                    continue
+                l, block = l.split("*/", 1)[1], False
+            if "/*" in l and "*/" not in l.split("/*", 1)[1]:
+                l, block = l.split("/*", 1)[0], True
+            l = code(l)
+            if HEX.search(l):
+                find(f, n, f"hex colour {HEX.search(l).group(0)}: a Theme.* colour instead")
+            if FONT.search(l):
+                find(f, n, "a font name: Theme.font (text) or Icons.family (icons)")
+            if is_menu and not header and re.search(r"\bMenuHeader\s*\{", l):
+                header = n
+            if is_menu and not rows and ROWS.search(l):
+                rows = n
+        if not is_menu:
+            continue
+        menu = base[0].lower() + base[1:-len("Menu.qml")]
+        if opens is not None and menu not in opens:
+            find(f, 1, f"no module opens it: module.jsonc's name (or menu) should be {menu}")
+        if not header:
+            find(f, 1, "no MenuHeader: a menu starts with one (MenuHeader { title: … })")
+        elif rows and rows < header:
+            find(f, rows, f"MenuHeader (line {header}) should come first, before the rows")
+
+
+def check_shortcuts(d):
+    path = os.path.join(d, "SHORTCUTS.md")
+    if not os.path.exists(path):
+        return
+    section = False
+    for n, l in enumerate(open(path).read().split("\n"), 1):
+        if not l.strip() or re.match(r"^# ", l):
+            continue
+        if re.match(r"^##\s+\S", l):
+            section = True
+        elif re.match(r"^ {2}\S.* {2,}\S", l):
+            if not section:
+                find(path, n, "a shortcut line before any ## section: the key list skips it")
+        else:
+            find(path, n, "not a key list line: '## Section', or two spaces, the keys, two or more spaces, what they do")
+
+
+def check_scripts(d):
+    """The syntax of its scripts: by extension or #! line. web/ and other data files are left alone."""
+    luac = next((c for c in ("luac", "luac5.4", "luac5.5", "luac5.3") if shutil.which(c)), None)
+    for root, dirs, files in os.walk(d):
+        dirs[:] = [x for x in dirs if not x.startswith(".")]
+        for name in sorted(files):
+            f = os.path.join(root, name)
+            try:
+                head = open(f, "rb").read(80).split(b"\n")[0].decode(errors="replace")
+            except OSError:
+                continue
+            kind = "lua" if name.endswith(".lua") else "python" if name.endswith(".py") or head.startswith("#!") and "python" in head \
+                else "bash" if name.endswith(".sh") or re.match(r"#!.*\b(ba)?sh\b", head) else ""
+            if kind == "bash":
+                r = subprocess.run(["bash", "-n", f], capture_output=True, text=True)
+                for e in r.stderr.strip().split("\n") if r.returncode else []:
+                    m = re.match(r".*?: line (\d+): (.*)", e)
+                    find(f, m.group(1) if m else 1, m.group(2) if m else e)
+            elif kind == "python":
+                try:
+                    ast.parse(open(f).read(), f)
+                except SyntaxError as e:
+                    find(f, e.lineno or 1, f"Python: {e.msg}")
+            elif kind == "lua" and not luac:
+                unchecked.append(show(f))
+            elif kind == "lua":
+                r = subprocess.run([luac, "-p", f], capture_output=True, text=True)
+                for e in r.stderr.strip().split("\n") if r.returncode else []:
+                    m = re.match(r".*?:(\d+): (.*)", e)
+                    find(f, m.group(1) if m else 1, f"Lua: {m.group(2) if m else e}")
+
+
+def check_folder(pid, d, src, taken, icons):
+    if not ID.match(pid):
+        find(os.path.join(d, "plugin.conf"), 1, f"the folder name {pid} is the id: letters, digits, - and _")
+    if pid in taken:
+        find(os.path.join(d, "plugin.conf"), 1, f"the id {pid} is taken by {taken[pid]}: this one is skipped")
+    conf = check_conf(d, pid, icons)
+    check_readme(os.path.join(d, "README.md"), conf.get("name", pid), os.path.exists(os.path.join(d, "bindings.lua")))
+    opens = check_modules(d, pid, icons)
+    check_status_icons(d, icons)
+    check_menus(d, opens)
+    check_shortcuts(d)
+    check_scripts(d)
+
+
+def check_row(p, n, icons):
+    path = os.path.join(REPO, "plugins.txt")
+    if len(p) < 8:
+        find(path, n, f"{len(p)} fields, 8 needed (id|Name|icon|description|default|installer|installed test|group)")
+        return
+    if p[2] not in icons:
+        find(path, n, f"{p[0]}: unknown icon {p[2]} (a Lucide name: config/quickshell/Icons.qml)")
+    if p[4] not in ("on", "off"):
+        find(path, n, f"{p[0]}: default {p[4]}: on or off")
+    if p[7] not in GROUPS:
+        find(path, n, f"{p[0]}: group {p[7]}: {', '.join(GROUPS)}")
+    page = os.path.join(REPO, "docs/plugins", p[0] + ".md")
+    if os.path.exists(page):
+        check_readme(page, p[1], False)
+
+
+def main():
+    want = sys.argv[1].lower() if len(sys.argv) > 1 else ""
+    icons = lucide()
+    rows = rows_txt()
+    taken = {}           # id → what has it: plugins.txt, then the repo's folders, then the external ones (bin/nightdrive)
+    path = os.path.join(REPO, "plugins.txt")
+    for p, n in rows:
+        if p[0] in taken:
+            find(path, n, f"the id {p[0]} is taken by {taken[p[0]]}")
+        taken.setdefault(p[0], f"plugins.txt line {n}")
+    found = 0
+    for p, n in rows:
+        if not want or want in (p[0].lower(), p[1].lower() if len(p) > 1 else ""):
+            check_row(p, n, icons)
+            found += 1
+    for pid, d, src in folders():
+        name = (re.findall(r"^name=(.*)$", open(os.path.join(d, "plugin.conf")).read(), re.M) or [pid])[0]
+        if not want or want in (pid.lower(), name.lower()):
+            check_folder(pid, d, src, taken, icons)
+            found += 1
+        taken.setdefault(pid, show(d))
+    if want and not found:
+        print(f"Unknown plugin: {sys.argv[1]} (see: nightdrive plugins)", file=sys.stderr)
+        sys.exit(2)
+    for f in findings:
+        print(f)
+    sys.stdout.flush()
+    if unchecked:
+        print(f"(Lua not checked, no luac here: {', '.join(unchecked)}; sudo dnf install lua)", file=sys.stderr)
+    if findings:
+        sys.exit(1)
+    print(f"ok: {found} plugin{'s' if found != 1 else ''}")
+
+
+if __name__ == "__main__":
+    main()

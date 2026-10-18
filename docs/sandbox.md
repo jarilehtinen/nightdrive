@@ -7,7 +7,7 @@ you): without one Hyprland crashes at start. Tested on x86_64 (Rocky Linux 9, In
 in a VM without a GPU.
 
     nightdrive sandbox up           # builds the image the first time (~10 min, ~4.5 GB: KWin brings much of KDE), then starts it
-    nightdrive sandbox check        # exit 1 and the findings, if Hyprland's config or Quickshell has errors
+    nightdrive sandbox check        # exit 1 and the findings: Hyprland's config, Quickshell, plugin check
     nightdrive sandbox shot NAME    # prints the path of NAME.png (in ~/.cache/nightdrive/sandbox/shots)
     nightdrive sandbox ipc launcher openLevel settings
     nightdrive sandbox exec hyprctl clients
@@ -16,7 +16,7 @@ in a VM without a GPU.
 
 `check`, `shot`, `ipc` and `exec` start the sandbox first if it isn't up. `check` runs `Hyprland --verify-config`,
 `hyprctl configerrors` and reads Quickshell's log since its last reload: a failed reload (`ERROR`) or a QML runtime error
-(`WARN … @File.qml[line:col]: …`). Paths in its output are the repo's.
+(`WARN … @File.qml[line:col]: …`), and runs `nightdrive plugin check` on the plugins. Paths in its output are the repo's.
 
 The repo is mounted read-only, so an edit reloads in the sandbox right away, as on the desktop (and the same Quickshell
 quirks apply: it doesn't watch `shell.qml` once that file has been replaced by a new one, and components listed in
