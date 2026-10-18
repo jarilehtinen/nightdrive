@@ -285,7 +285,7 @@ hl.window_rule({
     center = true,
 })
 -- Image preview (Files' Space preview Sushi, image viewer Loupe): on top of the windows instead of splitting them, like
--- Quick Look and Preview; ⌘T moves it into the tiling layout
+-- Quick Look and Preview; ⌘⇧T moves it into the tiling layout
 hl.window_rule({
     name  = "float-preview",
     match = { class = "^org\\.gnome\\.Loupe$" },

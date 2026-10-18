@@ -13,7 +13,6 @@
   Hyper Y            YouTube {youtube}
   Hyper I            Email (Thunderbird, inbox) {thunderbird}
   Hyper C            VS Code {vscode}
-  ⌘ ⇧ T              Shelf (file shelf; dragging a file to the top edge opens it too)
   ⌘ Esc / F3         Notifications (history, do not disturb)
   ⌘ Ctrl L           Lock screen
   ⌘ ⇧ Space          Top bar by keyboard (←/→ menu, ↑/↓ row, Enter select, Esc close)
@@ -25,6 +24,7 @@
   ⌘ A                Select all (not in the terminal)
   ⌘ S                Save (not in the terminal)
   ⌘ R / ⌘ ⇧ R        Reload / reload without the cache (not in the terminal)
+  ⌘ F / ⌘ T / ⌘ J    Find / new tab / downloads: the app's own keys (not in the terminal)
   ⌘ ⌫                Move file to trash (in Files) {!keyd}
   ⌘ ⇧ V              Clipboard history (Enter pastes into the active window, ⇧ Enter copies only)
   ⌘ ⇧ E              Emoji picker (Enter pastes, ⇧ Enter copies only)
@@ -32,9 +32,9 @@
 ## Windows
   ⌘ W                Close window; background apps (Deck, WhatsApp, Telegram, Slack, Teams, 1Password) are only hidden and keep running (green dot in the launcher; their shortcut or the launcher brings them back)
   ⌘ Q                Quit the app for real: closes all its windows, and an app left running in the tray is asked to quit too (also the background apps; in Deck `q` does the same)
-  ⌘ F                Fullscreen
-  ⌘ T                Toggle floating, floating window in the centre (Deck: tiled → floating at start size in the centre; moved → back to centre; already there → tiles)
-  ⌘ J                Toggle split direction (vertical/horizontal)
+  ⌘ ⇧ F              Fullscreen
+  ⌘ ⇧ T              Toggle floating, floating window in the centre (Deck: tiled → floating at start size in the centre; moved → back to centre; already there → tiles)
+  ⌘ ⇧ J              Toggle split direction (vertical/horizontal)
   ⌘ arrows           Move focus between windows
   ⌘ ⇧ arrows         Move window
   ⌘ + mouse drag     Move window / right button: resize

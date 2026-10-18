@@ -89,7 +89,7 @@ do
 end
 hl.bind(mod .. " + SHIFT + E",   hl.dsp.exec_cmd("qs ipc call launcher openLevel emoji"))   -- emoji picker
 hl.bind(mod .. " + SHIFT + V",   hl.dsp.exec_cmd("qs ipc call launcher openLevel clipboard"))   -- clipboard history
-hl.bind(mod .. " + SHIFT + T",   hl.dsp.exec_cmd("qs ipc call shelf toggle"))   -- Shelf: file shelf (dragging to the top edge of the screen also opens it)
+-- Shelf (quickshell/Shelf.qml): no key, a file dragged to the top edge of the screen opens it (qs ipc call shelf toggle)
 hl.bind(mod .. " + ESCAPE",      hl.dsp.exec_cmd("qs ipc call menu toggle notifications"))
 hl.bind(mod .. " + CTRL + L",    hl.dsp.exec_cmd("loginctl lock-session"))
 hl.bind(mod .. " + SHIFT + S",   hl.dsp.exec_cmd(scripts .. "/screenshot clip"))   -- region screenshot to clipboard
@@ -103,11 +103,13 @@ hl.bind(mod .. " + C", hl.dsp.send_shortcut({ mods = "CTRL",  key = "Insert" }))
 hl.bind(mod .. " + V", hl.dsp.send_shortcut({ mods = "SHIFT", key = "Insert" }))
 hl.bind(mod .. " + X", hl.dsp.send_shortcut({ mods = "CTRL",  key = "X" }))
 
--- Undo / redo / select all / save / reload / reload without the cache ⌘Z / ⌘⇧Z / ⌘A / ⌘S / ⌘R / ⌘⇧R. Not in terminals
--- (kitty and its floating windows): there Ctrl+Z would suspend the running program, Ctrl+A jumps to the start of the line,
--- Ctrl+S freezes the output (XOFF) and Ctrl+R searches the shell's history
+-- The apps' own keys, sent as Ctrl+…: undo / redo / select all / save / reload / reload without the cache / find / new tab /
+-- downloads (⌘Z / ⌘⇧Z / ⌘A / ⌘S / ⌘R / ⌘⇧R / ⌘F / ⌘T / ⌘J). Not in terminals (kitty and its floating windows): there
+-- Ctrl+Z would suspend the running program, Ctrl+A jumps to the start of the line, Ctrl+S freezes the output (XOFF),
+-- Ctrl+R searches the shell's history and Ctrl+J is Enter
 local TERMINAL_CLASSES = { ["kitty"] = true, ["floating-tui"] = true, ["floating-help"] = true, ["deck"] = true }
-for _, k in ipairs({ { "", "Z" }, { " SHIFT", "Z" }, { "", "A" }, { "", "S" }, { "", "R" }, { " SHIFT", "R" } }) do
+for _, k in ipairs({ { "", "Z" }, { " SHIFT", "Z" }, { "", "A" }, { "", "S" }, { "", "R" }, { " SHIFT", "R" },
+                     { "", "F" }, { "", "T" }, { "", "J" } }) do
     local shift, key = k[1], k[2]
     hl.bind(mod .. (shift ~= "" and " +" .. shift or "") .. " + " .. key, function ()
         local w = hl.get_active_window()
@@ -165,8 +167,10 @@ hl.bind(mod .. " + ALT + right", hl.dsp.send_shortcut({ mods = "CTRL", key = "Ne
 -- Windows
 hl.bind(mod .. " + W",          hl.dsp.exec_cmd(scripts .. "/close-or-hide"))   -- closes; background apps (hypr/background-apps) are hidden in the background instead
 hl.bind(mod .. " + Q",           hl.dsp.exec_cmd(scripts .. "/quit-app"))   -- quits the app for real, background apps too (Deck, WhatsApp…); ⌘W hides them
-hl.bind(mod .. " + F",           hl.dsp.window.fullscreen())
--- ⌘T: toggle floating. For Deck: tiled -> floating at its default size, centred; floating but moved/resized ->
+-- The window's own keys are ⌘⇧: fullscreen, floating, split direction and the arrows that move it. ⌘F / ⌘T / ⌘J are the
+-- apps' (find, new tab, downloads: the list below the copy keys)
+hl.bind(mod .. " + SHIFT + F",   hl.dsp.window.fullscreen())
+-- ⌘⇧T: toggle floating. For Deck: tiled -> floating at its default size, centred; floating but moved/resized ->
 -- back to default size, centred; floating already at default position -> tiled. (Size: DECK_SIZE, which the Deck plugin's
 -- hyprland.lua sets after this file has run, so it's read at the key press)
 local function xy(t) return t.x or t[1], t.y or t[2] end
@@ -181,7 +185,7 @@ local function deck_at_default(w)
     local cx, cy = (m.width / m.scale - DECK_SIZE.w) / 2, (m.height / m.scale - DECK_SIZE.h) / 2
     return sw == DECK_SIZE.w and sh == DECK_SIZE.h and math.abs(x - cx) <= 3 and math.abs(y - cy) <= 30   -- y: the bar shifts the centre a little
 end
--- A window floated with ⌘T is always centred. A screen-sized one (e.g. a lone window: geometry stays screen-sized and
+-- A window floated with ⌘⇧T is always centred. A screen-sized one (e.g. a lone window: geometry stays screen-sized and
 -- the border disappears off the left/top) is first shrunk to 70 % x 75 %
 local function tame_float(w)
     if not (w and w.floating) then return end
@@ -209,9 +213,9 @@ local function deck_toggle_float()
         tame_float(hl.get_active_window())
     end
 end
-hl.bind(mod .. " + T",           deck_toggle_float)
+hl.bind(mod .. " + SHIFT + T",   deck_toggle_float)
 
-hl.bind(mod .. " + J",           hl.dsp.layout("togglesplit"))
+hl.bind(mod .. " + SHIFT + J",   hl.dsp.layout("togglesplit"))
 
 -- Focus with arrows, move window with Shift+arrows
 for _, dir in ipairs({ "left", "right", "up", "down" }) do
