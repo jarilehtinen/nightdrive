@@ -49,7 +49,7 @@ Click an icon and a small menu opens under it: sound and output devices, Wi-Fi, 
 headphone EQ, system load and temperatures, the calendar, notifications, music, and your **Claude usage limits**. ⌘⇧Space lets
 you walk through the menus with the arrow keys.
 
-![Claude usage, system and display menus](docs/screenshots/menus.jpg)
+![The music, home and headphones menus in the top bar](docs/screenshots/menus.jpg)
 
 ### Apps without a terminal, and only the parts you want
 
