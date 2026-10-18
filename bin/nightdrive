@@ -5,6 +5,8 @@ set -uo pipefail
 repo=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)
 scripts="$repo/config/hypr/scripts"
 cache="$HOME/.cache/nightdrive"
+external="$HOME/.local/share/nightdrive/plugins"     # plugins from elsewhere (plugins add), one folder each
+off="$HOME/.local/state/nightdrive/plugins-off"      # an empty file per plugin that is off (plugins off)
 
 # The help: grouped, one short line per command. Colour only on a terminal (and not with NO_COLOR).
 usage() {
@@ -27,9 +29,12 @@ usage() {
   row "topbar date [STYLE]"      "The clock's date order: auto, dmy, mdy or iso"
   row "snippets [COMMAND]"       "Text snippets: list, set, remove, status, enable, disable"
   section "Plugins"
-  row "plugins [list]"           "Optional parts, and which are installed"
+  row "plugins [list]"           "Optional parts, and which are installed, on or off"
   row "plugins install NAME"     "Install one, e.g. nightdrive plugins install deck"
-  row "plugins installed"        "The installed ones' ids"
+  row "plugins off|on NAME"      "Hide an installed one from the desktop and stop its services, or bring it back"
+  row "plugins add GIT-URL [ID]" "Add one from elsewhere (an external plugin; install it afterwards)"
+  row "plugins remove NAME"      "Turn an external one off and delete its folder"
+  row "plugins installed"        "The installed ones' ids (those that are on)"
   section "Preview"
   row "preview login"            "The login screen, without locking (Esc closes)"
   section "For developers"
@@ -40,7 +45,8 @@ usage() {
   printf '\n'
 }
 
-# Repos to update: Nightdrive, the repos the git-ignored local slots link into (a private overlay), Deck's source
+# Repos to update: Nightdrive, the repos the git-ignored local slots link into (a private overlay), external plugins,
+# Deck's source
 repos() {
   echo "$repo"
   local f
@@ -48,6 +54,7 @@ repos() {
            "$repo"/config/topbar/local.* "$repo"/config/topbar/status.local; do
     [[ -L $f ]] && git -C "$(dirname "$(readlink -f "$f")")" rev-parse --show-toplevel 2>/dev/null
   done | sort -u
+  for f in "$external"/*/; do [[ -e $f.git ]] && echo "${f%/}"; done   # external plugins (plugins add)
   [[ -d ${DECK_SRC:-$HOME/.local/src/deck}/.git ]] && readlink -f "${DECK_SRC:-$HOME/.local/src/deck}"
 }
 # What a repo updates to: Nightdrive follows its channel's branch on origin (channel below), the others their upstream
@@ -61,6 +68,19 @@ upstream() {
   fi
 }
 behind() { git -C "$1" rev-list --count "HEAD..$(upstream "$1")" 2>/dev/null || echo 0; }
+# The same for the Nightdrive repo, leaving out the commits whose every path is in the folder of a plugin that isn't on
+# here (plugins/<id>/ of one that isn't installed, or is off): nothing in them reaches this desktop. A merge counts by its
+# own changes (against its first parent); the merged commits count one by one.
+behind_nightdrive() {
+  local on
+  [[ -e $cache/plugins.d/active ]] || plugins_installed >/dev/null
+  on=$(cut -f1 "$cache/plugins.d/active" 2>/dev/null | tr '\n' ' ')
+  git -C "$repo" log --format=tformat:@ --name-only --diff-merges=first-parent "HEAD..$(upstream "$repo")" 2>/dev/null | awk -v on=" $on" '
+    function count() { if (started && (keep || !paths)) n++ }
+    $0 == "@" { count(); started = 1; keep = 0; paths = 0; next }
+    NF { paths++; if (!match($0, /^plugins\/[^\/]+\//) || index(on, " " substr($0, 9, RLENGTH - 9) " ")) keep = 1 }
+    END { count(); print n + 0 }'
+}
 
 # The update channel is the branch the Nightdrive checkout is on: main is stable, dev gets the bigger changes before they
 # are merged into main (AGENTS.md › Branches). No setting of its own, so the two can't disagree.
@@ -112,7 +132,7 @@ check() {
   total=0
   while read -r r; do
     timeout 30 git -C "$r" fetch -q 2>/dev/null || continue
-    total=$(( total + $(behind "$r") ))
+    if [[ $r == "$repo" ]]; then total=$(( total + $(behind_nightdrive) )); else total=$(( total + $(behind "$r") )); fi
   done < <(repos | sort -u)
   mkdir -p "$cache"
   echo "$total" > "$cache/updates"
@@ -152,7 +172,7 @@ update() {
   while read -r r; do
     [[ -x $r/link.sh ]] || continue
     echo "==> Links ($(basename "$r"))"; "$r/link.sh" | grep -v '^ok '
-  done < <(echo "$repo"; repos | sort -u | grep -vxF "$repo")
+  done < <(echo "$repo"; repos | sort -u | grep -vxF "$repo" | grep -vF "$external/")   # not an external plugin's own script
 
   # Fonts, ble.sh, GTK settings, default apps (the same steps as install.sh): what was added since this install
   echo "==> Fonts, ble.sh, GTK, default apps"
@@ -260,7 +280,6 @@ LIST
 # are explained in plugins.txt): the repo's plugins/<id>/ and the external ones in ~/.local/share/nightdrive/plugins/<id>/.
 # Ids are unique: a folder with an id already taken (by plugins.txt, the repo, or an earlier external one) is skipped.
 # Folders come first (their installers run first in install.sh; Home Assistant, which asks things, stays last).
-external="$HOME/.local/share/nightdrive/plugins"
 # One line each, fields separated by \x1f (none may be empty for read's sake, so a missing folder is "-"): id, name,
 # icon, description, default, installer, installed test, group, folder
 plugin_rows() {
@@ -279,8 +298,8 @@ plugin_rows() {
   grep -vE '^\s*(#|$)' "$repo/plugins.txt" | awk -F'|' -v OFS=$'\x1f' '{ NF = 8; print $0, "-" }'
 }
 # One tab-separated line each: id, name, icon, description, default (on/off), installer, installed (1/0), group, folder
-# (empty for a plugins.txt line). The tests run side by side, in the plugin's folder (the repo for plugins.txt): `flatpak
-# info` takes a moment.
+# (empty for a plugins.txt line), off (1/0: plugins off), source (repo, or external: plugins add). The tests run side by
+# side, in the plugin's folder (the repo for plugins.txt): `flatpak info` takes a moment.
 plugins() {
   local tmp rows id name icon desc def inst test group dir i=0
   tmp=$(mktemp -d)
@@ -294,17 +313,24 @@ plugins() {
   i=0
   while IFS=$'\x1f' read -r id name icon desc def inst test group dir; do
     [[ $dir == - ]] && dir=
-    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$id" "$name" "$icon" "$desc" "$def" "$inst" "$([[ -e $tmp/$i ]] && echo 1 || echo 0)" "$group" "$dir"
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$id" "$name" "$icon" "$desc" "$def" "$inst" "$([[ -e $tmp/$i ]] && echo 1 || echo 0)" \
+      "$group" "$dir" "$([[ -e $off/$id ]] && echo 1 || echo 0)" "$([[ $dir == "$external/"* ]] && echo external || echo repo)"
     i=$((i + 1))
   done <<<"$rows"
   rm -rf "$tmp"
 }
-# The installed ones' ids, also to ~/.cache/nightdrive/plugins (Plugins.qml watches it, hypr/bindings.lua reads it).
-# When the list changes, Hyprland reloads: the keybindings of an added or removed part. The installed plugin folders'
-# parts (bar module, menus, keys, shortcut lines) are gathered in ~/.cache/nightdrive/plugins.d (hypr/scripts/plugin-parts).
+# `nightdrive plugins` on a terminal: one line each with its state (the launcher and scripts get the fields above)
+plugins_table() {
+  plugins | awk -F'\t' '{ st = $7 == 1 ? ($10 == 1 ? "off" : "on") : ($10 == 1 ? "not installed, off" : "not installed")
+                          l = sprintf("%-18s %-26s %-14s %s", $1, $2, st, $11 == "external" ? "external: " $9 : ""); sub(/ +$/, "", l); print l }'
+}
+# The installed ones that are on: their ids, also to ~/.cache/nightdrive/plugins (Plugins.qml watches it,
+# hypr/bindings.lua reads it). One that is off (plugins off) is left out, so the desktop treats it as not installed.
+# When the list changes, Hyprland reloads: the keybindings of an added or removed part. The plugin folders' parts (bar
+# module, menus, keys, shortcut lines) are gathered in ~/.cache/nightdrive/plugins.d (hypr/scripts/plugin-parts).
 plugins_installed() {
   local list ids old
-  list=$(plugins | awk -F'\t' '$7 == 1')
+  list=$(plugins | awk -F'\t' '$7 == 1 && $10 == 0')
   ids=$(cut -f1 <<<"$list")
   awk -F'\t' '$9 != "" { print $1 "\t" $9 }' <<<"$list" | "$scripts/plugin-parts"
   mkdir -p "$cache"
@@ -315,12 +341,14 @@ plugins_installed() {
   fi
   printf '%s\n' "$ids" | sed '/^$/d'
 }
-# Runs a plugin's installer (by id or name) in its folder (the repo for plugins.txt), then refreshes the list
+# Runs a plugin's installer (by id or name) in its folder (the repo for plugins.txt), then refreshes the list. One that
+# is off is turned on first: installing it again means it's wanted (and its unit could not start while off).
 plugin_install() {
   local id name inst dir rc
   IFS=$'\t' read -r id name inst dir < <(plugins | awk -F'\t' -v n="$1" 'tolower($1) == tolower(n) || tolower($2) == tolower(n) { print $1 "\t" $2 "\t" $6 "\t" ($9 == "" ? "-" : $9); exit }')
   [[ -n ${id:-} ]] || { echo "Unknown plugin: ${1:-} (see: nightdrive plugins)" >&2; exit 1; }
   [[ $dir == - ]] && dir=$repo
+  [[ -e $off/$id ]] && plugin_switch on "$id" >/dev/null
   echo "==> $name"
   case $inst in
     "flatpak "*)
@@ -338,6 +366,141 @@ plugin_install() {
   return $rc
 }
 
+# A plugin by id or name (any case): its id, name and folder ("-" for a plugins.txt line), tab-separated; nothing if unknown
+plugin_find() {
+  plugin_rows | awk -F'\x1f' -v n="$1" 'n != "" && (tolower($1) == tolower(n) || tolower($2) == tolower(n)) { print $1 "\t" $2 "\t" $9; exit }'
+}
+# A plugin folder's user units (systemd/), by name
+plugin_units() { local f; for f in "$1"/systemd/*; do [[ -f $f ]] && echo "${f##*/}"; done; }
+
+# plugins off|on NAME. Off: the desktop treats it as not installed (no bar module, menu, launcher rows, keys or shortcut
+# lines: plugins_installed leaves it out) and its folder's units are stopped. They stay enabled, so its installed test
+# (often `is-enabled`) still holds; a drop-in keeps them from starting at login while it's off. On: the drop-in goes and
+# the units that ran when it was turned off (listed in its file in $off) or are enabled start again. A plugins.txt line
+# has no units of its own here: only its rows and keys go. Needs nothing from the desktop, so it works from a terminal
+# when the bar is stuck.
+plugin_switch() {
+  local id name dir u units=() was=() stopped=""
+  IFS=$'\t' read -r id name dir < <(plugin_find "${2:-}")
+  [[ -n ${id:-} ]] || { echo "Unknown plugin: ${2:-} (see: nightdrive plugins)" >&2; return 1; }
+  [[ $dir == - ]] || mapfile -t units < <(plugin_units "$dir")
+  if [[ $1 == off ]]; then
+    [[ -e $off/$id ]] && { echo "$name is already off."; return 0; }
+    for u in "${units[@]}"; do systemctl --user -q is-active "$u" 2>/dev/null && was+=("$u"); done
+    mkdir -p "$off" && printf '%s\n' "${was[@]}" | sed '/^$/d' > "$off/$id"
+    for u in "${units[@]}"; do
+      mkdir -p "$HOME/.config/systemd/user/$u.d"
+      printf '%s\n' "# nightdrive plugins off $id: not started while the plugin is off (nightdrive plugins on $id removes this)" \
+        "[Unit]" "ConditionPathExists=!%h/.local/state/nightdrive/plugins-off/$id" > "$HOME/.config/systemd/user/$u.d/nightdrive-off.conf"
+    done
+    if (( ${#units[@]} )); then
+      systemctl --user daemon-reload 2>/dev/null
+      if systemctl --user stop "${units[@]}" 2>/dev/null; then stopped=", ${units[*]} stopped"
+      else stopped=" (couldn't stop ${units[*]}: no user systemd?)"; fi
+    fi
+  else
+    [[ -e $off/$id ]] || { echo "$name is already on."; return 0; }
+    mapfile -t was < "$off/$id"
+    rm -f "$off/$id"
+    for u in "${units[@]}"; do
+      rm -f "$HOME/.config/systemd/user/$u.d/nightdrive-off.conf"; rmdir "$HOME/.config/systemd/user/$u.d" 2>/dev/null
+    done
+    if (( ${#units[@]} )); then
+      systemctl --user daemon-reload 2>/dev/null
+      for u in "${units[@]}"; do
+        [[ " ${was[*]} " == *" $u "* || $(systemctl --user is-enabled "$u" 2>/dev/null) == enabled ]] && systemctl --user start "$u" 2>/dev/null
+      done
+    fi
+  fi
+  plugins_installed >/dev/null
+  qs ipc call bar refresh >/dev/null 2>&1 || true
+  if [[ $1 == off ]]; then
+    echo "$name is off: hidden from the desktop$stopped. Still installed: nightdrive plugins on $id brings it back."
+  else
+    echo "$name is on again."
+  fi
+}
+
+# Links a plugin folder's commands (bin/) and user units (systemd/) as link.sh does. A name that something else already
+# has is left alone, with a note.
+plugin_link() {
+  local f dst
+  for f in "$1"/bin/* "$1"/systemd/*; do
+    [[ -f $f ]] || continue
+    if [[ ${f%/*} == "$1/bin" ]]; then dst=$HOME/.local/bin/${f##*/}; else dst=$HOME/.config/systemd/user/${f##*/}; fi
+    if [[ -e $dst || -L $dst ]] && [[ $(readlink -f "$dst") != "$(readlink -f "$f")" ]]; then
+      echo "    $dst is already there: not linked" >&2; continue
+    fi
+    mkdir -p "${dst%/*}" && ln -sfn "$f" "$dst"
+  done
+  systemctl --user daemon-reload 2>/dev/null || true
+}
+
+# plugins add GIT-URL [ID]: clones an external plugin, a repo whose top is a plugin folder (plugin.conf at its root), into
+# $external/<id>. The id is the repo's name without .git and a nightdrive-plugin- prefix, unless given. One that the
+# repo's plugins or plugins.txt (or another external one) already have is refused: an external plugin can't replace them.
+# Not installed here: its installer may ask things, so it runs from the launcher or `plugins install`.
+plugin_add() {
+  local url=${1:-} id=${2:-} tmp taken name
+  [[ -n $url ]] || { echo "Usage: nightdrive plugins add GIT-URL [ID]" >&2; return 1; }
+  if [[ -z $id ]]; then id=${url%/}; id=${id##*/}; id=${id##*:}; id=${id%.git}; id=${id#nightdrive-plugin-}; id=${id,,}; fi
+  [[ $id =~ ^[a-z0-9][a-z0-9_-]*$ ]] || { echo "Not a usable id: $id (letters, digits, - and _; give one: nightdrive plugins add URL ID)" >&2; return 1; }
+  IFS=$'\t' read -r taken name _ < <(plugin_rows | awk -F'\x1f' -v n="$id" '$1 == n { print $1 "\t" $2 "\t" $9; exit }')
+  if [[ -n ${taken:-} ]]; then
+    echo "The id $id is taken (by $name): give this one another id, nightdrive plugins add URL OTHER-ID" >&2; return 1
+  fi
+  [[ -e $external/$id ]] && { echo "$external/$id is already there (but has no plugin.conf): move it away first" >&2; return 1; }
+  mkdir -p "$external"
+  tmp=$(mktemp -d "$external/.add-XXXXXX")      # a dot folder: not read as a plugin while it's cloning
+  if ! git clone -q "$url" "$tmp/$id"; then rm -rf "$tmp"; echo "Couldn't clone $url" >&2; return 1; fi
+  if [[ ! -f $tmp/$id/plugin.conf ]]; then
+    rm -rf "$tmp"; echo "$url has no plugin.conf at its top: not a Nightdrive plugin" >&2; return 1
+  fi
+  mv "$tmp/$id" "$external/$id" && rmdir "$tmp"
+  plugin_link "$external/$id"
+  plugins_installed >/dev/null
+  qs ipc call bar refresh >/dev/null 2>&1 || true
+  name=$(sed -n 's/^name=//p' "$external/$id/plugin.conf" | head -1)
+  echo "Added ${name:-$id} ($id) in $external/$id."
+  echo "Its code runs as you, like Nightdrive's own: add only plugins whose source you trust."
+  echo "Install it: nightdrive plugins install $id (or launcher › Install). nightdrive update keeps it up to date."
+}
+
+# plugins remove NAME: an external plugin only (the repo's own are turned off instead). Turned off, its units disabled
+# and its links removed, then the folder deleted. A folder with work of its own (uncommitted changes, commits that
+# aren't pushed, or no git at all) needs --force. What its installer put elsewhere (packages, settings) stays.
+plugin_remove() {
+  local force=0 id name dir u l
+  [[ ${1:-} == --force ]] && { force=1; shift; }
+  [[ ${2:-} == --force ]] && force=1
+  IFS=$'\t' read -r id name dir < <(plugin_find "${1:-}")
+  [[ -n ${id:-} ]] || { echo "Unknown plugin: ${1:-} (see: nightdrive plugins)" >&2; return 1; }
+  if [[ $dir != "$external/$id" ]]; then
+    echo "$name comes with Nightdrive and can't be removed: nightdrive plugins off $id hides it." >&2; return 1
+  fi
+  if (( !force )); then
+    if [[ ! -e $dir/.git ]]; then
+      echo "$dir isn't a git clone, so it may be the only copy: nothing removed (--force removes it anyway)" >&2; return 1
+    fi
+    if [[ -n $(git -C "$dir" status --porcelain 2>/dev/null) || $(git -C "$dir" rev-list --count HEAD --not --remotes 2>/dev/null) != 0 ]]; then
+      echo "$dir has changes or commits of its own: nothing removed (--force removes it anyway)" >&2; return 1
+    fi
+  fi
+  plugin_switch off "$id" >/dev/null
+  for u in $(plugin_units "$dir"); do
+    systemctl --user disable "$u" >/dev/null 2>&1
+    rm -f "$HOME/.config/systemd/user/$u.d/nightdrive-off.conf"; rmdir "$HOME/.config/systemd/user/$u.d" 2>/dev/null
+  done
+  for l in "$HOME"/.local/bin/* "$HOME"/.config/systemd/user/* "$HOME"/.config/systemd/user/*.wants/*; do
+    [[ -L $l && $(readlink "$l") == "$dir/"* ]] && rm -f "$l"
+  done
+  rm -rf "${dir:?}" && rm -f "$off/$id"
+  systemctl --user daemon-reload 2>/dev/null
+  plugins_installed >/dev/null
+  qs ipc call bar refresh >/dev/null 2>&1 || true
+  echo "Removed $name ($dir). What its installer set up elsewhere (packages, settings) stays."
+}
+
 case ${1:-} in
   update) if [[ ${2:-} == check ]]; then check; else update; fi ;;
   channel) channel "${2:-}" ;;
@@ -347,9 +510,12 @@ case ${1:-} in
             *) usage >&2; exit 1 ;;
           esac ;;
   plugins) case ${2:-list} in
-             list) plugins ;;
+             list) if [[ -t 1 ]]; then plugins_table; else plugins; fi ;;
              installed) plugins_installed ;;
              install) plugin_install "${3:-}" ;;
+             off|on) plugin_switch "$2" "${3:-}" ;;
+             add) plugin_add "${3:-}" "${4:-}" ;;
+             remove) plugin_remove "${@:3}" ;;
              *) usage >&2; exit 1 ;;
            esac ;;
   # The login screen (config/greeter/lock.qml) without locking: it checks the password, then just closes

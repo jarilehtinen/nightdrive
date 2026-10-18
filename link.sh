@@ -61,8 +61,9 @@ link "$repo/config/alsa/$asound" "$HOME/.config/alsa/asoundrc"
 # anything is linked again: link() would move a dead one aside as a .bak file, which in ~/.local/bin is a command. A unit
 # that was enabled (its .wants link was dead too) is enabled again once its new link is in place, below.
 reenable=()
+external=$HOME/.local/share/nightdrive/plugins   # plugins from elsewhere (nightdrive plugins add); a removed one's links go too
 for l in "$HOME"/.local/bin/* "$HOME"/.config/systemd/user/* "$HOME"/.config/systemd/user/*.wants/*; do
-  [[ -L $l && ! -e $l && $(readlink "$l") == "$repo/"* ]] || continue
+  [[ -L $l && ! -e $l && ( $(readlink "$l") == "$repo/"* || $(readlink "$l") == "$external/"* ) ]] || continue
   [[ $l == *.wants/* ]] && reenable+=("${l##*/}")
   rm "$l" && echo "removed     $l (its file is gone)"
 done
@@ -80,14 +81,26 @@ for f in "$repo"/bin/*; do link "$f" "$HOME/.local/bin/$(basename "$f")"; done
 
 # Plugin folders (plugins/<id>/ and the external ones, plugins.txt explains them): their commands (bin/) and user units
 # (systemd/), whether installed or not: an installer runs its own command and enables its unit. A unit that now comes
-# from somewhere else is restarted if it runs, so it runs the new file.
+# from somewhere else is restarted if it runs, so it runs the new file. An external one whose id the repo already has is
+# skipped, as bin/nightdrive skips it, and its files never replace one that is already there (link() would move that
+# aside): it can't take over the repo's commands or units.
 restart=()
-for d in "$repo"/plugins/*/ "$HOME"/.local/share/nightdrive/plugins/*/; do
-  [[ -f $d/plugin.conf ]] || continue
-  for f in "$d"bin/*; do [[ -f $f ]] && link "${f%/}" "$HOME/.local/bin/$(basename "$f")"; done
+taken=" $(grep -vE '^\s*(#|$)' "$repo/plugins.txt" | cut -d'|' -f1 | tr '\n' ' ')"
+held() {   # $2 is there and isn't $1's link, while $1 is an external plugin's file
+  [[ $1 == "$external/"* && ( -e $2 || -L $2 ) && $(readlink -f "$2") != "$(readlink -f "$1")" ]] || return 1
+  echo "skipped     $2 (already there, not replaced by the external plugin's)"
+}
+for d in "$repo"/plugins/*/ "$external"/*/; do
+  [[ -f $d/plugin.conf && $taken != *" $(basename "$d") "* ]] || continue
+  taken+="$(basename "$d") "
+  for f in "$d"bin/*; do
+    [[ -f $f ]] || continue
+    held "$f" "$HOME/.local/bin/$(basename "$f")" || link "$f" "$HOME/.local/bin/$(basename "$f")"
+  done
   for f in "$d"systemd/*; do
     [[ -f $f ]] || continue
     u=$HOME/.config/systemd/user/$(basename "$f")
+    held "$f" "$u" && continue
     [[ $(readlink "$u") == "$f" ]] || restart+=("$(basename "$f")")
     link "$f" "$u"
   done

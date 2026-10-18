@@ -241,7 +241,9 @@ The same `nightdrive` command reaches the settings from a terminal (`nightdrive`
 | `nightdrive display list` | Each screen's even scales; `nightdrive display scale eDP-1 2` sets one |
 | `nightdrive bar-style opacity 80` | Top bar opacity; also `icons`, `icon-opacity` and `highlight` |
 | `nightdrive topbar adjust` | Top bar icon and text sizes, half a pixel at a time, live |
-| `nightdrive plugins` | Optional parts and whether each is installed; `nightdrive plugins install home-assistant` runs one's installer |
+| `nightdrive plugins` | Optional parts and whether each is installed and on; `nightdrive plugins install home-assistant` runs one's installer |
+| `nightdrive plugins off ferry` | Hides an installed part from the desktop and stops its services, for one that misbehaves (`on` brings it back; also the switch on its page in the launcher) |
+| `nightdrive plugins add <git-url>` | Adds a plugin from someone else's repo, marked external in the launcher; `nightdrive update` keeps it up to date, `nightdrive plugins remove ID` deletes it |
 
 ## Keys
 
@@ -279,7 +281,8 @@ The full list is in [`config/hypr/SHORTCUTS.md`](config/hypr/SHORTCUTS.md).
   column says which: a new one is a line there, its
   keybinding goes in `bindings.lua`'s `optional` list and SHORTCUTS.md (with an `{id}` tag). A part with files of its own
   (a top bar module and menu, a service, commands) is a folder in [`plugins/`](plugins), like
-  [`plugins/ferry`](plugins/ferry): plugins.txt's header explains its files. Apps that ⌘W should only hide are in
+  [`plugins/ferry`](plugins/ferry): plugins.txt's header explains its files. A plugin of your own can live in its own repo,
+  with the folder's files at its top: `nightdrive plugins add <git-url>` clones it. Apps that ⌘W should only hide are in
   [`config/hypr/background-apps`](config/hypr/background-apps).
 - **Launcher apps**: only the apps in [`config/fuzzel/apps-allow.txt`](config/fuzzel/apps-allow.txt) are listed. Search finds
   the rest.

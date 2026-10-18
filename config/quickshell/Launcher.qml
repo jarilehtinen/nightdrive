@@ -17,7 +17,8 @@ import Quickshell.Widgets
 // and the last row takes the words to Search. Install › Software and Remove: Enter on a row opens its details
 // in a wider card (hypr/scripts/pkg-info); there Enter installs or removes it, Tab takes the app from the other source,
 // Esc goes back to the results. Install › Recommended and Plugins open the same card (hypr/scripts/plugin-info: the long
-// text and screenshot from docs/plugins/<id>.md); there Enter runs the installer, an installed one's again.
+// text and screenshot from docs/plugins/<id>.md); there Enter runs the installer, an installed one's again, and Tab (or
+// its switch) turns an installed one off or on (`nightdrive plugins off|on`).
 PanelWindow {
     id: win
 
@@ -111,7 +112,7 @@ PanelWindow {
         Quickshell.execDetached(["bash", "-c", 'mkdir -p "$(dirname "$2")" && printf "%s\\n" "$1" > "$2.tmp" && mv "$2.tmp" "$2"',
                                  "_", JSON.stringify(n), prefsFile])
     }
-    property var pluginList: null             // Install › Recommended, Plugins and Webapp's ready-made ones: [{ id, name, icon, desc, installed, group }] (nightdrive plugins), null = loading
+    property var pluginList: null             // Install › Recommended, Plugins and Webapp's ready-made ones: [{ id, name, icon, desc, installed, group, off, external }] (nightdrive plugins), null = loading
     property var pwItems: []                  // Passwords: 1Password items (op item list)
     property string pwState: "idle"           // idle | loading | ready | error
     property string pwError: ""
@@ -176,6 +177,7 @@ PanelWindow {
     readonly property string footer: detail !== null ? (detail.remove ? "Enter: remove" : detail.rerun ? (detailInfo && detailInfo.installed ? "Enter: run the installer again" : "Enter: install in a terminal")
                                                         : detailInfo && detailInfo.installed ? "Already installed" : "Enter: install")
                                                        + (detail.alt ? "  ·  Tab: get it from " + (detail.alt.src === "flatpak" ? "Flathub" : "Fedora") : "")
+                                                       + (detail.src === "plugin" && detailInfo && detailInfo.installed ? "  ·  Tab: turn " + (detailInfo.off ? "on" : "off") : "")
                                                        + "  ·  Esc: back"
         : selApp ? "Enter: open  ·  Ctrl+Enter: " + (selApp.shown ? "hide from Apps" : "show in Apps")
                                               + "  ·  Alt+Enter: " + (autostartIds.indexOf(appId(selApp)) >= 0 ? "don’t start at login" : "start at login")
@@ -731,9 +733,9 @@ PanelWindow {
             const exp = /\bexperimental\b/i
             const plain = d => d.replace(/\s*\(experimental\)/i, "").replace(/,\s*experimental(?=[;)])/i, "").replace(/\(experimental;\s*/i, "(")
             all = pluginList.filter(p => p.group === (level === "plugins" ? "plugin" : "recommended")).map(p => ({ item: { kind: "action", name: p.name, glyph: p.icon, sub: plain(p.desc), installed: p.installed,
-                                                 experimental: exp.test(p.desc),
+                                                 experimental: exp.test(p.desc), external: p.external,
                                                  src: "plugin", id: p.id, rerun: true,
-                                                 summary: p.installed ? "installed" : undefined,
+                                                 summary: p.installed ? (p.off ? "off" : "installed") : undefined,
                                                  cmd: term('"$HOME/.local/bin/nightdrive" plugins install "$1"', p.id) },
                                          text: p.name, extra: p.desc }))
         } else if (level === "webapp") {
@@ -1278,14 +1280,31 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         win.open = false
         Quickshell.execDetached(detail.cmd)
     }
-    // Tab in the details: the same app from the other source (Fedora ↔ Flathub)
+    // Tab in the details: the same app from the other source (Fedora ↔ Flathub); on a plugin's page, turns it off or on
     function detailSwitch() {
+        if (detail.src === "plugin") { pluginToggle(); return }
         const a = detail.alt
         if (!a) { shake.restart(); return }
         showDetail(Object.assign({}, detail, { src: a.src, id: a.id, alt: { src: detail.src, id: detail.id }, cmd: installCmd(a.src, a.id) }))
     }
     function detailScroll(dy) {
         detailView.contentY = Math.max(0, Math.min(detailView.contentHeight - detailView.height, detailView.contentY + dy))
+    }
+    // A plugin's switch (its page): `nightdrive plugins off|on`, which hides it from the desktop and stops its services, or
+    // brings them back. The switch moves at once; the page and the list are read again when it's done.
+    function pluginToggle() {
+        if (!detailInfo || !detailInfo.installed || toggleProc.running) { shake.restart(); return }
+        toggleProc.command = [Quickshell.env("HOME") + "/.local/bin/nightdrive", "plugins", detailInfo.off ? "on" : "off", detail.id]
+        detailInfo = Object.assign({}, detailInfo, { off: !detailInfo.off })
+        toggleProc.running = true
+    }
+    Sh {
+        id: toggleProc
+        onResult: {
+            if (detailProc.running) detailProc.forId = ""      // the running one read the old state: it starts again
+            else if (win.detail !== null) win.runDetail()
+            pluginsProc.running = true
+        }
     }
     Sh {
         id: detailProc
@@ -1573,13 +1592,13 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
         }
     }
     // Install › Recommended, Plugins and Webapp: plugins.txt via `nightdrive plugins` (id, name, icon, description, default,
-    // installer, installed 1/0, group)
+    // installer, installed 1/0, group, folder, off 1/0, source repo/external)
     Sh {
         id: pluginsProc
         command: [Quickshell.env("HOME") + "/.local/bin/nightdrive", "plugins"]
         onResult: text => {
             win.pluginList = text.split("\n").map(l => l.split("\t")).filter(f => f.length >= 8)
-                .map(f => ({ id: f[0], name: f[1], icon: f[2], desc: f[3], installed: f[6] === "1", group: f[7] }))
+                .map(f => ({ id: f[0], name: f[1], icon: f[2], desc: f[3], installed: f[6] === "1", group: f[7], off: f[9] === "1", external: f[10] === "external" }))
         }
     }
     // Remove: packages the user installed, then the user's Flatpak apps (after a "--flatpak--" line, tab-separated)
@@ -1700,6 +1719,8 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
         }
         // pick <index>: selects a row like Enter (automated testing)
         function pick(index: int): void { const r = win.results[index]; if (r) win.activate(r); else shake.restart() }
+        // detailTab: Tab in a package's or plugin's details, e.g. a plugin's on/off switch (automated testing)
+        function detailTab(): void { if (win.detail !== null) win.detailSwitch(); else shake.restart() }
         // ⌘⌫ (bindings.lua): in Background removes your own wallpaper, elsewhere deletes the query to the cursor's left (like macOS)
         function deleteSelected(): void {
             if (!win.open) return
@@ -2001,10 +2022,18 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                         topPadding: row.isHeader ? 10 : 0
                     }
                     Text {      // EXPERIMENTAL after a plugin's name (Install › Plugins)
+                        id: expTag
                         visible: !!row.modelData.experimental && !row.armedNow
                         anchors { left: nameText.left; leftMargin: nameText.contentWidth + 10; baseline: nameText.baseline }
                         text: "EXPERIMENTAL"
                         color: Theme.caution
+                        font { family: Theme.font; pixelSize: win.fontSize - 7; letterSpacing: 1 }
+                    }
+                    Text {      // EXTERNAL: a plugin from elsewhere (nightdrive plugins add), not one of Nightdrive's own
+                        visible: !!row.modelData.external && !row.armedNow
+                        anchors { left: nameText.left; leftMargin: nameText.contentWidth + 10 + (expTag.visible ? expTag.implicitWidth + 10 : 0); baseline: nameText.baseline }
+                        text: "EXTERNAL"
+                        color: Theme.primary
                         font { family: Theme.font; pixelSize: win.fontSize - 7; letterSpacing: 1 }
                     }
                     Text {
@@ -2190,7 +2219,7 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                         }
                         Column {
                             id: headText
-                            anchors { left: headIcon.right; leftMargin: 20; right: button.left; rightMargin: 20; verticalCenter: parent.verticalCenter }
+                            anchors { left: headIcon.right; leftMargin: 20; right: onSwitch.visible ? onSwitch.left : button.left; rightMargin: 20; verticalCenter: parent.verticalCenter }
                             spacing: 4
                             Text {
                                 width: parent.width
@@ -2209,6 +2238,40 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                                 text: win.keySpaced(detailView.info && detailView.info.summary ? detailView.info.summary : (detailView.pkg.summary || detailView.pkg.sub || ""))
                                 color: Theme.dim
                                 font { family: Theme.font; pixelSize: win.fontSize - 2; weight: win.fontWeight }
+                            }
+                        }
+                        Item {      // an installed plugin's on/off switch (= Tab), like a launcher row's
+                            id: onSwitch
+                            readonly property bool on: detailView.info !== null && !detailView.info.off
+                            visible: detailView.pkg.src === "plugin" && detailView.info !== null && detailView.info.installed
+                            anchors { right: button.left; rightMargin: 18; verticalCenter: parent.verticalCenter }
+                            width: switchRow.implicitWidth; height: 40
+                            Row {
+                                id: switchRow
+                                anchors.verticalCenter: parent.verticalCenter
+                                spacing: 10
+                                Text {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: onSwitch.on ? "On" : "Off"
+                                    color: onSwitch.on ? Theme.text : Theme.dim
+                                    font { family: Theme.font; pixelSize: win.fontSize - 1; weight: win.fontWeight }
+                                }
+                                Rectangle {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: 34; height: 20; radius: 10
+                                    color: onSwitch.on ? Theme.accent : Theme.border
+                                    Rectangle {
+                                        width: 14; height: 14; radius: 7; y: 3
+                                        x: onSwitch.on ? 17 : 3
+                                        color: onSwitch.on ? Theme.bg : Theme.text
+                                        Behavior on x { NumberAnimation { duration: 120 } }
+                                    }
+                                }
+                            }
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: win.pluginToggle()
                             }
                         }
                         Rectangle {      // Install / Remove / Run again (= Enter); grey when already installed
