@@ -305,9 +305,10 @@ A plugin's `version` names what a user has, for a bug report: the launcher shows
 - **MAJOR** (`1.1.0` → `2.0.0`): a change that needs the user to do something, such as running its installer again.
   A plugin starts at `0.1.0` while it's experimental, and goes to `1.0.0` when it isn't.
 
-For the plugins in this repo the release does it: before `dev` is merged into `main`, `nightdrive plugins bump` raises
-the patch version of every plugin whose folder has changed since its version was last set, and the bumped
-`plugin.conf` files are committed with the release. A plugin that got something new takes a bigger step by name.
+For the plugins in this repo every release does it (changes are made in `dev`, and `main` gets them only in a
+release): before `main` moves to `dev`, `nightdrive plugins bump` raises the patch version of every plugin whose folder
+has changed since its version was last set, and the bumped `plugin.conf` files are committed to `dev` with the
+release. A plugin that got something new takes a bigger step by name.
 
 ```sh
 nightdrive plugins bump --dry-run        # what a release would raise, and the commits behind it

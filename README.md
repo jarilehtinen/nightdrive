@@ -226,8 +226,8 @@ nightdrive update   # pulls Nightdrive (and Deck), relinks, installs new package
 It never overwrites your own edits: a repo with uncommitted changes is skipped with a note. On an install older than the
 command, run it once as `~/dotfiles/bin/nightdrive update` (a plain `git pull` misses the new links and packages).
 
-Updates come from the **Stable** channel (the `main` branch) unless you pick **Development** (`dev`), which gets the bigger
-changes before they are tested into Stable: in the launcher under **Settings › Update channel**, or `nightdrive channel dev`
+Updates come from the **Stable** channel (the `main` branch) unless you pick **Development** (`dev`), which gets every
+change first, before it is tested and released into Stable: in the launcher under **Settings › Update channel**, or `nightdrive channel dev`
 (`nightdrive channel stable` goes back). Switching stops with a note instead of going over your own changes.
 
 The same `nightdrive` command reaches the settings from a terminal (`nightdrive` alone lists everything):

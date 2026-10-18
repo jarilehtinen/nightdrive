@@ -24,13 +24,14 @@ check` (exit 1 with the findings) and `nightdrive sandbox shot NAME`, `ipc …` 
   `qmldir`), and doesn't reload a plugin's menu at all: restart it to test a change there (`qs kill; setsid -f qs`).
 
 **Branches**
-- `main` is stable: stable-channel users get it with `nightdrive update`. Bigger changes are made in `dev` and merged into
-  `main` once tested. Users pick their channel with `nightdrive channel` (stable or dev).
-- Check the branch before committing (`git branch --show-current`). A fix to what users run goes to `main` (then merge
-  `main` into `dev`); a feature or unfinished change goes to `dev`.
-- Merging `dev` into `main` and pushing are the user's decisions: don't do either unasked.
-- Before `dev` is merged into `main`: `nightdrive plugins bump` raises the version of every plugin that changed, and
-  the bumped `plugin.conf` files go in with the release (plugins/README.md › Versions).
+- `main` is stable: stable-channel users get it with `nightdrive update`. Every change is made in `dev`, a fix to what
+  users run too, and reaches `main` only in a release, once tested. Users pick their channel with `nightdrive channel`
+  (stable or dev).
+- Check the branch before committing (`git branch --show-current`): it is `dev`. No commits straight to `main` and no
+  cherry-picks, so `main` is always an earlier point of `dev` and a release has nothing to conflict with.
+- A release, and pushing, are the user's decisions: don't do either unasked. A release raises the versions first:
+  `nightdrive plugins bump` (the patch of every plugin that changed; a bigger step by name, plugins/README.md ›
+  Versions), its `plugin.conf` changes committed to `dev`, then `main` moves to `dev` (`git merge --ff-only dev`).
 
 **Conventions**
 - English comments that explain *why*.
