@@ -23,7 +23,7 @@ mkdir -p ~/.config/keyd && ln -sfn "$here/app.conf" ~/.config/keyd/app.conf
 mkdir -p ~/.local/share/nautilus-python/extensions
 ln -sfn "$here/nautilus-python/mac-keys.py" ~/.local/share/nautilus-python/extensions/mac-keys.py
 # Started for this session too (hyprland.lua starts it from the next login, when the keyd group is in effect)
-pgrep -f keyd-application-mapper >/dev/null || setsid sg keyd -c "keyd-application-mapper -d" </dev/null >/dev/null 2>&1 &
+pgrep -f '[k]eyd-application-mapper' >/dev/null || setsid sg keyd -c "keyd-application-mapper -d" </dev/null >/dev/null 2>&1 &
 ~/.local/bin/nightdrive plugins installed >/dev/null 2>&1 || true   # the desktop picks the plugin up (its keys and shortcut lines)
 echo "Mac Keyboard Shortcuts are on. ⌘⌫ follows the app from the next login (keyd group); Enter and ⌘O in Files once Files"
 echo "starts again (nautilus -q closes it now)."
