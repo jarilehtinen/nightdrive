@@ -1,2 +1,2 @@
 ## 1Password
-  ⌘ ⇧ P              1Password
+  Hyper P            1Password

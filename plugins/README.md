@@ -187,6 +187,10 @@ column beside the commands (under the command when there isn't room), so keep th
 is ⌘ (Super), `dir` the plugin's folder, `scripts` the core's `config/hypr/scripts`. One that fails is left out with a
 line in Hyprland's log; it can't take the other keys with it.
 
+Which modifier: a key that opens an app is Hyper (Caps Lock) + a letter, `"MOD3 + M"` (Deck); one for a desktop
+feature, such as a menu, is ⌘⇧ or ⌘⌥ + a letter. ⌘ + a letter alone belongs to the apps (copy, save, reload…).
+In SHORTCUTS.md Hyper is written `Hyper M`.
+
 ```lua
 local p = ...
 hl.bind(p.mod .. " + SHIFT + U", hl.dsp.exec_cmd("qs ipc call menu toggle disk"))   -- opens the plugin's menu

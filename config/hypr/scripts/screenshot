@@ -2,12 +2,13 @@
 # screenshot region   → region: saved to ~/Pictures/Screenshots (the localised Pictures folder) and the clipboard (launcher → Screenshot)
 # screenshot window   → click a window on the current workspace: saved and to the clipboard (launcher)
 # screenshot full     → whole screen: saved and to the clipboard (launcher)
-# screenshot clip     → region to the clipboard only, no file (⌘R)
-# screenshot winclip  → window to the clipboard only, no file (⌘⇧R)
+# screenshot clip     → region to the clipboard only, no file (⌘⇧S)
+# screenshot winclip  → window to the clipboard only, no file (⌘⌥S)
+# screenshot fullclip → whole screen to the clipboard only, no file (⌘⌥⇧S)
 mode=${1:-full}
 
 # A selection is already running (slurp open): a second press cancels it instead of starting a new capture
-if [[ $mode != full ]] && pgrep -x slurp >/dev/null; then pkill -x slurp; exit 0; fi
+if [[ $mode != full && $mode != fullclip ]] && pgrep -x slurp >/dev/null; then pkill -x slurp; exit 0; fi
 
 # Pick a window by clicking: the current workspace's window bounds go to slurp (-r: only these boxes are selectable)
 pick_window() {
@@ -31,12 +32,15 @@ notify() {
 # Clipboard only: the picture for the notification's preview in the runtime dir (gone at logout)
 clip=${XDG_RUNTIME_DIR:-/tmp}/screenshots
 case "$mode" in
-  clip|winclip)
-    if [[ $mode == clip ]]; then geom=$(slurp) || exit 0; what=Region; glyph=crop
-    else geom=$(pick_window) || exit 0; what=Window; glyph=app-window; fi
+  clip|winclip|fullclip)
+    case $mode in
+      clip)    geom=$(slurp) || exit 0; what=Region; glyph=crop ;;
+      winclip) geom=$(pick_window) || exit 0; what=Window; glyph=app-window ;;
+      *)       geom=""; what=Screen; glyph=monitor ;;
+    esac
     mkdir -p "$clip"; find "$clip" -name '*.png' -mmin +60 -delete 2>/dev/null
     f=$clip/$(date +%H-%M-%S-%N).png
-    grim -g "$geom" "$f" && wl-copy --type image/png < "$f"
+    grim ${geom:+-g "$geom"} "$f" && wl-copy --type image/png < "$f"
     notify "$f" "$what copied to clipboard" "$glyph"; exit 0 ;;
 esac
 

@@ -732,7 +732,7 @@ PanelWindow {
             return [{ kind: "lpref", key: "fuzzy", name: "Fuzzy search", glyph: "wand-sparkles",
                       sub: "Typos and initials also match: firefx, vsc", switchOn: prefs.fuzzy },
                     { kind: "lpref", key: "shortcuts", name: "Shortcut hints", glyph: "keyboard",
-                      sub: "An app’s or menu’s keys on its row (⌘⇧P)", switchOn: prefs.shortcuts }]
+                      sub: "An app’s or menu’s keys on its row (Hyper P)", switchOn: prefs.shortcuts }]
         } else if (level === "plugins" || level === "recommended") {
             // Enter opens the details (src "plugin"), whose Enter runs the installer in a terminal (they ask things: sudo, tokens,
             // logins); an installed one can be run again (rerun)

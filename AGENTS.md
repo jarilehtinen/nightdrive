@@ -56,5 +56,6 @@ check` (exit 1 with the findings) and `nightdrive sandbox shot NAME`, `ipc …` 
   `MenuRow`, section titles `MenuSection`, hint and error lines `MenuNote`, colours `Theme.*`.
 - *Launcher level:* in `Launcher.qml`, add an item to `rootItems`/`statics`, entries in `titles` and `parents`, rows in
   `items()`, and actions in `activate()`.
-- *Keybinding:* `hypr/bindings.lua`, and the same entry in `hypr/SHORTCUTS.md` (the launcher reads that file).
+- *Keybinding:* `hypr/bindings.lua`, and the same entry in `hypr/SHORTCUTS.md` (the launcher reads that file). An app opens
+  with Hyper + a letter (`"MOD3 + X"`, `Hyper X` in SHORTCUTS.md); desktop features use ⌘⇧ / ⌘⌥; ⌘ + a letter is the apps'.
 - *Command:* a subcommand in the case at the bottom of `bin/nightdrive` (link.sh links it to `~/.local/bin`).

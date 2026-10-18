@@ -23,7 +23,8 @@ Nightdrive puts all of that together into one opinionated desktop.
 
 - **⌘ is the main key.** ⌘ is the Super key: Command on a Mac, the Windows key on a PC.
   ⌘C / ⌘V / ⌘X work in every app, including the terminal. ⌘S saves, ⌘W closes, ⌘Q quits, ⌘Space opens the launcher.
-  Caps Lock is Hyper, a key of its own that no app uses: free for your own shortcuts.
+- **Caps Lock is Hyper, the app key.** Hyper + a letter opens an app or brings it to the front: Hyper+B the browser,
+  Hyper+F Files, Hyper+M music. No app uses Hyper itself, so the letters Nightdrive leaves free are yours.
 - **Fits the machine it's on.** The installer recognises an Apple Silicon Mac, a PC or a virtual machine and sets it up to
   match: the keyboard layout you picked when installing Fedora, the graphics driver (NVIDIA too), the display scale. On a
   MacBook the top bar sits in the notch area, the top-row keys control volume, brightness, the keyboard backlight and
@@ -160,7 +161,7 @@ Machine: PC (x86_64, graphics: amd, keyboard: us)
    …
 
   Web apps
-   9 [ ] Slack             Slack as a web app (⌘⇧S)
+   9 [ ] Slack             Slack as a web app (Hyper+S)
    …
 
   Plugins
@@ -249,8 +250,8 @@ The same `nightdrive` command reaches the settings from a terminal (`nightdrive`
 
 ## Keys
 
-⌘ is the Super key (Command on a Mac, the Windows key on a PC). Caps Lock is Hyper, a modifier of its own that no app
-uses, left free for your own shortcuts ([Make it yours](#make-it-yours)).
+⌘ is the Super key (Command on a Mac, the Windows key on a PC). Hyper is Caps Lock: Hyper + a letter opens an app, and
+the letters left free are yours ([Make it yours](#make-it-yours)).
 
 | Keys | Action |
 |---|---|
@@ -262,8 +263,9 @@ uses, left free for your own shortcuts ([Make it yours](#make-it-yours)).
 | ⌘ 1…0 · ⌘ ⇧ 1…0 | Go to workspace · move the window there |
 | ⌘ D · ⌘ ⇧ D | Drawer: show / hide · put the window in it, or take it back out |
 | ⌘ ⇧ V · ⌘ ⇧ E | Clipboard history · emoji |
-| ⌘ R · ⌘ ⇧ R | Screenshot of a region · of a window, to the clipboard |
-| ⌘ ⇧ B / F / P / M / I | Browser / Files / 1Password / Music / Mail |
+| ⌘ R · ⌘ ⇧ R | Reload · without the cache (browsers) |
+| ⌘ ⇧ S · ⌘ ⌥ S · ⌘ ⌥ ⇧ S | Screenshot of a region · of a window · of the screen, to the clipboard |
+| Hyper B / F / P / M / I | Browser / Files / 1Password / Music / Mail |
 | ⌘ ⇧ Space | Walk through the top bar menus with the keyboard |
 | ⌘ Esc | Notifications |
 | F5 (hold; Fn on a Mac) | Dictation |
@@ -279,8 +281,8 @@ The full list is in [`config/hypr/SHORTCUTS.md`](config/hypr/SHORTCUTS.md).
   set, in a VM settings for it, on a Mac the layout unless it's Finnish. The login screen uses the same layout. A scale picked in the
   launcher (Settings › Display) wins over both.
 - **Per-machine overrides** go to `config/hypr/local.lua`, which git ignores.
-- **Keybindings** are in [`config/hypr/bindings.lua`](config/hypr/bindings.lua), a plugin's in its own folder. Hyper
-  (Caps Lock) is yours: Nightdrive binds nothing to it, so `hl.bind("MOD3 + D", …)` in `local.lua` can't clash with anything.
+- **Keybindings** are in [`config/hypr/bindings.lua`](config/hypr/bindings.lua), a plugin's in its own folder. Apps
+  open with Hyper (Caps Lock, `MOD3`) + a letter; a letter Nightdrive doesn't use is yours: `hl.bind("MOD3 + D", …)` in `local.lua`.
 - **Optional parts** (recommended apps, ready-made web apps, plugins): a one-line part, such as a web app or an app from
   dnf or Flathub, is a line in [`plugins.txt`](plugins.txt), with its keybinding in `bindings.lua`'s `optional` list and
   SHORTCUTS.md (with an `{id}` tag). A part with files of its own (a top bar module and menu, keys, a service, commands)

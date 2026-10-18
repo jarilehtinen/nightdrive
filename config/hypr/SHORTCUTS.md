@@ -1,17 +1,18 @@
 # Keyboard shortcuts  (⌘ = Super)            close: q
 
 ## Apps
+  Hyper              Caps Lock: Hyper + a letter opens an app (below); the other letters are free for your own keys
   ⌘ Enter            Terminal
   ⌘ ⌥ Enter          Claude Code (with text typed in the launcher: sends it as the prompt)
   ⌘ Space            App launcher (↑↓ select, Enter open, Esc close; on an app ⌃Enter adds/removes it in Apps, ⌥Enter starts it at login)
-  ⌘ ⇧ Enter / ⌘ ⇧ B  Browser
-  ⌘ ⇧ F              Files
+  Hyper B / ⌘ ⇧ Enter  Browser
+  Hyper F            Files
   F8 (play)          Play/pause {!deck}
-  ⌘ ⇧ W              WhatsApp {whatsapp}
-  ⌘ ⇧ S              Slack {slack}
-  ⌘ ⇧ Y              YouTube {youtube}
-  ⌘ ⇧ I              Email (Thunderbird, inbox) {thunderbird}
-  ⌘ ⇧ C              VS Code {vscode}
+  Hyper W            WhatsApp {whatsapp}
+  Hyper S            Slack {slack}
+  Hyper Y            YouTube {youtube}
+  Hyper I            Email (Thunderbird, inbox) {thunderbird}
+  Hyper C            VS Code {vscode}
   ⌘ ⇧ T              Shelf (file shelf; dragging a file to the top edge opens it too)
   ⌘ Esc / F3         Notifications (history, do not disturb)
   ⌘ Ctrl L           Lock screen
@@ -23,6 +24,7 @@
   ⌘ Z / ⌘ ⇧ Z        Undo / redo (not in the terminal)
   ⌘ A                Select all (not in the terminal)
   ⌘ S                Save (not in the terminal)
+  ⌘ R / ⌘ ⇧ R        Reload / reload without the cache (not in the terminal)
   ⌘ ⌫                Move file to trash (in Files) {!keyd}
   ⌘ ⇧ V              Clipboard history (Enter pastes into the active window, ⇧ Enter copies only)
   ⌘ ⇧ E              Emoji picker (Enter pastes, ⇧ Enter copies only)
@@ -51,12 +53,12 @@
   ⌘ ⇧ D              Put the window in the drawer / take it back out
 
 ## Screenshots
-  ⌘ R                Region to the clipboard
-  ⌘ ⇧ R              Window to the clipboard (click the window)
+  ⌘ ⇧ S              Region to the clipboard
+  ⌘ ⌥ S              Window to the clipboard (click the window)
+  ⌘ ⌥ ⇧ S            Whole screen to the clipboard
   ⌘ Space → Tools › Screenshot   Region, window or whole screen (saved to a file and the clipboard)
 
 ## Other
-  Hyper (Caps Lock)  Free for your own keys: a modifier no app uses ("MOD3 + D" in local.lua)
   ⌘ ⌫ / Delete in Settings › Background   Delete the selected own background (press twice; moves it to the trash)
   Top-row keys       Volume, screen brightness (F1/F2); keyboard backlight = ⌘F1/⌘F2
   F3                 Notification center (hamburger menu)

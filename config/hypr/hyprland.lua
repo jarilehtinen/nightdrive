@@ -210,8 +210,8 @@ hl.config({
     input = {
         kb_layout  = KB_LAYOUT,
         kb_variant = KB_VARIANT,
-        kb_options = "caps:hyper,hyper:mod3",  -- Caps Lock is Hyper: a modifier of its own (Mod3) that no app uses, free for
-                                               -- your own keys ("MOD3 + D" in local.lua); without hyper:mod3 it would be Super
+        kb_options = "caps:hyper,hyper:mod3",  -- Caps Lock is Hyper, a modifier of its own (Mod3) that no app uses: Hyper + a
+                                               -- letter opens an app (bindings.lua); without hyper:mod3 it would be Super
         repeat_rate  = 40,
         repeat_delay = 250,
         follow_mouse = 1,

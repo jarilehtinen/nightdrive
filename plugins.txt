@@ -19,11 +19,11 @@
 #     webapp       Install › Webapp, under "Ready-made": a web app with a keybinding
 #     plugin       Install › Plugins: a feature of the desktop itself, not an app of its own
 # install.sh installs them after everything else, after the plugin folders (in the order `nightdrive plugins` lists them).
-thunderbird|Thunderbird|mail|Email (⌘⇧I)|off|sudo dnf install -y thunderbird|command -v thunderbird|recommended
+thunderbird|Thunderbird|mail|Email (Hyper+I)|off|sudo dnf install -y thunderbird|command -v thunderbird|recommended
 apostrophe|Apostrophe|file-text|Markdown editor (Flatpak), opens .md files|off|install-apostrophe.sh|flatpak info --user org.gnome.gitlab.somas.Apostrophe|recommended
-vscode|VS Code|code|Visual Studio Code from Microsoft's repo (⌘⇧C)|off|install-vscode.sh|command -v code|recommended
+vscode|VS Code|code|Visual Studio Code from Microsoft's repo (Hyper+C)|off|install-vscode.sh|command -v code|recommended
 jotta|Jottacloud|cloud|Jottacloud sync to ~/Jotta (jotta-cli)|off|install-jotta.sh|command -v jotta-cli|recommended
-slack|Slack|message-square|Slack as a web app (⌘⇧S)|off|webapp https://app.slack.com/client|test -f ~/.local/share/applications/webapp-slack.desktop|webapp
+slack|Slack|message-square|Slack as a web app (Hyper+S)|off|webapp https://app.slack.com/client|test -f ~/.local/share/applications/webapp-slack.desktop|webapp
 teams|Teams|users|Microsoft Teams as a web app|off|webapp https://teams.microsoft.com|test -f ~/.local/share/applications/webapp-teams.desktop|webapp
-whatsapp|WhatsApp|message-circle|WhatsApp as a web app (⌘⇧W)|off|webapp https://web.whatsapp.com|test -f ~/.local/share/applications/webapp-whatsapp.desktop|webapp
-youtube|YouTube|monitor-play|YouTube as a web app (⌘⇧Y)|on|webapp https://www.youtube.com|test -f ~/.local/share/applications/webapp-youtube.desktop|webapp
+whatsapp|WhatsApp|message-circle|WhatsApp as a web app (Hyper+W)|off|webapp https://web.whatsapp.com|test -f ~/.local/share/applications/webapp-whatsapp.desktop|webapp
+youtube|YouTube|monitor-play|YouTube as a web app (Hyper+Y)|on|webapp https://www.youtube.com|test -f ~/.local/share/applications/webapp-youtube.desktop|webapp

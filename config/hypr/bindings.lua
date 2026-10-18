@@ -50,9 +50,12 @@ hl.bind("XF86Fn", hl.dsp.exec_cmd(scripts .. "/dictate fn-down"), { locked = tru
 hl.bind("XF86Fn", hl.dsp.exec_cmd(scripts .. "/dictate fn-up"),   { locked = true, release = true })
 hl.bind("F19",    hl.dsp.exec_cmd(scripts .. "/dictate fn-down"), { locked = true })                       -- Fn when keyd (Mac Keyboard Shortcuts) runs: keyd sends F19 for it
 hl.bind("F19",    hl.dsp.exec_cmd(scripts .. "/dictate fn-up"),   { locked = true, release = true })
-hl.bind(mod .. " + SHIFT + B",   hl.dsp.exec_cmd(browser))
-hl.bind(mod .. " + SHIFT + RETURN", hl.dsp.exec_cmd(browser))
--- Optional parts' apps (plugins.txt ids; SHORTCUTS.md tags the same lines with {id})
+-- Apps open with Hyper (Caps Lock, Mod3: hyprland.lua's kb_options) + a letter: the browser, Files, and the optional
+-- parts' apps below and in the plugins' bindings.lua (Deck M, 1Password P). ⌘ stays for the desktop and the apps' own keys.
+hl.bind("MOD3 + B",              hl.dsp.exec_cmd(browser))
+hl.bind(mod .. " + SHIFT + RETURN", hl.dsp.exec_cmd(browser))   -- next to ⌘Enter (terminal) and ⌘⌥Enter (Claude Code)
+hl.bind("MOD3 + F",              hl.dsp.exec_cmd(fileManager))
+-- Optional parts' apps (plugins.txt ids; SHORTCUTS.md tags the same lines with {id}), Hyper + the letter
 local optional = {
     { "whatsapp",    "W", "'^chrome-web\\.whatsapp\\.com' gtk-launch webapp-whatsapp" },   -- WhatsApp webapp
     { "slack",       "S", "'^chrome-app\\.slack\\.com' gtk-launch webapp-slack" },         -- Slack webapp
@@ -61,7 +64,7 @@ local optional = {
     { "vscode",      "C", "'^(code|Code)$' code" },                                         -- VS Code
 }
 for _, o in ipairs(optional) do
-    if plugins[o[1]] then hl.bind(mod .. " + SHIFT + " .. o[2], hl.dsp.exec_cmd(scripts .. "/launch-or-focus " .. o[3])) end
+    if plugins[o[1]] then hl.bind("MOD3 + " .. o[2], hl.dsp.exec_cmd(scripts .. "/launch-or-focus " .. o[3])) end
 end
 -- Installed plugin folders (plugins/<id>/, ~/.local/share/nightdrive/plugins/<id>/): their own bindings.lua, which gets
 -- { id, dir, mod, scripts } as its ... (`nightdrive plugins installed` lists them in plugins.d/active). One that fails is
@@ -84,14 +87,14 @@ do
         f:close()
     end
 end
-hl.bind(mod .. " + SHIFT + F",   hl.dsp.exec_cmd(fileManager))
 hl.bind(mod .. " + SHIFT + E",   hl.dsp.exec_cmd("qs ipc call launcher openLevel emoji"))   -- emoji picker
 hl.bind(mod .. " + SHIFT + V",   hl.dsp.exec_cmd("qs ipc call launcher openLevel clipboard"))   -- clipboard history
 hl.bind(mod .. " + SHIFT + T",   hl.dsp.exec_cmd("qs ipc call shelf toggle"))   -- Shelf: file shelf (dragging to the top edge of the screen also opens it)
 hl.bind(mod .. " + ESCAPE",      hl.dsp.exec_cmd("qs ipc call menu toggle notifications"))
 hl.bind(mod .. " + CTRL + L",    hl.dsp.exec_cmd("loginctl lock-session"))
-hl.bind(mod .. " + R",           hl.dsp.exec_cmd(scripts .. "/screenshot clip"))   -- region screenshot to clipboard
-hl.bind(mod .. " + SHIFT + R",   hl.dsp.exec_cmd(scripts .. "/screenshot winclip"))   -- window screenshot to clipboard
+hl.bind(mod .. " + SHIFT + S",   hl.dsp.exec_cmd(scripts .. "/screenshot clip"))   -- region screenshot to clipboard
+hl.bind(mod .. " + ALT + S",     hl.dsp.exec_cmd(scripts .. "/screenshot winclip"))   -- window screenshot to clipboard
+hl.bind(mod .. " + ALT + SHIFT + S", hl.dsp.exec_cmd(scripts .. "/screenshot fullclip"))   -- whole screen to clipboard
 hl.bind(mod .. " + SHIFT + SPACE", hl.dsp.exec_cmd("qs ipc call menu nav"))   -- top bar via keyboard: ←/→ menu, ↑/↓ row, Enter, Esc
 hl.bind(mod .. " + SHIFT + K",     hl.dsp.exec_cmd("kitty --class floating-help -e sh -c '" .. scripts .. "/shortcuts | less'"))   -- SHORTCUTS.md for the installed parts
 
@@ -100,10 +103,11 @@ hl.bind(mod .. " + C", hl.dsp.send_shortcut({ mods = "CTRL",  key = "Insert" }))
 hl.bind(mod .. " + V", hl.dsp.send_shortcut({ mods = "SHIFT", key = "Insert" }))
 hl.bind(mod .. " + X", hl.dsp.send_shortcut({ mods = "CTRL",  key = "X" }))
 
--- Undo / redo / select all / save ⌘Z / ⌘⇧Z / ⌘A / ⌘S. Not in terminals (kitty and its floating windows): there Ctrl+Z
--- would suspend the running program, Ctrl+A jumps to the start of the line and Ctrl+S freezes the output (XOFF)
+-- Undo / redo / select all / save / reload / reload without the cache ⌘Z / ⌘⇧Z / ⌘A / ⌘S / ⌘R / ⌘⇧R. Not in terminals
+-- (kitty and its floating windows): there Ctrl+Z would suspend the running program, Ctrl+A jumps to the start of the line,
+-- Ctrl+S freezes the output (XOFF) and Ctrl+R searches the shell's history
 local TERMINAL_CLASSES = { ["kitty"] = true, ["floating-tui"] = true, ["floating-help"] = true, ["deck"] = true }
-for _, k in ipairs({ { "", "Z" }, { " SHIFT", "Z" }, { "", "A" }, { "", "S" } }) do
+for _, k in ipairs({ { "", "Z" }, { " SHIFT", "Z" }, { "", "A" }, { "", "S" }, { "", "R" }, { " SHIFT", "R" } }) do
     local shift, key = k[1], k[2]
     hl.bind(mod .. (shift ~= "" and " +" .. shift or "") .. " + " .. key, function ()
         local w = hl.get_active_window()

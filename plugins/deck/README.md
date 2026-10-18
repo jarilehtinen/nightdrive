@@ -5,7 +5,7 @@ A fast Spotify player, made for Nightdrive: your albums in the launcher, the pla
 - Launcher › Music: your albums, the Curated list and Spotify search. Enter plays.
 - While music plays, a player row sits on top of the launcher, and Ctrl+Space plays or pauses.
 - The music icon in the top bar opens the player: the cover, the controls, the like and the speaker to play on.
-- ⌘⇧M opens Deck's window. ⌘W hides it, and the music keeps playing.
+- Hyper+M (Caps Lock + M) opens Deck's window. ⌘W hides it, and the music keeps playing.
 
 ## Setting up
 
@@ -13,4 +13,4 @@ The installer builds Deck from source (a few minutes), and `nightdrive update` b
 
 Homepage: https://github.com/jarilehtinen/deck
 Needs: Spotify Premium
-Keys: ⌘⇧M
+Keys: Hyper+M
