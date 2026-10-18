@@ -54,8 +54,16 @@ link "$repo/config/applications/nm-connection-editor.desktop" "$HOME/.local/shar
 # macbook_mic alias for dictation (voxtype): the MacBook's mic on Apple Silicon, the default mic elsewhere
 if [[ $("$repo/config/hypr/scripts/platform" name) == asahi ]]; then asound=asoundrc; else asound=asoundrc.generic; fi
 link "$repo/config/alsa/$asound" "$HOME/.config/alsa/asoundrc"
-# Mac Keyboard Shortcuts plugin (install-keyd.sh): keyd-application-mapper's per-app keys
-[[ -f /etc/keyd/default.conf ]] && link "$repo/config/keyd/app.conf" "$HOME/.config/keyd/app.conf"
+# Mac Keyboard Shortcuts plugin (install-keyd.sh): keyd-application-mapper's per-app keys. The mapper dies when its
+# app.conf goes for a moment (a branch switch moves the file), and bindings.lua starts it only with Hyprland: it starts
+# again here. It reads the windows from Hyprland, so only inside a Hyprland session.
+if [[ -f /etc/keyd/default.conf ]]; then
+  link "$repo/config/keyd/app.conf" "$HOME/.config/keyd/app.conf"
+  if [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]] && ! pgrep -f '[k]eyd-application-mapper' >/dev/null; then
+    setsid sg keyd -c "keyd-application-mapper -d" </dev/null >/dev/null 2>&1 &
+    echo "started     keyd-application-mapper"
+  fi
+fi
 
 # Session target: brings up graphical-session.target, which xdg-desktop-portal needs (started by hyprland.lua)
 link "$repo/config/systemd/user/nightdrive-session.target" "$HOME/.config/systemd/user/nightdrive-session.target"
