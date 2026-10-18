@@ -322,30 +322,21 @@ done; true'
         visible: m.wifiOn && m.nets.length === 0
         width: parent.width
         height: searching.height
-        Text {
+        MenuNote {
             id: searching
             topPadding: 9
             text: "Searching for networks"
-            color: Theme.dim
-            font { family: Theme.font; pixelSize: 12 }
         }
         BusyDots { anchors.right: parent.right; y: 9 + (searching.height - 9 - height) / 2 + 1 }
     }
-    Text {
+    MenuNote {
         visible: !m.wifiOn
         topPadding: 9
         text: "Wi-Fi is off"
-        color: Theme.dim
-        font { family: Theme.font; pixelSize: 12 }
     }
 
     Divider { visible: m.wifiOn && m.activeNet !== null && m.otherNets.length > 0 }
-    Text {
-        visible: m.wifiOn && m.otherNets.length > 0
-        text: m.activeNet ? "OTHER NETWORKS" : "NETWORKS"
-        color: Theme.primary
-        font { family: Theme.font; pixelSize: 11; letterSpacing: 0.6 }
-    }
+    MenuSection { visible: m.wifiOn && m.otherNets.length > 0; title: m.activeNet ? "Other networks" : "Networks" }
 
     Column {
         width: parent.width
@@ -410,13 +401,10 @@ done; true'
         }
     }
 
-    Text {
+    MenuNote {
         visible: m.message !== ""
-        width: parent.width
-        wrapMode: Text.Wrap
+        variant: "danger"
         text: m.message
-        color: Theme.danger
-        font { family: Theme.font; pixelSize: 12 }
     }
 
     Divider { padBottom: 6 }

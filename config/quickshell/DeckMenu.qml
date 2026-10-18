@@ -76,13 +76,9 @@ Column {
     MenuHeader { width: parent.width; title: "Music" }
 
     // --- Deck not running / nothing playing ---
-    Text {
+    MenuNote {
         visible: m.alive && m.info === null
-        width: parent.width
-        wrapMode: Text.Wrap
         text: "Nothing playing"
-        color: Theme.dim
-        font { family: Theme.font; pixelSize: 13 }
     }
     MenuRow {
         visible: !m.alive || m.info === null

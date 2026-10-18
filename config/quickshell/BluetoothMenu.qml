@@ -106,17 +106,13 @@ Column {
         }
     }
 
-    Text {
+    MenuNote {
         visible: !m.powered
         text: "Bluetooth is off"
-        color: Theme.dim
-        font { family: Theme.font; pixelSize: 12 }
     }
-    Text {
+    MenuNote {
         visible: m.powered && m.shown.length === 0
         text: "No devices. Press Scan for devices."
-        color: Theme.dim
-        font { family: Theme.font; pixelSize: 12 }
     }
 
     Column {
@@ -151,13 +147,10 @@ Column {
         onClicked: m.showHidden = !m.showHidden
     }
 
-    Text {
+    MenuNote {
         visible: m.message !== ""
-        width: parent.width
-        wrapMode: Text.Wrap
+        variant: "danger"
         text: m.message
-        color: Theme.danger
-        font { family: Theme.font; pixelSize: 12 }
     }
 
     Divider { padBottom: 6 }

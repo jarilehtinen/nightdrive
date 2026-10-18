@@ -96,13 +96,11 @@ Column {
             color: Theme.warning
             font { family: Icons.family; pixelSize: 16 }
         }
-        Text {
+        MenuNote {
             id: whyText
             anchors { left: whyIcon.right; leftMargin: 10; right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter }
-            wrapMode: Text.Wrap
+            variant: "warning"
             text: parent.why
-            color: Theme.warning
-            font { family: Theme.font; pixelSize: 12 }
         }
     }
 

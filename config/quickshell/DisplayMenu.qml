@@ -120,11 +120,9 @@ Column {
 
     Divider { visible: m.mirrorAvail }
     MenuSection { visible: m.mirrorAvail; title: "Screen Mirroring" }
-    Text {
+    MenuNote {
         visible: m.mirrorAvail && m.mirrorDevices.length === 0
         text: "Looking for AirPlay devices…"
-        color: Theme.dim
-        font { family: Theme.font; pixelSize: 12 }
     }
     Column {
         visible: m.mirrorAvail

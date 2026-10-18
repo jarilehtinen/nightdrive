@@ -44,13 +44,9 @@ Column {
 
     MenuHeader { width: parent.width; title: "Claude usage"; subtitle: m.usage && m.usage.plan ? m.usage.plan : "" }
 
-    Text {
+    MenuNote {
         visible: m.loaded && (!m.usage || !m.usage.windows || m.usage.windows.length === 0 || !!m.usage.error)
-        width: parent.width
-        wrapMode: Text.WordWrap
         text: m.usage && m.usage.error ? m.usage.error : "No usage data. Sign in to Claude Code (run claude) first."
-        color: Theme.dim
-        font { family: Theme.font; pixelSize: 12 }
     }
 
     Repeater {
@@ -83,11 +79,7 @@ Column {
                     color: modelData.percent > 95 ? Theme.danger : (modelData.percent > 90 ? Theme.warning : Theme.accent)
                 }
             }
-            Text {
-                text: m.resets(modelData.resetsAt)
-                color: Theme.dim
-                font { family: Theme.font; pixelSize: 11 }
-            }
+            MenuNote { text: m.resets(modelData.resetsAt) }
         }
     }
 

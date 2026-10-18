@@ -2,7 +2,7 @@
 // Clicking a bar module opens its menu below it; a shortcut opens one with  qs ipc call menu toggle <name>  (below its icon too,
 // or at the right edge if it has none).
 // `qs ipc call bar refresh` updates every bar module now (after a change a module's status would only see later).
-// Menus live in <Name>Menu.qml files; shared parts: Theme, Icons, Sh, MenuRow, MenuHeader, Slider.
+// Menus live in <Name>Menu.qml files; shared parts: Theme, Icons, Sh, MenuHeader, MenuRow, MenuSection, MenuNote, Slider.
 import QtQuick
 import Quickshell
 import Quickshell.Io

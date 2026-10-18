@@ -15,15 +15,12 @@ Column {
 
     MenuHeader { width: parent.width; title: "Home" }
 
-    Text {
+    MenuNote {
         visible: !Home.loaded || Home.error !== "" || Home.favorites.length === 0
-        width: parent.width
-        wrapMode: Text.Wrap
+        variant: Home.error !== "" ? "danger" : "dim"
         text: !Home.loaded ? "Loading…"
             : Home.error !== "" ? Home.error
             : "No pinned devices. Pin them in the launcher: ⌘Space › Home, Shift+Enter on a device."
-        color: Home.error !== "" ? Theme.danger : Theme.dim
-        font { family: Theme.font; pixelSize: 12 }
     }
 
     Column {

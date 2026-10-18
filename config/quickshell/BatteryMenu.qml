@@ -93,22 +93,15 @@ Column {
                 font { family: Theme.font; pixelSize: 15; bold: true }
             }
         }
-        Text {
+        MenuNote {
             text: (m.state === "discharging" ? "Discharging" : m.state === "charging" ? "Charging"
                  : m.state === "fully-charged" ? "Fully charged" : m.state === "pending-charge" ? "Not charging" : m.state)
                 + (m.timeText !== "" ? " · " + m.timeText + (m.state === "charging" ? " until full" : " remaining") : "")
-            color: Theme.dim
-            font { family: Theme.font; pixelSize: 12 }
         }
     }
 
     Divider { visible: m.bat !== null }
-    Text {
-        visible: m.bat !== null
-        text: "DETAILS"
-        color: Theme.primary
-        font { family: Theme.font; pixelSize: 11; letterSpacing: 0.6 }
-    }
+    MenuSection { visible: m.bat !== null; title: "Details" }
     Column {
         visible: m.bat !== null
         width: parent.width

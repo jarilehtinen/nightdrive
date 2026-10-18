@@ -158,21 +158,13 @@ Column {
             }
         }
     }
-    Text {   // headphones that can't tell their mode (headphones-ctl handles Sony's and AirPods': the list then follows them)
+    MenuNote {   // headphones that can't tell their mode (headphones-ctl handles Sony's and AirPods': the list then follows them)
         visible: m.ancModes.length > 1 && !m.info.ancControlled
-        width: parent.width
-        wrapMode: Text.Wrap
         text: "Pick the mode set on the headphones: the EQ follows it."
-        color: Theme.dim
-        font { family: Theme.font; pixelSize: 11 }
     }
-    Text {
+    MenuNote {
         visible: !!m.info.sink && !m.info.default
-        width: parent.width
-        wrapMode: Text.Wrap
         text: "Sound is playing from another output. The EQ takes effect when the headphones are selected."
-        color: Theme.dim
-        font { family: Theme.font; pixelSize: 11 }
     }
 
     // Max volume per headphones: switching to them (e.g. from a Mac) at full volume can be painfully loud.

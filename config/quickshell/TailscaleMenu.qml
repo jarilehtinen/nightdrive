@@ -80,11 +80,9 @@ Column {
         detail: m.copied === m.selfIp ? "copied" : m.selfIp
         onClicked: m.copy(m.selfIp)
     }
-    Text {
+    MenuNote {
         visible: !m.running
         text: "Tailscale is off"
-        color: Theme.dim
-        font { family: Theme.font; pixelSize: 12 }
     }
 
     // The other machines: online ones first, then offline ones (dimmed) under their own title
@@ -114,13 +112,10 @@ Column {
         }
     }
 
-    Text {
+    MenuNote {
         visible: m.message !== ""
-        width: parent.width
-        wrapMode: Text.Wrap
+        variant: "danger"
         text: m.message
-        color: Theme.danger
-        font { family: Theme.font; pixelSize: 12 }
     }
 
     Divider { padBottom: 6 }

@@ -133,7 +133,7 @@ while (b := p.stdout.read(1600)) and len(b) == 1600:
     }
 
     Divider {}
-    Text { text: "OUTPUT"; color: Theme.primary; font { family: Theme.font; pixelSize: 11; letterSpacing: 0.6 } }
+    MenuSection { title: "Output" }
 
     OutputList { width: parent.width }
 
@@ -174,7 +174,7 @@ while (b := p.stdout.read(1600)) and len(b) == 1600:
     }
 
     Divider {}
-    Text { text: "INPUT SOURCE"; color: Theme.primary; font { family: Theme.font; pixelSize: 11; letterSpacing: 0.6 } }
+    MenuSection { title: "Input source" }
 
     OutputList { width: parent.width; kind: "source" }
 

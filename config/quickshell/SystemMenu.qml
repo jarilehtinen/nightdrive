@@ -52,11 +52,7 @@ Column {
                 color: m.color(frac * 100)
             }
         }
-        Text {
-            visible: note !== ""
-            text: note; color: Theme.dim
-            font { family: Theme.font; pixelSize: 11 }
-        }
+        MenuNote { text: note }
     }
 
     Meter {
@@ -64,7 +60,9 @@ Column {
         title: "CPU"
         value: m.d ? m.d.cpu + "%" : ""
         frac: m.d ? m.d.cpu / 100 : 0
-        note: m.d ? m.d.cores + " cores" + (m.d.freq > 0 ? " · avg " + m.d.freq + " MHz" : "") + " · load " + m.d.load.join("  ") : ""   // no cpufreq in a VM
+        // No-break spaces inside each part: a line too long for the menu wraps between the parts, not inside the load
+        note: m.d ? m.d.cores + "\u00a0cores" + (m.d.freq > 0 ? " · avg\u00a0" + m.d.freq + "\u00a0MHz" : "")   // no cpufreq in a VM
+                    + " · load\u00a0" + m.d.load.join("\u00a0\u00a0") : ""
     }
     Meter {
         visible: m.d !== null
@@ -76,12 +74,7 @@ Column {
 
     Divider { visible: m.d !== null && m.d.temps.length > 0 }   // no sensors in a VM: the whole section is left out
 
-    Text {
-        visible: m.d !== null && m.d.temps.length > 0
-        text: "TEMPERATURES"
-        color: Theme.primary
-        font { family: Theme.font; pixelSize: 11; letterSpacing: 0.6 }
-    }
+    MenuSection { visible: m.d !== null && m.d.temps.length > 0; title: "Temperatures" }
     Column {
         visible: m.d !== null
         width: parent.width
@@ -103,11 +96,7 @@ Column {
 
     Divider {}
 
-    Row {
-        spacing: 8
-        Text { text: "TOP PROCESSES"; color: Theme.primary; font { family: Theme.font; pixelSize: 11; letterSpacing: 0.6 } }
-        Text { text: "(CPU, 1 core = 100 %)"; color: Theme.dim; font { family: Theme.font; pixelSize: 11 } }
-    }
+    MenuSection { title: "Top processes"; subtitle: "CPU, 1 core = 100 %" }
     Column {
         width: parent.width
         spacing: 2
