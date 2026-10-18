@@ -187,7 +187,8 @@ update() {
   # sudo asks for the password only on a terminal. Without one (an agent, ssh with a command) it would fail or wait, so
   # the steps that need it are skipped and listed, unless sudo works without asking (a cached password, NOPASSWD).
   [[ -t 0 ]] || sudo -n true 2>/dev/null || can_sudo=0
-  deck=0
+  deck=${ND_UPDATE_DECK:-0}
+  local was; was=$(git -C "$repo" rev-parse HEAD)
   while read -r r; do
     name=$(basename "$r")
     echo "==> $name"
@@ -205,6 +206,14 @@ update() {
     }
     [[ $r == "$(readlink -f "${DECK_SRC:-$HOME/.local/src/deck}")" ]] && deck=1
   done < <(repos | sort -u)
+
+  # This function was read before the pull: when the pull changed this command, the rest of the update goes on in the
+  # new version, or its new steps would run only next time while the files they belong with are new already (the
+  # Hyprland repo step and packages-hyprland.txt, 19.10.2026). Once only; whether Deck's source came in goes along.
+  if [[ -z ${ND_UPDATE_AGAIN:-} ]] && ! git -C "$repo" diff --quiet "$was" HEAD -- bin/nightdrive; then
+    echo "==> nightdrive itself was updated: going on with the new version"
+    ND_UPDATE_AGAIN=1 ND_UPDATE_DECK=$deck exec "$repo/bin/nightdrive" update
+  fi
 
   # Relinked even when nothing new came in: after a `git pull` by hand the new links (this command among them) would
   # otherwise never appear. Nightdrive's link.sh first, then the overlay's, as on install.
