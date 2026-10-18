@@ -7,7 +7,9 @@ Rectangle {
     property string label: ""
     property string detail: ""
     property string checkIcon: ""
-    property string hoverCheckIcon: "" // replaces checkIcon under the mouse: what a click does (e.g. "unplug" on a connected device)
+    property string hoverCheckIcon: "" // replaces checkIcon under the mouse: what a click does (e.g. "unplug" on a connected device);
+                                       // without a checkIcon it takes the detail's place under the mouse, so the detail
+                                       // stays at the right edge (Ferry's items: the time, and × to remove one)
     property int checkIconSize: 16
     property bool active: false
     property bool tinted: false        // a light highlight (the action buttons' faint theme colour), e.g. this machine in Tailscale
@@ -24,6 +26,8 @@ Rectangle {
     readonly property int pad: padded ? 10 : 0
     signal clicked()
     signal rightClicked()
+    readonly property bool hoverShown: hoverCheckIcon !== "" && (area.containsMouse || navSelected)
+    readonly property bool hoverOnly: checkIcon === "" && hoverCheckIcon !== ""   // nothing to show until the mouse comes
 
     height: 34
     radius: 5
@@ -92,12 +96,14 @@ Rectangle {
             text: row.detail
             color: Theme.dim
             font { family: Theme.font; pixelSize: 11 }
+            opacity: row.hoverOnly && row.hoverShown ? 0 : 1   // the hover icon comes in its place
+            Behavior on opacity { NumberAnimation { duration: 140; easing.type: Easing.OutQuad } }
         }
         // Under the mouse the hover icon cross-fades over the check: one shrinks and fades out while the other grows in
         Item {
             id: checkBox
-            readonly property bool hovering: row.hoverCheckIcon !== "" && (area.containsMouse || row.navSelected)
-            visible: row.checkIcon !== "" || row.hoverCheckIcon !== ""
+            readonly property bool hovering: row.hoverShown
+            visible: row.checkIcon !== ""   // a hover-only icon has no place of its own: hoverIcon, below
             anchors.verticalCenter: parent.verticalCenter
             width: checkText.implicitWidth; height: checkText.implicitHeight
             Text {
@@ -124,6 +130,19 @@ Rectangle {
                 Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutQuad } }
             }
         }
+    }
+    // A hover icon without a check: over the right edge, where the detail fades out (hoverOnly)
+    Text {
+        id: hoverIcon
+        visible: row.hoverOnly
+        anchors { right: parent.right; rightMargin: row.pad; verticalCenter: parent.verticalCenter }
+        text: Icons.g(row.hoverCheckIcon)
+        color: row.active ? Theme.accent : Theme.dim
+        font { family: Icons.family; pixelSize: row.checkIconSize }
+        opacity: row.hoverShown ? 1 : 0
+        scale: row.hoverShown ? 1 : 0.6
+        Behavior on opacity { NumberAnimation { duration: 140; easing.type: Easing.OutQuad } }
+        Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutQuad } }
     }
     MouseArea {
         visible: row.interactive   // not just disabled: a disabled MouseArea still sets the hand cursor

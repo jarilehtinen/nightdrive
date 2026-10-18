@@ -165,7 +165,7 @@ Machine: PC (x86_64, graphics: amd, keyboard: us)
 
   Plugins
   13 [ ] AirPlay Receiver  Mirror an iPhone, iPad or Mac here (UxPlay, experimental)
-  14 [ ] Ferry             Files and text both ways with an iPhone over Tailscale, no app (experimental)
+  14 [ ] Ferry             Files and text both ways with your phone over Tailscale, no app (experimental)
   15 [ ] Mac Keyboard Shortcuts ⌥⌫ deletes a word, ⌘⌫ to the line start; Files: Enter renames, ⌘O opens, ⌘⌫ to the trash
    …
 

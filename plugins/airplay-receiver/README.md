@@ -7,7 +7,5 @@ Mirror your iPhone, iPad or Mac to this computer, like macOS's AirPlay Receiver:
 - Viewing only: the phone can't be controlled with the mouse.
 - The picture is up to 4K HEVC, decoded with FFmpeg: the installer adds the RPM Fusion repository for it (libavcodec-freeworld), because Fedora's own H.264 decoder smears the picture whenever it moves.
 
-Experimental. Turn it off with `airplay-receiver disable`.
-
 Homepage: https://github.com/FDH2/UxPlay
 Needs: an iPhone, iPad or Mac on the same network

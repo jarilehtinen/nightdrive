@@ -48,7 +48,7 @@ and `order` are the folders' own). `name`, `icon`, `description`, `installed`, `
 # Ferry (README.md). install and installed run in this folder.
 name=Ferry
 icon=inbox
-description=Files and text both ways with an iPhone over Tailscale, no app (experimental)
+description=Files and text both ways with your phone over Tailscale, no app (experimental)
 default=off
 install=sudo dnf install -y python3-cryptography qrencode && bin/ferry enable
 installed=systemctl --user -q is-enabled nightdrive-ferry.service
@@ -61,7 +61,7 @@ author=@jarilehtinen
 | --- | --- |
 | `name` | Shown in the launcher and `install.sh`; the README's title is the same |
 | `icon` | A [Lucide](https://lucide.dev/icons) icon name |
-| `description` | One line. Ending it in `(experimental)` marks the plugin as experimental in the launcher |
+| `description` | One line. Ending it in `(experimental)` marks the plugin as experimental in the launcher and on the website (the README needn't say so) |
 | `default` | `on`: ticked in `install.sh`'s list; `off` (default): not |
 | `install` | A shell command, or a script in the folder, run in the folder in a terminal (it may ask things, and `sudo` works). Running it again must be safe. Default: nothing to install |
 | `installed` | A shell test, run in the folder: the plugin is installed while it succeeds. Make it quick: every `nightdrive plugins` runs all of them |
@@ -166,9 +166,8 @@ and description come from `plugin.conf`; the README is the body. Follow this sha
 2. One paragraph: what it does for the user.
 3. A screenshot, if the plugin has something to see: `![Ferry's menu in the top bar](ferry.jpg)`, the file in the
    folder. The launcher shows the first picture.
-4. How to use it, as a list. Optional sections start with bold: **In a terminal**, **On the iPhone**.
-5. If it's experimental: "Experimental." and how to turn it off.
-6. Last, the fact lines, each on its own line and in this order (the ones that apply, at least one):
+4. How to use it, as a list. Optional sections start with bold: **In a terminal**, **Adding the phone**.
+5. Last, the fact lines, each on its own line and in this order (the ones that apply, at least one):
    `Homepage: https://…`, `Needs: …`, `Keys: ⌘⇧U` (required when the plugin has `bindings.lua`). The launcher shows
    them as facts under the text.
 

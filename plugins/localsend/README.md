@@ -10,7 +10,5 @@ Send files, photos and links from your phone to this computer with the free Loca
 
 **In a terminal**: `localsend send FILE…` sends files or folders, `localsend send-clipboard` the clipboard's text, and `localsend devices` lists the devices on the network.
 
-Experimental. Turn it off with `localsend disable`.
-
 Homepage: https://localsend.org
 Needs: the LocalSend app on the phone, both on the same network
