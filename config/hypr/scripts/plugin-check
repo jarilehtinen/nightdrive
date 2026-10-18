@@ -1,12 +1,14 @@
 #!/usr/bin/python3 -I
 """Checks plugins against the rules in plugins/README.md: `nightdrive plugin check [ID]` (all of them without an id).
   plugin-check [ID]
-A plugin folder (the repo's plugins/<id>/ and the external ones): plugin.conf (known keys, values, a unique id), its
-icon, README.md (# title = the name, the fact lines last: Homepage:, Needs:, Keys:, the images it shows), module.jsonc
-(parses, known keys, the status command is executable), the menus (a <Name>Menu.qml opens from a module of its own;
-MenuHeader before the rows; no hex colours or font names: Theme.* and Theme.font / Icons.family), SHORTCUTS.md (lines the
-key list reads), the scripts' syntax (bash -n, ast.parse, luac -p). A plugins.txt line: its icon, and docs/plugins/<id>.md
-as a README. Findings as file:line: message, one per line; exit 1 if any, 2 for an unknown id."""
+A plugin folder (the repo's plugins/<id>/ and the external ones): plugin.conf (known keys, the required ones, values,
+a unique id, install and installed parse as shell), its icon, README.md (# title = the name, at least one fact line
+and the fact lines last: Homepage:, Needs:, Keys: (needed with bindings.lua), each - item on one line, the images it
+shows), module.jsonc (parses, known keys, no needs, a label, the status command is executable), the icons status emits,
+the menus (a <Name>Menu.qml opens from a module of its own; MenuHeader before the rows; no hex colours or font names:
+Theme.* and Theme.font / Icons.family), SHORTCUTS.md (lines the key list reads), the scripts' syntax (bash -n,
+ast.parse, luac -p if there is a luac). A plugins.txt line: its fields, icon, default and group, and
+docs/plugins/<id>.md as a README. Findings as file:line: message, one per line; exit 1 if any, 2 for an unknown id."""
 import ast, glob, json, os, re, shutil, subprocess, sys
 
 REPO = os.path.realpath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../.."))
@@ -153,6 +155,17 @@ def check_readme(path, name, keys_needed):
             find(path, n, f"{k}: empty")
     if keys_needed and "Keys" not in [k for _, k, _ in tail]:
         find(path, end or 1, "no Keys: line, but the plugin has bindings.lua")
+    # plugin-info ends a "- " item at its line break: a line that goes on after one would be a paragraph of its own
+    item = 0
+    for n, l in enumerate(lines, 1):
+        s = l.strip()
+        if s.startswith(("- ", "* ")):
+            item = n
+        elif item and s and not s.startswith(("#", "![")) and not re.match(r"(%s): .+$" % "|".join(FACTS), s):
+            find(path, n, f"the - item on line {item} goes on here: the launcher ends an item at the line break")
+            item = 0
+        else:
+            item = 0
     for n, l in enumerate(lines, 1):
         for img in re.findall(r"!\[[^\]]*\]\(([^)\s]+)", l):
             if not re.match(r"https?://", img) and not os.path.exists(os.path.join(os.path.dirname(path), img)):

@@ -13,8 +13,8 @@ One-line parts (a web app, an app from dnf or Flathub, with no files of their ow
 
 ## What a folder can hold
 
-Only `plugin.conf` is required. The other files are used only while the plugin is installed and on (`bin/` and
-`systemd/` are linked either way, see below).
+Only `plugin.conf` and `README.md` are required. The other files are used only while the plugin is installed and on
+(`bin/` and `systemd/` are linked either way, see below).
 
 | File | What it is | Ferry's |
 | --- | --- | --- |
@@ -70,10 +70,11 @@ plugin (adding it is the choice) better than one in this repo.
 `module.jsonc` is one module in [`config/topbar/modules.jsonc`](../config/topbar/modules.jsonc)'s format (its header
 explains every key), with a few differences:
 
-- `name` defaults to the id, and `needs` is the id: the module goes when the plugin does.
+- `name` defaults to the id. `needs` is implied (the id: the module goes when the plugin does), so leave it out.
 - `after`: the module it goes right of (`"system"`, `"tailscale"` …); without it, at the right end.
 - `size`: its icon size in px.
-- `label` and `glyph` (a Lucide name): its row in launcher › Settings › Top bar › Items, where it can be hidden.
+- `label` (required) and `glyph` (a Lucide name): its row in launcher › Settings › Top bar › Items, where it can be
+  hidden.
 - Its commands (`status`, `right`, `middle`, `drop`) run in the plugin's folder, so `bin/ferry add` finds Ferry's
   command.
 
@@ -156,12 +157,13 @@ and description come from `plugin.conf`; the README is the body. Follow this sha
    folder. The launcher shows the first picture.
 4. How to use it, as a list. Optional sections start with bold: **In a terminal**, **On the iPhone**.
 5. If it's experimental: "Experimental." and how to turn it off.
-6. Last, the fact lines, each on its own line and in this order (the ones that apply): `Homepage: https://…`,
-   `Needs: …`, `Keys: ⌘⇧D`. The launcher shows them as facts under the text.
+6. Last, the fact lines, each on its own line and in this order (the ones that apply, at least one):
+   `Homepage: https://…`, `Needs: …`, `Keys: ⌘⇧D` (required when the plugin has `bindings.lua`). The launcher shows
+   them as facts under the text.
 
 The launcher shows each paragraph and each `- ` item as plain text: links keep their text, `**` and backticks go. Write
 each `- ` item on one line, however long (as Ferry's README does): the launcher ends an item at the line break, and the
-rest of it would be a paragraph of its own.
+rest of it would be a paragraph of its own (`nightdrive plugin check` points out the line).
 
 ## Keys: bindings.lua and SHORTCUTS.md
 
@@ -212,20 +214,27 @@ installed test can be faked there.
 ## nightdrive plugin check
 
 `nightdrive plugin check [id]` checks one plugin, or all of them without an id, and exits with 1 and the findings if
-something is off. `nightdrive sandbox check` runs it too. It checks:
+something is off. `nightdrive sandbox check` runs it too. It checks a plugin folder (the repo's and the external ones):
 
-- `plugin.conf`: the known keys, the required ones, their values, and that the id isn't taken.
-- The icons exist (plugin.conf's `icon`, module.jsonc's `glyph`).
-- `README.md`: the `# Name` title, the fact lines last and in order, and the pictures it shows.
-- `module.jsonc` parses and has only known keys, and the status command is executable.
-- Each `<Name>Menu.qml` opens from a module of the plugin's.
-- The QML has no hex colours or font names, and `MenuHeader` comes before the rows.
+- The id: the folder's name is letters, digits, `-` and `_`, and no other plugin (or `plugins.txt` line) has it.
+- `plugin.conf`: only `key=value` lines and known keys, each once; `name`, `icon`, `description` and `installed` are
+  there; `default` is `on` or `off` and `group` one of the three; `install` and `installed` parse as shell (`bash -n`).
+- The icons are Lucide names: plugin.conf's `icon`, module.jsonc's `glyph`, and the ones `status` prints with `emit`
+  (or one of the bar's own in `config/topbar/icons`; a `pack:name` isn't checked).
+- `README.md` is there: the `# Name` title is plugin.conf's `name`; at least one fact line, all of them last, each once
+  and in order, none empty; `Keys:` when the plugin has `bindings.lua`; each `- ` item on one line; and the pictures
+  it shows exist.
+- `module.jsonc` parses and has only known keys, no `needs` and a `label`; the module has a `status` key or an
+  executable `./status`.
+- Each `<Name>Menu.qml` opens from a module of the plugin's, and has `MenuHeader` before the rows.
+- The QML files have no hex colours or font names.
 - `SHORTCUTS.md`'s lines are ones the key list reads (the format above).
-- The scripts' syntax: `bash -n`, Python's `ast.parse`, `luac -p` for Lua (skipped with a note without `luac`:
-  `sudo dnf install lua`).
+- The scripts' syntax: `bash -n`, Python's `ast.parse`, and `luac -p` for Lua only where `luac` is installed
+  (without it, a note lists the files left unchecked: `sudo dnf install lua`).
 
-Findings are `file:line: message` lines; an unknown id exits with 2. For a `plugins.txt` line it checks the icon and
-`docs/plugins/<id>.md` as its README.
+For a `plugins.txt` line it checks the eight fields, the icon, `default` and `group`, and `docs/plugins/<id>.md` (if
+there is one) as its README, with the same rules as above. Findings are `file:line: message` lines; an unknown id
+exits with 2.
 
 ## Off and on
 
