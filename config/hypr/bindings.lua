@@ -10,7 +10,7 @@ local browser     = "firefox"
 local fileManager = "nautilus"
 local scripts     = os.getenv("HOME") .. "/.config/hypr/scripts"
 
--- Optional parts that are installed (plugins.txt): a part's keys are bound only when it is there. `nightdrive plugins
+-- Installed optional parts (plugins.txt, plugins/): a part's keys are bound only when it is there. `nightdrive plugins
 -- installed` writes the list and reloads Hyprland when it changes (an installer from launcher › Install › Plugins).
 local plugins = {}
 do

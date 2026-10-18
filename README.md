@@ -120,7 +120,7 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
 | Smart home (optional) | [Home Assistant](https://www.home-assistant.io) (`install-home-assistant.sh`) | Home in the launcher: rooms and their devices, Enter turns one on/off or runs a scene, ←/→ sets a light's brightness; pinned devices in the top bar's Home menu; the webapp. Local, Tailscale and Nabu Casa addresses tried in order |
 | Phone (optional) | [LocalSend](https://localsend.org) receiver, [UxPlay](https://github.com/FDH2/UxPlay), Ferry (own, over `tailscale serve`) | files and text from a phone, asked first in a notification; an iPhone, iPad or Mac mirrored into a window; a mailbox both ways with a web page and Web Push. All experimental |
 | Mac Keyboard Shortcuts (optional) | [keyd](https://github.com/rvaiya/keyd), a Nautilus extension | ⌥⌫ deletes a word, ⌘⌫ to the line start; Files like Finder: Enter renames, ⌘O opens, ⌘⌫ to the trash |
-| Optional parts | everything marked optional above, Jottacloud, VS Code | chosen when installing; the rest later in launcher › System › Install (Recommended: apps Nightdrive sets up; Webapp; Plugins: desktop features like Screen Mirroring) or `nightdrive plugins` (`plugins.txt`). A part that isn't installed doesn't show anywhere: no launcher level, bar icon or keybinding. One installed later (the launcher, `dnf`, Flatpak) shows up by itself |
+| Optional parts | everything marked optional above, Jottacloud, VS Code | chosen when installing; the rest later in launcher › System › Install (Recommended: apps Nightdrive sets up; Webapp; Plugins: desktop features like Screen Mirroring) or `nightdrive plugins` (`plugins.txt` and [`plugins/`](plugins/README.md)). A part that isn't installed doesn't show anywhere: no launcher level, bar icon or keybinding. One installed later (the launcher, `dnf`, Flatpak) shows up by itself |
 
 ## Requirements
 
@@ -276,13 +276,14 @@ The full list is in [`config/hypr/SHORTCUTS.md`](config/hypr/SHORTCUTS.md).
   set, in a VM settings for it, on a Mac the layout unless it's Finnish. The login screen uses the same layout. A scale picked in the
   launcher (Settings › Display) wins over both.
 - **Per-machine overrides** go to `config/hypr/local.lua`, which git ignores.
-- **Keybindings** are all in [`config/hypr/bindings.lua`](config/hypr/bindings.lua).
-- **Optional parts** (recommended apps, ready-made web apps, plugins) are listed in [`plugins.txt`](plugins.txt), its last
-  column says which: a new one is a line there, its
-  keybinding goes in `bindings.lua`'s `optional` list and SHORTCUTS.md (with an `{id}` tag). A part with files of its own
-  (a top bar module and menu, a service, commands) is a folder in [`plugins/`](plugins), like
-  [`plugins/ferry`](plugins/ferry): plugins.txt's header explains its files. A plugin of your own can live in its own repo,
-  with the folder's files at its top: `nightdrive plugins add <git-url>` clones it. Apps that ⌘W should only hide are in
+- **Keybindings** are in [`config/hypr/bindings.lua`](config/hypr/bindings.lua), a plugin's in its own folder.
+- **Optional parts** (recommended apps, ready-made web apps, plugins): a one-line part, such as a web app or an app from
+  dnf or Flathub, is a line in [`plugins.txt`](plugins.txt), with its keybinding in `bindings.lua`'s `optional` list and
+  SHORTCUTS.md (with an `{id}` tag). A part with files of its own (a top bar module and menu, keys, a service, commands)
+  is a folder in [`plugins/`](plugins), like [`plugins/ferry`](plugins/ferry). [`plugins/README.md`](plugins/README.md)
+  explains how to make one, with a small example to copy. A plugin of your own can live in its own repo, with the
+  folder's files at its top: `nightdrive plugins add <git-url>` clones it.
+- **Background apps**: apps that ⌘W should only hide are in
   [`config/hypr/background-apps`](config/hypr/background-apps).
 - **Launcher apps**: only the apps in [`config/fuzzel/apps-allow.txt`](config/fuzzel/apps-allow.txt) are listed. Search finds
   the rest.

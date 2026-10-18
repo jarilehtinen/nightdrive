@@ -17,8 +17,9 @@ import Quickshell.Widgets
 // and the last row takes the words to Search. Install › Software and Remove: Enter on a row opens its details
 // in a wider card (hypr/scripts/pkg-info); there Enter installs or removes it, Tab takes the app from the other source,
 // Esc goes back to the results. Install › Recommended and Plugins open the same card (hypr/scripts/plugin-info: the long
-// text and screenshot from docs/plugins/<id>.md); there Enter runs the installer, an installed one's again, and Tab (or
-// its switch) turns an installed one off or on (`nightdrive plugins off|on`).
+// text and screenshot from a plugin folder's README.md, or docs/plugins/<id>.md for a plugins.txt line); there Enter runs
+// the installer, an installed one's again, and Tab (or its switch) turns an installed one off or on (`nightdrive plugins
+// off|on`).
 PanelWindow {
     id: win
 

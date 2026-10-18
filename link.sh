@@ -79,7 +79,7 @@ for u in nightdrive-update-check.service nightdrive-update-check.timer nightdriv
 mkdir -p "$HOME/.local/bin"
 for f in "$repo"/bin/*; do link "$f" "$HOME/.local/bin/$(basename "$f")"; done
 
-# Plugin folders (plugins/<id>/ and the external ones, plugins.txt explains them): their commands (bin/) and user units
+# Plugin folders (plugins/<id>/ and the external ones, see plugins/README.md): their commands (bin/) and user units
 # (systemd/), whether installed or not: an installer runs its own command and enables its unit. A unit that now comes
 # from somewhere else is restarted if it runs, so it runs the new file. An external one whose id the repo already has is
 # skipped, as bin/nightdrive skips it, and its files never replace one that is already there (link() would move that

@@ -21,7 +21,7 @@ check` (exit 1 with the findings) and `nightdrive sandbox shot NAME`, `ipc …` 
 - `pkill -f foo` matches its own shell: use `'[f]oo'`.
 - Hyprland's config is Lua: `hyprctl dispatch 'hl.dsp.…'`.
 - Quickshell's reload on save keeps the old version of a component in its own file (e.g. `TouchScroll.qml`, listed in
-  `qmldir`): restart it to test a change there (`qs kill; setsid -f qs`).
+  `qmldir`), and doesn't reload a plugin's menu at all: restart it to test a change there (`qs kill; setsid -f qs`).
 
 **Branches**
 - `main` is stable: stable-channel users get it with `nightdrive update`. Bigger changes are made in `dev` and merged into
@@ -37,8 +37,13 @@ check` (exit 1 with the findings) and `nightdrive sandbox shot NAME`, `ipc …` 
 - Nothing personal goes in the repo. Private additions use the git-ignored *local* slots (README › Make it yours).
 
 **Recipes**
-- *Bar icon and menu:* an entry in `topbar/modules.jsonc` (its place in the bar), a case in `topbar/scripts/status`
-  (`emit ICON TEXT CLASS`), and `quickshell/<Name>Menu.qml` (copy an existing menu). Size it with `nightdrive topbar adjust`.
+- *Plugin* (an optional feature: a bar icon and menu, keys, a service): a folder `plugins/<id>/` as `plugins/README.md`
+  explains (copy its Disk example, or `plugins/ferry`), then `nightdrive plugin check <id>`. After changing its
+  `module.jsonc` or adding a menu, run `nightdrive plugins installed`; after changing its keys, `hyprctl reload`.
+- *Bar icon and menu* in the core (on every desktop): an entry in `topbar/modules.jsonc` (its place in the bar), a case
+  in `topbar/scripts/status` (`emit ICON TEXT CLASS`), and `quickshell/<Name>Menu.qml` (copy an existing menu). Size it
+  with `nightdrive topbar adjust`. Every menu follows the rules in `plugins/README.md` › The menu: `MenuHeader` first, rows
+  `MenuRow`, section titles `MenuSection`, hint and error lines `MenuNote`, colours `Theme.*`.
 - *Launcher level:* in `Launcher.qml`, add an item to `rootItems`/`statics`, entries in `titles` and `parents`, rows in
   `items()`, and actions in `activate()`.
 - *Keybinding:* `hypr/bindings.lua`, and the same entry in `hypr/SHORTCUTS.md` (the launcher reads that file).

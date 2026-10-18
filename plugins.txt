@@ -3,16 +3,12 @@
 # later. The desktop hides a part that isn't installed: the launcher (Plugins.has), the top bar ("needs" in
 # topbar/modules.jsonc), the keybindings (hypr/bindings.lua) and their lines in SHORTCUTS.md (an {id} at the end).
 #
-# This file holds the one-line parts (web apps, an app from dnf or Flathub). A part with files of its own is a folder,
-# plugins/<id>/ (or ~/.local/share/nightdrive/plugins/<id>/ for one from elsewhere), with these fields in plugin.conf as
-# key=value lines: name, icon, description, default, install, installed, group (install and installed run in the
-# folder). Its other files, used only while it is installed: README.md (the launcher's page), module.jsonc and status
-# (a top bar module: modules.jsonc's keys, plus after = the module it goes right of, size = its icon size, label and
-# glyph for Settings › Top bar › Items; its commands run in the folder), <Name>Menu.qml (its menu; `import qs` brings
-# Theme, MenuRow…), bindings.lua (keys; gets {id, dir, mod, scripts} as ...), SHORTCUTS.md (lines for the key list),
-# and bin/ and systemd/ (linked to ~/.local/bin and ~/.config/systemd/user by link.sh). Ids are unique across both: an
-# external one (`nightdrive plugins add GIT-URL`, a repo with these files at its top) can't take an id the repo has.
-# `nightdrive plugins off ID` hides an installed part as if it weren't installed and stops its folder's units; `on` undoes it.
+# This file holds the one-line parts (web apps, an app from dnf or Flathub), with their page in docs/plugins/<id>.md. A
+# part with files of its own (a top bar module and menu, keys, a service, commands) is a folder, plugins/<id>/ (or
+# ~/.local/share/nightdrive/plugins/<id>/ for one from elsewhere: `nightdrive plugins add GIT-URL`), with these fields in
+# its plugin.conf as key=value lines: plugins/README.md explains them and the folder's other files. Ids are unique across
+# both, and an external plugin can't take an id the repo has. `nightdrive plugins off ID` hides an installed part as if
+# it weren't installed and stops its folder's units; `on` undoes it.
 #
 # id|Name|Lucide icon|One-line description|Default (on/off)|Installer|Installed when this shell test succeeds|Group
 #   Installer: a script in the repo root (install-<name>.sh), `flatpak APP-ID` (Flathub, per user), `webapp URL` (a

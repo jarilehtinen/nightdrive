@@ -1,0 +1,386 @@
+# Plugins
+
+A plugin is an optional part of Nightdrive with files of its own: a top bar icon and its menu, a service, commands,
+keys. Each one is a folder, `plugins/<id>/`, and the folder's name is its id. Users choose plugins when installing, or
+later in launcher › System › Install or with `nightdrive plugins`. A plugin that isn't installed, or is turned off,
+doesn't show anywhere: no bar icon, menu, keys or shortcut lines.
+
+This page is all you need to make one. [`ferry/`](ferry) is the full example (a bar module with a menu, a service, a
+command and a web page); [Disk](#a-small-example-disk), at the end, is a small one to copy.
+
+One-line parts (a web app, an app from dnf or Flathub, with no files of their own) stay lines in
+[`plugins.txt`](../plugins.txt), with their page in `docs/plugins/<id>.md`. Ids are unique across both.
+
+## What a folder can hold
+
+Only `plugin.conf` is required. The other files are used only while the plugin is installed and on (`bin/` and
+`systemd/` are linked either way, see below).
+
+| File | What it is | Ferry's |
+| --- | --- | --- |
+| `plugin.conf` | Name, icon, description, how to install it and how to tell it's installed | [plugin.conf](ferry/plugin.conf) |
+| `README.md` | Its page: the launcher shows it, and GitHub (and later the website) the same file. Pictures go in the folder | [README.md](ferry/README.md), [ferry.jpg](ferry/ferry.jpg) |
+| `module.jsonc` | A top bar module | [module.jsonc](ferry/module.jsonc) |
+| `status` | The module's state, one line of JSON | [status](ferry/status) |
+| `<Name>Menu.qml` | The menu a click on the module opens (more `.qml` files beside it if it needs them) | [FerryMenu.qml](ferry/FerryMenu.qml) |
+| `bindings.lua` | Keys | — |
+| `SHORTCUTS.md` | Its lines in the key list (⌘⇧K, launcher › Keybindings) | — |
+| `systemd/` | User units, linked to `~/.config/systemd/user` | [nightdrive-ferry.service](ferry/systemd/nightdrive-ferry.service) |
+| `bin/` | Commands, linked to `~/.local/bin` | [ferry](ferry/bin/ferry) |
+| anything else | Whatever it needs, used by its own files | [web/](ferry/web) (the phone's page) |
+
+`link.sh` links `bin/` and `systemd/` whether the plugin is installed or not, so its installer can use them. The rest is
+picked up by `nightdrive plugins installed`, which installing and turning a plugin off or on run: it lists the plugins
+that are on, with their modules and menus, in `~/.cache/nightdrive/plugins.d/`. The bar reads its modules from there,
+and Hyprland and the key list read `bindings.lua` and `SHORTCUTS.md` straight from the folders listed. Nothing is
+written into the repo.
+
+## plugin.conf
+
+`key=value` lines; a `#` line is a comment. The keys mean the same as the columns of `plugins.txt`. `name`, `icon`,
+`description` and `installed` are required (`nightdrive plugin check` says so); the rest have defaults.
+
+```
+# Ferry (README.md). install and installed run in this folder.
+name=Ferry
+icon=inbox
+description=Files and text both ways with an iPhone over Tailscale, no app (experimental)
+default=off
+install=sudo dnf install -y python3-cryptography qrencode && bin/ferry enable
+installed=systemctl --user -q is-enabled nightdrive-ferry.service
+group=plugin
+```
+
+| Key | What it is |
+| --- | --- |
+| `name` | Shown in the launcher and `install.sh`; the README's title is the same |
+| `icon` | A [Lucide](https://lucide.dev/icons) icon name |
+| `description` | One line. Ending it in `(experimental)` marks the plugin as experimental in the launcher |
+| `default` | `on`: ticked in `install.sh`'s list; `off` (default): not |
+| `install` | A shell command, or a script in the folder, run in the folder in a terminal (it may ask things, and `sudo` works). Running it again must be safe. Default: nothing to install |
+| `installed` | A shell test, run in the folder: the plugin is installed while it succeeds. Make it quick: every `nightdrive plugins` runs all of them |
+| `group` | Where it is listed: `plugin` (default, Install › Plugins: a feature of the desktop), `recommended` (Install › Recommended: an app Nightdrive sets up) or `webapp` |
+
+Pick `installed` so it follows what the installer did: a unit that is enabled, a command that exists. A plugin with
+nothing to install can use `installed=true`, but then everyone who has the folder has it on, which suits an external
+plugin (adding it is the choice) better than one in this repo.
+
+## The top bar module: module.jsonc and status
+
+`module.jsonc` is one module in [`config/topbar/modules.jsonc`](../config/topbar/modules.jsonc)'s format (its header
+explains every key), with a few differences:
+
+- `name` defaults to the id, and `needs` is the id: the module goes when the plugin does.
+- `after`: the module it goes right of (`"system"`, `"tailscale"` …); without it, at the right end.
+- `size`: its icon size in px.
+- `label` and `glyph` (a Lucide name): its row in launcher › Settings › Top bar › Items, where it can be hidden.
+- Its commands (`status`, `right`, `middle`, `drop`) run in the plugin's folder, so `bin/ferry add` finds Ferry's
+  command.
+
+```jsonc
+// Ferry's top bar module; its state: ./status; a click opens FerryMenu.qml; files dropped on the icon go to the box.
+{ "interval": 5, "drop": "bin/ferry add", "after": "system", "size": 17, "label": "Ferry (phone mailbox)", "glyph": "inbox" }
+```
+
+`status` is an executable script in the folder (the module runs it without a `status` key). It prints one line of JSON,
+`{"icon": "inbox", "text": "2", "class": "active"}`: the icon is a Lucide name (or `pack:name` from Iconify), the text
+comes after it, and the class is one of `off` (dimmed), `warning`, `critical`, `active` (highlighted) or `stale`. No
+icon and no text hides the module. The shared helper prints that line:
+
+```bash
+#!/bin/bash
+. ~/.config/topbar/scripts/emit          # emit ICON TEXT [CLASS]
+systemctl --user -q is-active nightdrive-ferry.service || { emit inbox "" off; exit; }
+n=$(jq '[.items[]? | select(.to == "computer" and (.seen | not))] | length' ~/.local/share/nightdrive/ferry/items.json 2>/dev/null)
+if (( ${n:-0} > 0 )); then emit inbox "$n" active; else emit inbox ""; fi
+```
+
+Keep it fast and quiet: it runs every `interval` seconds. `qs ipc call bar refreshModule ferry` (or
+`TopBar.refresh("ferry")` in QML) updates it right away, e.g. after the menu changed something.
+
+## The menu
+
+`<Name>Menu.qml` opens on a click on the module whose name is `<name>` (`FerryMenu.qml` for `ferry`; `"menu"` in
+module.jsonc picks another). It is loaded from the plugin's folder, and `import qs` brings the parts the core menus use.
+The structure is fixed so that every menu looks like one desktop; what goes inside is free (Deck's player, the
+calendar's grid, Ferry's drop zone and QR code are all fine).
+
+- **`MenuHeader` first**: `MenuHeader { width: parent.width; title: "Ferry" }`. Optional `subtitle` (dimmed, on the
+  right) and an on/off toggle (`showToggle`, `checked`, `onToggled`).
+- **Rows are `MenuRow`**: `icon`, `label`, `detail` (dimmed, on the right), `onClicked`. `action: true` is a button
+  (Open …), `danger: true` red, `active: true` the selected one, `interactive: false` an information row. Rows get
+  keyboard navigation (⌘⇧Space) for free.
+- **Section titles are `MenuSection`**: `title`, and an optional `subtitle` on the right (what the numbers below mean).
+- **Hint, error and empty-state lines are `MenuNote`**: `variant` `"dim"` (default), `"warning"` or `"danger"`; it
+  wraps, and an empty one takes no room. Not a `Text` of your own.
+- **Colours only from `Theme.*`** (`Theme.text`, `Theme.dim`, `Theme.primary`, `Theme.accent`, `Theme.warning`,
+  `Theme.danger` …), fonts only `Theme.font` and `Icons.family` (icons: `Icons.g("name")`). No hex colours or font
+  names: the themes change them.
+- **Commands with `Sh`** (`command: [...]` or `script: "…"`, the output in `onResult`), or
+  `Quickshell.execDetached([...])` for one that just starts something. Your own command's path:
+  `Qt.resolvedUrl("bin/ferry")` without the `file://` (FerryMenu.qml's `ferry`).
+- `Divider` is the separator line; `Slider`, `BusyDots` and `Plugins.has("tailscale")` (is another plugin on?) are there
+  too.
+
+The skeleton every menu has:
+
+```qml
+import QtQuick
+import Quickshell
+import qs
+
+// What the menu shows and does, in a sentence or two
+Column {
+    id: m
+    width: parent ? parent.width : 320
+    spacing: 8
+    signal close()                     // emit it to close the menu (after a row that opens a window, say)
+    // readonly property int preferredWidth: 340   // a wider card than the default 320
+
+    MenuHeader { width: parent.width; title: "Name" }
+    // MenuSection, MenuRow, MenuNote …
+}
+```
+
+A change to a plugin's menu doesn't reload on save like the core menus: restart Quickshell to see
+it (`qs kill; setsid -f qs`).
+
+## The page: README.md
+
+The launcher's page for the plugin (Install › Plugins › the plugin), GitHub's, and later the website's. The name, icon
+and description come from `plugin.conf`; the README is the body. Follow this shape:
+
+1. `# Name`, the same as `name` in plugin.conf.
+2. One paragraph: what it does for the user.
+3. A screenshot, if the plugin has something to see: `![Ferry's menu in the top bar](ferry.jpg)`, the file in the
+   folder. The launcher shows the first picture.
+4. How to use it, as a list. Optional sections start with bold: **In a terminal**, **On the iPhone**.
+5. If it's experimental: "Experimental." and how to turn it off.
+6. Last, the fact lines, each on its own line and in this order (the ones that apply): `Homepage: https://…`,
+   `Needs: …`, `Keys: ⌘⇧D`. The launcher shows them as facts under the text.
+
+The launcher shows each paragraph and each `- ` item as plain text: links keep their text, `**` and backticks go. Write
+each `- ` item on one line, however long (as Ferry's README does): the launcher ends an item at the line break, and the
+rest of it would be a paragraph of its own.
+
+## Keys: bindings.lua and SHORTCUTS.md
+
+`bindings.lua` is run by Hyprland's config while the plugin is on. It gets `{ id, dir, mod, scripts }` as `...`: `mod`
+is ⌘ (Super), `dir` the plugin's folder, `scripts` the core's `config/hypr/scripts`. One that fails is left out with a
+line in Hyprland's log; it can't take the other keys with it.
+
+```lua
+local p = ...
+hl.bind(p.mod .. " + SHIFT + D", hl.dsp.exec_cmd("qs ipc call menu toggle disk"))   -- opens the plugin's menu
+```
+
+Check that the key is free in [`config/hypr/bindings.lua`](../config/hypr/bindings.lua) and
+[`SHORTCUTS.md`](../config/hypr/SHORTCUTS.md). Then add the same key to the plugin's own `SHORTCUTS.md`, in that file's
+format: a `## Section` line, then each key as two spaces, the keys, two or more spaces and the description (lined up at
+column 22, as in the core's file). Its lines show only while the plugin is on, so they need no `{id}` tag:
+
+```
+## Disk
+  ⌘ ⇧ D              Disk: free space and what takes it
+```
+
+Hyprland reloads by itself when `nightdrive plugins installed` changes the list of plugins that are on. After editing
+`bindings.lua` of a plugin that is already on, run `hyprctl reload`.
+
+## Services and commands: systemd/ and bin/
+
+Units in `systemd/` are linked to `~/.config/systemd/user`, and files in `bin/` to `~/.local/bin`, by `link.sh` (and
+`nightdrive plugins add` for an external one). A name that something else already has is left alone, so an external
+plugin can't replace Nightdrive's commands or services. The installer enables the units (Ferry's `bin/ferry enable`),
+and `installed` usually tests for that. Name them so they can't clash: `nightdrive-<id>.service`, a command named after
+the plugin.
+
+## Trying it out
+
+```sh
+nightdrive plugins install disk    # runs its installer in a terminal, then gathers its parts
+nightdrive plugins installed       # after changing module.jsonc, or adding a menu file
+qs kill; setsid -f qs              # after changing its menu
+hyprctl reload                     # after changing its bindings.lua (SHORTCUTS.md shows right away)
+nightdrive plugin check disk       # the rules on this page
+```
+
+Or in the headless container (`nightdrive sandbox`, [docs/sandbox.md](../docs/sandbox.md)), which leaves your desktop
+alone: a folder put in the container's `~/.local/share/nightdrive/plugins/` is picked up as an external plugin, and its
+installed test can be faked there.
+
+## nightdrive plugin check
+
+`nightdrive plugin check [id]` checks one plugin, or all of them without an id, and exits with 1 and the findings if
+something is off. `nightdrive sandbox check` runs it too. It checks:
+
+- `plugin.conf`: the known keys, the required ones, their values, and that the id isn't taken.
+- The icons exist (plugin.conf's `icon`, module.jsonc's `glyph`).
+- `README.md`: the `# Name` title, the fact lines last and in order, and the pictures it shows.
+- `module.jsonc` parses and has only known keys, and the status command is executable.
+- Each `<Name>Menu.qml` opens from a module of the plugin's.
+- The QML has no hex colours or font names, and `MenuHeader` comes before the rows.
+- `SHORTCUTS.md`'s lines are ones the key list reads (the format above).
+- The scripts' syntax: `bash -n`, Python's `ast.parse`, `luac -p` for Lua (skipped with a note without `luac`:
+  `sudo dnf install lua`).
+
+Findings are `file:line: message` lines; an unknown id exits with 2. For a `plugins.txt` line it checks the icon and
+`docs/plugins/<id>.md` as its README.
+
+## Off and on
+
+A plugin that misbehaves can be turned off without uninstalling it:
+
+```sh
+nightdrive plugins off ferry    # the desktop treats it as not installed, and its units are stopped
+nightdrive plugins on ferry     # back as it was
+```
+
+Off hides its module, menu, launcher rows, keys and shortcut lines, and stops the units in its `systemd/`. They stay
+enabled, so its `installed` test still succeeds, and a drop-in keeps them from starting until it's on again. The state
+is an empty file, `~/.local/state/nightdrive/plugins-off/<id>`. The same switch is on the plugin's page in the launcher
+(Tab to it). The commands work even when the bar is stuck: every plugin's QML runs in the same Quickshell, with no
+isolation, so a terminal is the way out.
+
+`nightdrive update check` doesn't count commits that only touch the folders of plugins that aren't installed or are off.
+
+## A plugin of your own, in its own repo
+
+A plugin that isn't part of Nightdrive lives in a repo of its own, with the folder's files at its top (`plugin.conf` at
+the root). Name the repo after the id, optionally with a `nightdrive-plugin-` prefix: `nightdrive-plugin-disk` gets the
+id `disk`.
+
+```sh
+nightdrive plugins add https://github.com/you/nightdrive-plugin-disk   # clones it into ~/.local/share/nightdrive/plugins/disk
+nightdrive plugins install disk                                         # then installs it, as any plugin
+nightdrive plugins remove disk                                          # turns it off and deletes the folder
+```
+
+- `add` refuses an id that Nightdrive's own plugins (or `plugins.txt`) already have: give it another,
+  `nightdrive plugins add URL OTHER-ID`.
+- The launcher marks it as external. `nightdrive update` pulls it with Nightdrive, and `update check` counts its
+  commits.
+- `remove` stops if the folder has changes or commits of its own that aren't pushed: `--force` removes it anyway. What
+  the installer put elsewhere (packages, settings) stays.
+- Its code runs as the user, like Nightdrive's own: say what it does in its README, and keep it readable.
+
+To make it part of Nightdrive instead, send a pull request with the folder under `plugins/`.
+
+## A small example: Disk
+
+Free space in the top bar, and a menu that lists the disks and opens ncdu. Five files in `plugins/disk/` (or at the top
+of `nightdrive-plugin-disk`):
+
+`plugin.conf`
+
+```
+# Disk (README.md): free space in the top bar, and what takes it up (ncdu)
+name=Disk
+icon=hard-drive
+description=Free space in the top bar, and what takes it up
+default=off
+install=sudo dnf install -y ncdu
+installed=command -v ncdu
+group=plugin
+```
+
+`module.jsonc`
+
+```jsonc
+// Disk's top bar module: the free space on /, from ./status; a click opens DiskMenu.qml, a right click ncdu
+{ "interval": 60, "after": "system", "size": 16, "label": "Disk (free space)", "glyph": "hard-drive",
+  "right": "kitty --class floating-tui -e ncdu ~" }
+```
+
+`status` (executable: `chmod +x status`)
+
+```bash
+#!/bin/bash
+# Disk's top bar module (module.jsonc): the free space on /, orange when less than 10 % is left
+. ~/.config/topbar/scripts/emit
+read -r avail used < <(df -h --output=avail,pcent / | tail -1)
+if (( ${used%\%} > 90 )); then emit hard-drive "$avail" warning; else emit hard-drive "$avail"; fi
+```
+
+`DiskMenu.qml`
+
+```qml
+import QtQuick
+import Quickshell
+import qs
+
+// Disk: the mounted disks and their free space (df); a click opens one in Files, and the last row shows what takes up
+// the home folder (ncdu in a terminal)
+Column {
+    id: m
+    width: parent ? parent.width : 320
+    spacing: 8
+    signal close()
+
+    property var disks: []           // [{ mount, size, avail, used }], df's lines
+    property string error: ""        // df's message if it failed
+
+    Component.onCompleted: df.running = true
+
+    Sh {
+        id: df
+        script: "df -h --output=target,size,avail,pcent -x tmpfs -x devtmpfs -x efivarfs | tail -n +2"
+        onResult: text => {
+            if (df.exitCode !== 0) { m.error = text.trim() || "df failed"; return }
+            m.disks = text.trim().split("\n").filter(l => l).map(l => {
+                const f = l.trim().split(/\s+/)
+                return { mount: f[0], size: f[1], avail: f[2], used: parseInt(f[3]) }
+            })
+        }
+    }
+
+    MenuHeader { width: parent.width; title: "Disk" }
+
+    MenuNote { variant: "danger"; text: m.error }
+
+    MenuSection { title: "Disks"; subtitle: "free" }
+    Column {
+        width: parent.width
+        spacing: 2
+        Repeater {
+            model: m.disks
+            delegate: MenuRow {
+                required property var modelData
+                width: m.width
+                icon: "hard-drive"
+                label: modelData.mount
+                detail: modelData.avail + " of " + modelData.size
+                danger: modelData.used > 90
+                onClicked: { Quickshell.execDetached(["xdg-open", modelData.mount]); m.close() }
+            }
+        }
+    }
+
+    Divider { padBottom: 6 }
+    MenuRow {
+        width: parent.width
+        icon: "folder-search"
+        action: true
+        label: "What takes up the space"
+        onClicked: { Quickshell.execDetached(["kitty", "--class", "floating-tui", "-e", "ncdu", Quickshell.env("HOME")]); m.close() }
+    }
+}
+```
+
+`README.md`
+
+```markdown
+# Disk
+
+How much room is left on the disk, at a glance in the top bar, and what takes it up when it runs low.
+
+- The top bar shows the free space on the system disk, orange when less than 10 % is left.
+- Its menu lists the mounted disks with their free space: a click opens one in Files.
+- What takes up the space (also a right click on the icon) opens ncdu on your home folder: browse the biggest folders and delete what you don't need.
+
+Homepage: https://dev.yorhel.nl/ncdu
+Keys: ⌘⇧D
+```
+
+Add `bindings.lua` and `SHORTCUTS.md` from [Keys](#keys-bindingslua-and-shortcutsmd) for ⌘⇧D, then
+`nightdrive plugins install disk` and `nightdrive plugin check disk`.
