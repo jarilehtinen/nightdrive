@@ -13,6 +13,27 @@ link() {
   echo "linked      $dst -> $src"
 }
 
+# Links into the repo whose file is gone (it moved, e.g. into the plugin folders on 18.10.2026 or with a branch switch,
+# or was removed) go before anything is linked again: link() would move a dead one aside as a .bak file, which in
+# ~/.local/bin is a command and in ~/.config/systemd/user a unit. Only where link.sh (and plugins installed) links, and
+# only dead links into the repo (or an external plugin's folder, also a removed one's): a link of your own to somewhere
+# else stays. A Nightdrive unit's dead .wants link goes too (enable points it at the unit's file in the repo, not at the
+# link), and the unit is enabled again once its new link is in place (below): otherwise it wouldn't start at the next
+# login.
+external=$HOME/.local/share/nightdrive/plugins   # plugins from elsewhere (nightdrive plugins add)
+reenable=()
+for l in "$HOME"/.config/* "$HOME"/.config/{systemd/user,keyd,alsa,voxtype,gtk-3.0,gtk-4.0}/* \
+  "$HOME"/.config/systemd/user/*.wants/* "$HOME"/.config/fontconfig/conf.d/* "$HOME"/.config/wireplumber/wireplumber.conf.d/* \
+  "$HOME"/.local/bin/* "$HOME"/.local/share/* "$HOME"/.local/share/{applications,nightdrive,easyeffects/output,voxtype/quickshell}/* \
+  "$HOME"/.local/share/nautilus-python/extensions/* "$HOME"/.bashrc.d/* "$HOME"/.cache/nightdrive/plugins.d/icons/*; do
+  [[ -L $l && ! -e $l ]] || continue
+  t=$(readlink "$l")
+  if [[ $l == *.wants/* && ${l##*/} == nightdrive-* ]] || [[ $t == "$repo/"* || $t == "$external/"* ]]; then
+    [[ $l == *.wants/* ]] && reenable+=("${l##*/}")
+    rm "$l" && echo "removed     $l (its file is gone)"
+  fi
+done
+
 for d in hypr topbar fuzzel kitty quickshell screensaver greeter; do   # greeter: the lock at startup (greeter/lock.qml) and the preview
   link "$repo/config/$d" "$HOME/.config/$d"
 done
@@ -52,16 +73,16 @@ link "$repo/config/applications/nm-connection-editor.desktop" "$HOME/.local/shar
 # macbook_mic alias for dictation (voxtype): the MacBook's mic on Apple Silicon, the default mic elsewhere
 if [[ $("$repo/config/hypr/scripts/platform" name) == asahi ]]; then asound=asoundrc; else asound=asoundrc.generic; fi
 link "$repo/config/alsa/$asound" "$HOME/.config/alsa/asoundrc"
-# Mac Keyboard Shortcuts plugin (plugins/keyd): keyd-application-mapper's per-app keys. The link from before the folder
-# (config/keyd, 18.10.2026) is dead: it goes first, or link() would keep it as a .bak file.
-# The mapper dies when its app.conf goes for a moment (a branch switch moves the file), and the plugin's hyprland.lua
-# starts it only with Hyprland: it starts again here while the plugin is on. It reads the windows from Hyprland, so
-# only inside a Hyprland session.
-[[ -L $HOME/.config/keyd/app.conf && ! -e $HOME/.config/keyd/app.conf ]] && rm "$HOME/.config/keyd/app.conf"
+# Mac Keyboard Shortcuts plugin (plugins/keyd): keyd-application-mapper's per-app keys (the link from before the folder,
+# config/keyd, went with the dead links above). The mapper dies when its app.conf goes for a moment (a branch switch
+# moves the file), and the plugin's hyprland.lua starts it only with Hyprland: it starts again here while the plugin is
+# on. It reads the windows from Hyprland, so only inside a Hyprland session.
 if [[ -f /etc/keyd/default.conf ]]; then
   link "$repo/plugins/keyd/app.conf" "$HOME/.config/keyd/app.conf"
+  # The mapper is a Python script: its command line starts with python3 and its path. Matching the name anywhere would
+  # count any process that mentions it (a grep, an editor), and another user's mapper doesn't read this app.conf.
   if [[ ! -e $HOME/.local/state/nightdrive/plugins-off/keyd && -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]] \
-    && ! pgrep -f '[k]eyd-application-mapper' >/dev/null; then
+    && ! pgrep -u "$UID" -f '^([^ ]*/)?python3?[0-9.]* ([^ ]*/)?keyd-application-mapper( |$)' >/dev/null; then
     setsid sg keyd -c "keyd-application-mapper -d" </dev/null >/dev/null 2>&1 &
     echo "started     keyd-application-mapper"
   fi
@@ -71,17 +92,6 @@ deck_desktop=$HOME/.local/share/applications/deck.desktop
 if [[ -f $deck_desktop ]] && grep -q '/\.config/hypr/scripts/deck-open' "$deck_desktop"; then
   sed -i 's#/\.config/hypr/scripts/deck-open#/.local/bin/deck-open#' "$deck_desktop" && echo "fixed       $deck_desktop"
 fi
-
-# Links into the repo whose file is gone (it moved or was removed, e.g. Ferry into plugins/ferry, 18.10.2026) go before
-# anything is linked again: link() would move a dead one aside as a .bak file, which in ~/.local/bin is a command. A unit
-# that was enabled (its .wants link was dead too) is enabled again once its new link is in place, below.
-reenable=()
-external=$HOME/.local/share/nightdrive/plugins   # plugins from elsewhere (nightdrive plugins add); a removed one's links go too
-for l in "$HOME"/.local/bin/* "$HOME"/.config/systemd/user/* "$HOME"/.config/systemd/user/*.wants/* "$HOME"/.local/share/nautilus-python/extensions/*; do
-  [[ -L $l && ! -e $l && ( $(readlink "$l") == "$repo/"* || $(readlink "$l") == "$external/"* ) ]] || continue
-  [[ $l == *.wants/* ]] && reenable+=("${l##*/}")
-  rm "$l" && echo "removed     $l (its file is gone)"
-done
 
 # Session target: brings up graphical-session.target, which xdg-desktop-portal needs (started by hyprland.lua)
 link "$repo/config/systemd/user/nightdrive-session.target" "$HOME/.config/systemd/user/nightdrive-session.target"

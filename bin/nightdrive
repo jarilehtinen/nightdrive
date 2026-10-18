@@ -165,21 +165,29 @@ check() {
 
 # update: pull Nightdrive (and a private overlay and Deck's source, if any), relink, install new packages, dnf upgrade,
 # Flatpak apps, reload the desktop (launcher › Update runs this). Never pulls over local changes: a repo with uncommitted
-# work or its own commits is skipped with a note.
+# work or its own commits is skipped with a note. Whatever was skipped or failed is listed at the end with what to run
+# by hand, and the exit status is then 1: "up to date" only when every step ran.
 update() {
+  local missed=() can_sudo=1
+  # sudo asks for the password only on a terminal. Without one (an agent, ssh with a command) it would fail or wait, so
+  # the steps that need it are skipped and listed, unless sudo works without asking (a cached password, NOPASSWD).
+  [[ -t 0 ]] || sudo -n true 2>/dev/null || can_sudo=0
   deck=0
   while read -r r; do
     name=$(basename "$r")
     echo "==> $name"
-    git -C "$r" fetch -q || { echo "    couldn't fetch, skipping"; continue; }
+    git -C "$r" fetch -q || { echo "    couldn't fetch, skipping"; missed+=("$name: couldn't fetch, not updated"); continue; }
     n=$(behind "$r")
     if (( n == 0 )); then echo "    up to date"; continue; fi
     if [[ -n $(git -C "$r" status --porcelain --untracked-files=no) ]]; then
-      echo "    $n new, but it has uncommitted changes: skipped (commit or stash them, then run this again)"; continue
+      echo "    $n new, but it has uncommitted changes: skipped (commit or stash them, then run this again)"
+      missed+=("$name: $n new, not pulled over uncommitted changes (commit or stash them in $r)"); continue
     fi
     u=$(upstream "$r")
     git -C "$r" --no-pager log --format='    %s' "HEAD..$u"
-    git -C "$r" merge -q --ff-only "$u" || { echo "    has its own commits: skipped (rebase it by hand)"; continue; }
+    git -C "$r" merge -q --ff-only "$u" || {
+      echo "    has its own commits: skipped (rebase it by hand)"; missed+=("$name: has its own commits, not pulled: git -C $r pull --rebase"); continue
+    }
     [[ $r == "$(readlink -f "${DECK_SRC:-$HOME/.local/src/deck}")" ]] && deck=1
   done < <(repos | sort -u)
 
@@ -188,16 +196,17 @@ update() {
   while read -r r; do
     [[ -x $r/link.sh ]] || continue
     echo "==> Links ($(basename "$r"))"; "$r/link.sh" | grep -v '^ok '
+    (( PIPESTATUS[0] == 0 )) || missed+=("Links ($(basename "$r")): $r/link.sh")
   done < <(echo "$repo"; repos | sort -u | grep -vxF "$repo" | grep -vF "$external/")   # not an external plugin's own script
 
   # Fonts, ble.sh, GTK settings, default apps (the same steps as install.sh): what was added since this install
   echo "==> Fonts, ble.sh, GTK, default apps"
-  "$repo/setup-user.sh" >/dev/null || echo "    failed: run $repo/setup-user.sh to see why"
+  "$repo/setup-user.sh" >/dev/null || { echo "    failed: run $repo/setup-user.sh to see why"; missed+=("Fonts, ble.sh, GTK: $repo/setup-user.sh"); }
 
   echo "==> New packages"
   want=$(cat "$repo/packages.txt" "$repo/packages-hyprland.txt" 2>/dev/null | grep -vE '^\s*(#|$)')
   missing=$(for p in $want; do rpm -q --whatprovides "$p" >/dev/null 2>&1 || echo "$p"; done)
-  if [[ -n $missing ]]; then echo "    $(echo $missing)"; sudo dnf install -y $missing; else echo "    none"; fi
+  if [[ -n $missing ]]; then echo "    $(echo $missing)"; as_root "New packages" sudo dnf install -y $missing; else echo "    none"; fi
 
   # doubletake (Screen Mirroring, plugins/mirroring): built again when the tested commit in its install.sh changes.
   # Not installed when missing: it was left out at install time (or not added in Install › Plugins).
@@ -205,7 +214,7 @@ update() {
     echo "==> doubletake (Screen Mirroring)"
     dt_want=$(sed -nE 's/^ref=\$\{DOUBLETAKE_REF:-([0-9a-f]+)\}.*/\1/p' "$repo/plugins/mirroring/install.sh")
     dt_have=$(git -C "$HOME/.local/src/doubletake" rev-parse HEAD 2>/dev/null || true)
-    if [[ -z $dt_want || $dt_have != "$dt_want"* ]]; then "$repo/plugins/mirroring/install.sh"; else echo "    up to date"; fi
+    if [[ -z $dt_want || $dt_have != "$dt_want"* ]]; then as_root "doubletake" "$repo/plugins/mirroring/install.sh"; else echo "    up to date"; fi
   fi
 
   # The system files install.sh puts in place: copied again when the repo's version differs (or is missing), so an
@@ -214,8 +223,9 @@ update() {
   changed=0 copied=0
   while read -r src dst mode; do
     cmp -s "$repo/config/system/$src" "$dst" && continue
-    echo "    $dst"; copied=1; sudo install -Dm"$mode" "$repo/config/system/$src" "$dst"
-    [[ $dst == /etc/systemd/logind.conf.d/* ]] && changed=1
+    echo "    $dst"; copied=1
+    as_root "System files" sudo install -Dm"$mode" "$repo/config/system/$src" "$dst" \
+      && [[ $dst == /etc/systemd/logind.conf.d/* ]] && changed=1
   done <<'LIST'
 nightdrive-sleep /usr/lib/systemd/system-sleep/nightdrive-sleep 755
 logind-ignore-sleep-key.conf /etc/systemd/logind.conf.d/50-ignore-sleep-key.conf 644
@@ -225,11 +235,12 @@ LIST
   # Mac Keyboard Shortcuts (plugins/keyd): its /etc config follows the repo's, if the plugin is installed
   if [[ -f /etc/keyd/default.conf ]] && ! cmp -s "$repo/plugins/keyd/default.conf" /etc/keyd/default.conf; then
     echo "    /etc/keyd/default.conf"; copied=1
-    sudo install -Dm644 "$repo/plugins/keyd/default.conf" /etc/keyd/default.conf && sudo keyd reload
+    as_root "System files" sudo install -Dm644 "$repo/plugins/keyd/default.conf" /etc/keyd/default.conf \
+      && as_root "System files" sudo keyd reload
   fi
   # The file the dnf hook touches; Quickshell watches it only if it exists when it starts (restarted below)
-  [[ -e /var/lib/nightdrive/dnf-changed ]] || sudo install -Dm644 /dev/null /var/lib/nightdrive/dnf-changed
-  (( changed )) && sudo systemctl kill -s HUP systemd-logind
+  [[ -e /var/lib/nightdrive/dnf-changed ]] || as_root "System files" sudo install -Dm644 /dev/null /var/lib/nightdrive/dnf-changed
+  (( changed )) && as_root "System files" sudo systemctl kill -s HUP systemd-logind
   (( copied )) || echo "    up to date"
 
   # The login screen's and the boot splash's copies in /etc/greetd and /usr/share/plymouth: installed again when the repo's
@@ -245,31 +256,34 @@ LIST
       mkdir -p "${asked%/*}"; echo "${a:-y}" > "$asked"
       if [[ ! $a =~ ^[Nn] ]]; then
         "$repo/config/splash/install.sh" | grep -v '^Done'
-        "$repo/config/greeter/switch.sh" autologin >/dev/null
+        (( PIPESTATUS[0] == 0 )) || missed+=("Boot splash: $repo/config/splash/install.sh")
+        as_root "Login screen" "$repo/config/greeter/switch.sh" autologin >/dev/null
         did=1
       fi
     fi
     if [[ $(cat /etc/greetd/greeter/version 2>/dev/null) != "$(git -C "$repo/config/greeter" rev-parse HEAD:./ 2>/dev/null)" ]]; then
-      echo "    login screen"; "$repo/config/greeter/install.sh" >/dev/null; did=1
+      echo "    login screen"; as_root "Login screen" "$repo/config/greeter/install.sh" >/dev/null && did=1
     fi
   fi
   if [[ $(plymouth-set-default-theme 2>/dev/null) == nightdrive ]] &&
      [[ $(cat /usr/share/plymouth/themes/nightdrive/version 2>/dev/null) != "$(git -C "$repo/config/splash" rev-parse HEAD:./ HEAD:../greeter/background.jpg 2>/dev/null)" ]]; then
-    echo "    boot splash (rebuilds the initramfs, a minute or two)"; "$repo/config/splash/install.sh" >/dev/null; did=1
+    echo "    boot splash (rebuilds the initramfs, a minute or two)"; as_root "Boot splash" "$repo/config/splash/install.sh" >/dev/null && did=1
   fi
   (( did )) && echo "    takes effect from the next boot" || echo "    up to date"
 
   echo "==> System update"
-  sudo dnf upgrade --refresh -y
+  as_root "System update" sudo dnf upgrade --refresh -y
 
   echo "==> Flatpak apps"
   flatpaks=$(grep -vE '^\s*(#|$)' "$repo/flatpaks.txt" 2>/dev/null)   # the core ones; optional apps are plugins
   # Added by install.sh; an install from before Flatpak support (13.10.2026) doesn't have it yet
   flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-  [[ -n $flatpaks ]] && flatpak install --user -y --noninteractive flathub $flatpaks   # already installed ones are skipped
-  flatpak update --user -y --noninteractive
+  [[ -n $flatpaks ]] && { flatpak install --user -y --noninteractive flathub $flatpaks \
+    || missed+=("Flatpak apps: flatpak install --user flathub $(echo $flatpaks)"); }   # already installed ones are skipped
+  flatpak update --user -y --noninteractive || missed+=("Flatpak apps: flatpak update --user")
 
-  (( deck )) && { echo "==> Deck (rebuild)"; DECK_SRC=${DECK_SRC:-$HOME/.local/src/deck} "$repo/plugins/deck/install.sh"; }
+  (( deck )) && { echo "==> Deck (rebuild)"; DECK_SRC=${DECK_SRC:-$HOME/.local/src/deck} "$repo/plugins/deck/install.sh" \
+    || missed+=("Deck (rebuild): $repo/plugins/deck/install.sh"); }
 
   plugins_installed >/dev/null     # the optional parts' list, before the reload reads it (hypr/bindings.lua)
   "$repo/config/fuzzel/sync-apps" >/dev/null 2>&1 || true   # the launcher's app list, as at the end of install.sh
@@ -289,7 +303,25 @@ LIST
 
   mkdir -p "$cache"; echo 0 > "$cache/updates"; echo 0 > "$cache/updates-notified"
   echo
+  if (( ${#missed[@]} )); then
+    echo "Nightdrive is updated, but these steps were skipped or failed:"
+    printf '  - %s\n' "${missed[@]}"
+    (( can_sudo )) || echo "Run nightdrive update in a terminal (sudo asks for the password there), or the commands above."
+    return 1
+  fi
   echo "Nightdrive is up to date."
+}
+
+# as_root WHAT CMD…: an update step that needs sudo (CMD is sudo itself, or a script that runs it). Skipped without a
+# way to ask for the password (can_sudo, update); skipped or failed, it goes to update's list with the command.
+as_root() {
+  local what=$1; shift
+  if (( ! can_sudo )); then
+    echo "    skipped: needs sudo, and there's no terminal to ask for the password" >&2
+    missed+=("$what: $*"); return 1
+  fi
+  "$@" && return
+  echo "    failed: $*" >&2; missed+=("$what: $*"); return 1
 }
 
 # Plugins: the lines of plugins.txt, and plugin folders with a plugin.conf (the same fields as key=value; both formats
