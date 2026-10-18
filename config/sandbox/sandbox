@@ -32,7 +32,7 @@ running() { [[ $(podman container inspect -f '{{.State.Running}}' "$NAME" 2>/dev
 in_box() { podman exec "$NAME" "$inside" "$@"; }
 
 # The image is labelled with a hash of what goes into it, so up rebuilds it only when one of them changed
-inputs() { cat "$here/Containerfile" "$repo/packages.txt" "$repo/packages-hyprland.txt" | sha256sum | cut -c1-16; }
+inputs() { cat "$here/Containerfile" "$repo/packages.txt" "$repo/packages-hyprland.txt" "$repo/setup-hyprland-repo.sh" | sha256sum | cut -c1-16; }
 build() {
   mkdir -p "$state"
   echo "Building the image $IMAGE (from scratch ~10 min and ~4.5 GB, KWin brings much of KDE): log in $state/build.log"

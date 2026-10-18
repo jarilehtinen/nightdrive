@@ -36,11 +36,9 @@ RUN meson setup build --prefix=/usr/local --buildtype=release && ninja -C build 
 
 FROM registry.fedoraproject.org/fedora:44
 
-# Same COPR setup as install.sh (includepkgs keeps it from replacing Fedora's packages)
-RUN dnf -y install dnf-plugins-core \
- && dnf -y copr enable arcaneon/arcos \
- && f=$(ls /etc/yum.repos.d/*arcaneon*arcos*.repo) \
- && sed -i '/^\[copr:/a includepkgs=hypr*,aquamarine,xdg-desktop-portal-hyprland,uwsm,glaze' "$f"
+# The same Hyprland COPR as install.sh (setup-hyprland-repo.sh: includepkgs keeps it from replacing Fedora's packages)
+COPY setup-hyprland-repo.sh /tmp/nd/
+RUN /tmp/nd/setup-hyprland-repo.sh
 
 COPY packages-hyprland.txt packages.txt /tmp/nd/
 RUN pkgs() { grep -vE '^\s*(#|$)' "$1" | tr '\n' ' '; } \

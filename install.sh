@@ -194,12 +194,8 @@ fi
 echo "==> System update (a fresh install from an older image would otherwise get a half-updated KDE: file conflicts)"
 sudo dnf upgrade --refresh -y
 
-echo "==> Hyprland (COPR arcaneon/arcos, Hyprland's own packages only)"
-# Fedora's own repos have no Hyprland for aarch64. includepkgs keeps the COPR from replacing other packages.
-sudo dnf copr enable -y arcaneon/arcos
-repo_file=$(ls /etc/yum.repos.d/*arcaneon*arcos*.repo)
-grep -q '^includepkgs=' "$repo_file" || \
-  sudo sed -i '/^\[copr:/a includepkgs=hypr*,aquamarine,xdg-desktop-portal-hyprland,uwsm,glaze' "$repo_file"
+echo "==> Hyprland (Nightdrive's COPR jarilehtinen/nightdrive, Hyprland's own packages only)"
+"$repo/setup-hyprland-repo.sh"
 sudo dnf install -y $(pkgs "$repo/packages-hyprland.txt")
 
 echo "==> Fedora packages"

@@ -2,7 +2,7 @@
 # uwsm's failed unit monitor (launcher › Settings › Notifications): FUMonitor's "Failed unit detected" and "Unit recovered"
 # notifications. uwsm up to 0.26 enables fumon.service globally with a preset (/etc/systemd/user), which a user's
 # `disable` can't undo, so off masks it (~/.config/systemd/user/fumon.service -> /dev/null): no package update, link.sh
-# or install.sh touches that, so the choice stays. uwsm 0.27 (arcaneon/arcos) no longer has fumon at all.
+# or install.sh touches that, so the choice stays. uwsm 0.27 no longer has fumon at all.
 #   fumon status       on | off | none (no fumon on this machine)
 #   fumon on|off
 unit=fumon.service

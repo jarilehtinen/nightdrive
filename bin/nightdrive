@@ -218,6 +218,13 @@ update() {
   echo "==> Fonts, ble.sh, GTK, default apps"
   "$repo/setup-user.sh" >/dev/null || { echo "    failed: run $repo/setup-user.sh to see why"; missed+=("Fonts, ble.sh, GTK: $repo/setup-user.sh"); }
 
+  # The Hyprland stack's COPR (setup-hyprland-repo.sh): set up again only when it isn't as the repo wants, e.g. still
+  # arcaneon/arcos (until 19.10.2026). Before New packages and the System update, which then take the packages from it.
+  if ! "$repo/setup-hyprland-repo.sh" --check; then
+    echo "==> Hyprland repo"
+    as_root "Hyprland repo" "$repo/setup-hyprland-repo.sh"
+  fi
+
   echo "==> New packages"
   want=$(cat "$repo/packages.txt" "$repo/packages-hyprland.txt" 2>/dev/null | grep -vE '^\s*(#|$)')
   missing=$(for p in $want; do rpm -q --whatprovides "$p" >/dev/null 2>&1 || echo "$p"; done)

@@ -1,6 +1,8 @@
-# From the COPR repo arcaneon/arcos (the only aarch64 build for Fedora 44)
+# From Nightdrive's COPR jarilehtinen/nightdrive (setup-hyprland-repo.sh; Fedora 44 has no Hyprland)
 hyprland
 hyprlock
 hypridle
 hyprpolkitagent
 xdg-desktop-portal-hyprland
+# Hyprland's dialogs (hyprland-dialog and others): it warns at every start without them
+hyprland-guiutils

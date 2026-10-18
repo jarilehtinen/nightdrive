@@ -320,8 +320,10 @@ The full list is in [`config/hypr/SHORTCUTS.md`](config/hypr/SHORTCUTS.md).
 ## Good to know
 
 - **Known issues** that have a workaround but no fix in Nightdrive yet are in [docs/known-issues.md](docs/known-issues.md).
-- **Hyprland comes from a COPR.** Fedora's own repositories have none for aarch64, so on every machine the installer takes
-  the `hypr*` packages from the COPR `arcaneon/arcos` and limits that repository to them.
+- **Hyprland comes from Nightdrive's own COPR.** Fedora's own repositories have no Hyprland, so on every machine the
+  installer takes the Hyprland packages from [`jarilehtinen/nightdrive`](https://copr.fedorainfracloud.org/coprs/jarilehtinen/nightdrive/)
+  (aarch64 and x86_64; specs in [nightdrive-packages](https://github.com/jarilehtinen/nightdrive-packages)) and limits
+  that repository to them.
 - **Asahi specifics.** The notch area needs the `appledrm.show_notch=1` kernel argument, which the installer sets. The 16 KiB memory
   pages break a few Electron apps, but 1Password works.
 - **The Claude usage menu** reads your plan's limits with Claude Code's own sign-in, so Claude Code must have been run once.
