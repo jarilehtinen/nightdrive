@@ -36,6 +36,13 @@ check` (exit 1 with the findings) and `nightdrive sandbox shot NAME`, `ipc …` 
 - Machine-specific values are named constants at the top of each file.
 - Nothing personal goes in the repo. Private additions use the git-ignored *local* slots (README › Make it yours).
 
+**Documentation**
+- The README, `docs/*.md`, each plugin's `README.md` and the `SHORTCUTS.md` files are the documentation, and the website
+  (nightdrive.sh: Documentation, Plugins) is built from them, not written separately. So a change users can see updates
+  them in the same commit: a new feature, key, command or option gets its line there.
+- A new `##` / `###` section in the README or a new file in `docs/` also needs a place in the website's contents
+  (`data/docs.json` in the nightdrive-website repo). Its build (`tools/build.sh`) lists what has none and stops.
+
 **Recipes**
 - *Plugin* (an optional feature: a bar icon and menu, keys, a service): a folder `plugins/<id>/` as `plugins/README.md`
   explains (copy its Disk example, or `plugins/ferry`), then `nightdrive plugin check <id>`. After changing its
