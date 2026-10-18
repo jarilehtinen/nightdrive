@@ -989,7 +989,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
             if (item.value === channel) { shake.restart(); return }
             if (armed !== item.name) { armed = item.name; disarm.restart(); return }
             armed = ""; win.open = false
-            Quickshell.execDetached(term('"$HOME/.local/bin/nightdrive" channel "$1" && "$HOME/.local/bin/nightdrive" update', item.value))
+            Quickshell.execDetached(term('"$HOME/.local/bin/nightdrive" channel "$1" --update', item.value))
         }
         else if (item.kind === "snipk") { snipTrigger = item.value; go("sniptext") }
         else if (item.kind === "snipadd") {
