@@ -1,18 +1,24 @@
 #!/usr/bin/python3
 """Ferry: a mailbox between this computer and your phone, over Tailscale (experimental).
 
+    ferry send [FILE…|TEXT]       files, or a text; with nothing: what is piped in, or the clipboard
+    ferry list                    what's in the box, numbered: what was received (1 is the newest), then what was sent
+    ferry get [N]                 an item (1, the newest received, by default): a text printed, a file copied here
+    ferry open | copy N           a file opened, a text to the clipboard
+    ferry rm N…                   items out of the box (a received file stays in Downloads)
+    ferry clear [received|sent]   everything, or one direction, out of the box
+    ferry url | qr                the phone's address (https://<this machine>.<tailnet>.ts.net/ferry/), or its QR code
     ferry status                  on | off
     ferry enable | disable        the server on/off (nightdrive-ferry.service) and its address on the tailnet
     ferry run                     the server itself (the service)
-    ferry url                     the phone's address: https://<this machine>.<tailnet>.ts.net/ferry/
-    ferry list                    what's in the box, for the top bar's menu (JSON)
-    ferry add FILE…               leaves files (or a folder's files) for the phone
+    ferry list --json             the box and Ferry's state, for the top bar's menu
+    ferry qr --svg                the QR code as an SVG file (prints its path), for the menu
+    ferry add FILE…               leaves files (or a folder's files) for the phone, without a word (the menu's drop)
     ferry pick                    the same, files chosen in a file dialog (several at once); then the menu says "Sent"
     ferry text TEXT               leaves a text for the phone
-    ferry send-clipboard          leaves the clipboard's text for the phone
-    ferry copy | open | remove ID an item: its text to the clipboard, its file opened, out of the box
+    ferry send-clipboard          leaves the clipboard's text for the phone (a notification if it has none)
     ferry seen                    marks what came from the phone as seen (the bar's count goes)
-    ferry qr                      a QR code of the address (SVG; prints its path)
+    N is a number from `ferry list`, or an item's id (the menu uses those: numbers change as the box does).
 
 Either end leaves files or text in the box, and they wait there until the other end picks them up. The phone needs no
 app: a web page served by this script, which it can add to its Home Screen (a PWA with Web Push notifications). The
@@ -299,7 +305,8 @@ def file_paths(paths):
     for p in paths:
         p = os.path.abspath(p)
         if os.path.isdir(p):
-            for root, _, names in os.walk(p):
+            for root, dirs, names in os.walk(p):
+                dirs[:] = sorted(d for d in dirs if not d.startswith("."))   # no .git and the like
                 out += [os.path.join(root, n) for n in sorted(names) if not n.startswith(".")]
         elif os.path.isfile(p):
             out.append(p)
@@ -927,15 +934,134 @@ def listing():
             "url": url(st), "serving": serving(), "push": len(subs), "items": out}
 
 
-def qr():
+def qr(svg):
     u = url()
     if not u or not shutil.which("qrencode"):
+        print("No address: Tailscale is off" if not u else "qrencode is needed (sudo dnf install qrencode)",
+              file=sys.stderr)
         return 1
+    if not svg:
+        return subprocess.run(["qrencode", "-t", "ANSIUTF8", "-m", "2", u]).returncode
     os.makedirs(os.path.dirname(QR), exist_ok=True)
     subprocess.run(["qrencode", "-t", "SVG", "-m", "2", "--foreground=000000", "--background=FFFFFF", "-o", QR, u],
                    check=True)
     print(QR)
     return 0
+
+
+# --- In a terminal --------------------------------------------------------------------------------------------------
+def numbered():
+    """The box as `ferry list` numbers it: what was received, then what was sent, each newest first (so 1 is the newest
+    received, which `ferry get` takes)."""
+    with box() as items:
+        items = items[::-1]
+    return [i for i in items if i.get("to") == "computer"] + [i for i in items if i.get("to") != "computer"]
+
+
+def item(ref, items=None):
+    """An item by its number in `ferry list`, or by its id."""
+    items = numbered() if items is None else items
+    if ref.isdigit() and len(ref) < 12:   # an id is 12 hex digits
+        n = int(ref)
+        return items[n - 1] if 0 < n <= len(items) else None
+    return next((i for i in items if i["id"] == ref), None)
+
+
+def mark_seen(ids=None):
+    """What came from the phone as seen, all of it or the items in ids: the bar's count goes."""
+    with box(write=True) as items:
+        for it in items:
+            if it.get("to") == "computer" and (ids is None or it["id"] in ids):
+                it["seen"] = True
+
+
+def ago(t):
+    s = time.time() - t
+    return "just now" if s < 60 else f"{s // 60:.0f} min ago" if s < 3600 else \
+        f"{s // 3600:.0f} h ago" if s < 86400 else f"{s // 86400:.0f} d ago"
+
+
+def fit(text, room):
+    return text if len(text) <= room else text[:room - 1] + "…"
+
+
+def oneline(text, room):
+    return fit(" ".join(text.split()), room)
+
+
+def print_list():
+    items = numbered()
+    if not items:
+        print("The box is empty")
+        return
+    width, pad, heading = shutil.get_terminal_size().columns, len(str(len(items))), ""
+    for n, it in enumerate(items, 1):
+        h = "Received" if it.get("to") == "computer" else "Sent, waiting for the phone"
+        if h != heading:
+            print(("\n" if heading else "") + h)
+            heading = h
+        head = f"  {n:>{pad}}  {ago(it.get('time', 0)):<10}  "
+        who = f"  · {it['from']}" if it.get("from") else ""
+        room = max(width - len(head) - len(who), 20)
+        what = f"{it.get('name', '')}  {human(it.get('size', 0))}" if it.get("kind") == "file" else \
+            '"' + oneline(it.get("text", ""), room - 2) + '"'
+        print(head + fit(what, room) + who)
+    if any(i.get("to") == "computer" and not i.get("seen") for i in items):
+        mark_seen()
+        refresh_bar()
+
+
+def get(it):
+    """A text printed; a file copied to the current folder (its name printed, so `ferry get` works in a script too)."""
+    if it.get("kind") == "text":
+        text = it.get("text", "")
+        sys.stdout.write(text + ("\n" if sys.stdout.isatty() and not text.endswith("\n") else ""))
+    else:
+        here = os.path.join(os.getcwd(), safe_name(it.get("name", "file")))
+        if os.path.exists(here) and os.path.samefile(here, it["path"]):   # already here (Downloads)
+            dest = here
+        else:
+            dest = unique(here)
+            shutil.copy2(it["path"], dest)
+        print(os.path.relpath(dest))
+    if it.get("to") == "computer" and not it.get("seen"):
+        mark_seen({it["id"]})
+        refresh_bar()
+    return 0
+
+
+def send(args):
+    """Files when every argument is one, a text otherwise; with no arguments, what is piped in or the clipboard."""
+    if args in ([], ["-"]):
+        piped = args == ["-"] or not sys.stdin.isatty()
+        text = sys.stdin.read() if piped else clipboard()
+        if not text.strip():
+            print("Nothing to send: " + ("the input is empty" if piped else "the clipboard has no text"), file=sys.stderr)
+            return 1
+        add_text(text)
+        print(f'Sent "{oneline(text, 60)}"', flush=True)
+    elif any(os.path.exists(p) for p in args):
+        missing = [p for p in args if not os.path.exists(p)]
+        if missing:
+            print(f"No such file: {missing[0]} (to send a text with a file's name, pipe it in)", file=sys.stderr)
+            return 1
+        files = file_paths(args)
+        if add_files(args):
+            print("No files to send there", file=sys.stderr)
+            return 1
+        size = human(sum(os.path.getsize(f) for f in files))
+        print(f"Sent {os.path.basename(files[0]) if len(files) == 1 else f'{len(files)} files'} ({size})", flush=True)
+    else:
+        text = " ".join(args)
+        add_text(text)
+        print(f'Sent "{oneline(text, 60)}"', flush=True)
+    if status() == "off":
+        print("Ferry is off, so the phone can't pick it up yet: ferry enable", file=sys.stderr)
+    return 0
+
+
+def clipboard():
+    return subprocess.run(["wl-paste", "--no-newline", "--type", "text"], capture_output=True, text=True).stdout
 
 
 def main():
@@ -970,8 +1096,18 @@ def main():
         u = url()
         print(u)
         return 0 if u else 1
-    elif cmd == "list":
+    elif cmd == "list" and a[1:] == ["--json"]:
         print(json.dumps(listing(), ensure_ascii=False))
+    elif cmd == "list":
+        print_list()
+    elif cmd == "send":
+        return send(a[1:])
+    elif cmd == "get" and len(a) <= 2:
+        it = item(a[1] if len(a) > 1 else "1")
+        if not it or (len(a) == 1 and it.get("to") != "computer"):
+            print("Nothing from the phone" if len(a) == 1 else f"No item {a[1]}: see ferry list", file=sys.stderr)
+            return 1
+        return get(it)
     elif cmd == "add" and len(a) > 1:
         return add_files(a[1:])
     elif cmd == "pick":
@@ -987,32 +1123,48 @@ def main():
     elif cmd == "text" and len(a) > 1:
         return add_text(" ".join(a[1:]))
     elif cmd == "send-clipboard":
-        text = subprocess.run(["wl-paste", "--no-newline", "--type", "text"], capture_output=True, text=True).stdout
-        if add_text(text):
+        if add_text(clipboard()):
             notify("The clipboard has no text", "Copy a text or a link first")
             return 1
-    elif cmd in ("copy", "open", "remove") and len(a) > 1:
-        it = find(a[1])
-        if not it:
+    elif cmd in ("copy", "open", "rm", "remove") and len(a) > 1:
+        items = numbered()
+        found = [item(r, items) for r in a[1:]]   # all first: numbers would change as items go
+        if None in found:
+            print(f"No item {a[1 + found.index(None)]}: see ferry list", file=sys.stderr)
             return 1
-        if cmd == "remove":
-            remove(it["id"])
-        elif cmd == "copy" and it.get("kind") == "text":
-            subprocess.run(["wl-copy", "--", it["text"]])
-        elif cmd == "open" and it.get("kind") == "file":
-            subprocess.Popen(["xdg-open", it["path"]])
-    elif cmd == "seen":
+        for it in found:
+            if cmd in ("rm", "remove"):
+                remove(it["id"])
+            elif cmd == "copy" and it.get("kind") == "text":
+                subprocess.run(["wl-copy", "--", it["text"]])
+            elif cmd == "open" and it.get("kind") == "file":
+                subprocess.Popen(["xdg-open", it["path"]])
+            else:
+                print(f"{'Copy' if cmd == 'copy' else 'Open'} is for a {'text' if cmd == 'copy' else 'file'}: "
+                      f"ferry get {a[1 + found.index(it)]}", file=sys.stderr)
+                return 1
+        if cmd in ("rm", "remove"):
+            refresh_bar()
+    elif cmd == "clear" and len(a) <= 2:
+        to = {"": None, "received": "computer", "sent": "phone"}.get(a[1] if len(a) > 1 else "", "?")
+        if to == "?":
+            print("ferry clear [received|sent]", file=sys.stderr)
+            return 1
         with box(write=True) as items:
-            for it in items:
-                if it.get("to") == "computer":
-                    it["seen"] = True
+            for it in [i for i in items if to is None or i.get("to") == to]:
+                drop_file(it)
+                items.remove(it)
+        refresh_bar()
+    elif cmd == "seen":
+        mark_seen()
     elif cmd == "qr":
-        return qr()
+        return qr(a[1:] == ["--svg"])
+    elif cmd in ("help", "-h", "--help"):
+        print(__doc__.split("\n\n")[1])
     else:
         print(__doc__.split("\n\n")[1], file=sys.stderr)
         return 1
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

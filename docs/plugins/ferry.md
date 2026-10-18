@@ -10,12 +10,25 @@ A mailbox between your computers and your iPhone (or any phone). Either end leav
 - A notification on the computer when the phone sends something, and on the phone when a computer does (Web Push: on an iPhone with iOS 16.4 or later, for the Home Screen app).
 - Files from the phone go to your Downloads folder. Everything leaves the box after 7 days; removing an item doesn't delete a file from Downloads.
 
-**On the iPhone**: open the address shown at the bottom of Ferry's menu (or scan its QR code) in Safari, then Share › Add to Home Screen. Open Ferry from the Home Screen and tap Turn on notifications. The first time, Tailscale may need to be allowed to share the computer: if the menu says so, run `sudo tailscale set --operator=$USER` once and turn Ferry on again (`~/.config/hypr/scripts/ferry enable`).
+**In a terminal**: the `ferry` command does the same.
+
+    ferry send report.pdf photos/   # files (a folder's files); ferry send some text, or pipe it in: … | ferry send
+    ferry send                      # the clipboard
+    ferry list                      # what's in the box, numbered: received (1 is the newest), then sent
+    ferry get                       # the newest from the phone: a text printed, a file copied to the current folder
+    ferry get 2                     # number 2 in the list
+    ferry open 2 · ferry copy 2     # a file opened, a text to the clipboard
+    ferry rm 2 3 · ferry clear      # out of the box (clear received or clear sent: one direction)
+    ferry qr                        # the page's QR code, for adding a phone
+
+`ferry help` lists the rest.
+
+**On the iPhone**: open the address shown at the bottom of Ferry's menu (or scan its QR code) in Safari, then Share › Add to Home Screen. Open Ferry from the Home Screen and tap Turn on notifications. The first time, Tailscale may need to be allowed to share the computer: if the menu says so, run `sudo tailscale set --operator=$USER` once and turn Ferry on again (`ferry enable`).
 
 **Who can get in**: only you. The page isn't on the internet (tailscale serve, not Funnel), and it answers only the Tailscale user who owns the computer, even if others share your tailnet. Nothing that arrives is run or opened by itself: files land in Downloads like any download, texts show as plain text, and in the browser only images, video, audio, PDF and plain text open (anything else downloads). It works while the computer is awake and both ends are on Tailscale; when it can't reach a computer, the page says so.
 
 Keep in mind: the phone is the key. If it is lost unlocked with Tailscale on, remove it in Tailscale's admin console. Another user logged in to the same computer could reach Ferry's local port, so it suits a computer that is yours alone. HTTPS certificates put the computer's tailnet name (computer.tailXXXX.ts.net) in public certificate logs.
 
-Experimental. Turn it off with `~/.config/hypr/scripts/ferry disable`.
+Experimental. Turn it off with `ferry disable`.
 
 Needs: the Tailscale plugin, logged in on the computer and on the phone, with HTTPS turned on for the tailnet (Tailscale's admin console › DNS › HTTPS Certificates)

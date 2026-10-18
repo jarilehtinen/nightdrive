@@ -52,7 +52,7 @@ Column {
 
     Sh {
         id: listProc
-        command: [m.ferry, "list"]
+        command: [m.ferry, "list", "--json"]
         onResult: text => {
             try { m.st = JSON.parse(text) } catch (e) { return }
             // Just sent: new since the last listing, or on opening the last few seconds' (a drop on the bar icon opens
@@ -68,7 +68,7 @@ Column {
     Sh { id: seenProc; command: [m.ferry, "seen"]; onResult: TopBar.refresh("ferry") }
     Sh {
         id: qrProc
-        command: [m.ferry, "qr"]
+        command: [m.ferry, "qr", "--svg"]
         onResult: text => m.qr = text.trim()
     }
 
