@@ -1,4 +1,4 @@
-/* Blank page and new tab background: Jokela Night violet */
+/* Blank page and new tab background: Nightdrive's violet */
 @-moz-document url("about:blank"), url("about:newtab"), url("about:home"), url-prefix("about:") {
   html, :root, body { background-color: #1f2033 !important; --newtab-background-color: #1f2033 !important; --newtab-background-color-secondary: #292b40 !important; }
   body { font-family: "JetBrains Mono Light", "JetBrains Mono", monospace !important; }

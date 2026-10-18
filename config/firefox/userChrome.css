@@ -7,7 +7,7 @@
 #PersonalToolbar { order: 2 !important; }        /* bookmarks toolbar */
 #TabsToolbar { order: 3 !important; }            /* tabs below */
 
-/* ===== Jokela Night (Tokyo Night colours) ===== */
+/* ===== Nightdrive's colours (from Tokyo Night) ===== */
 :root {
   --jn-bg: #1a1b26;  --jn-bg-dark: #16161e;  --jn-bg-hl: #292e42;  --jn-bg-hl2: #3b4261;
   --jn-fg: #c0caf5;  --jn-fg-dim: #787c99;   --jn-border: #292e42;  --jn-accent: #7aa2f7;
@@ -110,7 +110,7 @@
   border: none !important; outline: none !important; box-shadow: none !important; border-radius: 8px !important;
 }
 
-/* Content area background (blank page / while loading): Jokela Night violet */
+/* Content area background (blank page / while loading): Nightdrive's violet */
 #browser, #tabbrowser-tabbox, #tabbrowser-tabpanels, .browserSidebarContainer, .browserContainer, .browserStack,
 browser[type="content"] { background-color: #1f2033 !important; }
 

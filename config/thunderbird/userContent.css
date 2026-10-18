@@ -1,4 +1,4 @@
-/* Default background for message content: Jokela Night blue instead of grey.
+/* Default background for message content: Nightdrive's blue instead of grey.
    No !important: the message's own background (HTML newsletters etc.) wins. */
 @-moz-document url-prefix("imap-message:"), url-prefix("mailbox-message:"), url-prefix("news-message:"),
   url-prefix("mid:"), url-prefix("about:blank"), url-prefix("about:message") {

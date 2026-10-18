@@ -183,7 +183,7 @@ for p in "$HOME"/.config/mozilla/firefox/*.default-release; do
   link "$repo/config/firefox/user.js" "$p/user.js"
 done
 
-# Thunderbird: Jokela Night userChrome.css (Lucide icons are read straight from the repo's icons/ directory), user.js
+# Thunderbird: Nightdrive's userChrome.css (Lucide icons are read straight from the repo's icons/ directory), user.js
 # and the folder-pane toggle button add-on. The toolbar button order lives in xulstore.json (see docs/thunderbird.md).
 for p in "$HOME"/.config/thunderbird/*.default-release; do
   [[ -d $p ]] || continue

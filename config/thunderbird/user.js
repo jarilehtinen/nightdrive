@@ -4,7 +4,7 @@ user_pref("font.name.serif.x-western", "JetBrains Mono Light");
 user_pref("font.name.monospace.x-western", "JetBrains Mono");
 user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);
 
-// Jokela Night decluttering (2026-10-12)
+// Nightdrive's decluttering (2026-10-12)
 user_pref("toolbar.unifiedtoolbar.buttonstyle", 2);        // icons only in the top bar
 user_pref("mail.threadpane.cardsview.rowcount", 2);        // two-line message card (subject + attachment icon on the same line)
 user_pref("mail.addressDisplayFormat", 2);                 // name only in the message list, no <address>

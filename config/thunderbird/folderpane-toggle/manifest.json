@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Folder Pane Toggle",
-  "description": "Jokela Night: show/hide the folder pane from a top bar button.",
+  "description": "Nightdrive: show/hide the folder pane from a top bar button.",
   "version": "1.1",
   "browser_specific_settings": {
     "gecko": { "id": "folderpane-toggle@jokela-night", "strict_min_version": "128.0" }

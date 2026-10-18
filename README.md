@@ -1,7 +1,7 @@
 # Nightdrive
 
 **A keyboard-driven Hyprland desktop for Fedora, on an Apple Silicon Mac (Fedora Asahi Remix) or a PC.**
-Mac-style ⌘ shortcuts, one launcher for everything, a top bar that behaves like the macOS menu bar, and a synthwave look.
+Mac-style ⌘ shortcuts, one launcher for everything, a top bar of thoughtful little menus, and a synthwave look.
 
 ![Nightdrive: Firefox, Deck playing FM-84 and the launcher on top](docs/screenshots/desktop.jpg)
 
@@ -43,7 +43,7 @@ question and press ⌘⌥Enter to send it straight to Claude Code.
 
 ![The launcher](docs/screenshots/launcher.jpg)
 
-### A top bar that behaves like a menu bar
+### Menus you want to click
 
 Click an icon and a small menu opens under it: sound and output devices, Wi-Fi, Bluetooth, battery and brightness, Tailscale,
 headphone EQ, system load and temperatures, the calendar, notifications, music, and your **Claude usage limits**. ⌘⇧Space lets

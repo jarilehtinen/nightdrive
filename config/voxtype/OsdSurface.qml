@@ -1,4 +1,4 @@
-// Voxtype OSD – Jokela version: replaces the original OsdSurface.qml (copied to ~/.local/share/voxtype/quickshell/).
+// Voxtype OSD, Nightdrive's version: replaces the original OsdSurface.qml (copied to ~/.local/share/voxtype/quickshell/).
 // Same look as the other toasts (Osd.qml: 10 px radius, dark card, violet UPPERCASE text):
 //   mic icon | equalizer (stationary bars growing up and down from the center line) | state (LISTENING / TRANSCRIBING)
 // Keeps the original interface: daemonState, osdSuppressed, audio (frameReceived), style (unused).

@@ -2,7 +2,7 @@
 user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);
 // Spell checking off (in every text field)
 user_pref("layout.spellcheckDefault", 0);
-// Dark UI (Jokela Night)
+// Dark UI (Nightdrive's colours)
 user_pref("browser.theme.toolbar-theme", 0);
 user_pref("browser.theme.content-theme", 0);
 // Scroll speed (default 100). The touchpad speed is set in hypr/scroll.lua with every other app's. Needs a Firefox restart.
@@ -16,5 +16,5 @@ user_pref("apz.fling_accel_supplemental_mult", "1.2");
 user_pref("devtools.chrome.enabled", true);
 user_pref("devtools.debugger.remote-enabled", true);
 user_pref("devtools.debugger.prompt-connection", false);
-// Default background of a blank page (about:blank) in dark mode: Jokela Night violet (default #1c1b22)
+// Default background of a blank page (about:blank) in dark mode: Nightdrive's violet (default #1c1b22)
 user_pref("browser.display.background_color.dark", "#1f2033");

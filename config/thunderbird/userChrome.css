@@ -92,7 +92,7 @@ li.unread .subject, .card-layout.unread .subject, .unread .subject {
   background-image: none !important;
 }
 
-/* ===== Jokela Night: decluttering ===== */
+/* ===== Nightdrive: decluttering ===== */
 
 /* Top bar: thin divider below (on the container only: on both it was a double line), evenly spaced action buttons */
 #unifiedToolbarContainer { border-bottom: 1px solid #292e42 !important; }
