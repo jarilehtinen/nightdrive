@@ -1,14 +1,15 @@
 # Deck
 
-A fast Spotify player for the terminal, made for Nightdrive: your albums in the launcher, the player in the top bar, and the window only when you want it.
+A fast Spotify player, made for Nightdrive: your albums in the launcher, the player in the top bar, and a window only when you want one.
 
-- Launcher › Music: your shelf of albums, the Curated list and Spotify search. Enter plays an album; searching from the launcher's root finds your albums too.
-- A player row on top of the launcher, with the track that's playing: Ctrl+Space plays or pauses.
-- A music icon in the top bar, highlighted while playing. Its menu has the cover, the playhead, the controls, the like and the speaker to play on; a right click on the icon brings up Deck's window.
-- ⌘⇧M opens Deck's window, floating in the centre (⌘T tiles it and back). The play key plays or pauses, and starts Deck when nothing else is playing.
-- ⌘W hides the window and the music keeps playing; `q` in Deck quits it.
+- Launcher › Music: your albums, the Curated list and Spotify search. Enter plays.
+- While music plays, a player row sits on top of the launcher, and Ctrl+Space plays or pauses.
+- The music icon in the top bar opens the player: the cover, the controls, the like and the speaker to play on.
+- ⌘⇧M opens Deck's window. ⌘W hides it, and the music keeps playing.
 
-**Setting up**: the installer builds Deck from source, which takes a few minutes, and `nightdrive update` builds it again when its source has changed. Deck needs the Client ID of your own (free) Spotify developer app: Deck's README walks you through it.
+## Setting up
+
+The installer builds Deck from source (a few minutes), and `nightdrive update` builds it again when it changes. Deck needs the Client ID of your own free Spotify developer app: Deck's README shows how.
 
 Homepage: https://github.com/jarilehtinen/deck
 Needs: Spotify Premium

@@ -2,13 +2,14 @@
 """Details of an optional part (plugins.txt, or a plugin folder's plugin.conf) for the launcher's detail view, as JSON on
 stdout: the same shape as pkg-info's, so Install › Recommended and Plugins open the same page as Install › Software.
   plugin-info <id>
-Output: { name, summary, installed, off, external, icon, screenshot, paragraphs: [text | {code: [line]}], fields: [[label, value]] }
+Output: { name, summary, installed, off, external, icon, screenshot, paragraphs: [text | {code: [line]} | {heading}], fields: [[label, value]] }
 (a plugin folder's fields include its Version and Author from plugin.conf, for bug reports)
 (off: turned off with `nightdrive plugins off`; external: added with `nightdrive plugins add`, from Source)
 The long text is the folder's README.md, or docs/plugins/<id>.md for a plugins.txt line (GitHub shows the same file): the
 # title is left out, paragraphs are split at blank lines, a "- " item is a paragraph of its own, a code block (indented or
 in ``` fences) is one with its lines as they are ({code: [line]}, shown in a box), the first image ![…](file)
-is the screenshot and lines "Homepage: …" / "Needs: …" / "Keys: …" go to the facts. Without the file the page has the
+is the screenshot, a table's rows are items ("first cell: the rest", without the header) and lines "Homepage: …" /
+"Needs: …" / "Keys: …" go to the facts. Without the file the page has the
 one-line description."""
 import json, os, re, subprocess, sys
 
@@ -49,7 +50,7 @@ def plain(t):
 
 
 def doc(path):
-    paragraphs, fields, shot, cur, code, fence, blank = [], [], "", [], None, "", True
+    paragraphs, fields, shot, cur, code, fence, blank, table = [], [], "", [], None, "", True, False
     try:
         lines = open(path).read().split("\n")
     except OSError:
@@ -91,9 +92,23 @@ def doc(path):
             continue
         if code is not None:
             flush()
+        # A table (| a | b |): the header and the |---| line are left out, each row is an item "first: the rest"
+        if s.startswith("|"):
+            flush()
+            cells = [plain(c.strip()) for c in s.strip("|").split("|")]
+            if not table:
+                table = True               # the header row
+            elif not all(re.fullmatch(r":?-+:?", c) for c in cells):
+                paragraphs.append("•  " + cells[0] + ": " + " · ".join(c for c in cells[1:] if c))
+            continue
+        table = False
         img = re.match(r"!\[[^\]]*\]\(([^)\s]+)", s)
         field = re.match(r"(%s): (.+)$" % "|".join(FIELDS), s)
-        if not s or s.startswith("#"):
+        heading = re.match(r"#{2,4} (.+)$", s)
+        if heading:                        # ## and deeper: a section title on the page (# is the name, left out)
+            flush()
+            paragraphs.append({"heading": plain(heading.group(1))})
+        elif not s or s.startswith("#"):
             flush()
         elif img:
             flush()

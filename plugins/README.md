@@ -166,7 +166,9 @@ and description come from `plugin.conf`; the README is the body. Follow this sha
 2. One paragraph: what it does for the user.
 3. A screenshot, if the plugin has something to see: `![Ferry's menu in the top bar](ferry.jpg)`, the file in the
    folder. The launcher shows the first picture.
-4. How to use it, as a list. Optional sections start with bold: **In a terminal**, **Adding the phone**.
+4. How to use it, as a list. A longer page splits it under `##` headings, such as `## On the computer`,
+   `## On the phone`, `## In a terminal` and `## Privacy` (Ferry's README); the launcher shows them as section titles.
+   Commands read best as a table (`| Command | What it does |`), which the launcher shows as items.
 5. Last, the fact lines, each on its own line and in this order (the ones that apply, at least one):
    `Homepage: https://…`, `Needs: …`, `Keys: ⌘⇧U` (required when the plugin has `bindings.lua`). The launcher shows
    them as facts under the text.

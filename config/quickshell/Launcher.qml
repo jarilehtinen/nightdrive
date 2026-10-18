@@ -2417,22 +2417,34 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                         width: parent.width - 20
                         spacing: 10
                         Repeater {
-                            // A paragraph is a string, or a README's code block, { code: [line] } (plugin-info)
+                            // A paragraph is a string, a README's code block, { code: [line] }, or a ## heading, { heading } (plugin-info)
                             model: detailView.info ? detailView.info.paragraphs : []
                             Item {
                                 id: para
                                 required property var modelData
                                 readonly property bool isCode: typeof modelData === "object" && modelData !== null && modelData.code !== undefined
+                                readonly property bool isHeading: typeof modelData === "object" && modelData !== null && modelData.heading !== undefined
                                 width: parent.width
-                                height: isCode ? codeBox.height : paraText.height
+                                height: isCode ? codeBox.height : isHeading ? headText.y + headText.height : paraText.height
+                                // A heading: a section title, as in the menus (MenuSection), a little apart from the text above
+                                Text {
+                                    id: headText
+                                    visible: para.isHeading
+                                    y: 8
+                                    width: parent.width
+                                    elide: Text.ElideRight
+                                    text: para.isHeading ? String(para.modelData.heading).toUpperCase() : ""
+                                    color: Theme.primary
+                                    font { family: Theme.font; pixelSize: win.fontSize - 5; weight: Font.Medium; letterSpacing: 1.2 }
+                                }
                                 Text {
                                     id: paraText
-                                    visible: !para.isCode
+                                    visible: !para.isCode && !para.isHeading
                                     width: parent.width
                                     wrapMode: Text.Wrap
                                     textFormat: Text.PlainText
                                     lineHeight: 1.15
-                                    text: para.isCode ? "" : win.keySpaced(String(para.modelData))
+                                    text: para.isCode || para.isHeading ? "" : win.keySpaced(String(para.modelData))
                                     color: Theme.text
                                     font { family: Theme.font; pixelSize: win.fontSize - 3; weight: win.fontWeight }
                                 }
