@@ -742,7 +742,7 @@ PanelWindow {
             const plain = d => d.replace(/\s*\(experimental\)/i, "").replace(/,\s*experimental(?=[;)])/i, "").replace(/\(experimental;\s*/i, "(")
             const rows = (group, from) => pluginList.filter(p => p.group === group).map(p => ({ item: { kind: "action", name: p.name, glyph: p.icon, sub: plain(p.desc), installed: p.installed,
                                                  experimental: exp.test(p.desc), external: p.external,
-                                                 src: "plugin", id: p.id, rerun: true, from: from,
+                                                 src: "plugin", id: p.id, rerun: true, groupTag: from,
                                                  summary: p.installed ? (p.off ? "off" : "installed") : undefined,
                                                  cmd: term('"$HOME/.local/bin/nightdrive" plugins install "$1"', p.id) },
                                          text: p.name, extra: p.desc }))
@@ -2054,9 +2054,19 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                         font { family: Theme.font; pixelSize: win.fontSize - 7; letterSpacing: 1 }
                     }
                     Text {      // EXTERNAL: a plugin from elsewhere (nightdrive plugins add), not one of Nightdrive's own
+                        id: extTag
                         visible: !!row.modelData.external && !row.armedNow
                         anchors { left: nameText.left; leftMargin: nameText.contentWidth + 10 + (expTag.visible ? expTag.implicitWidth + 10 : 0); baseline: nameText.baseline }
                         text: "EXTERNAL"
+                        color: Theme.primary
+                        font { family: Theme.font; pixelSize: win.fontSize - 7; letterSpacing: 1 }
+                    }
+                    Text {      // the other group's row in a Plugins or Recommended search (RECOMMENDED / PLUGINS): here, so the
+                                // right side keeps its installed / off like the group's own rows
+                        visible: row.modelData.groupTag !== undefined && !row.armedNow
+                        anchors { left: nameText.left; baseline: nameText.baseline
+                                  leftMargin: nameText.contentWidth + 10 + (expTag.visible ? expTag.implicitWidth + 10 : 0) + (extTag.visible ? extTag.implicitWidth + 10 : 0) }
+                        text: visible ? row.modelData.groupTag.toUpperCase() : ""
                         color: Theme.primary
                         font { family: Theme.font; pixelSize: win.fontSize - 7; letterSpacing: 1 }
                     }
