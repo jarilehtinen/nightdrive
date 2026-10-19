@@ -1,9 +1,9 @@
 import QtQuick
 import Quickshell
 
-// The launcher's Settings › Top bar (opacity, icon colors, highlight, which items it shows and in what order) and
-// Screensaver (style, start after, screen off after). The values apply as they are chosen, so they can be tried one
-// after another. Theme stays in Launcher.qml: Background's wallpapers are a grid of the launcher's own.
+// The launcher's Settings › Top bar (opacity, icon colors, highlight, the clock's date format, which items it shows and
+// in what order) and Screensaver (style, start after, screen off after). The values apply as they are chosen, so they
+// can be tried one after another. Theme stays in Launcher.qml: Background's wallpapers are a grid of the launcher's own.
 // The root search finds both pages' rows too (topbarItems, screensaverItems).
 // Launcher.qml asks it like DefaultAppsLevels (levels, titles, parents, items, activate, footer, entered), and also
 // moveSelected (Ctrl+Up/Down: Items' order).
@@ -15,17 +15,22 @@ Item {
     property string barIcons: ""              // Top bar › Icon colors: light | dark
     property int barIconOp: -1                // icon and text opacity
     property string barHl: ""                 // Top bar › Highlight: theme | white | black
+    property string barDate: ""               // Top bar › Date format: auto | dmy | mdy | iso (topbar/scripts/clock style)
+    // The clock's date styles, shown with today's date in each
+    readonly property var dateStyles: [["auto", "As the system", ""], ["dmy", "Day first", "dd.MM."], ["mdy", "Month first", "MM/dd"],
+                                       ["iso", "ISO", "MM-dd"]]
     property int idleSaver: -1                // Screensaver: minutes until the screensaver / screen off, 0 = never,
     property int idleOff: -1                  // -1 = not read yet (hypr/scripts/idle)
     property string idleStyle: ""             // which screensaver: random | saver | rain | clock
     readonly property var saverStyles: [["random", "Random", "shuffle"], ["saver", "Synthwave", "sunset"], ["rain", "Rain", "cloud-rain"], ["clock", "Clock", "clock"]]
 
     readonly property string scripts: Quickshell.env("HOME") + "/.config/hypr/scripts"
-    readonly property var levels: ["topbar", "baropacity", "baricons", "barhl", "baritems", "screensaver", "saverafter", "screenoff", "saverstyle"]
+    readonly property var levels: ["topbar", "baropacity", "baricons", "barhl", "bardate", "baritems", "screensaver", "saverafter", "screenoff", "saverstyle"]
     readonly property var titles: ({ topbar: "Settings › Top bar", baropacity: "Top bar › Opacity", baricons: "Top bar › Icon colors", barhl: "Top bar › Highlight",
+                                     bardate: "Top bar › Date format",
                                      baritems: "Top bar › Items", screensaver: "Settings › Screensaver", saverafter: "Screensaver › Start after",
                                      screenoff: "Screensaver › Screen off after", saverstyle: "Screensaver › Style" })
-    readonly property var parents: ({ topbar: "settings", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar",
+    readonly property var parents: ({ topbar: "settings", baropacity: "topbar", baricons: "topbar", barhl: "topbar", bardate: "topbar", baritems: "topbar",
                                       screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver" })
     // Rows applied live: kind → [script, verb, property that holds the current value]
     readonly property var live: ({
@@ -41,7 +46,7 @@ Item {
     function footer(level, query) { return level === "baritems" ? "Enter: show / hide  ·  Ctrl+Up+Down: reorder" : "" }
     function opened() {}
     function entered(level) {
-        if (level === "topbar" || level === "baropacity" || level === "baricons" || level === "barhl") barProc.running = true
+        if (level === "topbar" || level === "baropacity" || level === "baricons" || level === "barhl" || level === "bardate") barProc.running = true
         if (level === "screensaver" || level === "saverafter" || level === "screenoff" || level === "saverstyle") idleProc.running = true
     }
     function shiftActivate(it) {}
@@ -64,6 +69,8 @@ Item {
               summary: barIcons !== "" ? (barIcons === "dark" ? "black" : "white") + " " + barIconOp + "%" : undefined },
             { kind: "nav", name: "Highlight", glyph: "highlighter", target: "barhl",
               summary: barHl === "theme" ? "theme color" : (barHl || undefined) },
+            { kind: "nav", name: "Date format", glyph: "calendar", target: "bardate",
+              summary: (dateStyles.find(d => d[0] === barDate) || [])[1] },
             { kind: "nav", name: "Items", glyph: "layout-list", target: "baritems",
               summary: TopBar.modules.length + " of " + TopBar.allModules.length + " shown" }
         ]
@@ -93,6 +100,10 @@ Item {
                 kind: "barhl", value: h[0], name: h[1], glyph: barHl === h[0] ? "check" : "highlighter",
                 summary: barHl === h[0] ? "current" : (h[0] === "theme" ? "default" : undefined) }))
         }
+        if (level === "bardate") {
+            return dateStyles.map(d => ({ kind: "bardate", value: d[0], name: d[1], glyph: barDate === d[0] ? "check" : "calendar",
+                                          summary: d[2] !== "" ? Qt.formatDate(new Date(), d[2]) : "the order of the system's language" }))
+        }
         if (level === "baritems") {
             // What the bar shows, in its order (left to right); Enter turns one on or off
             const all = TopBar.allModules.map(m => {
@@ -120,6 +131,12 @@ Item {
     // Stays open: values can be tried one after another
     function activate(it) {
         if (it.kind === "baritem") { launcher.keepSelection(); TopBar.setHidden(it.value, TopBar.hidden.indexOf(it.value) < 0); return true }
+        if (it.kind === "bardate") {   // the clock refreshes the bar itself
+            launcher.keepSelection()
+            a.barDate = it.value
+            Quickshell.execDetached([Quickshell.env("HOME") + "/.config/topbar/scripts/clock", "style", it.value])
+            return true
+        }
         const l = live[it.kind]
         if (!l) return false
         launcher.keepSelection()
@@ -157,16 +174,18 @@ Item {
     // Top bar: opacity, icons, highlight; select the current one
     Sh {
         id: barProc
-        script: 's="$HOME/.config/hypr/scripts/bar-style"; "$s" opacity; "$s" icons; "$s" icon-opacity; "$s" highlight'
+        script: 's="$HOME/.config/hypr/scripts/bar-style"; "$s" opacity; "$s" icons; "$s" icon-opacity; "$s" highlight; ~/.config/topbar/scripts/clock style'
         onResult: text => {
             const f = text.trim().split("\n")
             a.barOpacity = parseInt(f[0], 10)
             a.barIcons = f[1] || ""
             a.barIconOp = parseInt(f[2], 10)
             a.barHl = f[3] || ""
+            a.barDate = f[4] || ""
             const l = a.launcher
             if (l.level === "baropacity" && l.query === "") l.selectWhere(r => r.value === a.barOpacity)
             if (l.level === "barhl" && l.query === "") l.selectWhere(r => r.value === a.barHl)
+            if (l.level === "bardate" && l.query === "") l.selectWhere(r => r.value === a.barDate)
             if (l.level === "baricons" && l.query === "") l.selectWhere(r => r.value === a.barIcons)
         }
     }

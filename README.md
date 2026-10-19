@@ -263,6 +263,7 @@ The same `nightdrive` command reaches the settings from a terminal (`nightdrive`
 | `nightdrive display list` | Each screen's even scales; `nightdrive display scale eDP-1 2` sets one |
 | `nightdrive bar-style opacity 80` | Top bar opacity; also `icons`, `icon-opacity` and `highlight` |
 | `nightdrive topbar adjust` | Top bar icon and text sizes, half a pixel at a time, live |
+| `nightdrive topbar date dmy` | The clock's date: `dmy` 19.10., `mdy` 10/19, `iso` 10-19 or `auto` (the system language's order); also launcher › Settings › Top bar › Date format |
 | `nightdrive plugins` | Optional parts and whether each is installed and on; `nightdrive plugins install home-assistant` runs one's installer |
 | `nightdrive plugins off ferry` | Hides an installed part from the desktop and stops its services, for one that misbehaves (`on` brings it back; also the switch on its page in the launcher) |
 | `nightdrive plugins add <git-url>` | Adds a plugin from someone else's repo, marked external in the launcher; `nightdrive update` keeps it up to date, `nightdrive plugins remove ID` deletes it |
