@@ -247,6 +247,9 @@ Updates come from the **Stable** channel (the `main` branch) unless you pick **D
 change first, before it is tested and released into Stable: in the launcher under **Settings › Update channel**, or `nightdrive channel dev`
 (`nightdrive channel stable` goes back). Switching stops with a note instead of going over your own changes.
 
+Stable gets the changes as releases, each with notes on what's new: an update that brings one shows its notes at the end,
+`nightdrive version` tells which release you have, and every release is in the [changelog](CHANGELOG.md).
+
 The same `nightdrive` command reaches the settings from a terminal (`nightdrive` alone lists everything):
 
 | Command | What it does |
@@ -254,6 +257,7 @@ The same `nightdrive` command reaches the settings from a terminal (`nightdrive`
 | `nightdrive update` | Updates Nightdrive and the system (above) |
 | `nightdrive update check` | Only looks for new changes (what the six-hourly check runs) |
 | `nightdrive channel` | The update channel, stable or dev; `nightdrive channel dev` switches to it |
+| `nightdrive version` | The release you have, and the channel |
 | `nightdrive theme color teal` | Theme colour: violet, blue, teal, green, amber, rose or graphite |
 | `nightdrive wallpaper set <image>` | Changes the wallpaper; `nightdrive wallpaper current` prints it |
 | `nightdrive display list` | Each screen's even scales; `nightdrive display scale eDP-1 2` sets one |

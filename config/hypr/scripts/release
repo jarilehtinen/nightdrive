@@ -1,0 +1,140 @@
+#!/bin/bash
+# A Nightdrive release (AGENTS.md › Branches), made from dev:
+#   nightdrive release [patch|minor|major] [--dry-run] [--notes FILE] [--yes]
+# It raises the plugins' versions (plugin-version bump), drafts the release's section of CHANGELOG.md from the commits
+# since the last release and opens it in the editor, checks that the website can build its docs from dev, and then, after
+# one question, commits, tags vX.Y.Z, moves main to it, pushes dev, main and the tag, and publishes the GitHub release
+# with the section as its notes. --notes FILE takes the notes from a file instead of the editor, --yes answers the
+# question (both for an agent, with notes the maintainer has read). --dry-run only shows what it would do.
+set -euo pipefail
+
+WEBSITE=$HOME/Projects/nightdrive-website   # the website's checkout, for the docs check (skipped without it)
+
+repo=$(cd "$(dirname "$(readlink -f "$0")")/../../.." && pwd)
+changelog=$repo/CHANGELOG.md
+step=patch dry=0 yes=0 notes_from=""
+while (( $# )); do
+  case $1 in
+    patch|minor|major) step=$1 ;;
+    --dry-run) dry=1 ;;
+    --yes) yes=1 ;;
+    --notes) notes_from=$(readlink -f "${2:?--notes needs a file}"); shift ;;
+    *) echo "Usage: nightdrive release [patch|minor|major] [--dry-run] [--notes FILE] [--yes]" >&2; exit 2 ;;
+  esac
+  shift
+done
+die() { echo "$*: nothing changed." >&2; exit 1; }
+g() { git -C "$repo" "$@"; }
+tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
+
+# Only someone who can push to origin releases: on anyone else's clone the commit, the tag and the moved main would stay
+# behind, and their stable channel would part from origin's. Asked from origin, so a fork's owner can release the fork.
+command -v gh >/dev/null || die "A release needs the GitHub CLI (gh)"
+slug=$(g remote get-url origin | sed -E 's#^(https://github\.com/|git@[^:]+:)##; s#\.git$##')
+[[ $(gh api "repos/$slug" --jq .permissions.push 2>/dev/null) == true ]] || die "Only a maintainer of $slug can release (no push access)"
+
+[[ $(g branch --show-current) == dev ]] || die "A release is made from dev (this checkout is on $(g branch --show-current))"
+[[ -z $(g status --porcelain --untracked-files=no) ]] || die "dev has uncommitted changes"
+[[ ! -e $changelog ]] || g ls-files --error-unmatch CHANGELOG.md >/dev/null 2>&1 || die "CHANGELOG.md isn't committed"
+g fetch -q --tags origin dev main || die "Couldn't fetch origin"
+(( $(g rev-list --count HEAD..origin/dev) == 0 )) || die "dev is behind origin/dev (pull it first)"
+g merge-base --is-ancestor origin/main HEAD || die "origin/main isn't an earlier point of dev"
+
+last=$(g describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' 2>/dev/null || true)
+if [[ -n $last ]]; then
+  IFS=. read -r major minor patch <<<"${last#v}"
+  case $step in
+    major) new=$((major + 1)).0.0 ;;
+    minor) new=$major.$((minor + 1)).0 ;;
+    patch) new=$major.$minor.$((patch + 1)) ;;
+  esac
+  range=$last..HEAD
+else
+  new=0.1.0 range=HEAD    # the first release
+fi
+g rev-parse -q --verify "refs/tags/v$new" >/dev/null && die "v$new is tagged already"
+n=$(g rev-list --count --no-merges "$range")
+(( n > 0 )) || die "No commits since $last"
+echo "Nightdrive ${last#v}${last:+ → }$new ($n commits${last:+ since $last})"
+
+# In a throwaway clone of the website: its build writes public/, and its checkout may have work of its own. --strict stops
+# on a README section or docs file with no place in data/docs.json, as the website's own rebuild would after the push.
+docs_check() {
+  [[ -f $WEBSITE/tools/build-docs.py ]] || { echo "==> Website docs check: skipped (no $WEBSITE)"; return 0; }
+  echo "==> Website docs check"
+  local rc=0
+  git clone -q --depth 1 "file://$WEBSITE" "$tmp/site" || return 1
+  python3 "$tmp/site/tools/build-docs.py" --repo "$repo" --ref dev --strict >/dev/null || rc=$?
+  (( rc == 0 )) && echo "    ok"
+  return $rc
+}
+
+if (( dry )); then
+  echo "==> Plugins"; "$repo/config/hypr/scripts/plugin-version" bump --dry-run | sed 's/^/    /'
+  echo "==> Commits"; g log --no-merges --reverse --format='    %h %s' "$range" | tail -40
+  docs_check || echo "    fails: the release would stop here"
+  exit 0
+fi
+docs_check || die "The website can't build its docs from dev (see above)"
+
+# The notes: drafted from the commits for the maintainer to edit into what users see, or taken from --notes
+if [[ -n $notes_from ]]; then
+  cp "$notes_from" "$tmp/notes"
+else
+  [[ -t 0 ]] || { : </dev/tty; } 2>/dev/null || die "The notes are edited in a terminal (or pass --notes FILE)"
+  # The commits are only material, inside the comment: they are written for developers, and none of them may reach
+  # the notes as such. The notes are written above it, in plain words for users.
+  {
+    echo
+    echo "<!-- Nightdrive $new: write the release notes above this comment, what users see after updating and on"
+    echo "     GitHub. Plain words for users: what they can now do, what works better, what they need to do (if"
+    echo "     anything). Leave out what doesn't reach them. Empty notes cancel the release."
+    echo
+    echo "     The commits since ${last:-the start}, as material:"
+    g log --no-merges --reverse --format='     %s' "$range" | sed 's/-->/-- >/g'
+    echo "-->"
+  } > "$tmp/notes"
+  ${VISUAL:-${EDITOR:-nano}} "$tmp/notes" </dev/tty >/dev/tty
+fi
+# Without the comment (it ends on a line of its own) and the blank lines around the text
+awk '/^<!--/ { c = 1 } !c; /^-->$/ { c = 0 }' "$tmp/notes" | sed -e '/./,$!d' | tac | sed -e '/./,$!d' | tac > "$tmp/body"
+[[ -s $tmp/body ]] || die "The notes are empty"
+
+echo "==> Plugins"; "$repo/config/hypr/scripts/plugin-version" bump | sed 's/^/    /'
+# The new section goes on top, under the file's own introduction
+[[ -e $changelog ]] || printf '# Changelog\n\nWhat each release of Nightdrive changed, newest first.\n' > "$changelog"
+{ printf '## %s – %s\n\n' "$new" "$(date +%F)"; cat "$tmp/body"; echo; } > "$tmp/section"
+awk -v f="$tmp/section" '!done && /^## / { while ((getline l < f) > 0) print l; done = 1 } { print }
+  END { if (!done) { print ""; while ((getline l < f) > 0) print l } }' "$changelog" > "$tmp/changelog"
+cat "$tmp/changelog" > "$changelog"
+
+echo; echo "==> CHANGELOG.md"; sed 's/^/    /' "$tmp/section"
+g --no-pager diff --stat | sed 's/^/   /'
+undo() {
+  g restore -- plugins
+  if g ls-files --error-unmatch CHANGELOG.md >/dev/null 2>&1; then g restore -- CHANGELOG.md; else rm -f "$changelog"; fi
+  mkdir -p "$HOME/.cache/nightdrive"; cp "$tmp/body" "$HOME/.cache/nightdrive/release-$new.md"
+  echo "Cancelled: nothing changed. The notes are kept in ~/.cache/nightdrive/release-$new.md (--notes brings them back)." >&2
+  exit 1
+}
+if (( !yes )); then
+  { : </dev/tty; } 2>/dev/null || { echo "No terminal to ask on (--yes answers)." >&2; undo; }
+  read -rp "Release $new: commit to dev, tag v$new, move main to it, push dev, main and the tag, publish on GitHub? [y/N] " a </dev/tty
+  [[ $a =~ ^[Yy] ]] || undo
+fi
+
+g add -- CHANGELOG.md plugins
+g commit -q -m "Release $new"
+g tag -a "v$new" -m "Nightdrive $new"
+# One push for all three: either origin has the whole release or none of it (main moves only forward, checked above)
+if ! g push -q --atomic origin HEAD:refs/heads/dev HEAD:refs/heads/main "refs/tags/v$new"; then
+  echo "The push failed: the release is committed and tagged here only. Push it with" >&2
+  echo "  git -C $repo push --atomic origin dev:dev dev:main v$new" >&2
+  echo "then publish it: gh release create v$new -R $slug --title 'Nightdrive $new' --notes-file <notes>" >&2
+  exit 1
+fi
+# The local main too, if there is one that can simply move (not one with commits of its own)
+if g rev-parse -q --verify refs/heads/main >/dev/null && g merge-base --is-ancestor main HEAD; then g branch -f main HEAD; fi
+gh release create "v$new" -R "$slug" --title "Nightdrive $new" --notes-file "$tmp/body" --verify-tag >/dev/null \
+  || { echo "Pushed, but the GitHub release wasn't made: gh release create v$new -R $slug --title 'Nightdrive $new' --notes-from-tag" >&2; exit 1; }
+echo "Nightdrive $new is out: https://github.com/$slug/releases/tag/v$new"

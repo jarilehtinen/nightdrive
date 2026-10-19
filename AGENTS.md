@@ -30,9 +30,13 @@ check` (exit 1 with the findings) and `nightdrive sandbox shot NAME`, `ipc …` 
   (stable or dev).
 - Check the branch before committing (`git branch --show-current`): it is `dev`. No commits straight to `main` and no
   cherry-picks, so `main` is always an earlier point of `dev` and a release has nothing to conflict with.
-- A release, and pushing, are the user's decisions: don't do either unasked. A release raises the versions first:
-  `nightdrive plugins bump` (the patch of every plugin that changed; a bigger step by name, plugins/README.md ›
-  Versions), its `plugin.conf` changes committed to `dev`, then `main` moves to `dev` (`git merge --ff-only dev`).
+- A release, and pushing, are the user's decisions: don't do either unasked. `nightdrive release [patch|minor|major]`
+  makes one from `dev`: the plugins' versions (`plugins bump`, plugins/README.md › Versions), the notes as a new section
+  of `CHANGELOG.md`, the website's docs check, then the commit, the tag `vX.Y.Z`, `main` moved to it, the push and the
+  GitHub release. `--dry-run` shows what it would do.
+- Release notes are for users, in plain words: what they can now do, what works better, what they need to do. Never
+  the commit messages as such. Write them from the commits (`--dry-run` lists them), let the user read them, then
+  `nightdrive release … --notes FILE --yes`.
 
 **Conventions**
 - English comments that explain *why*.

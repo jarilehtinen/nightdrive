@@ -323,9 +323,9 @@ A plugin's `version` names what a user has, for a bug report: the launcher shows
   A plugin starts at `0.1.0` while it's experimental, and goes to `1.0.0` when it isn't.
 
 For the plugins in this repo every release does it (changes are made in `dev`, and `main` gets them only in a
-release): before `main` moves to `dev`, `nightdrive plugins bump` raises the patch version of every plugin whose folder
-has changed since its version was last set, and the bumped `plugin.conf` files are committed to `dev` with the
-release. A plugin that got something new takes a bigger step by name.
+release): `nightdrive release` runs `nightdrive plugins bump`, which raises the patch version of every plugin whose folder
+has changed since its version was last set, and commits the bumped `plugin.conf` files with the release. A plugin that
+got something new takes a bigger step by name (`nightdrive plugins bump ferry --minor`), committed before the release.
 
 ```sh
 nightdrive plugins bump --dry-run        # what a release would raise, and the commits behind it

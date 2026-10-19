@@ -20,6 +20,7 @@ usage() {
   row "update"                   "Update Nightdrive, its packages and apps, then reload the desktop"
   row "update check"             "Look for new changes (runs every 6 h and notifies)"
   row "channel [stable|dev]"     "Which branch updates follow: stable (main) or dev, the bigger changes first"
+  row "version"                  "The release this desktop is at, and its channel"
   section "Desktop"
   row "theme COMMAND"            "The theme colour, e.g. nightdrive theme color teal"
   row "wallpaper COMMAND"        "The background: list, set, add, remove"
@@ -45,6 +46,7 @@ usage() {
   row "sandbox COMMAND"          "Nightdrive in a headless container: up, check, shot, ipc, vnc, down"
   row "software-catalog"         "Rebuild Install › Software's lists from Flathub"
   row "agent-warn [\"WHAT\"]"    "For coding agents: warn before the launcher or a menu opens"
+  row "release [patch|minor|major]" "Maintainers: release dev into stable, with notes (--dry-run shows what it would do)"
   printf '\n'
 }
 
@@ -83,6 +85,25 @@ behind_nightdrive() {
     $0 == "@" { count(); started = 1; keep = 0; paths = 0; next }
     NF { paths++; if (!match($0, /^plugins\/[^\/]+\//) || index(on, " " substr($0, 9, RLENGTH - 9) " ")) keep = 1 }
     END { count(); print n + 0 }'
+}
+
+# whats_new COMMIT: the sections of CHANGELOG.md that weren't there at COMMIT (the releases since), newest first
+whats_new() {
+  SEEN=$(git -C "$repo" show "$1:CHANGELOG.md" 2>/dev/null | grep '^## ' || true) awk '
+    BEGIN { n = split(ENVIRON["SEEN"], s, "\n"); for (i = 1; i <= n; i++) old[s[i]] = 1 }
+    /^## / { on = !($0 in old) } on' "$repo/CHANGELOG.md"
+}
+
+# version: the release this checkout is at (its tag), how many changes past it, and the channel
+version() {
+  local d ch
+  case $(git -C "$repo" branch --show-current) in main) ch=stable ;; dev) ch=dev ;; *) ch=custom ;; esac
+  if ! d=$(git -C "$repo" describe --tags --long --match 'v[0-9]*.[0-9]*.[0-9]*' 2>/dev/null); then
+    echo "Nightdrive, no release yet ($ch channel, $(git -C "$repo" rev-parse --short HEAD))"; return
+  fi
+  local tag=${d%-*-g*} rest=${d%-g*}; local n=${rest##*-}
+  if (( n == 0 )); then echo "Nightdrive ${tag#v} ($ch channel)"
+  else echo "Nightdrive ${tag#v}, and $n change$( (( n == 1 )) || echo s) since ($ch channel, ${d##*-g})"; fi
 }
 
 # The update channel is the branch the Nightdrive checkout is on: main is stable, dev gets the bigger changes before they
@@ -189,7 +210,8 @@ update() {
   # the steps that need it are skipped and listed, unless sudo works without asking (a cached password, NOPASSWD).
   [[ -t 0 ]] || sudo -n true 2>/dev/null || can_sudo=0
   deck=${ND_UPDATE_DECK:-0}
-  local was; was=$(git -C "$repo" rev-parse HEAD)
+  # Where the update started: kept over the restart below, for What's new at the end
+  local was=${ND_UPDATE_WAS:-}; [[ -n $was ]] || was=$(git -C "$repo" rev-parse HEAD)
   while read -r r; do
     name=$(basename "$r")
     echo "==> $name"
@@ -213,7 +235,7 @@ update() {
   # Hyprland repo step and packages-hyprland.txt, 19.10.2026). Once only; whether Deck's source came in goes along.
   if [[ -z ${ND_UPDATE_AGAIN:-} ]] && ! git -C "$repo" diff --quiet "$was" HEAD -- bin/nightdrive; then
     echo "==> nightdrive itself was updated: going on with the new version"
-    ND_UPDATE_AGAIN=1 ND_UPDATE_DECK=$deck exec "$repo/bin/nightdrive" update
+    ND_UPDATE_AGAIN=1 ND_UPDATE_DECK=$deck ND_UPDATE_WAS=$was exec "$repo/bin/nightdrive" update
   fi
 
   # Relinked even when nothing new came in: after a `git pull` by hand the new links (this command among them) would
@@ -334,6 +356,10 @@ LIST
   pkill -x waybar || true
 
   mkdir -p "$cache"; echo 0 > "$cache/updates"; echo 0 > "$cache/updates-notified"
+  # The notes of the releases this update brought in (CHANGELOG.md): last, where they're seen when the update ends
+  if ! git -C "$repo" diff --quiet "$was" HEAD -- CHANGELOG.md 2>/dev/null; then
+    echo; echo "==> What's new"; whats_new "$was" | sed 's/^/    /'
+  fi
   echo
   if (( ${#missed[@]} )); then
     echo "Nightdrive is updated, but these steps were skipped or failed:"
@@ -590,6 +616,8 @@ plugin_remove() {
 case ${1:-} in
   update) if [[ ${2:-} == check ]]; then check; else update; fi ;;
   channel) channel "${2:-}" "${3:-}" ;;
+  version|--version) version ;;
+  release) exec "$scripts/release" "${@:2}" ;;                          # AGENTS.md › Branches
   topbar) case ${2:-} in
             adjust) exec "$repo/config/topbar/scripts/adjust" "${@:3}" ;;
             date) exec "$repo/config/topbar/scripts/clock" style "${@:3}" ;;
