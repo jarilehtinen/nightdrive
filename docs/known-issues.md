@@ -103,3 +103,23 @@ which floats at the same 85 % without the flash.
 **Expected fix:** Sushi 51 (GNOME 51) is ported to GTK4 and loads images with Glycin like Loupe, which replaces this window
 code; it should reach Fedora with Fedora 45. Check then whether the flash is gone, and whether the `size` in `float-quicklook`
 is still needed. If the bug survives, report or fix it upstream (gitlab.gnome.org/GNOME/sushi) rather than forking.
+
+## 1Password's own keyboard shortcuts do nothing (Quick Access, Autofill)
+
+**Seen:** 1Password 8.12.40 (native Wayland window), Hyprland 0.56.2, Fedora Asahi Remix 44. Found 2026-10-19.
+
+**Symptom:** a key set in 1Password › Settings › General (Autofill as ⌘§, shown there as Meta+§; Quick Access, Lock)
+is saved, but pressing it does nothing, in any app.
+
+**Cause:** 1Password, not Nightdrive. On Linux the app catches its shortcuts the X11 way (`GrabKey` on the X server, in its
+`index.node`), and on a Wayland desktop the X server only gets keys while an XWayland window has the focus, so practically
+never. It doesn't use the Wayland way (the GlobalShortcuts portal): `hyprctl globalshortcuts` lists nothing.
+
+**Workaround:** Hyper+P brings up the app. The rest that the app can do from the command line (`1password --quick-access`,
+`--toggle`, `--lock`) can be given keys in `~/.config/hypr/local.lua`, e.g.
+`hl.bind("SUPER + section", hl.dsp.exec_cmd("1password --quick-access"))`. Autofill has no command, so outside the browser
+(where the 1Password extension fills) there is no workaround.
+
+**A fix for everyone could be:** 1Password supporting the GlobalShortcuts portal (xdg-desktop-portal-hyprland has it). Running
+1Password under XWayland and passing the key to it with Hyprland's `pass` might work, but it's untested and an XWayland
+window can look blurry on a scaled screen.
