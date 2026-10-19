@@ -46,6 +46,8 @@ check` (exit 1 with the findings) and `nightdrive sandbox shot NAME`, `ipc …` 
   them in the same commit: a new feature, key, command or option gets its line there.
 - A new `##` / `###` section in the README or a new file in `docs/` also needs a place in the website's contents
   (`data/docs.json` in the nightdrive-website repo). Its build (`tools/build.sh`) lists what has none and stops.
+- A push to `main` rebuilds the website's pages by itself (`.github/workflows/website.yml`; the site's README explains
+  it), but that build stops on such a missing place too: check `tools/build.sh --ref dev` there before a release.
 
 **Recipes**
 - *Plugin* (an optional feature: a bar icon and menu, keys, a service): a folder `plugins/<id>/` as `plugins/README.md`

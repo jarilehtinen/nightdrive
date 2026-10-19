@@ -1,0 +1,19 @@
+name: Website
+
+# nightdrive.sh builds its Plugins and Docs pages from this repo's main: tell the website's repo that main moved, and
+# its workflow rebuilds them. Only in this repo: a fork has no token for it.
+on:
+  push:
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  notify:
+    if: github.repository == 'jarilehtinen/nightdrive'
+    runs-on: ubuntu-24.04
+    steps:
+      - run: gh api repos/jarilehtinen/nightdrive-website/dispatches -f event_type=nightdrive-main -f "client_payload[sha]=$GITHUB_SHA"
+        env:
+          # A fine-grained token with Contents: read and write on nightdrive-website only.
+          GH_TOKEN: ${{ secrets.WEBSITE_DISPATCH_TOKEN }}
