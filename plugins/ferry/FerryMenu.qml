@@ -7,7 +7,7 @@ import qs
 // computer's Ferry page). Files dropped here (or on the bar icon, which opens this menu, or chosen with a click on the
 // empty box's drop zone) and the clipboard sent with Send Clipboard wait in the box for them; a moment's "Sent" over the
 // list says so, and the menu lists only what the other devices sent here: a click copies a text or opens a file, a file
-// can be dragged out, and × takes an item out of the box. Add Device shows the page's QR code and its address (a click
+// can be dragged out, × takes an item out of the box and Clear all of them. Add Device shows the page's QR code and its address (a click
 // copies it).
 Column {
     id: m
@@ -75,7 +75,13 @@ Column {
         onResult: text => m.qr = text.trim()
     }
 
-    MenuHeader { width: parent.width; title: "Ferry" }
+    // Clear: what the other devices sent here leaves the box (files stay in Downloads, as with ×); what waits for them stays
+    MenuHeader {
+        width: parent.width
+        title: "Ferry"
+        action: m.received.length ? "Clear" : ""
+        onActionClicked: m.run(["clear", "received"])
+    }
 
     // Why the other devices can't get here, if they can't
     Rectangle {

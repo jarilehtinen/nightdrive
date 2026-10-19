@@ -118,7 +118,8 @@ The structure is fixed so that every menu looks like one desktop; what goes insi
 calendar's grid, Ferry's drop zone and QR code are all fine).
 
 - **`MenuHeader` first**: `MenuHeader { width: parent.width; title: "Ferry" }`. Optional `subtitle` (dimmed, on the
-  right) and an on/off toggle (`showToggle`, `checked`, `onToggled`).
+  right), an on/off toggle (`showToggle`, `checked`, `onToggled`) and a small button (`action: "Clear"`,
+  `onActionClicked`, `actionEnabled`).
 - **Rows are `MenuRow`**: `icon`, `label`, `detail` (dimmed, on the right), `onClicked`. `action: true` is a button
   (Open …), `danger: true` red, `active: true` the selected one, `interactive: false` an information row. Rows get
   keyboard navigation (⌘⇧Space) for free.
