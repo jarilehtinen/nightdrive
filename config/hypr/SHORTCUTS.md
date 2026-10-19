@@ -1,13 +1,13 @@
 # Keyboard shortcuts  (⌘ = Super)            close: q
 
 ## Apps
-  Hyper              Caps Lock: Hyper + a letter opens an app (below); the other letters are free for your own keys
+  Hyper              Caps Lock: Hyper + a letter opens an app (below); your own: launcher › Settings › Keyboard Shortcuts
   ⌘ Enter            Terminal
   ⌘ ⌥ Enter          Claude Code (with text typed in the launcher: sends it as the prompt)
   ⌘ Space            App launcher (↑↓ select, Enter open, Esc close; on an app ⌃Enter adds/removes it in Apps, ⌥Enter starts it at login)
   Hyper B / ⌘ ⇧ Enter  Browser (the default apps: launcher › Settings › Default apps)
   Hyper F            Files
-  Hyper I            Email
+  Hyper E            Email
   F8 (play)          Play/pause {!deck}
   Hyper W            WhatsApp {whatsapp}
   Hyper S            Slack {slack}

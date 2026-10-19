@@ -1,0 +1,208 @@
+#!/usr/bin/env python3
+"""Hyper keys that open apps (launcher › Settings › Keyboard Shortcuts): your own choices over the defaults.
+
+  app-keys                          the Hyper keys in use: each one's app, and the default it replaces
+  app-keys --json                   the same, the apps to choose from and the free keys, for the launcher (AppKeyLevels.qml)
+  app-keys set KEY APP.desktop      Hyper + KEY (A-Z, 0-9) opens APP, or brings its window up when it's open
+  app-keys set KEY none             Hyper + KEY does nothing, not even its default
+  app-keys set KEY default          back to the default (Nightdrive's, a plugin's or your config's), if there is one
+  app-keys move KEY TO              KEY's app to TO; KEY goes back to its default, or does nothing if the app was it
+  app-keys open APP.desktop         what such a key runs (bindings.lua)
+  app-keys filter                   SHORTCUTS text on stdin with your keys in it and the defaults they replace left out
+                                    (hypr/scripts/shortcuts: the key list in ⌘⇧K and launcher › Keybindings)
+
+The choices are in ~/.local/state/nightdrive/app-keys, a KEY<TAB>APP.desktop (or -) line each. bindings.lua reads it
+and leaves out every other Hyper + KEY binding, so a plugin's key is only a default: yours wins. The defaults are read
+from the key list (SHORTCUTS.md, the plugins' and SHORTCUTS.local.md), where every Hyper key has its line.
+"""
+import json, os, re, string, subprocess, sys
+from importlib.machinery import SourceFileLoader
+from importlib.util import module_from_spec, spec_from_loader
+
+HOME = os.path.expanduser("~")
+STATE = os.environ.get("XDG_STATE_HOME", HOME + "/.local/state") + "/nightdrive/app-keys"
+SCRIPTS = os.path.dirname(os.path.realpath(__file__))
+KEYS = string.ascii_uppercase + string.digits
+CORE_SECTION = "Apps"   # the core SHORTCUTS.md's section of the app keys: its defaults are Nightdrive's
+
+# default-apps reads the desktop entries and starts an app the same way (no .py: loaded by its path, no __pycache__ in
+# the repo)
+sys.dont_write_bytecode = True
+_loader = SourceFileLoader("default_apps", SCRIPTS + "/default-apps")
+da = module_from_spec(spec_from_loader("default_apps", _loader))
+_loader.exec_module(da)
+
+LINE = re.compile(r"^ {2}(\S.*?) {2,}(\S.*)$")   # a key line: two spaces, the keys, two or more spaces, the description
+
+
+def read_choices():
+    out = {}
+    try:
+        for line in open(STATE, encoding="utf-8"):
+            m = re.match(r"^([A-Z0-9])\t(\S+)$", line.rstrip("\n"))
+            if m: out[m.group(1)] = m.group(2)
+    except FileNotFoundError:
+        pass
+    return out
+
+
+def write_choices(choices):
+    os.makedirs(os.path.dirname(STATE), exist_ok=True)
+    tmp = STATE + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        f.writelines(f"{k}\t{v}\n" for k, v in sorted(choices.items()))
+    os.replace(tmp, STATE)
+
+
+def hyper_key(alt):
+    m = re.match(r"^Hyper ([A-Z0-9])$", alt.strip())
+    return m.group(1) if m else None
+
+
+def defaults():
+    """KEY -> { name, from } from the key list as it is without your choices."""
+    text = subprocess.run([SCRIPTS + "/shortcuts", "--defaults"], capture_output=True, text=True).stdout
+    out, section = {}, ""
+    for line in text.splitlines():
+        if line.startswith("## "):
+            section = line[3:].strip(); continue
+        m = LINE.match(line)
+        if not m: continue
+        # "Music (Deck, Spotify): floating window in the centre" -> Music
+        name = re.sub(r"\s*\([^()]*\)", "", m.group(2)).split(":")[0].strip()
+        for alt in m.group(1).split(" / "):
+            k = hyper_key(alt)
+            if k and k not in out:
+                out[k] = {"name": name, "from": "Nightdrive" if section == CORE_SECTION else section,
+                          "also": [n.strip() for p in re.findall(r"\(([^()]*)\)", m.group(2)) for n in p.split(",")]}
+    return out
+
+
+def state(apps=None):
+    apps = da.entries() if apps is None else apps
+    choices, defs = read_choices(), defaults()
+    keys = []
+    for k in KEYS:
+        if k not in choices and k not in defs: continue
+        app = choices.get(k)
+        keys.append({"key": k, "set": k in choices, "default": defs.get(k),
+                     "app": None if app in (None, "-") else da.app_info(app, apps.get(app, {}))})
+    # A default's icon: its app's. Browser, Files and Email are the default apps' (default-apps), the others by name
+    names = {a.get("Name", "").lower(): i for i, a in apps.items() if da.usable(a)}
+    for kind in da.KINDS:
+        if kind[0] in ("browser", "files", "email"): names[kind[1].lower()] = da.current(kind[4][0])
+    for k in keys:
+        d = k["default"]
+        # "Music (Deck, Spotify)": its own name or one in its parentheses (Deck)
+        app_id = d and next((names[n.lower()] for n in [d["name"]] + d.pop("also") if n.lower() in names), None)
+        if app_id in apps: d.update(app=app_id, icon=apps[app_id].get("Icon", ""))
+    used = {k["key"] for k in keys if not k["set"] or k["app"]}   # a key set to no app is free (its default shows there)
+    return {"keys": keys, "free": [k for k in KEYS if k not in used],
+            "apps": sorted((da.app_info(i, a) for i, a in apps.items() if da.usable(a)), key=lambda a: a["name"].lower())}
+
+
+def check_key(key):
+    key = key.upper()
+    if len(key) != 1 or key not in KEYS: sys.exit(f"Not a key: {key} (A-Z, 0-9)")
+    return key
+
+
+def set_key(key, value):
+    key = check_key(key)
+    choices = read_choices()
+    if value == "default":
+        choices.pop(key, None)
+    elif value == "none":
+        choices[key] = "-"
+    else:
+        if not re.match(r"^[\w.-]+\.desktop$", value) or value not in da.entries(): sys.exit(f"No such app: {value}")
+        assign(choices, key, value)
+    save(choices)
+
+
+def assign(choices, key, app):
+    """KEY opens APP: no line of its own when that is its default (Thunderbird back on Hyper E), so it follows the
+    default again."""
+    k = next((k for k in state()["keys"] if k["key"] == key), None)
+    if k and k["default"] and k["default"].get("app") == app: choices.pop(key, None)
+    else: choices[key] = app
+
+
+def move_key(key, to):
+    """A default moves as its app (a default without a known app can't): the browser's key then opens that browser,
+    not whichever is the default browser later."""
+    key, to = check_key(key), check_key(to)
+    k = next((k for k in state()["keys"] if k["key"] == key), None)
+    app = k and (k["app"]["id"] if k["app"] else None if k["set"] else k["default"].get("app"))
+    if not app: sys.exit(f"Hyper {key} has no app to move")
+    choices = read_choices()
+    assign(choices, to, app)
+    if k["set"]: choices.pop(key)   # yours: back to its default, if it has one
+    else: choices[key] = "-"        # a default moved away: the key does nothing
+    save(choices)
+
+
+def save(choices):
+    write_choices(choices)
+    # bindings.lua reads the file when the config loads
+    subprocess.run(["hyprctl", "reload"], stdout=subprocess.DEVNULL)
+
+
+def open_app(app_id):
+    apps = da.entries()
+    if app_id not in apps:
+        subprocess.run(["notify-send", "-a", "Keyboard Shortcuts", "App not found: " + app_id,
+                        "Choose another one in the launcher: Settings › Keyboard Shortcuts"])
+        sys.exit(1)
+    da.launch(app_id, apps[app_id], focus=True)
+
+
+def filter_list(text):
+    """Your keys in the key list: a default you replaced loses its Hyper key (the line goes when that was its only one),
+    and your apps' lines come at the end of the core's app section."""
+    choices = read_choices()
+    if not choices: return text
+    apps = da.entries()
+    mine = [f"  {'Hyper ' + k:<19}{apps[a].get('Name', a[:-8]) if a in apps else a[:-8]}"
+            for k, a in sorted(choices.items()) if a != "-"]
+    out, section, placed = [], "", False
+    for line in text.splitlines():
+        if line.startswith("## "):
+            if section == CORE_SECTION and not placed: out += mine; placed = True
+            section = line[3:].strip()
+        m = LINE.match(line)
+        if m:
+            alts = [a for a in m.group(1).split(" / ") if hyper_key(a) not in choices]
+            if not alts: continue
+            if len(alts) < len(m.group(1).split(" / ")):
+                line = f"  {' / '.join(alts):<19}{m.group(2)}"
+        elif section == CORE_SECTION and not placed and line.strip() == "":
+            out += mine; placed = True
+        out.append(line)
+    if not placed: out += mine
+    return "\n".join(out) + "\n"
+
+
+def main(args):
+    if args[:1] == ["set"] and len(args) == 3:
+        set_key(args[1], args[2])
+    elif args[:1] == ["move"] and len(args) == 3:
+        move_key(args[1], args[2])
+    elif args[:1] == ["open"] and len(args) == 2:
+        open_app(args[1])
+    elif args == ["filter"]:
+        sys.stdout.write(filter_list(sys.stdin.read()))
+    elif args == ["--json"]:
+        print(json.dumps(state()))
+    elif not args or args == ["list"]:
+        for k in state()["keys"]:
+            d = k["default"]
+            now = k["app"]["name"] if k["app"] else ("-" if k["set"] else d["name"])
+            was = f"(default: {d['name']}, {d['from']})" if k["set"] and d else "" if k["set"] else f"({d['from']})"
+            print(f"Hyper {k['key']}  {now:<28}{was}")
+    else:
+        sys.exit(__doc__.strip())
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

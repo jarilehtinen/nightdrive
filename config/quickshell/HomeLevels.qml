@@ -104,7 +104,7 @@ Item {
             out.push({ kind: "header", name: "Pinned" })
             if (Home.favorites.length) for (const e of Home.favorites) out.push(row(e))
             // Until something is pinned, say how: the footer only tells it on a device row, one level down
-            else out.push({ kind: "hint", name: "Shift+Enter on a device pins it here and to the top bar" })
+            else out.push({ kind: "note", name: "Shift+Enter on a device pins it here and to the top bar" })
             const names = rooms()
             if (names.length) out.push({ kind: "header", name: "Rooms" })
             for (const n of names) out.push(roomRow(n))

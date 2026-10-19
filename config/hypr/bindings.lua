@@ -33,8 +33,25 @@ local mod = "SUPER"
 -- Every binding (also local.lua's and local.d's) is recorded, so that the top bar menu's submap (qsmenu, below) can repeat
 -- them: inside a submap only its own keys work, and ⌘Enter, the volume keys etc. would be dead while a menu is open.
 NIGHTDRIVE_BINDS = {}
+-- Your own Hyper keys (launcher › Settings › Keyboard Shortcuts, scripts/app-keys): KEY<TAB>app.desktop, or - for a key
+-- that does nothing. They win over every other Hyper + KEY binding, Nightdrive's, a plugin's or local.lua's, which are
+-- left out here: those are the defaults.
+local appKeys = {}
+do
+    local f = io.open(os.getenv("HOME") .. "/.local/state/nightdrive/app-keys")
+    if f then
+        for line in f:lines() do
+            local key, app = line:match("^(%w)\t([%w%._-]+)$")
+            if key then appKeys[key:upper()] = app end
+        end
+        f:close()
+    end
+end
 local bind = hl.bind
+local ownKey = false
 hl.bind = function (keys, action, opts)
+    local hyper = keys:match("^%s*MOD3%s*%+%s*(%w)%s*$")
+    if hyper and appKeys[hyper:upper()] and not ownKey then return end
     if not NIGHTDRIVE_IN_SUBMAP then table.insert(NIGHTDRIVE_BINDS, { keys, action, opts }) end
     return bind(keys, action, opts)
 end
@@ -54,10 +71,16 @@ hl.bind("F19",    hl.dsp.exec_cmd(scripts .. "/dictate fn-down"), { locked = tru
 hl.bind("F19",    hl.dsp.exec_cmd(scripts .. "/dictate fn-up"),   { locked = true, release = true })
 -- Apps open with Hyper (Caps Lock, Mod3: hyprland.lua's kb_options) + a letter: the browser, Files, Email, and the optional
 -- parts' apps below and in the plugins' bindings.lua (Deck M, 1Password P). ⌘ stays for the desktop and the apps' own keys.
+-- These are defaults: your own keys (appKeys, above) replace them.
 hl.bind("MOD3 + B",              hl.dsp.exec_cmd(browser))
 hl.bind(mod .. " + SHIFT + RETURN", hl.dsp.exec_cmd(browser))   -- next to ⌘Enter (terminal) and ⌘⌥Enter (Claude Code)
 hl.bind("MOD3 + F",              hl.dsp.exec_cmd(fileManager))
-hl.bind("MOD3 + I",              hl.dsp.exec_cmd(email))
+hl.bind("MOD3 + E",              hl.dsp.exec_cmd(email))
+ownKey = true
+for key, app in pairs(appKeys) do
+    if app ~= "-" then hl.bind("MOD3 + " .. key, hl.dsp.exec_cmd(scripts .. "/app-keys open " .. app)) end
+end
+ownKey = false
 -- Optional parts' apps (plugins.txt ids; SHORTCUTS.md tags the same lines with {id}), Hyper + the letter
 local optional = {
     { "whatsapp",    "W", "'^chrome-web\\.whatsapp\\.com' gtk-launch webapp-whatsapp" },   -- WhatsApp webapp

@@ -6,7 +6,7 @@
   default-apps set KIND APP.desktop [--if-unset]
                                     APP opens all of the kind's types; --if-unset leaves a kind the user has chosen alone
                                     (setup-user.sh's own defaults, run again at every update)
-  default-apps open KIND [--focus]  start the kind's app (Hyper B / F / I); --focus brings an open window up instead
+  default-apps open KIND [--focus]  start the kind's app (Hyper B / F / E); --focus brings an open window up instead
 
 A choice is written to ~/.config/mimeapps.list for every type of the kind. Left unwritten, the default can come from
 whatever registers the type last (mimeinfo.cache): that is how aerc's copy in ~/.local/share/applications took over
@@ -208,11 +208,16 @@ def open_kind(kind, focus=False):
         subprocess.run(["notify-send", "-a", "Default apps", f"No {k[1].lower()} app",
                         "Choose one in the launcher: Settings › Default apps"])
         sys.exit(1)
+    launch(app_id, apps[app_id], focus)
+
+
+def launch(app_id, keys, focus=False):
+    """Start the app (its desktop entry's keys: entries()); focus brings an open window up instead (app-keys too)."""
     cmd = ["gtk-launch", app_id[:-8]]
     if focus:
         # The window's class: StartupWMClass, the id (Wayland app ids are usually it) or its last part
         # (net.thunderbird.Thunderbird -> thunderbird)
-        names = {apps[app_id].get("StartupWMClass", ""), app_id[:-8], app_id[:-8].split(".")[-1]} - {""}
+        names = {keys.get("StartupWMClass", ""), app_id[:-8], app_id[:-8].split(".")[-1]} - {""}
         regex = "(?i)^(" + "|".join(sorted(re.escape(n) for n in names)) + ")$"
         os.execv(SCRIPTS + "/launch-or-focus", [SCRIPTS + "/launch-or-focus", regex] + cmd)
     os.execvp(cmd[0], cmd)

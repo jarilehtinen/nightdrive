@@ -31,7 +31,9 @@ PanelWindow {
         Text {
             id: label
             anchors.centerIn: parent
-            text: parent.glyph !== "" ? Icons.g(parent.glyph) : parent.key.length === 1 ? parent.key : parent.key.toLowerCase()   // a letter (⌘C) stays a capital
+            // a letter (⌘C) stays a capital, and Hyper, a modifier with no symbol, is in capitals like the bar's tags
+            text: parent.glyph !== "" ? Icons.g(parent.glyph) : parent.key.length === 1 ? parent.key
+                : parent.key === "Hyper" ? "HYPER" : parent.key.toLowerCase()
             color: Theme.dim
             // a capital as big and heavy as the glyphs next to it (⌘ ⇧ V); a key name (esc) stays small
             readonly property bool letter: parent.glyph === "" && parent.key.length === 1
@@ -164,14 +166,15 @@ PanelWindow {
     property string extSource: ""             // shell.qml sets this when the file exists
     readonly property var ext: extLoader.item
     // Levels from other files: SystemLevels.qml (Wi-Fi, Bluetooth, Sound, Tailscale), HomeLevels.qml (Home Assistant),
-    // DefaultAppsLevels.qml (Settings › Default apps) and the private extension; they answer
+    // DefaultAppsLevels.qml (Settings › Default apps), AppKeyLevels.qml (Settings › Keyboard Shortcuts) and the private
+    // extension; they answer
     // the same questions (items, activate, footer, entered)
-    function extOf(l) { return sys.levels.indexOf(l) >= 0 ? sys : home.levels.indexOf(l) >= 0 ? home : defs.levels.indexOf(l) >= 0 ? defs : ext !== null && ext.levels.indexOf(l) >= 0 ? ext : null }
+    function extOf(l) { return sys.levels.indexOf(l) >= 0 ? sys : home.levels.indexOf(l) >= 0 ? home : defs.levels.indexOf(l) >= 0 ? defs : akeys.levels.indexOf(l) >= 0 ? akeys : ext !== null && ext.levels.indexOf(l) >= 0 ? ext : null }
     readonly property bool extLevel: extOf(level) !== null
     readonly property int selIndex: list.currentIndex
     function shakeNow() { shake.restart() }
     function search(target, text) { go(target); input.text = text }   // a level with its query typed (Default apps › Find more)
-    readonly property var parents: Object.assign({ launcherprefs: "settings", shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", battery: "settings", install: "system", remove: "system", emoji: "tools", snippets: "tools", snipkey: "snippets", sniptext: "snippets", screenshot: "tools", software: "install", swcat: "software", swsearch: "software", webapp: "install", recommended: "install", plugins: "install", webname: "webapp", webaddr: "webname", compname: "settings", channel: "settings", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", sounds: "settings", soundregular: "sounds", soundurgent: "sounds", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, sys.parents, home.parents, defs.parents, ext ? ext.parents : {})
+    readonly property var parents: Object.assign({ launcherprefs: "settings", shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", battery: "settings", install: "system", remove: "system", emoji: "tools", snippets: "tools", snipkey: "snippets", sniptext: "snippets", screenshot: "tools", software: "install", swcat: "software", swsearch: "software", webapp: "install", recommended: "install", plugins: "install", webname: "webapp", webaddr: "webname", compname: "settings", channel: "settings", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", sounds: "settings", soundregular: "sounds", soundurgent: "sounds", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, sys.parents, home.parents, defs.parents, akeys.parents, ext ? ext.parents : {})
     // Search found nothing: hint below ⌘⌥⏎ (icons) → send the text to Claude
     readonly property bool noHit: (level === "root" || level === "apps") && query.trim() !== "" && results.length === 0
     // The selected row is an app: ⌃Enter shows it in Apps (the list with an empty query) or hides it from there.
@@ -228,7 +231,7 @@ PanelWindow {
     readonly property var titles: Object.assign({ apps: "Apps", music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", musicsearch: "Music › Search", artist: "Music › " + artist.name, keys: "Keybindings", screenshot: "Tools › Screenshot", settings: "Settings", display: "Settings › Display", battery: "Settings › Battery", startup: "Settings › Startup", channel: "Settings › Update channel", screensaver: "Settings › Screensaver", saverafter: "Screensaver › Start after", screenoff: "Screensaver › Screen off after", saverstyle: "Screensaver › Style", sounds: "Settings › Notifications", soundregular: "Notifications › Regular sound", soundurgent: "Notifications › Urgent sound", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
                                      launcherprefs: "Settings › Launcher", compname: "Settings › Computer name", topbar: "Settings › Top bar", baropacity: "Top bar › Opacity", baricons: "Top bar › Icon colors", barhl: "Top bar › Highlight", baritems: "Top bar › Items",
                                      system: "System", install: "System › Install", emoji: "Tools › Emoji", snippets: "Tools › Snippets", snipkey: "Snippets › Trigger", sniptext: "Snippets › “" + snipTrigger + "”", software: "Install › Software", swcat: "Software › " + swCat.name, swsearch: "Software › Search", webapp: "Install › Webapp", recommended: "Install › Recommended", plugins: "Install › Plugins", webname: "Install › Webapp › Name", webaddr: "Install › Webapp › Address", remove: "System › Remove", power: "Power", passwords: "Passwords", clipboard: "Clipboard",
-                                     tools: "Tools" }, sys.titles, home.titles, defs.titles, ext ? ext.titles : {})
+                                     tools: "Tools" }, sys.titles, home.titles, defs.titles, akeys.titles, ext ? ext.titles : {})
 
     // Reference at startup: the app list only loads on first reference
     property var apps: DesktopEntries.applications.values
@@ -310,7 +313,7 @@ PanelWindow {
             { kind: "nav", name: "Screensaver", glyph: "monitor-pause", target: "screensaver" },
             { kind: "header", name: "Behaviour" },
             { kind: "nav", name: "Launcher", glyph: "text-search", target: "launcherprefs" }
-        ], defs.settingsItems, [
+        ], defs.settingsItems, akeys.settingsItems, [
             { kind: "nav", name: "Computer name", glyph: "laptop", target: "compname", summary: compName }   // what phones see
         ], home.settingsItems, [   // Home: only while Home Assistant is set up
             { kind: "nav", name: "Notifications", glyph: "bell-ring", target: "sounds" },
@@ -331,7 +334,8 @@ PanelWindow {
                                               "Display": "brightness night light warm scale scaling resolution monitor screen retina hidpi zoom size bigger smaller",
                                               "Notifications": "notification sounds alert chime beep ping tone urgent critical",
                                               "Tailscale": "vpn",
-                                              "Default apps": "browser email mail files folders text editor images photos video music player pdf calendar open with", "Theme": "appearance style look colors",
+                                              "Default apps": "browser email mail files folders text editor images photos video music player pdf calendar open with",
+                                              "Keyboard Shortcuts": "hyper caps lock keys keybindings hotkeys open app", "Theme": "appearance style look colors",
                                               "Color": "theme accent violet purple blue teal green amber rose graphite gray",
                                               "Background": "wallpaper desktop image picture",
                                               "Top bar": "waybar panel menu bar",
@@ -444,19 +448,24 @@ PanelWindow {
         }
         return out
     }
+    // Rows that can't be selected: section headers, and notes (kind "note": a line of help in small text, e.g. Settings ›
+    // Keyboard Shortcuts' "the others are in the config files"), unlike a hint, which stands in for the rows ("Loading…")
+    function fixedRow(it) { return it.kind === "header" || it.kind === "note" }
     function firstSelectable() {
-        for (let i = 0; i < results.length; i++) if (results[i].kind !== "header") return i
+        for (let i = 0; i < results.length; i++) if (!fixedRow(results[i])) return i
         return 0
     }
-    // Moves the selection, skipping header rows
+    // Moves the selection, skipping header and note rows
     function step(dir) {
         let i = list.currentIndex + dir
-        while (i >= 0 && i < results.length && results[i].kind === "header") i += dir
+        while (i >= 0 && i < results.length && fixedRow(results[i])) i += dir
         if (i < 0 && dir < 0) { playerFocused = hasDeck; return }    // up from the top of the list: player row
         if (i >= 0 && i < results.length) {
             list.currentIndex = i
             // Up onto a section's first row: its header comes into view too (the list only scrolls to the row itself)
             if (dir < 0 && i > 0 && results[i - 1].kind === "header") Qt.callLater(() => list.positionViewAtIndex(i - 1, ListView.Contain))
+            // Down onto the last row that can be selected: the notes below it come into view too
+            if (dir > 0 && results.slice(i + 1).every(fixedRow)) Qt.callLater(() => list.positionViewAtEnd())
         }
     }
     readonly property int headerHeight: 40
@@ -464,7 +473,7 @@ PanelWindow {
         const cap = maxRows * (rowHeight + rowGap)
         let h = 0
         for (const it of results) {
-            h += (it.kind === "header" ? headerHeight : rowHeight) + rowGap
+            h += (fixedRow(it) ? headerHeight : rowHeight) + rowGap
             if (h >= cap) return cap
         }
         return h
@@ -688,8 +697,8 @@ PanelWindow {
             // Choosing the other one switches the branch and updates in a terminal (it says why if it can't, e.g. own changes)
             return channels.map(t => ({ kind: "channel", value: t[0], name: t[1], glyph: t[0] === channel ? "check" : t[2],
                                         summary: t[0] === channel ? "current" : (t[0] === "stable" ? "default" : undefined) }))
-                .concat(hint(channel === "custom" ? "On a branch of its own (" + (channelBranch || "none") + "): choosing one switches to it"
-                                                  : "Development gets the bigger changes before Stable"))
+                .concat([{ kind: "note", name: channel === "custom" ? "On a branch of its own (" + (channelBranch || "none") + "): choosing one switches to it"
+                                                                   : "Development gets the bigger changes before Stable" }])
         } else if (level === "saverstyle") {
             return saverStyles.map(t => ({ kind: "idlestyle", value: t[0], name: t[1], glyph: t[0] === idleStyle ? "check" : t[2],
                                            summary: t[0] === idleStyle ? "current" : (t[0] === "random" ? "default" : undefined) }))
@@ -1037,6 +1046,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         else if (sys.activate(item)) {}
         else if (home.activate(item)) {}
         else if (defs.activate(item)) {}
+        else if (akeys.activate(item)) {}
         else if (ext && ext.activate(item)) {}
         else if (item.kind === "pw") copyField(item, "password")
         else if (item.kind === "menu") { win.open = false; win.openMenu(item.target) }
@@ -1343,6 +1353,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
     SystemLevels { id: sys; launcher: win }
     HomeLevels { id: home; launcher: win }
     DefaultAppsLevels { id: defs; launcher: win }
+    AppKeyLevels { id: akeys; launcher: win }
     Loader {
         id: extLoader
         source: win.extSource
@@ -1979,13 +1990,14 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                     required property var modelData
                     required property int index
                     readonly property bool isHeader: modelData.kind === "header"
-                    readonly property bool current: !isHeader && !win.playerFocused && index === list.currentIndex
-                    readonly property bool noIcon: modelData.kind === "key" || modelData.kind === "hint" || modelData.kind === "header"
+                    readonly property bool isNote: modelData.kind === "note"
+                    readonly property bool current: !isHeader && !isNote && !win.playerFocused && index === list.currentIndex
+                    readonly property bool noIcon: modelData.kind === "key" || modelData.kind === "hint" || isHeader || isNote
                     readonly property bool armedNow: ((modelData.kind === "action" && modelData.confirm === true || modelData.kind === "channel") && win.armed === modelData.name)
                                                     || (modelData.armKey !== undefined && win.armed === modelData.armKey)
                     readonly property bool chevron: modelData.kind === "nav" || modelData.kind === "menu" || modelData.chevron === true
                     width: list.width
-                    height: isHeader ? win.headerHeight : win.rowHeight
+                    height: isHeader || isNote ? win.headerHeight : win.rowHeight
                     radius: 10
                     color: current ? Theme.sel : "transparent"
 
@@ -2048,8 +2060,8 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                         text: row.modelData.liveName !== undefined ? sys.liveText(row.modelData.liveName)
                             : row.isHeader ? row.modelData.name.toUpperCase()
                             : (row.armedNow ? row.modelData.name + " — " + (row.modelData.armHint || "press Enter again to confirm") : row.modelData.name)
-                        color: row.armedNow ? Theme.primary : (row.isHeader ? Theme.primary : row.modelData.kind === "hint" || row.modelData.dimmed ? Theme.dim : (row.current ? Theme.accent : Theme.text))
-                        font { family: Theme.font; pixelSize: row.isHeader ? win.fontSize - 5 : row.modelData.sub ? win.fontSize - 2 : win.fontSize; weight: row.isHeader ? Font.Bold : win.fontWeight; letterSpacing: row.isHeader ? 1.5 : 0 }
+                        color: row.armedNow ? Theme.primary : (row.isHeader ? Theme.primary : row.modelData.kind === "hint" || row.isNote || row.modelData.dimmed ? Theme.dim : (row.current ? Theme.accent : Theme.text))
+                        font { family: Theme.font; pixelSize: row.isHeader ? win.fontSize - 5 : row.isNote ? win.fontSize - 4 : row.modelData.sub ? win.fontSize - 2 : win.fontSize; weight: row.isHeader ? Font.Bold : win.fontWeight; letterSpacing: row.isHeader ? 1.5 : 0 }
                         topPadding: row.isHeader ? 10 : 0
                     }
                     Text {      // EXPERIMENTAL after a plugin's name (Install › Plugins)
@@ -2088,8 +2100,9 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                                letterSpacing: row.modelData.sub ? 0 : 1 }
                     }
                     Rectangle {      // the row's shortcut (shortcutFor) in a key frame like the footer's, before the › of a submenu;
-                        id: shortcut     // not where the right side is taken
-                        readonly property string keys: !win.prefs.shortcuts || trailing.tag || row.modelData.keys !== undefined || row.armedNow
+                        id: shortcut     // not where the right side is taken. capKeys: a row's own keys (Settings › Keyboard Shortcuts)
+                        readonly property string keys: row.modelData.capKeys !== undefined ? row.modelData.capKeys
+                            : !win.prefs.shortcuts || trailing.tag || row.modelData.keys !== undefined || row.armedNow
                             || (row.modelData.summary !== undefined && row.modelData.summary !== "") ? "" : win.shortcutFor(row.modelData)
                         visible: keys !== ""
                         anchors { right: trailing.left; rightMargin: trailing.text !== "" ? 18 : 0; verticalCenter: parent.verticalCenter }
@@ -2131,7 +2144,7 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                             || (!tag && row.modelData.keys === undefined && !(row.modelData.summary !== undefined && row.modelData.summary !== "" && !row.armedNow) && row.chevron)
                         text: row.modelData.trailGlyph !== undefined ? Icons.g(row.modelData.trailGlyph)      // Top bar › Items: ✓ / – (hidden)
                             : row.modelData.live !== undefined ? sys.liveText(row.modelData.live)   // updates without rebuilding the rows
-                            : tag ? row.modelData.from.toUpperCase() : row.modelData.keys !== undefined ? row.modelData.keys
+                            : tag ? row.modelData.from.toUpperCase() : row.modelData.keys !== undefined ? row.modelData.keys.replace(/\bHyper\b/g, "HYPER")   // as in the key frames (Keycap)
                             : (row.modelData.summary !== undefined && row.modelData.summary !== "" && !row.armedNow ? row.modelData.summary
                             : (row.chevron ? Icons.g("chevron-right") : ""))
                         color: row.modelData.trailGlyph !== undefined ? (row.modelData.dimmed ? Theme.dim : row.current ? Theme.accent : Theme.text)
@@ -2192,7 +2205,7 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                         cursorShape: Qt.PointingHandCursor
                         anchors.fill: parent
                         hoverEnabled: true
-                        enabled: !row.isHeader
+                        enabled: !row.isHeader && !row.isNote
                         // row.slider (Home's lights): a sideways drag sets the brightness, a click still turns it on/off
                         property real pressX: -1
                         property bool sliding: false

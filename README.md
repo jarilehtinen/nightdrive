@@ -24,7 +24,8 @@ Nightdrive puts all of that together into one opinionated desktop.
 - **⌘ is the main key.** ⌘ is the Super key: Command on a Mac, the Windows key on a PC.
   ⌘C / ⌘V / ⌘X work in every app, including the terminal. ⌘S saves, ⌘W closes, ⌘Q quits, ⌘Space opens the launcher.
 - **Caps Lock is Hyper, the app key.** Hyper + a letter opens an app or brings it to the front: Hyper+B the browser,
-  Hyper+F Files, Hyper+M music. No app uses Hyper itself, so the letters Nightdrive leaves free are yours.
+  Hyper+F Files, Hyper+M music. No app uses Hyper itself, so the keys are yours: pick the app for any letter or digit
+  in the launcher (Settings › Keyboard Shortcuts).
 - **Fits the machine it's on.** The installer recognises an Apple Silicon Mac, a PC or a virtual machine and sets it up to
   match: the keyboard layout you picked when installing Fedora, the graphics driver (NVIDIA too), the display scale. On a
   MacBook the top bar sits in the notch area, the top-row keys control volume, brightness, the keyboard backlight and
@@ -93,7 +94,10 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
 - **Background apps**: ⌘W only hides chat apps and the music player, so they keep running. Their shortcut brings them straight back.
 - **Web apps**: turn any site into an app window from the launcher (System › Install › Webapp).
 - **Default apps**: which app opens links, mail, folders, text, code, images, video, music, PDFs and calendar files, in the launcher
-  (Settings › Default apps, or `nightdrive defaults`). Hyper B, F and I open the browser, Files and Email you chose.
+  (Settings › Default apps, or `nightdrive defaults`). Hyper B, F and E open the browser, Files and Email you chose.
+- **Keyboard Shortcuts**: which app Hyper + a letter or digit opens, in the launcher (Settings › Keyboard Shortcuts, or
+  `~/.config/hypr/scripts/app-keys`). Your choice replaces a default, Nightdrive's or a plugin's, and the key list shows
+  it. The other shortcuts are in the config files ([Make it yours](#make-it-yours)).
 - **Login apps**: you choose what starts at login in the launcher (Settings › Startup, or ⌥Enter on an app). Background
   apps start hidden. Only 1Password (if installed) is on by default, because its SSH agent and the Passwords level need it.
 - **Login screen**: a password-only greeter that matches the theme (`--no-greeter` keeps the distribution's own).
@@ -253,7 +257,7 @@ The same `nightdrive` command reaches the settings from a terminal (`nightdrive`
 ## Keys
 
 ⌘ is the Super key (Command on a Mac, the Windows key on a PC). Hyper is Caps Lock: Hyper + a letter opens an app, and
-the letters left free are yours ([Make it yours](#make-it-yours)).
+which app is yours to choose (launcher › Settings › Keyboard Shortcuts).
 
 | Keys | Action |
 |---|---|
@@ -268,7 +272,7 @@ the letters left free are yours ([Make it yours](#make-it-yours)).
 | ⌘ ⇧ V · ⌘ ⇧ E | Clipboard history · emoji |
 | ⌘ R · ⌘ ⇧ R | Reload · without the cache (browsers) |
 | ⌘ ⇧ S · ⌘ ⌥ S · ⌘ ⌥ ⇧ S | Screenshot of a region · of a window · of the screen, to the clipboard |
-| Hyper B / F / P / M / I | Browser / Files / 1Password / Music / Mail |
+| Hyper B / F / P / M / E | Browser / Files / 1Password / Music / Email |
 | ⌘ ⇧ Space | Walk through the top bar menus with the keyboard |
 | ⌘ Esc | Notifications |
 | F5 (hold; Fn on a Mac) | Dictation |
@@ -285,7 +289,8 @@ The full list is in [`config/hypr/SHORTCUTS.md`](config/hypr/SHORTCUTS.md).
   launcher (Settings › Display) wins over both.
 - **Per-machine overrides** go to `config/hypr/local.lua`, which git ignores.
 - **Keybindings** are in [`config/hypr/bindings.lua`](config/hypr/bindings.lua), a plugin's in its own folder. Apps
-  open with Hyper (Caps Lock, `MOD3`) + a letter; a letter Nightdrive doesn't use is yours: `hl.bind("MOD3 + D", …)` in `local.lua`.
+  open with Hyper (Caps Lock, `MOD3`) + a letter, chosen in the launcher (Settings › Keyboard Shortcuts); a Hyper key
+  bound in `local.lua` (`hl.bind("MOD3 + D", …)`) is a default that a choice there replaces.
 - **Optional parts** (recommended apps, ready-made web apps, plugins): a one-line part, such as a web app or an app from
   dnf or Flathub, is a line in [`plugins.txt`](plugins.txt), with its keybinding in `bindings.lua`'s `optional` list and
   SHORTCUTS.md (with an `{id}` tag). A part with files of its own (a top bar module and menu, keys, a service, commands)

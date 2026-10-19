@@ -28,6 +28,7 @@ AppIcon 1.0 AppIcon.qml
 SystemLevels 1.0 SystemLevels.qml
 HomeLevels 1.0 HomeLevels.qml
 DefaultAppsLevels 1.0 DefaultAppsLevels.qml
+AppKeyLevels 1.0 AppKeyLevels.qml
 singleton Home 1.0 Home.qml
 singleton Plugins 1.0 Plugins.qml
 SharePicker 1.0 SharePicker.qml

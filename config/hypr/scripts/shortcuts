@@ -2,6 +2,8 @@
 # Prints SHORTCUTS.md (+ the installed plugin folders' SHORTCUTS.md, + SHORTCUTS.local.md) for the installed optional
 # parts: a line ending in {id} only shows when that part (plugins.txt, a plugin folder) is installed, one ending in {!id}
 # only when it isn't; the tag itself isn't shown. The launcher's Keybindings level and the ⌘⇧K help read this.
+# Your own Hyper keys (launcher › Settings › Keyboard Shortcuts) go in by app-keys filter; --defaults leaves them out
+# (app-keys reads the defaults from that).
 d=$HOME/.config/hypr
 list=$HOME/.cache/nightdrive/plugins
 active=$HOME/.cache/nightdrive/plugins.d/active   # id<TAB>folder of the installed plugin folders (nightdrive plugins installed)
@@ -20,4 +22,4 @@ active=$HOME/.cache/nightdrive/plugins.d/active   # id<TAB>folder of the install
     if ((tag in have) == neg) next
     $0 = substr($0, 1, RSTART - 1)
   }
-  { print }'
+  { print }' | if [[ $1 == --defaults ]]; then cat; else "$d/scripts/app-keys" filter; fi
