@@ -57,7 +57,7 @@ Item {
     function activate(it) {
         if (it.kind === "defkind") { kind = { key: it.key, name: it.name }; launcher.go("defaultpick"); return true }
         if (it.kind === "defmore") {
-            if (it.cat) { launcher.swCat = { key: it.cat.key, name: it.cat.name }; launcher.go("swcat") }
+            if (it.cat) launcher.openCategory(it.cat.key, it.cat.name)
             else launcher.search("swsearch", open().more)
             return true
         }

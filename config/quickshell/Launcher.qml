@@ -59,12 +59,6 @@ PanelWindow {
     property var keyList: []                  // [{ name, sub, keys, section }]
     property var keyIndex: ({})               // lower-case name → keys (shortcutFor)
     property string armed: ""                 // action awaiting confirmation
-    property var installResults: []           // Install: search results
-    property string installQ: ""              // the query the results belong to
-    property var swCats: []                   // Install › Software › Browse: [{ key, name, glyph }] (data/software.json)
-    property var swCat: ({ key: "", name: "" })   // the open category (level swcat)
-    property var swList: null                 // its rows (pkg-search --list), null = loading
-    property string webName: ""               // Install › Webapp: the name, while asking for the address
     property var emojiList: []               // Emoji: [{ ch, name, kw }] (data/emoji.tsv, CLDR names in English and Finnish)
     property bool emojiLoaded: false
     property var snipList: []                // Snippets: [{ trigger, text }] (hypr/scripts/snippets list)
@@ -95,7 +89,6 @@ PanelWindow {
         Quickshell.execDetached(["bash", "-c", 'mkdir -p "$(dirname "$2")" && printf "%s\\n" "$1" > "$2.tmp" && mv "$2.tmp" "$2"',
                                  "_", JSON.stringify(n), prefsFile])
     }
-    property var pluginList: null             // Install › Recommended, Plugins and Webapp's ready-made ones: [{ id, name, icon, desc, installed, group, off, external }] (nightdrive plugins), null = loading
     property var pwItems: []                  // Passwords: 1Password items (op item list)
     property string pwState: "idle"           // idle | loading | ready | error
     property string pwError: ""
@@ -133,15 +126,17 @@ PanelWindow {
     readonly property var ext: extLoader.item
     // Levels from other files: SystemLevels.qml (Wi-Fi, Bluetooth, Sound, Tailscale), HomeLevels.qml (Home Assistant),
     // DefaultAppsLevels.qml (Settings › Default apps), AppKeyLevels.qml (Settings › Keyboard Shortcuts), BehaviourLevels.qml
-    // (Settings › Launcher, Computer name, Notifications, Update channel), MusicLevels.qml (Music, with Deck) and the private
-    // extension; they answer the same questions (items, activate, footer, entered). A new file goes in this list, not in each question's code
-    readonly property var exts: [sys, home, defs, akeys, behave, music].concat(ext ? [ext] : [])
+    // (Settings › Launcher, Computer name, Notifications, Update channel), MusicLevels.qml (Music, with Deck), InstallLevels.qml
+    // (Install's pages) and the private extension; they answer the same questions (items, activate, footer, entered). A new file goes in this list, not in each question's code
+    readonly property var exts: [sys, home, defs, akeys, behave, music, inst].concat(ext ? [ext] : [])
     function extOf(l) { return exts.find(e => e.levels.indexOf(l) >= 0) || null }
     readonly property bool extLevel: extOf(level) !== null
     readonly property int selIndex: list.currentIndex
     function shakeNow() { shake.restart() }
     function search(target, text) { go(target); input.text = text }   // a level with its query typed (Default apps › Find more)
-    readonly property var parents: Object.assign({ display: "settings", battery: "settings", install: "system", remove: "system", removesw: "remove", removeweb: "remove", emoji: "tools", snippets: "tools", snipkey: "snippets", sniptext: "snippets", screenshot: "tools", software: "install", swcat: "software", swsearch: "software", webapp: "install", recommended: "install", plugins: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, ...exts.map(e => e.parents))
+    readonly property var swCats: inst.swCats                          // Install › Software's categories (Default apps › Find more)
+    function openCategory(key, name) { inst.openCategory(key, name) }
+    readonly property var parents: Object.assign({ display: "settings", battery: "settings", install: "system", remove: "system", removesw: "remove", removeweb: "remove", emoji: "tools", snippets: "tools", snipkey: "snippets", sniptext: "snippets", screenshot: "tools", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, ...exts.map(e => e.parents))
     // Search found nothing: hint below ⌘⌥⏎ (icons) → send the text to Claude
     readonly property bool noHit: (level === "root" || level === "apps") && query.trim() !== "" && results.length === 0
     // The selected row is an app: ⌃Enter shows it in Apps (the list with an empty query) or hides it from there.
@@ -168,9 +163,7 @@ PanelWindow {
         : level === "snippets" && (results[list.currentIndex] || {}).kind === "snipauto" ? (snipAuto === "off" ? "Enter: turn on in a terminal (asks for your password once)" : "Enter: turn off in a terminal")
         : level === "snipkey" && query.trim() !== "" ? "Enter: continue to the text"
         : level === "sniptext" && query !== "" ? "Enter: save"
-        : level === "webapp" && (results[list.currentIndex] || {}).ready ? ((results[list.currentIndex] || {}).installed ? "Enter: add again" : "Enter: add")
-        : level === "webname" && query.trim() !== "" ? "Enter: continue to the address"
-        : level === "webaddr" && query.trim() !== "" ? "Enter: create the webapp" : ""
+        : ""
     // The footer as key caps: "Ctrl+Enter: show in Apps  ·  Esc: back" → [{ keys: ["Ctrl", "Enter"], text: "show in Apps" }, ...].
     // "Enter creates …" (no colon) works too; a part that doesn't start with a key is plain text.
     readonly property var keyGlyphs: ({ Enter: "corner-down-left", Ctrl: "chevron-up", Shift: "arrow-big-up", Alt: "option", Cmd: "command",
@@ -192,7 +185,7 @@ PanelWindow {
 
     readonly property var titles: Object.assign({ apps: "Apps", keys: "Keybindings", screenshot: "Tools › Screenshot", settings: "Settings", display: "Settings › Display", battery: "Settings › Battery", startup: "Settings › Startup", screensaver: "Settings › Screensaver", saverafter: "Screensaver › Start after", screenoff: "Screensaver › Screen off after", saverstyle: "Screensaver › Style", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
                                      topbar: "Settings › Top bar", baropacity: "Top bar › Opacity", baricons: "Top bar › Icon colors", barhl: "Top bar › Highlight", baritems: "Top bar › Items",
-                                     system: "System", install: "System › Install", emoji: "Tools › Emoji", snippets: "Tools › Snippets", snipkey: "Snippets › Trigger", sniptext: "Snippets › “" + snipTrigger + "”", software: "Install › Software", swcat: "Software › " + swCat.name, swsearch: "Software › Search", webapp: "Install › Webapp", recommended: "Install › Recommended", plugins: "Install › Plugins", webname: "Install › Webapp › Name", webaddr: "Install › Webapp › Address", remove: "System › Remove", removesw: "Remove › Software", removeweb: "Remove › Webapps", power: "Power", passwords: "Passwords", clipboard: "Clipboard",
+                                     system: "System", install: "System › Install", emoji: "Tools › Emoji", snippets: "Tools › Snippets", snipkey: "Snippets › Trigger", sniptext: "Snippets › “" + snipTrigger + "”", remove: "System › Remove", removesw: "Remove › Software", removeweb: "Remove › Webapps", power: "Power", passwords: "Passwords", clipboard: "Clipboard",
                                      tools: "Tools" }, ...exts.map(e => e.titles))
 
     // Reference at startup: the app list only loads on first reference
@@ -202,9 +195,6 @@ PanelWindow {
     function term(script, arg) {
         return ["kitty", "--class", "floating-tui", "-e", "bash", "-c",
                 script + "; echo; read -rp 'Done. Press Enter to close…'", "_", arg || ""]
-    }
-    function webappTerm() {
-        return term('read -rp "Name: " n; read -rp "Address: " u; "$HOME/.config/hypr/scripts/webapp-add" "$n" "$u"')
     }
     function shot(mode) { return ["bash", "-c", "sleep 0.4; \"$HOME/.config/hypr/scripts/screenshot\" \"$1\"", "_", mode] }
 
@@ -252,10 +242,6 @@ PanelWindow {
             { kind: "nav", name: "Webapp", glyph: "app-window", target: "webapp", summary: "website as an app" },
             { kind: "nav", name: "Recommended", glyph: "star", target: "recommended", summary: "apps set up for Nightdrive" },
             { kind: "nav", name: "Plugins", glyph: "puzzle", target: "plugins", summary: "desktop features" }
-        ],
-        webapp: [
-            { kind: "nav", name: "Add your own", glyph: "plus", target: "webname" },
-            { kind: "action", name: "Add your own in a terminal", glyph: "terminal", cmd: webappTerm() }
         ],
         // In groups like macOS's System Settings: the often used first (connections, hardware), then the look, then
         // what is set once (behaviour)
@@ -454,7 +440,7 @@ PanelWindow {
 
     function items() {
         const q = query.trim().toLowerCase()
-        let all
+        let all, tail = []
         if (level === "root") {
             all = rootItems.map(r => ({ item: r, text: r.name, extra: r.extra || "" }))
             // When searching, the root level also finds rows from the sublevels, so there's no need to open a menu first.
@@ -499,20 +485,6 @@ PanelWindow {
         } else if (level === "keys") {
             all = keyList.map(k => ({ item: { kind: "key", name: k.name, sub: k.sub || undefined, keys: k.keys, section: k.section }, text: k.name,
                                       extra: k.keys + " " + k.section + " " + k.sub }))
-        } else if (level === "software") {
-            const browse = [{ kind: "swcat", name: "Popular", glyph: "trending-up", key: "popular", summary: "top 100" }]
-                .concat(swCats.map(c => ({ kind: "swcat", name: c.name, glyph: c.glyph, key: c.key })))
-            if (q === "") return [{ kind: "swsearch", name: "Search", glyph: "search", summary: "Fedora + Flathub" },
-                                  { kind: "header", name: "Browse" }].concat(browse)
-            all = browse.map(r => ({ item: r, text: r.name }))
-        } else if (level === "swsearch") {
-            if (q.replace(/[^a-z0-9._+\-]/g, "").length < 2) return [{ kind: "hint", name: "Type at least 2 characters to search apps and tools" }]
-            if (installResults.length === 0) return [{ kind: "hint", name: searchProc.running ? "Searching…" : "Nothing found" }]
-            return installResults
-        } else if (level === "swcat") {
-            if (swList === null) return hint("Loading…")
-            if (swList.length === 0) return hint("Nothing for this computer here")
-            all = swList.map(r => ({ item: r, text: r.name, extra: r.sub || "" }))
         } else if (level === "emoji") {
             if (!emojiLoaded) return [{ kind: "hint", name: "Loading emoji…" }]
             all = emojiList.map(e => ({ item: { kind: "emoji", name: e.name, emoji: e.ch }, text: e.name, extra: e.kw }))
@@ -534,16 +506,11 @@ PanelWindow {
         } else if (level === "sniptext") {
             if (query === "") return hint("Type the text that “" + snipTrigger + "” expands to")
             return [{ kind: "snipadd", name: "Save “" + snipTrigger + "”", summary: query, glyph: "text-cursor-input", value: query }]
-        } else if (level === "webname") {
-            if (query.trim() === "") return hint("Type the webapp’s name")
-            return [{ kind: "wname", name: "Name: " + query.trim(), summary: "next: address", glyph: "arrow-right", value: query.trim() }]
-        } else if (level === "webaddr") {
-            if (query.trim() === "") return hint("Type the address for “" + webName + "” (e.g. web.whatsapp.com)")
-            return [{ kind: "wadd", name: "Add “" + webName + "”", summary: query.trim(), glyph: "app-window", value: query.trim() }]
         } else if (extOf(level)) {
             const r = extOf(level).items(level, q)
             if (!r.all) return r          // ready-made rows (hints, etc.)
             all = r.all                   // [{ item, text, extra }], filtered by the query below
+            tail = r.tail || []           // rows after a search's hits
         } else if (level === "clipboard") {
             if (!clipLoaded) return [{ kind: "hint", name: "Loading clipboard history…" }]
             if (clipItems.length === 0) return [{ kind: "hint", name: "Clipboard history is empty" }]
@@ -646,32 +613,6 @@ PanelWindow {
                 return Object.assign({}, a, { item: Object.assign({}, a.item, { summary: on ? (bgApps[a.item.name] !== undefined ? "at login, hidden" : "at login") : undefined }) })
             })
             if (q === "") return all.sort((a, b) => a.text.localeCompare(b.text)).map(x => x.item)   // a fixed order: toggling doesn't move rows
-        } else if (level === "plugins" || level === "recommended") {
-            // Enter opens the details (src "plugin"), whose Enter runs the installer in a terminal (they ask things: sudo, tokens,
-            // logins); an installed one can be run again (rerun)
-            if (pluginList === null) return hint("Loading…")
-            // "experimental" in the description becomes a tag after the name (plugins.txt keeps it in the text for install.sh)
-            const exp = /\bexperimental\b/i
-            const plain = d => d.replace(/\s*\(experimental\)/i, "").replace(/,\s*experimental(?=[;)])/i, "").replace(/\(experimental;\s*/i, "(")
-            const rows = (group, from) => pluginList.filter(p => p.group === group).map(p => ({ item: { kind: "action", name: p.name, glyph: p.icon, sub: plain(p.desc), installed: p.installed,
-                                                 experimental: exp.test(p.desc), external: p.external,
-                                                 src: "plugin", id: p.id, rerun: true, groupTag: from,
-                                                 summary: p.installed ? (p.off ? "off" : "installed") : undefined,
-                                                 cmd: term('"$HOME/.local/bin/nightdrive" plugins install "$1"', p.id) },
-                                         text: p.name, extra: p.desc }))
-            // A search also finds the other group's rows, tagged with it: whether something is a plugin or a recommended app
-            // isn't obvious ("tailscale" in Plugins found only Ferry, whose description mentions it; Tailscale is Recommended)
-            all = level === "plugins" ? rows("plugin").concat(q !== "" ? rows("recommended", "Recommended") : [])
-                                      : rows("recommended").concat(q !== "" ? rows("plugin", "Plugins") : [])
-        } else if (level === "webapp") {
-            // Your own first, then the ready-made ones (plugins.txt, group webapp): added without a terminal, nothing to ask
-            const ready = (pluginList || []).filter(p => p.group === "webapp").map(p => ({
-                item: { kind: "action", ready: true, name: p.name, glyph: p.icon, installed: p.installed,
-                        summary: p.installed ? "added" : undefined,
-                        cmd: ["bash", "-c", 'out=$("$HOME/.local/bin/nightdrive" plugins install "$1" 2>&1) && notify-send -a Webapp "Webapp added" "$2" || notify-send -u critical -a Webapp "Adding webapp failed" "$out"', "_", p.id, p.name] },
-                text: p.name, extra: p.desc }))
-            all = statics.webapp.map(r => ({ item: r, text: r.name }))
-                .concat(ready.length ? [{ item: { kind: "header", name: "Ready-made" }, text: "" }] : [], ready)
         } else if (level === "remove") {
             // Two kinds, Software and Webapps; a search looks in both, and the tag tells which a row is
             if (q === "") return [{ kind: "nav", name: "Software", glyph: "package-minus", target: "removesw", summary: "dnf + Flatpak" },
@@ -708,9 +649,7 @@ PanelWindow {
             if (s >= 0) scored.push({ x: x, s: s, i: i })
         })
         scored.sort((a, b) => (a.s - b.s) || (level === "apps" ? a.x.text.localeCompare(b.x.text) : level === "emoji" ? (a.x.text.length - b.x.text.length) || (a.i - b.i) : a.i - b.i))
-        const res = scored.map(o => o.x.item)
-        // Software: what's typed can always go on to the package search (the categories rarely match an app's name)
-        if (level === "software") res.push({ kind: "swsearch", name: "Search for “" + query.trim() + "”", glyph: "search", summary: "Fedora + Flathub" })
+        const res = scored.map(o => o.x.item).concat(tail)
         return level === "keys" ? grouped(res) : res
     }
     readonly property var results: items()
@@ -725,10 +664,7 @@ PanelWindow {
         hiddenProc.running = true
         if (target === "keys") keysProc.running = true     // re-read SHORTCUTS.md: changes show up immediately
         list.currentIndex = firstSelectable()
-        installResults = []
         if (target === "remove" || target === "removesw" || target === "removeweb") { removeProc.running = true; webappProc.running = true }
-        if (target === "swcat") { swList = null; swProc.command = [scripts + "/pkg-search", "--list", swCat.key]; swProc.running = true }
-        if (target === "plugins" || target === "recommended" || target === "webapp") pluginsProc.running = true
         if (target === "emoji" && !emojiLoaded) emojiProc.running = true
         if (target === "clipboard") { clipLoaded = false; clipProc.running = true }
         if (target === "snippets") snipProc.running = true
@@ -857,8 +793,6 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
     function activate(item) {
         if (!item) return
         if (item.kind === "nav") go(item.target)
-        else if (item.kind === "swcat") { swCat = { key: item.key, name: item.name }; go("swcat") }
-        else if (item.kind === "swsearch") { const typed = query; go("swsearch"); input.text = typed }
         else if (item.kind === "app" && level === "startup") toggleAutostart(item)
         else if (item.kind === "app") {
             win.open = false
@@ -910,13 +844,6 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
             const t = snipTrigger
             go("snippets")
             Qt.callLater(() => { const i = results.findIndex(r => r.kind === "snippet" && r.trigger === t); if (i >= 0) list.currentIndex = i })
-        }
-        else if (item.kind === "wname") { webName = item.value; go("webaddr") }
-        else if (item.kind === "wadd") {
-            win.open = false
-            Quickshell.execDetached(["bash", "-c",
-                'out=$("$HOME/.config/hypr/scripts/webapp-add" "$1" "$2" 2>&1) && notify-send -a Webapp "Webapp added" "$1" || notify-send -u critical -a Webapp "Adding webapp failed" "$out"',
-                "_", webName, item.value])
         }
         else if (exts.some(e => e.activate(item))) {}
         else if (item.kind === "pw") copyField(item, "password")
@@ -1040,6 +967,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         Qt.callLater(() => { list.currentIndex = i; Qt.callLater(() => { list.contentY = Math.min(y, Math.max(0, list.contentHeight - list.height)) }) })
     }
     // Selects the first row matching pred (e.g. a setting's current value), if any
+    function selectFirst() { list.currentIndex = firstSelectable() }
     function selectWhere(pred) { const i = results.findIndex(pred); if (i >= 0) list.currentIndex = i }
     function back() {
         if (detail !== null) { detail = null; detailInfo = null; return }
@@ -1095,25 +1023,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         }
     }
 
-    // Software › Search: search while typing (300 ms delay), hypr/scripts/pkg-search: { apps, tools }
-    // Spaces stay (one between words): pkg-search looks for the words as a phrase, "image viewer" (without them nothing
-    // two-word was found: "documentviewer")
-    function sanitized() { return query.toLowerCase().replace(/[^a-z0-9._+\- ]/g, "").replace(/\s+/g, " ").trim() }
-    function runSearch() {
-        const q = sanitized()
-        installQ = q
-        if (q.length < 2) { installResults = []; return }
-        if (searchProc.running) return                 // the running one notices the query went stale and starts again
-        searchProc.command = [scripts + "/pkg-search", q]
-        searchProc.forQ = q
-        searchProc.running = true
-    }
-    // A pkg-search row → a launcher row (Enter opens its details)
-    function pkgRow(p, glyph) {
-        return { kind: "action", name: p.name, sub: p.summary, iconFile: p.icon || undefined,
-                 glyph: p.icon ? undefined : (p.glyph || glyph), src: p.src, id: p.id, alt: p.alt,
-                 summary: p.installed ? "installed" : undefined, cmd: installCmd(p.src, p.id) }
-    }
+    // Install › Software's rows and a details card's Tab (the other source)
     function installCmd(src, id) {
         return src === "flatpak" ? term('flatpak install --user flathub "$1"', id) : term('sudo dnf install "$1"', id)
     }
@@ -1125,46 +1035,6 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
             if (i >= 0) out.push({ name: line.slice(0, i), summary: line.slice(i + 1) })
         }
         return out
-    }
-    onQueryChanged: {
-        if (level === "swsearch") { armed = ""; searchDelay.restart() }
-    }
-    Timer { id: searchDelay; interval: 300; onTriggered: win.runSearch() }
-    Sh {
-        id: searchProc
-        property string forQ: ""
-        onResult: text => {
-            if (win.level !== "swsearch") return          // left the level while searching
-            if (win.sanitized() !== forQ) { win.runSearch(); return }
-            let r
-            try { r = JSON.parse(text) } catch (e) { win.installResults = []; return }
-            const row = win.pkgRow
-            // The headers only when both are there: one kind alone needs no title
-            const both = r.apps.length > 0 && r.tools.length > 0
-            const out = []
-            if (both) out.push({ kind: "header", name: "Apps" })
-            for (const p of r.apps) out.push(row(p, "package-plus"))
-            if (both) out.push({ kind: "header", name: "Command-line tools" })
-            for (const p of r.tools) out.push(row(p, "terminal"))
-            win.installResults = out
-            list.currentIndex = win.firstSelectable()
-        }
-    }
-    // Install › Software › a category: pkg-search --list (the most installed apps this machine can run)
-    Sh {
-        id: swProc
-        onResult: text => {
-            if (win.level !== "swcat") return
-            let r
-            try { r = JSON.parse(text) } catch (e) { win.swList = []; return }
-            win.swList = r.apps.map(p => win.pkgRow(p, "package-plus"))
-            list.currentIndex = win.firstSelectable()
-        }
-    }
-    // Browse's categories: their names and icons come with the lists (software-catalog writes both)
-    FileView {
-        path: Quickshell.env("HOME") + "/.config/quickshell/data/software.json"; printErrors: false
-        onLoaded: { try { win.swCats = JSON.parse(text()).categories || [] } catch (e) { win.swCats = [] } }
     }
     // Install / Remove: a package's details (hypr/scripts/pkg-info). The results stay as they were behind them.
     function showDetail(item) {
@@ -1207,7 +1077,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         onResult: {
             if (detailProc.running) detailProc.forId = ""      // the running one read the old state: it starts again
             else if (win.detail !== null) win.runDetail()
-            pluginsProc.running = true
+            inst.reloadPlugins()
         }
     }
     Sh {
@@ -1226,6 +1096,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
     AppKeyLevels { id: akeys; launcher: win }
     BehaviourLevels { id: behave; launcher: win }
     MusicLevels { id: music; launcher: win }
+    InstallLevels { id: inst; launcher: win }
     Loader {
         id: extLoader
         source: win.extSource
@@ -1437,16 +1308,6 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
             }
             win.emojiList = out
             win.emojiLoaded = true
-        }
-    }
-    // Install › Recommended, Plugins and Webapp: plugins.txt via `nightdrive plugins` (id, name, icon, description, default,
-    // installer, installed 1/0, group, folder, off 1/0, source repo/external)
-    Sh {
-        id: pluginsProc
-        command: [Quickshell.env("HOME") + "/.local/bin/nightdrive", "plugins"]
-        onResult: text => {
-            win.pluginList = text.split("\n").map(l => l.split("\t")).filter(f => f.length >= 8)
-                .map(f => ({ id: f[0], name: f[1], icon: f[2], desc: f[3], installed: f[6] === "1", group: f[7], off: f[9] === "1", external: f[10] === "external" }))
         }
     }
     // Remove: packages the user installed, then the user's Flatpak apps (after a "--flatpak--" line, tab-separated)
