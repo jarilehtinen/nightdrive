@@ -249,7 +249,7 @@ Item {
             r.push({ kind: "header", name: "Actions" },   // apart from the statistics above
                    { kind: "wifidisconnect", name: "Disconnect", glyph: "unplug", summary: connecting === a.ssid ? "…" : undefined },
                    { kind: "wififorget", name: "Forget network", glyph: "trash-2", armKey: "forget:" + a.ssid,
-                     armHint: "press Enter again to forget it and its password" })
+                     armHint: "Enter again: forget, password too" })
         }
         const others = nets.filter(n => !n.active)
         r.push({ kind: "header", name: a ? "Other networks" : "Networks" })

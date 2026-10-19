@@ -572,7 +572,7 @@ PanelWindow {
             const add = { kind: "nav", name: "Add snippet", glyph: "plus", target: "snipkey" }
             const rows = snipList.map(s => ({ kind: "snippet", name: s.text.split("\n")[0], summary: s.trigger, glyph: "text-cursor-input",
                                                trigger: s.trigger, text: s.text, armKey: "snipdel:" + s.trigger,
-                                               armHint: "press Cmd+Backspace again to remove" }))
+                                               armHint: "⌘⌫ again to remove" }))
             if (q === "") return [auto, { kind: "header", name: "Snippets" }, add].concat(rows)
             all = rows.map(r => ({ item: r, text: r.trigger, extra: r.text }))
         } else if (level === "snipkey") {
@@ -2073,19 +2073,30 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                         id: nameText
                         // A second line: an album's artist, or the description of an Install search result (row.modelData.sub)
                         readonly property bool twoLines: !!row.modelData.artist || !!row.modelData.sub
+                        readonly property bool subLine: !!row.modelData.sub
                         anchors {
                             left: row.noIcon ? parent.left : slot.right; leftMargin: 16
                             right: shortcut.visible ? shortcut.left : trailing.left; rightMargin: (row.modelData.kind === "key" ? 36 : 12) + (dot.visible ? 19 : 0) + (badge.visible ? badge.implicitWidth + 10 : 0) + (note.visible ? note.implicitWidth + 10 : 0)   // keybindings get more room before the keys (description is elided with …)
-                            verticalCenter: parent.verticalCenter; verticalCenterOffset: twoLines ? (row.modelData.sub ? -9 : -7) : 0
+                            verticalCenter: parent.verticalCenter; verticalCenterOffset: twoLines ? (subLine ? -9 : -7) : 0
                         }
                         elide: Text.ElideRight
                         // liveName: a name that changes often (Status' processes), bound here instead of rebuilding the rows
                         text: row.modelData.liveName !== undefined ? sys.liveText(row.modelData.liveName)
                             : row.isHeader ? row.modelData.name.toUpperCase()
-                            : (row.armedNow ? row.modelData.name + " — " + (row.modelData.armHint || "press Enter again to confirm") : row.modelData.name)
+                            : row.modelData.name
                         color: row.armedNow ? Theme.primary : (row.isHeader ? Theme.primary : row.modelData.kind === "hint" || row.isNote || row.modelData.dimmed ? Theme.dim : (row.current ? Theme.accent : Theme.text))
-                        font { family: Theme.font; pixelSize: row.isHeader ? win.fontSize - 5 : row.isNote ? win.fontSize - 4 : row.modelData.sub ? win.fontSize - 2 : win.fontSize; weight: row.isHeader ? Font.Bold : win.fontWeight; letterSpacing: row.isHeader ? 1.5 : 0 }
+                        font { family: Theme.font; pixelSize: row.isHeader ? win.fontSize - 5 : row.isNote ? win.fontSize - 4 : nameText.subLine ? win.fontSize - 2 : win.fontSize; weight: row.isHeader ? Font.Bold : win.fontWeight; letterSpacing: row.isHeader ? 1.5 : 0 }
                         topPadding: row.isHeader ? 10 : 0
+                    }
+                    Text {      // a row that asks first, asked: what a second Enter does (armHint), after the name in smaller text
+                        id: armTag
+                        visible: row.armedNow
+                        anchors { left: nameText.left; leftMargin: nameText.contentWidth + 12; baseline: nameText.baseline }
+                        width: Math.max(0, nameText.width - nameText.contentWidth - 12)
+                        elide: Text.ElideRight
+                        text: "— " + win.keySpaced(row.modelData.armHint || "Enter again to confirm")
+                        color: Theme.primary
+                        font { family: Theme.font; pixelSize: win.fontSize - 4 }
                     }
                     Text {      // EXPERIMENTAL after a plugin's name (Install › Plugins)
                         id: expTag
@@ -2114,13 +2125,13 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                     }
                     Text {
                         visible: nameText.twoLines
-                        anchors { left: nameText.left; right: nameText.right; top: nameText.bottom; topMargin: row.modelData.sub ? 0 : -1 }
+                        anchors { left: nameText.left; right: nameText.right; top: nameText.bottom; topMargin: nameText.subLine ? 0 : -1 }
                         elide: Text.ElideRight
                         textFormat: Text.PlainText
                         text: win.keySpaced(row.modelData.sub || (row.modelData.artist || "").toUpperCase())
                         color: row.modelData.sub ? Theme.dim : Theme.primary
-                        font { family: Theme.font; pixelSize: row.modelData.sub ? win.fontSize - 5 : win.fontSize - 6; weight: row.modelData.sub ? win.fontWeight : Font.Normal
-                               letterSpacing: row.modelData.sub ? 0 : 1 }
+                        font { family: Theme.font; pixelSize: nameText.subLine ? win.fontSize - 5 : win.fontSize - 6; weight: nameText.subLine ? win.fontWeight : Font.Normal
+                               letterSpacing: nameText.subLine ? 0 : 1 }
                     }
                     Rectangle {      // the row's shortcut (shortcutFor) in a key frame like the footer's, before the › of a submenu;
                         id: shortcut     // not where the right side is taken. capKeys: a row's own keys (Settings › Keyboard Shortcuts)
