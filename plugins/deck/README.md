@@ -11,6 +11,6 @@ A fast Spotify player, made for Nightdrive: your albums in the launcher, the pla
 
 The installer builds Deck from source (a few minutes), and `nightdrive update` builds it again when it changes. Deck needs the Client ID of your own free Spotify developer app: Deck's README shows how.
 
-Homepage: https://github.com/jarilehtinen/deck
+Homepage: https://github.com/nightdrive-sh/deck
 Needs: Spotify Premium
 Keys: Hyper+M
