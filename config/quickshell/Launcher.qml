@@ -90,13 +90,6 @@ PanelWindow {
     property bool wallLoaded: false
     property string wallCurrent: ""           // current wallpaper
     property int updates: 0                   // Update: new Nightdrive commits waiting (nightdrive update check, every 6 h)
-    property var displays: null               // Settings › Display: [{ name, desc, scale, opts: [{ value, size }] }] (hypr/scripts/display list)
-    property real bright: -1                  // Settings › Display › Brightness: 0..1 (brightnessctl), -1 = no backlight (a VM) or not read yet
-    property real pendingBright: -1           // the slider's value waiting to be applied (throttled, like in BatteryMenu)
-    property string night: ""                 // Settings › Display › Night light: on | off (hypr/scripts/nightlight status)
-    property var batt: null                   // Settings › Battery: { percent, state, timeText } (upower)
-    property var battDetail: null             // and its details (topbar/scripts/sysinfo battery), null on a desktop
-    readonly property int brightStep: 5       // ←/→ on the brightness row, the same step as the brightness keys (hypr/scripts/brightness)
     property var themeList: []                // Settings › Theme › Color: [{ value, name, swatch, current }] (hypr/scripts/theme list)
     readonly property bool grid: level === "background"   // wallpapers as a grid, other levels as a list
     readonly property int gridCols: 2
@@ -112,8 +105,9 @@ PanelWindow {
     // DefaultAppsLevels.qml (Settings › Default apps), AppKeyLevels.qml (Settings › Keyboard Shortcuts), BehaviourLevels.qml
     // (Settings › Launcher, Computer name, Notifications, Update channel), MusicLevels.qml (Music, with Deck), InstallLevels.qml
     // (Install's pages), ToolsLevels.qml (Clipboard, Emoji, Snippets),
-    // AppearanceLevels.qml (Top bar, Screensaver) and the private extension; they answer the same questions (items, activate, footer, entered). A new file goes in this list, not in each question's code
-    readonly property var exts: [sys, home, defs, akeys, behave, music, inst, tools, look].concat(ext ? [ext] : [])
+    // AppearanceLevels.qml (Top bar, Screensaver), DisplayLevels.qml (Display, Battery) and the private extension; they answer
+    // the same questions (items, activate, footer, entered). A new file goes in this list, not in each question's code
+    readonly property var exts: [sys, home, defs, akeys, behave, music, inst, tools, look, disp].concat(ext ? [ext] : [])
     function extOf(l) { return exts.find(e => e.levels.indexOf(l) >= 0) || null }
     readonly property bool extLevel: extOf(level) !== null
     readonly property int selIndex: list.currentIndex
@@ -121,7 +115,7 @@ PanelWindow {
     function search(target, text) { go(target); input.text = text }   // a level with its query typed (Default apps › Find more)
     readonly property var swCats: inst.swCats                          // Install › Software's categories (Default apps › Find more)
     function openCategory(key, name) { inst.openCategory(key, name) }
-    readonly property var parents: Object.assign({ display: "settings", battery: "settings", install: "system", remove: "system", removesw: "remove", removeweb: "remove", screenshot: "tools", theme: "settings", themecolor: "theme", background: "theme", startup: "settings" }, ...exts.map(e => e.parents))
+    readonly property var parents: Object.assign({ install: "system", remove: "system", removesw: "remove", removeweb: "remove", screenshot: "tools", theme: "settings", themecolor: "theme", background: "theme", startup: "settings" }, ...exts.map(e => e.parents))
     // Search found nothing: hint below ⌘⌥⏎ (icons) → send the text to Claude
     readonly property bool noHit: (level === "root" || level === "apps") && query.trim() !== "" && results.length === 0
     // The selected row is an app: ⌃Enter shows it in Apps (the list with an empty query) or hides it from there.
@@ -161,7 +155,7 @@ PanelWindow {
     readonly property var deckLiked: deckOverride.liked !== undefined ? deckOverride.liked : (deckInfo ? deckInfo.liked : null)
     signal openMenu(string name)              // Settings: opens a Quickshell menu (wifi, bluetooth, ...)
 
-    readonly property var titles: Object.assign({ apps: "Apps", keys: "Keybindings", screenshot: "Tools › Screenshot", settings: "Settings", display: "Settings › Display", battery: "Settings › Battery", startup: "Settings › Startup", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
+    readonly property var titles: Object.assign({ apps: "Apps", keys: "Keybindings", screenshot: "Tools › Screenshot", settings: "Settings", startup: "Settings › Startup", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
                                      system: "System", install: "System › Install", remove: "System › Remove", removesw: "Remove › Software", removeweb: "Remove › Webapps", power: "Power", passwords: "Passwords",
                                      tools: "Tools" }, ...exts.map(e => e.titles))
 
@@ -287,7 +281,7 @@ PanelWindow {
     // Settings › Display for the root search: the brightness slider row itself (←/→ work there too), the night light toggle
     // and Scale (opens Display)
     function displayItems() {
-        return (bright >= 0 ? [{ kind: "brightness", name: "Brightness", glyph: "sun" }] : [])
+        return (disp.bright >= 0 ? [{ kind: "brightness", name: "Brightness", glyph: "sun" }] : [])
             .concat([{ kind: "nightlight", name: "Night light", glyph: "moon" },
                      { kind: "nav", name: "Scale", glyph: "monitor", target: "display" }],
                     sys.mirrorAvail ? [{ kind: "nav", name: "Screen Mirroring", glyph: "screen-share", target: "display" }] : [])
@@ -451,45 +445,6 @@ PanelWindow {
             // "Add new…" first: file picker (hypr/scripts/wallpaper add), images are copied to ~/Pictures/Wallpapers
             all = [{ item: { kind: "walladd", name: "Add new…" }, text: "Add new", extra: "import file" }]
                 .concat(wallList.map(w => ({ item: Object.assign({ kind: "wall" }, w), text: w.name, extra: w.group })))
-        } else if (level === "display") {
-            // Two sections: Brightness (a slider row, when there is a backlight) and Scale
-            if (displays === null) return hint("Loading…")
-            const out = bright < 0 ? [] : [{ kind: "header", name: "Brightness" },
-                                           { kind: "brightness", name: "Screen", glyph: "sun", summary: Math.round(bright * 100) + "%" }]
-            if (night !== "") {
-                if (bright < 0) out.push({ kind: "header", name: "Brightness" })
-                out.push({ kind: "nightlight", name: "Night light", glyph: "moon", switchOn: night === "on" })
-            }
-            // Scales the panel divides evenly, shown as the resulting desktop size ("looks like" in macOS); current one marked
-            out.push(...sys.mirrorRows())   // Screen Mirroring (AirPlay; SystemLevels.qml), empty without doubletake
-            for (const d of displays) {
-                out.push({ kind: "header", name: "Scale" + (displays.length > 1 ? " · " + d.name + (d.desc !== "-" ? "  " + d.desc : "") : "") })
-                for (const o of d.opts) {
-                    const cur = Math.abs(o.value - d.scale) < 0.01
-                    out.push({ kind: "scale", output: d.name, value: o.value, name: o.size, glyph: cur ? "check" : "monitor",
-                               summary: (cur ? "current · " : "") + "scale " + +o.value.toFixed(2) })
-                }
-            }
-            return out
-        } else if (level === "battery") {
-            // The same as the top bar's battery menu: charge and state, then the details
-            if (batt === null) return hint("Loading…")
-            const b = battDetail
-            const stateText = { discharging: "Discharging", charging: "Charging", "fully-charged": "Fully charged", "pending-charge": "Not charging" }[batt.state] || batt.state
-            const rows = [{ kind: "stat", name: batt.percent + "%  " + stateText,
-                            glyph: batt.state === "charging" ? "battery-charging" : batt.percent < 40 ? "battery-low" : batt.percent < 60 ? "battery-medium" : "battery-full",
-                            summary: batt.timeText !== "" ? batt.timeText + (batt.state === "charging" ? " until full" : " remaining") : undefined }]
-            if (b) {
-                rows.push({ kind: "header", name: "Details" })
-                for (const r of [["zap", "Power", b.watts > 0 ? b.watts + " W" : ""],
-                                 ["thermometer", "Temperature", b.temp !== null ? b.temp + " °C" : ""],
-                                 ["heart-pulse", "Health", b.health !== null ? b.health + "% · " + b.fullWh + " / " + b.designWh + " Wh" : ""],
-                                 ["repeat", "Cycles", b.cycles !== null ? String(b.cycles) : ""],
-                                 ["activity", "Voltage", b.volts !== null ? b.volts.toFixed(2) + " V" : ""],
-                                 ["calendar", "Manufactured", b.made]])
-                    if (r[2] !== "") rows.push({ kind: "stat", glyph: r[0], name: r[1], summary: r[2] })
-            }
-            return rows
         } else if (level === "theme") {
             all = themeItems().map(t => ({ item: t, text: t.name, extra: settingsAliases[t.name] || "" }))
         } else if (level === "themecolor") {
@@ -561,8 +516,7 @@ PanelWindow {
         if (target === "settings") behave.entered("settings")   // the computer name and channel on its rows
         if (target === "background") wallProc.running = true
         if (target === "theme" || target === "themecolor") themeProc.running = true
-        if (target === "display") { displayProc.running = true; brightProc.running = true; nightProc.running = true; sys.entered("display") }
-        if (target === "battery") { battProc.running = true; battDetailProc.running = true }
+        if (target === "display") sys.entered("display")   // Screen Mirroring's rows there
         if (extOf(target)) extOf(target).entered(target)
         if (target === "passwords") { pwState = pwItems.length ? "ready" : "loading"; pwProc.running = true }
     }
@@ -679,17 +633,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
             else if (item.entry) item.entry.execute(); else Quickshell.execDetached(["gio", "launch", item.path])
         }
         else if (item.kind === "stat" && item.copy !== undefined) sys.copyText(item.copy)   // Public IP, Local IP, Router: as ⌘C
-        else if (item.kind === "brightness" || item.kind === "stat") shake.restart()   // brightness: ←/→ or the slider; stat: information only
-        else if (item.kind === "nightlight") {
-            keepSelection()
-            night = night === "on" ? "off" : "on"
-            Quickshell.execDetached([scripts + "/nightlight", night])
-        }
-        else if (item.kind === "scale") {     // stays open like the theme rows; Hyprland reloads with the new scale
-            keepSelection()
-            displays = displays.map(d => d.name === item.output ? Object.assign({}, d, { scale: item.value }) : d)
-            Quickshell.execDetached([scripts + "/display", "scale", item.output, String(item.value)])
-        }
+        else if (item.kind === "stat") shake.restart()   // information only
         else if (item.kind === "themecolor") {   // stays open: colors can be tried one after another, and recolor the launcher at once
             keepSelection()
             themeList = themeList.map(t => Object.assign({}, t, { current: t.value === item.value }))
@@ -924,6 +868,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
     InstallLevels { id: inst; launcher: win }
     ToolsLevels { id: tools; launcher: win }
     AppearanceLevels { id: look; launcher: win }
+    DisplayLevels { id: disp; launcher: win }
     Loader {
         id: extLoader
         source: win.extSource
@@ -960,84 +905,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         script: 'cat "$HOME/.cache/nightdrive/updates" 2>/dev/null'
         onResult: text => { win.updates = parseInt(text, 10) || 0 }
     }
-    // Settings › Display: outputs and their even scales; select the current one
-    Sh {
-        id: displayProc
-        script: '"$HOME/.config/hypr/scripts/display" list'
-        onResult: text => {
-            const first = win.displays === null
-            win.displays = text.split("\n").map(l => l.split("\t")).filter(f => f.length >= 4).map(f => ({
-                name: f[0], desc: f[1], scale: parseFloat(f[2]),
-                opts: f.slice(3).map(o => { const [v, size] = o.split(":"); return { value: parseFloat(v), size: size.replace("×", " × ") } }) }))
-            if (first && win.level === "display" && win.query === "") list.currentIndex = win.firstSelectable()   // was the Loading… hint
-        }
-    }
-    // Settings › Display › Brightness: read on entering and every 2 s while there (the brightness keys also work then),
-    // not while the slider is held or a value is waiting to be applied
-    Sh {
-        id: brightProc
-        // -c backlight: without a backlight brightnessctl would pick the first LED (a keyboard's Compose light)
-        command: ["brightnessctl", "-m", "-c", "backlight"]
-        onResult: text => {
-            if (win.pendingBright >= 0) return
-            const first = win.bright < 0
-            const f = text.trim().split(",")
-            const v = f.length >= 4 ? parseInt(f[3]) / 100 : -1
-            if (v !== win.bright && !first) win.keepSelection()   // changed elsewhere (the brightness keys)
-            win.bright = v
-            // The rows above the scales appear only now: select the first one (the brightness row)
-            if (first && win.bright >= 0 && win.level === "display" && win.query === "") list.currentIndex = win.firstSelectable()
-        }
-    }
-    Timer { interval: 2000; repeat: true; running: win.open && win.level === "display"; onTriggered: brightProc.running = true }
-    Sh {
-        id: nightProc
-        script: '"$HOME/.config/hypr/scripts/nightlight" status'
-        onResult: text => { win.night = text.trim() }
-    }
-    // Settings › Battery: the machine's own battery, found like in topbar/scripts/status (MacBook: macsmc-battery);
-    // read on entering and every 5 s while there
-    Sh {
-        id: battProc
-        script: 'for d in /sys/class/power_supply/*; do [ "$(cat "$d/type")" = Battery ] && [ "$(cat "$d/scope" 2>/dev/null)" != Device ] &&
-                 { upower -i "/org/freedesktop/UPower/devices/battery_$(basename "$d" | tr - _)"; break; }; done'
-        onResult: text => {
-            const g = re => { const r = text.match(re); return r ? r[1].trim() : "" }
-            const fmt = (v, unit) => {
-                const min = Math.round(parseFloat(v.replace(",", ".")) * (/hour/.test(unit) ? 60 : /second/.test(unit) ? 1 / 60 : 1))
-                return Math.floor(min / 60) > 0 ? Math.floor(min / 60) + " h " + (min % 60) + " min" : min + " min"
-            }
-            const st = g(/state:\s*(\S+)/)
-            const tte = text.match(/time to empty:\s*([\d.,]+)\s*(\w+)/)
-            const ttf = text.match(/time to full:\s*([\d.,]+)\s*(\w+)/)
-            if (st === "") { win.batt = null; return }
-            win.keepSelection()
-            win.batt = { percent: parseInt(g(/percentage:\s*(\d+)/)) || 0, state: st,
-                         timeText: st === "discharging" && tte ? fmt(tte[1], tte[2]) : st === "charging" && ttf ? fmt(ttf[1], ttf[2]) : "" }
-        }
-    }
-    Sh {
-        id: battDetailProc
-        command: ["bash", "-c", "~/.config/topbar/scripts/sysinfo battery"]
-        onResult: text => { try { win.battDetail = JSON.parse(text) } catch (e) { win.battDetail = null } }
-    }
-    Timer { interval: 5000; repeat: true; running: win.open && win.level === "battery"; onTriggered: { battProc.running = true; battDetailProc.running = true } }
-    Timer {
-        id: brightApply; interval: 60
-        onTriggered: {
-            if (win.pendingBright < 0) return
-            Quickshell.execDetached(["brightnessctl", "-c", "backlight", "-n2", "set", Math.round(win.pendingBright * 100) + "%"])
-            win.pendingBright = -1
-        }
-    }
-    // keepSelection: the new percentage rebuilds the rows, which would move the selection to the top
-    function setBright(v) { keepSelection(); bright = v; pendingBright = v; if (!brightApply.running) brightApply.start() }
-    // ←/→: to the next even step, like the brightness keys
-    function stepBright(dir) {
-        const p = Math.round(bright * 100)
-        const n = dir > 0 ? (Math.floor(p / brightStep) + 1) * brightStep : (p % brightStep === 0 ? p - brightStep : Math.floor(p / brightStep) * brightStep)
-        setBright(Math.max(0, Math.min(100, n)) / 100)
-    }
+    function mirrorRows() { return sys.mirrorRows() }   // DisplayLevels: Screen Mirroring's rows under Display
     // Passwords: op item list (requires the 1Password app and CLI integration: Settings › Developer › Integrate with 1Password CLI)
     Sh {
         id: pwProc
@@ -1378,7 +1246,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                         } else if (win.extLevel && ctrl && (event.key === Qt.Key_Up || event.key === Qt.Key_Down) && win.extMove(event.key === Qt.Key_Up ? -1 : 1)) {
                             event.accepted = true
                         } else if ((event.key === Qt.Key_Left || event.key === Qt.Key_Right) && (win.results[list.currentIndex] || {}).kind === "brightness") {
-                            win.stepBright(event.key === Qt.Key_Left ? -1 : 1); event.accepted = true
+                            disp.stepBright(event.key === Qt.Key_Left ? -1 : 1); event.accepted = true
                         } else if ((event.key === Qt.Key_Left || event.key === Qt.Key_Right) && (win.results[list.currentIndex] || {}).kind === "slider") {
                             sys.stepSlider(win.results[list.currentIndex].key, event.key === Qt.Key_Left ? -1 : 1); event.accepted = true
                         } else if ((event.key === Qt.Key_Left || event.key === Qt.Key_Right) && (win.results[list.currentIndex] || {}).slider !== undefined) {
@@ -1635,12 +1503,12 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                         z: 1
                         // after the name ("Screen" in Display, "Brightness" in a search), lined up while the name is short
                         anchors { left: slot.right; leftMargin: Math.max(120, 16 + nameText.implicitWidth + 28); right: trailing.left; rightMargin: 20; verticalCenter: parent.verticalCenter }
-                        value: row.modelData.kind === "slider" || row.modelData.kind === "battery" ? row.modelData.value : Math.max(0, win.bright)
+                        value: row.modelData.kind === "slider" || row.modelData.kind === "battery" ? row.modelData.value : Math.max(0, disp.bright)
                         readOnly: row.modelData.kind === "battery"
                         fillColor: row.modelData.charging ? Theme.ok : row.modelData.low ? Theme.danger : Theme.accent
                         dimmed: !!row.modelData.dimmed
                         trackColor: Qt.rgba(1, 1, 1, 0.1)   // the same on and off the selected row (Theme.border nearly matches Theme.sel)
-                        onMoved: v => { list.currentIndex = row.index; row.modelData.kind === "slider" ? sys.setSlider(row.modelData.key, v) : win.setBright(v) }
+                        onMoved: v => { list.currentIndex = row.index; row.modelData.kind === "slider" ? sys.setSlider(row.modelData.key, v) : disp.setBright(v) }
                     }
                     MouseArea {
                         id: rowArea
