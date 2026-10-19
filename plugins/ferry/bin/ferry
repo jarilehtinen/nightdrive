@@ -90,6 +90,7 @@ INLINE = re.compile(r"^(image/(jpeg|png|gif|webp|heic|heif|avif)|video/|audio/|a
 CHUNK = 1 << 20
 GROUP_NOTIFY = 20            # seconds: files from the phone within this time share one notification
 PUSH_CONTACT = "https://github.com/jarilehtinen/nightdrive"   # the VAPID "sub": push services want a contact URL
+IDLE_AFTER = 60              # seconds without input before the desktop tells logind it's idle (hypr/hypridle.conf)
 
 
 def downloads():
@@ -134,6 +135,27 @@ def notify(summary, body="", actions=()):
             actions[out[-1]][1]()
     threading.Thread(target=wait, daemon=True).start()
     return nid
+
+
+def idle_for():
+    """Seconds since this computer was last used (0: in use), from logind's idle hint; None when it doesn't know.
+    The phone sends to the computer in use."""
+    try:
+        sid = subprocess.run(["loginctl", "show-user", str(os.getuid()), "-p", "Display", "--value"],
+                             capture_output=True, text=True, timeout=3).stdout.strip()
+        if not sid:
+            return None
+        out = subprocess.run(["loginctl", "show-session", sid, "-p", "IdleHint", "-p", "IdleSinceHint"],
+                             capture_output=True, text=True, timeout=3).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+    v = dict(line.split("=", 1) for line in out.splitlines() if "=" in line)
+    since = int(v.get("IdleSinceHint") or 0) / 1e6
+    if not since:   # never set: a desktop that doesn't tell logind (always "no" there would always win)
+        return None
+    if v.get("IdleHint") != "yes":
+        return 0
+    return max(0, int(time.time() - since + IDLE_AFTER))
 
 
 def refresh_bar():
@@ -743,7 +765,7 @@ def handler(app):
             elif path == "/api/items":
                 with box() as items:
                     out = [public(i) for i in items]
-                self.send(200, {"computer": alias(), "items": out, "keep": KEEP_DAYS,
+                self.send(200, {"computer": alias(), "items": out, "keep": KEEP_DAYS, "idle": idle_for(),
                                 "push": b64u(point(app.key)) if app.key else None})
             elif path.startswith("/font/") and path[6:] in FONT_FILES:
                 try:

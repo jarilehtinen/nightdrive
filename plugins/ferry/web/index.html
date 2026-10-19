@@ -39,14 +39,15 @@
   header img { width: 34px; height: 34px; border-radius: 8px; }
   h1 { font-size: 22px; margin: 0; color: var(--accent); letter-spacing: .02em; }
   .status { display: flex; align-items: center; gap: 8px; font-size: 15px; color: var(--dim); margin-left: auto; min-width: 0; }
-  /* Send to: the computers as buttons above the form (only with more than one) */
-  .targets { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
-  .targets button { min-height: 44px; padding: 0 14px; border: 1px solid var(--border); background: var(--card); color: var(--text);
-                    font-weight: 400; font-size: 15px; gap: 8px; }
-  .targets button.on { border-color: var(--primary); background: var(--sel); color: var(--accent); }
-  .targets button.away { opacity: .45; }
-  .targets button.away .dot { background: var(--danger); }
-  .targets button .dot { background: var(--ok); }
+  /* Send to, beside Send's title (only with more than one computer): the one in use, by itself; a tap opens the
+     system's own picker over it for another, framed until that send */
+  .to { position: relative; display: inline-flex; align-items: center; gap: 7px; margin: -4px auto -4px 10px; padding: 5px 10px;
+        border-radius: 8px; background: var(--sel); font-size: 13px; font-weight: 500; }
+  .to.manual { box-shadow: 0 0 0 1.5px var(--primary); }
+  .to .dot { background: var(--ok); }
+  .to.away .dot { background: var(--danger); }
+  #toName { color: var(--accent); }
+  .to select { position: absolute; inset: 0; width: 100%; opacity: 0; font-size: 16px; }   /* 16 px: iOS doesn't zoom */
   /* Clear: small and quiet beside a title; the first tap asks */
   h2 button.clear { background: transparent; color: var(--dim); min-height: 0; padding: 2px 0; font-size: 12px; font-weight: 400;
                     letter-spacing: 0; text-transform: none; }
@@ -164,9 +165,9 @@
   </section>
 
   <section id="send">
-    <h2>Send <span class="note" id="note"></span></h2>
+    <h2>Send <span class="to" id="to" hidden><span class="dot"></span><span id="toName"></span><span>▾</span>
+      <select id="toPick" aria-label="Send to"></select></span><span class="note" id="note"></span></h2>
     <div class="progress" id="progress"><div></div></div>
-    <div class="targets" id="targets" hidden></div>
     <textarea id="text" placeholder="Text or link" autocomplete="off" autocapitalize="off"></textarea>
     <div class="row">
       <button class="primary grow" id="sendText" disabled><svg class="i"><use href="#i-send"/></svg>Send</button>
@@ -191,13 +192,14 @@ const standalone = matchMedia("(display-mode: standalone)").matches || navigator
 const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
 
 // The owner's computers as one: this page's own one (HOME) finds the others running Ferry; Received lists what all
-// of them hold, and Send goes to the one picked above the form (target). Push subscriptions stay with HOME, which passes
+// of them hold, and Send goes to the one in use (target). Push subscriptions stay with HOME, which passes
 // the others' notifications on.
 const HOME = new URL(document.baseURI).href
 let machines = JSON.parse(localStorage.getItem("ferry.machines") || "[]")   // [{ url, name, self }]
 if (!machines.some(m => m.url === HOME))
   machines.unshift({ url: HOME, name: localStorage.getItem("ferry.computer") || "this computer", self: true })
-let target = localStorage.getItem("ferry.target") || HOME
+let target = HOME
+let manual = null              // a computer picked by hand: for the next send only
 const state = {}               // url -> { ok: true | false | undefined, err, items }
 let pushKey = null
 let shown = "", shownAt = 0    // what was last drawn: a poll redraws only when something changed (or the ages did)
@@ -252,7 +254,7 @@ async function refresh() {
   await Promise.all(machines.map(async m => {
     try {
       const j = await (await api(m.url, "api/items")).json()
-      state[m.url] = { ok: true, items: (j.items || []).map(i => Object.assign(i, { m: m.url })) }
+      state[m.url] = { ok: true, idle: j.idle, items: (j.items || []).map(i => Object.assign(i, { m: m.url })) }
       if (j.computer && j.computer !== m.name) { m.name = j.computer; saveMachines() }
       if (m.self) pushKey = j.push || pushKey
     } catch (e) {
@@ -472,16 +474,30 @@ function swipeable(wrap, card, done) {
   card.addEventListener("click", e => { if (swiped) { e.preventDefault(); e.stopPropagation() } }, true)
 }
 
-// --- Sending: to the computer picked above the form ---
-function drawTargets() {
-  $("targets").hidden = !many()
-  if (!many()) { target = HOME; return }
-  if (!machines.some(m => m.url === target)) target = HOME
-  $("targets").replaceChildren(...machines.map(m => el("button", {
-    class: (m.url === target ? "on" : "") + (state[m.url] && state[m.url].ok === false ? " away" : ""),
-    onclick: () => { target = m.url; localStorage.setItem("ferry.target", target); drawTargets() }
-  }, el("span", { class: "dot" }), m.name)))
+// --- Sending: to the computer in use (the one used last, by its logind), or one picked by hand for one send ---
+const reachable = m => !(state[m.url] && state[m.url].ok === false)
+const idleOf = m => state[m.url] && state[m.url].ok && typeof state[m.url].idle === "number" ? state[m.url].idle : Infinity
+function used(m) {
+  if (!reachable(m)) return "can't reach"
+  const i = idleOf(m)
+  return i === 0 ? "in use" : i === Infinity ? "" : "used " + ago(Date.now() / 1000 - i) + " ago"
 }
+function drawTargets() {
+  $("to").hidden = !many()
+  if (!many()) { manual = null; target = HOME; return }
+  // Used last first; a computer that doesn't say (an older Ferry) after those that do, this page's own first among them
+  const order = [...machines].sort((a, b) => (idleOf(a) - idleOf(b)) || (b.url === HOME) - (a.url === HOME))
+  if (manual && !machines.some(m => m.url === manual && reachable(m))) manual = null
+  target = manual || (order.find(reachable) || { url: HOME }).url
+  $("to").className = "to" + (manual ? " manual" : "") + (reachable({ url: target }) ? "" : " away")
+  $("toName").textContent = nameOf(target)
+  if (document.activeElement !== $("toPick"))   // not under an open picker
+    $("toPick").replaceChildren(...order.map(m => el("option", { value: m.url, selected: m.url === target,
+      disabled: !reachable(m) }, m.name + (used(m) ? " · " + used(m) : ""))))
+}
+$("toPick").onchange = () => { manual = $("toPick").value; drawTargets() }
+// Sent: the next send goes to the computer in use again
+function sentTo() { manual = null; drawTargets() }
 const away = () => state[target] && state[target].ok === false
 
 $("text").addEventListener("input", () => $("sendText").disabled = !$("text").value.trim())
@@ -504,6 +520,7 @@ async function sendText(text, btn, clip = false) {
   try {
     await api(target, "api/text", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, clip }) })
     sentOn(btn)
+    sentTo()
     refresh()
     return true
   } catch (e) { note("Not sent", true); return false }
@@ -577,6 +594,7 @@ async function sendFiles(files, btn, clip = false) {
   }
   bar.style.display = "none"; fill.style.width = "0"
   sentOn(btn)
+  sentTo()
   refresh()
 }
 
