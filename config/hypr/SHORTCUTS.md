@@ -5,13 +5,13 @@
   ⌘ Enter            Terminal
   ⌘ ⌥ Enter          Claude Code (with text typed in the launcher: sends it as the prompt)
   ⌘ Space            App launcher (↑↓ select, Enter open, Esc close; on an app ⌃Enter adds/removes it in Apps, ⌥Enter starts it at login)
-  Hyper B / ⌘ ⇧ Enter  Browser
+  Hyper B / ⌘ ⇧ Enter  Browser (the default apps: launcher › Settings › Default apps)
   Hyper F            Files
+  Hyper I            Email
   F8 (play)          Play/pause {!deck}
   Hyper W            WhatsApp {whatsapp}
   Hyper S            Slack {slack}
   Hyper Y            YouTube {youtube}
-  Hyper I            Email (Thunderbird, inbox) {thunderbird}
   Hyper C            VS Code {vscode}
   ⌘ Esc / F3         Notifications (history, do not disturb)
   ⌘ Ctrl L           Lock screen

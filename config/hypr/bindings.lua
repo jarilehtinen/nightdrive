@@ -6,9 +6,11 @@
 ---- PROGRAMS ----
 ---------------------
 local terminal    = "kitty --directory " .. os.getenv("HOME") .. "/Projects"
-local browser     = "firefox"
-local fileManager = "nautilus"
 local scripts     = os.getenv("HOME") .. "/.config/hypr/scripts"
+-- The default apps (launcher › Settings › Default apps, nightdrive defaults): a new choice is used at the next press
+local browser     = scripts .. "/default-apps open browser"
+local fileManager = scripts .. "/default-apps open files"
+local email       = scripts .. "/default-apps open email --focus"   -- one mail window: brought up when it's open
 
 -- Installed optional parts (plugins.txt, plugins/): a part's keys are bound only when it is there. `nightdrive plugins
 -- installed` writes the list and reloads Hyprland when it changes (an installer from launcher › Install › Plugins).
@@ -50,17 +52,17 @@ hl.bind("XF86Fn", hl.dsp.exec_cmd(scripts .. "/dictate fn-down"), { locked = tru
 hl.bind("XF86Fn", hl.dsp.exec_cmd(scripts .. "/dictate fn-up"),   { locked = true, release = true })
 hl.bind("F19",    hl.dsp.exec_cmd(scripts .. "/dictate fn-down"), { locked = true })                       -- Fn when keyd (Mac Keyboard Shortcuts) runs: keyd sends F19 for it
 hl.bind("F19",    hl.dsp.exec_cmd(scripts .. "/dictate fn-up"),   { locked = true, release = true })
--- Apps open with Hyper (Caps Lock, Mod3: hyprland.lua's kb_options) + a letter: the browser, Files, and the optional
+-- Apps open with Hyper (Caps Lock, Mod3: hyprland.lua's kb_options) + a letter: the browser, Files, Email, and the optional
 -- parts' apps below and in the plugins' bindings.lua (Deck M, 1Password P). ⌘ stays for the desktop and the apps' own keys.
 hl.bind("MOD3 + B",              hl.dsp.exec_cmd(browser))
 hl.bind(mod .. " + SHIFT + RETURN", hl.dsp.exec_cmd(browser))   -- next to ⌘Enter (terminal) and ⌘⌥Enter (Claude Code)
 hl.bind("MOD3 + F",              hl.dsp.exec_cmd(fileManager))
+hl.bind("MOD3 + I",              hl.dsp.exec_cmd(email))
 -- Optional parts' apps (plugins.txt ids; SHORTCUTS.md tags the same lines with {id}), Hyper + the letter
 local optional = {
     { "whatsapp",    "W", "'^chrome-web\\.whatsapp\\.com' gtk-launch webapp-whatsapp" },   -- WhatsApp webapp
     { "slack",       "S", "'^chrome-app\\.slack\\.com' gtk-launch webapp-slack" },         -- Slack webapp
     { "youtube",     "Y", "'^chrome-www\\.youtube\\.com' gtk-launch webapp-youtube" },     -- YouTube webapp
-    { "thunderbird", "I", "'^(net\\.thunderbird\\.Thunderbird|thunderbird)$' thunderbird" },   -- Email (Thunderbird)
     { "vscode",      "C", "'^(code|Code)$' code" },                                         -- VS Code
 }
 for _, o in ipairs(optional) do

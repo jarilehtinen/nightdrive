@@ -163,14 +163,15 @@ PanelWindow {
     // It may add root items and whole levels; see the functions it is asked for below (extItems, activate, ...).
     property string extSource: ""             // shell.qml sets this when the file exists
     readonly property var ext: extLoader.item
-    // Levels from other files: SystemLevels.qml (Wi-Fi, Bluetooth, Sound, Tailscale), HomeLevels.qml (Home Assistant) and the
-    // private extension; they answer
+    // Levels from other files: SystemLevels.qml (Wi-Fi, Bluetooth, Sound, Tailscale), HomeLevels.qml (Home Assistant),
+    // DefaultAppsLevels.qml (Settings › Default apps) and the private extension; they answer
     // the same questions (items, activate, footer, entered)
-    function extOf(l) { return sys.levels.indexOf(l) >= 0 ? sys : home.levels.indexOf(l) >= 0 ? home : ext !== null && ext.levels.indexOf(l) >= 0 ? ext : null }
+    function extOf(l) { return sys.levels.indexOf(l) >= 0 ? sys : home.levels.indexOf(l) >= 0 ? home : defs.levels.indexOf(l) >= 0 ? defs : ext !== null && ext.levels.indexOf(l) >= 0 ? ext : null }
     readonly property bool extLevel: extOf(level) !== null
     readonly property int selIndex: list.currentIndex
     function shakeNow() { shake.restart() }
-    readonly property var parents: Object.assign({ launcherprefs: "settings", shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", battery: "settings", install: "system", remove: "system", emoji: "tools", snippets: "tools", snipkey: "snippets", sniptext: "snippets", screenshot: "tools", software: "install", swcat: "software", swsearch: "software", webapp: "install", recommended: "install", plugins: "install", webname: "webapp", webaddr: "webname", compname: "settings", channel: "settings", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", sounds: "settings", soundregular: "sounds", soundurgent: "sounds", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, sys.parents, home.parents, ext ? ext.parents : {})
+    function search(target, text) { go(target); input.text = text }   // a level with its query typed (Default apps › Find more)
+    readonly property var parents: Object.assign({ launcherprefs: "settings", shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", battery: "settings", install: "system", remove: "system", emoji: "tools", snippets: "tools", snipkey: "snippets", sniptext: "snippets", screenshot: "tools", software: "install", swcat: "software", swsearch: "software", webapp: "install", recommended: "install", plugins: "install", webname: "webapp", webaddr: "webname", compname: "settings", channel: "settings", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", sounds: "settings", soundregular: "sounds", soundurgent: "sounds", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, sys.parents, home.parents, defs.parents, ext ? ext.parents : {})
     // Search found nothing: hint below ⌘⌥⏎ (icons) → send the text to Claude
     readonly property bool noHit: (level === "root" || level === "apps") && query.trim() !== "" && results.length === 0
     // The selected row is an app: ⌃Enter shows it in Apps (the list with an empty query) or hides it from there.
@@ -227,7 +228,7 @@ PanelWindow {
     readonly property var titles: Object.assign({ apps: "Apps", music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", musicsearch: "Music › Search", artist: "Music › " + artist.name, keys: "Keybindings", screenshot: "Tools › Screenshot", settings: "Settings", display: "Settings › Display", battery: "Settings › Battery", startup: "Settings › Startup", channel: "Settings › Update channel", screensaver: "Settings › Screensaver", saverafter: "Screensaver › Start after", screenoff: "Screensaver › Screen off after", saverstyle: "Screensaver › Style", sounds: "Settings › Notifications", soundregular: "Notifications › Regular sound", soundurgent: "Notifications › Urgent sound", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
                                      launcherprefs: "Settings › Launcher", compname: "Settings › Computer name", topbar: "Settings › Top bar", baropacity: "Top bar › Opacity", baricons: "Top bar › Icon colors", barhl: "Top bar › Highlight", baritems: "Top bar › Items",
                                      system: "System", install: "System › Install", emoji: "Tools › Emoji", snippets: "Tools › Snippets", snipkey: "Snippets › Trigger", sniptext: "Snippets › “" + snipTrigger + "”", software: "Install › Software", swcat: "Software › " + swCat.name, swsearch: "Software › Search", webapp: "Install › Webapp", recommended: "Install › Recommended", plugins: "Install › Plugins", webname: "Install › Webapp › Name", webaddr: "Install › Webapp › Address", remove: "System › Remove", power: "Power", passwords: "Passwords", clipboard: "Clipboard",
-                                     tools: "Tools" }, sys.titles, home.titles, ext ? ext.titles : {})
+                                     tools: "Tools" }, sys.titles, home.titles, defs.titles, ext ? ext.titles : {})
 
     // Reference at startup: the app list only loads on first reference
     property var apps: DesktopEntries.applications.values
@@ -308,7 +309,8 @@ PanelWindow {
             { kind: "nav", name: "Top bar", glyph: "panel-top", target: "topbar" },   // its look and what it shows
             { kind: "nav", name: "Screensaver", glyph: "monitor-pause", target: "screensaver" },
             { kind: "header", name: "Behaviour" },
-            { kind: "nav", name: "Launcher", glyph: "text-search", target: "launcherprefs" },
+            { kind: "nav", name: "Launcher", glyph: "text-search", target: "launcherprefs" }
+        ], defs.settingsItems, [
             { kind: "nav", name: "Computer name", glyph: "laptop", target: "compname", summary: compName }   // what phones see
         ], home.settingsItems, [   // Home: only while Home Assistant is set up
             { kind: "nav", name: "Notifications", glyph: "bell-ring", target: "sounds" },
@@ -328,7 +330,8 @@ PanelWindow {
     readonly property var settingsAliases: ({ "Wi-Fi": "wifi wlan network internet", "Sound": "audio volume output speakers", "Battery": "power charge charging health cycles",
                                               "Display": "brightness night light warm scale scaling resolution monitor screen retina hidpi zoom size bigger smaller",
                                               "Notifications": "notification sounds alert chime beep ping tone urgent critical",
-                                              "Tailscale": "vpn", "Theme": "appearance style look colors",
+                                              "Tailscale": "vpn",
+                                              "Default apps": "browser email mail files folders text editor images photos video music player pdf calendar open with", "Theme": "appearance style look colors",
                                               "Color": "theme accent violet purple blue teal green amber rose graphite gray",
                                               "Background": "wallpaper desktop image picture",
                                               "Top bar": "waybar panel menu bar",
@@ -1033,6 +1036,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         }
         else if (sys.activate(item)) {}
         else if (home.activate(item)) {}
+        else if (defs.activate(item)) {}
         else if (ext && ext.activate(item)) {}
         else if (item.kind === "pw") copyField(item, "password")
         else if (item.kind === "menu") { win.open = false; win.openMenu(item.target) }
@@ -1338,6 +1342,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
     }
     SystemLevels { id: sys; launcher: win }
     HomeLevels { id: home; launcher: win }
+    DefaultAppsLevels { id: defs; launcher: win }
     Loader {
         id: extLoader
         source: win.extSource

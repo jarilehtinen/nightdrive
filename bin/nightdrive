@@ -28,6 +28,7 @@ usage() {
   row "topbar adjust"            "The top bar's icon and text sizes, live"
   row "topbar date [STYLE]"      "The clock's date order: auto, dmy, mdy or iso"
   row "snippets [COMMAND]"       "Text snippets: list, set, remove, status, enable, disable"
+  row "defaults [set KIND APP]"  "Default apps (browser, email, files…), e.g. nightdrive defaults set pdf org.gnome.Papers"
   section "Plugins"
   row "plugins [list]"           "Optional parts, and which are installed, on or off"
   row "plugins install NAME"     "Install one, e.g. nightdrive plugins install deck"
@@ -618,6 +619,7 @@ case ${1:-} in
   # topbar adjust: config/topbar/adjust.conf; software-catalog: config/quickshell/data/software.json
   platform|software-catalog|snippets) exec "$scripts/$1" "${@:2}" ;;
   theme|display|wallpaper|bar-style) exec "$scripts/$1" "${@:2}" ;;    # the desktop's own scripts (hypr/scripts)
+  defaults) exec "$scripts/default-apps" "${@:2}" ;;                   # launcher › Settings › Default apps
   ""|help|-h|--help) usage ;;
   *) usage >&2; exit 1 ;;
 esac

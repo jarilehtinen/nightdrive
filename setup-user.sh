@@ -39,6 +39,6 @@ gsettings set org.gnome.desktop.wm.preferences button-layout ':' 2>/dev/null || 
 gsettings set org.gnome.nm-applet disable-connected-notifications true 2>/dev/null || true
 
 echo "==> Default apps: images open in Loupe (instead of the browser); Markdown in Apostrophe, if chosen (its installer)"
-# Run from Plasma (install.sh), KDE_SESSION_VERSION=6 sends xdg-mime to Qt5's qtpaths (not installed), an error per type.
-# Without it xdg-mime writes only ~/.config/mimeapps.list, the file Plasma and Hyprland both read.
-KDE_SESSION_VERSION= xdg-mime default org.gnome.Loupe.desktop image/png image/jpeg image/gif image/webp image/bmp image/tiff image/svg+xml image/avif image/heic
+# Only while images are unchosen: this runs at every update, and would undo a choice in Settings › Default apps (the same
+# script, which writes ~/.config/mimeapps.list itself: no xdg-mime, which from Plasma (install.sh) went to Qt5's qtpaths)
+"$repo/config/hypr/scripts/default-apps" set images org.gnome.Loupe.desktop --if-unset

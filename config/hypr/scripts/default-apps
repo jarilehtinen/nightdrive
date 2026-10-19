@@ -1,0 +1,239 @@
+#!/usr/bin/env python3
+"""Default apps: which app opens links, mail, folders, images… (nightdrive defaults; launcher › Settings › Default apps).
+
+  default-apps                      the kinds, each one's app and the apps that could take its place
+  default-apps --json               the same for the launcher (DefaultAppsLevels.qml)
+  default-apps set KIND APP.desktop [--if-unset]
+                                    APP opens all of the kind's types; --if-unset leaves a kind the user has chosen alone
+                                    (setup-user.sh's own defaults, run again at every update)
+  default-apps open KIND [--focus]  start the kind's app (Hyper B / F / I); --focus brings an open window up instead
+
+A choice is written to ~/.config/mimeapps.list for every type of the kind. Left unwritten, the default can come from
+whatever registers the type last (mimeinfo.cache): that is how aerc's copy in ~/.local/share/applications took over
+mailto links (19.10.2026).
+"""
+import glob, json, os, re, subprocess, sys
+
+HOME = os.path.expanduser("~")
+MIMEAPPS = os.environ.get("XDG_CONFIG_HOME", HOME + "/.config") + "/mimeapps.list"
+MANAGED = "# managed by fuzzel/sync-apps"   # its copies hide an app from the launcher: not a reason to leave it out here
+SCRIPTS = os.path.dirname(os.path.realpath(__file__))
+
+# key, name, glyph, where Install › Software has more (a search, or cat:<category> where its most installed are the right
+# ones: the categories are broad, PDF readers are in Utilities, and the search matches the words as one phrase), types
+# (the first one is asked for the current app) and the desktop categories that offer an app too (VS Code registers no
+# source code types, only its workspaces: it's offered as "TextEditor;IDE")
+CODE = ["text/x-python", "text/x-python3", "application/x-shellscript", "text/x-shellscript", "application/json",
+        "text/javascript", "application/javascript", "application/x-typescript", "text/css", "text/x-csrc", "text/x-chdr",
+        "text/x-c++src", "text/x-c++hdr", "text/x-rust", "text/x-go", "text/x-java", "application/x-php", "text/x-lua",
+        "application/x-ruby", "application/xml", "text/xml", "application/yaml", "application/x-yaml", "application/toml",
+        "text/x-makefile", "text/x-cmake", "application/sql", "text/x-sql", "text/x-patch", "text/x-log"]
+KINDS = [
+    ("browser", "Browser", "globe", "cat:browsers",
+     ["x-scheme-handler/https", "x-scheme-handler/http", "text/html", "application/xhtml+xml"], []),
+    ("email", "Email", "mail", "email", ["x-scheme-handler/mailto"], []),
+    ("files", "Files", "folder", "file manager", ["inode/directory"], []),
+    ("text", "Text editor", "file-pen-line", "text editor", ["text/plain"], ["TextEditor"]),
+    # Without its own default, source code opens in the text editor (its types are text/plain's): Markdown's in Apostrophe
+    ("code", "Code editor", "code", "code", CODE, ["TextEditor", "IDE"]),
+    ("images", "Images", "image", "image viewer",
+     ["image/png", "image/jpeg", "image/gif", "image/webp", "image/bmp", "image/tiff", "image/svg+xml", "image/avif",
+      "image/heic"], []),
+    ("video", "Video", "clapperboard", "player",
+     ["video/mp4", "video/webm", "video/x-matroska", "video/quicktime", "video/x-msvideo", "video/mpeg", "video/ogg"], []),
+    ("music", "Music", "music", "music player",
+     ["audio/mpeg", "audio/flac", "audio/ogg", "audio/x-wav", "audio/wav", "audio/mp4", "audio/x-m4a", "audio/aac",
+      "audio/opus"], []),
+    ("pdf", "PDF", "file-text", "document viewer", ["application/pdf"], []),
+    ("calendar", "Calendar", "calendar", "calendar", ["text/calendar"], []),
+]
+
+
+def entry_keys(path):
+    """The [Desktop Entry] keys of a .desktop file (unlocalised), and whether sync-apps wrote it."""
+    try:
+        text = open(path, encoding="utf-8", errors="replace").read()
+    except OSError:
+        return {}, False
+    keys, inside = {}, False
+    for line in text.splitlines():
+        if line.startswith("["):
+            inside = line.strip() == "[Desktop Entry]"
+        elif inside and "=" in line and not line.startswith("#"):
+            k, v = line.split("=", 1)
+            keys.setdefault(k.strip(), v.strip())
+    return keys, MANAGED in text
+
+
+def app_dirs():
+    data_home = os.environ.get("XDG_DATA_HOME", HOME + "/.local/share")
+    data_dirs = os.environ.get("XDG_DATA_DIRS", "/usr/local/share:/usr/share").split(":")
+    return [d + "/applications" for d in [data_home] + data_dirs if d]   # the first one wins
+
+
+def entries():
+    """Desktop id -> the app's own entry: the first one in the search path that isn't sync-apps' hiding copy."""
+    found = {}
+    for d in app_dirs():
+        for path in glob.glob(d + "/**/*.desktop", recursive=True):
+            app_id = os.path.relpath(path, d).replace("/", "-")
+            if app_id in found and not found[app_id]["managed"]:
+                continue
+            keys, managed = entry_keys(path)
+            if app_id not in found or found[app_id]["managed"]:
+                found[app_id] = {"keys": keys, "managed": managed}
+    return {k: v["keys"] for k, v in found.items()}
+
+
+def usable(keys):
+    """An app to offer: shown somewhere (not NoDisplay/Hidden in its own file), not a terminal one (aerc opened a
+    terminal for a mailto link), and its program installed."""
+    if keys.get("Type", "Application") != "Application": return False
+    if keys.get("NoDisplay", "").lower() == "true" or keys.get("Hidden", "").lower() == "true": return False
+    if keys.get("Terminal", "").lower() == "true": return False
+    tryexec = keys.get("TryExec")
+    if tryexec and not (os.path.isabs(tryexec) and os.access(tryexec, os.X_OK) or not os.path.isabs(tryexec) and
+                        any(os.access(p + "/" + tryexec, os.X_OK) for p in os.environ.get("PATH", "").split(":"))):
+        return False
+    return True
+
+
+def app_info(app_id, keys):
+    return {"id": app_id, "name": keys.get("Name", app_id[:-8]), "icon": keys.get("Icon", "")}
+
+
+def current(mime):
+    """The app that opens the type, as GIO (Files, the browsers, xdg-open) finds it: a type without a default of its own
+    gets its parent's (a .py file: text/plain's), which xdg-mime query doesn't tell."""
+    try:
+        out = subprocess.run(["gio", "mime", mime], capture_output=True, text=True, timeout=5,
+                             env=dict(os.environ, LC_ALL="C")).stdout
+        m = re.match(r"Default application for .*?: (\S+\.desktop)", out)
+        return m.group(1) if m else ""
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+
+
+def kinds():
+    apps = entries()
+    out = []
+    for key, name, glyph, more, types, cats in KINDS:
+        cur = current(types[0])
+        offer = sorted((app_info(i, k) for i, k in apps.items()
+                        if usable(k) and (types[0] in k.get("MimeType", "").split(";")
+                                          or set(cats) & set(k.get("Categories", "").split(";")))),
+                       key=lambda a: a["name"].lower())
+        if cur and cur in apps and all(a["id"] != cur for a in offer):   # the current one even when it isn't offered
+            offer.insert(0, app_info(cur, apps[cur]))
+        out.append({"key": key, "name": name, "glyph": glyph, "more": more,
+                    "current": app_info(cur, apps[cur]) if cur in apps else None, "apps": offer})
+    return out
+
+
+def read_mimeapps():
+    try:
+        return open(MIMEAPPS, encoding="utf-8").read().splitlines()
+    except FileNotFoundError:
+        return []
+
+
+def chosen(lines, types):
+    """The types that have a line of their own in [Default Applications]."""
+    out, inside = set(), False
+    for line in lines:
+        if line.startswith("["):
+            inside = line.strip() == "[Default Applications]"
+        elif inside and "=" in line:
+            out.add(line.split("=", 1)[0].strip())
+    return out & set(types)
+
+
+def associations(lines):
+    out, inside = {}, False
+    for line in lines:
+        if line.startswith("["):
+            inside = line.strip() == "[Added Associations]"
+        elif inside and "=" in line:
+            k, v = line.split("=", 1)
+            out[k.strip()] = v.strip()
+    return out
+
+
+def put(lines, section, values):
+    """Lines with the type=value pairs in the section: its old lines for those types go, the new ones come at its start."""
+    out, inside, placed = [], False, False
+    for line in lines:
+        if line.startswith("["):
+            inside = line.strip() == section
+            out.append(line)
+            if inside and not placed:
+                out += [f"{t}={v}" for t, v in values.items()]; placed = True
+            continue
+        if inside and "=" in line and line.split("=", 1)[0].strip() in values:
+            continue
+        out.append(line)
+    if not placed:
+        if out and out[-1].strip(): out.append("")
+        out += [section] + [f"{t}={v}" for t, v in values.items()]
+    return out
+
+
+def set_default(kind, app_id, if_unset=False):
+    k = next((k for k in KINDS if k[0] == kind), None)
+    if k is None: sys.exit(f"Unknown kind: {kind} ({', '.join(k[0] for k in KINDS)})")
+    if not app_id.endswith(".desktop"): app_id += ".desktop"
+    if app_id not in entries(): sys.exit(f"No such app: {app_id}")
+    types = k[4]
+    lines = read_mimeapps()
+    if if_unset and chosen(lines, types): return
+    old = associations(lines)
+    lines = put(lines, "[Default Applications]", {t: app_id for t in types})
+    # Also in [Added Associations] (first): GIO takes a default only from the apps that open the type, and an app that
+    # doesn't list it (VS Code and source code) is one only from there, as after Files' "Open With"
+    lines = put(lines, "[Added Associations]",
+                {t: ";".join([app_id] + [a for a in old.get(t, "").split(";") if a and a != app_id]) + ";" for t in types})
+    os.makedirs(os.path.dirname(MIMEAPPS), exist_ok=True)
+    tmp = MIMEAPPS + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
+    os.replace(tmp, MIMEAPPS)
+
+
+def open_kind(kind, focus=False):
+    k = next((k for k in KINDS if k[0] == kind), None)
+    if k is None: sys.exit(f"Unknown kind: {kind}")
+    app_id = current(k[4][0])
+    apps = entries()
+    if app_id not in apps:
+        subprocess.run(["notify-send", "-a", "Default apps", f"No {k[1].lower()} app",
+                        "Choose one in the launcher: Settings › Default apps"])
+        sys.exit(1)
+    cmd = ["gtk-launch", app_id[:-8]]
+    if focus:
+        # The window's class: StartupWMClass, the id (Wayland app ids are usually it) or its last part
+        # (net.thunderbird.Thunderbird -> thunderbird)
+        names = {apps[app_id].get("StartupWMClass", ""), app_id[:-8], app_id[:-8].split(".")[-1]} - {""}
+        regex = "(?i)^(" + "|".join(sorted(re.escape(n) for n in names)) + ")$"
+        os.execv(SCRIPTS + "/launch-or-focus", [SCRIPTS + "/launch-or-focus", regex] + cmd)
+    os.execvp(cmd[0], cmd)
+
+
+def main(args):
+    if args[:1] == ["set"] and len(args) >= 3:
+        set_default(args[1], args[2], "--if-unset" in args[3:])
+    elif args[:1] == ["open"] and len(args) >= 2:
+        open_kind(args[1], "--focus" in args[2:])
+    elif args == ["--json"]:
+        print(json.dumps(kinds()))
+    elif not args or args == ["list"]:
+        for k in kinds():
+            cur = k["current"]
+            others = [a["name"] for a in k["apps"] if not cur or a["id"] != cur["id"]]
+            print(f"{k['name']:<12} {cur['name'] + ' (' + cur['id'] + ')' if cur else '-':<56}"
+                  f"{'also: ' + ', '.join(others) if others else ''}")
+    else:
+        sys.exit(__doc__.strip())
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

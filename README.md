@@ -92,6 +92,8 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
   digits slide up as the minutes change.
 - **Background apps**: ⌘W only hides chat apps and the music player, so they keep running. Their shortcut brings them straight back.
 - **Web apps**: turn any site into an app window from the launcher (System › Install › Webapp).
+- **Default apps**: which app opens links, mail, folders, text, code, images, video, music, PDFs and calendar files, in the launcher
+  (Settings › Default apps, or `nightdrive defaults`). Hyper B, F and I open the browser, Files and Email you chose.
 - **Login apps**: you choose what starts at login in the launcher (Settings › Startup, or ⌥Enter on an app). Background
   apps start hidden. Only 1Password (if installed) is on by default, because its SSH agent and the Passwords level need it.
 - **Login screen**: a password-only greeter that matches the theme (`--no-greeter` keeps the distribution's own).
