@@ -172,7 +172,8 @@ Column {
                     icon: !isFile ? "text" : /^image\//.test(modelData.type || "") ? "image" : "file"
                     label: isFile ? modelData.name : modelData.text.replace(/\s+/g, " ").trim()
                     detail: m.flash === modelData.id ? "copied" : (modelData["from"] ? modelData["from"] + " · " : "") + m.ago(modelData.time)
-                    hoverCheckIcon: "x"
+                    // Not while it says "copied": the × would cover it as long as the mouse stays on the row
+                    hoverCheckIcon: m.flash === modelData.id ? "" : "x"
                     onClicked: m.act(modelData)
 
                     Item {

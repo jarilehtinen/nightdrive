@@ -57,6 +57,8 @@
   .status.bad .dot { background: var(--danger); }
   .status.wait .dot { animation: blink 1s infinite; }
   @keyframes blink { 50% { opacity: .2; } }
+  .spin .i { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
   .banner { background: #2a1520; color: var(--text); border-radius: 12px; padding: 12px 14px;
             margin: 0 0 14px; font-size: 14px; }
   .banner b { color: var(--danger); }
@@ -79,6 +81,7 @@
   button.primary, .btn.primary { background: var(--primary); color: #12081a; font-weight: 600; }
   button:active, .btn:active { opacity: .7; }
   button:disabled { opacity: .45; }
+  [hidden] { display: none !important; }   /* buttons are inline-flex, which would win over hidden */
   button.small, .btn.small { min-height: 44px; padding: 0 16px; font-size: 16px; }
   @media (min-width: 900px) {
     body { max-width: 1120px; padding-top: 64px; padding-left: 40px; padding-right: 40px; }
@@ -88,7 +91,7 @@
     .status { font-size: 16px; }
     .live { display: grid; grid-template-columns: 1fr 1fr; column-gap: 48px; align-items: start; }
     #received { grid-column: 1; grid-row: 1 / span 2; }
-    #send, #sent { grid-column: 2; }
+    #send { grid-column: 2; }
     body { font-size: 16px; }
     h2 { margin-top: 4px; font-size: 13px; }
     .item .meta { font-size: 13px; }
@@ -163,10 +166,6 @@
     <div class="note" id="note"></div>
   </section>
 
-  <section id="sent" hidden>
-    <h2>Sent <button class="clear" id="clearSent">Clear</button></h2>
-    <div id="toComputer"></div>
-  </section>
 </div>
 
 <script>
@@ -179,7 +178,7 @@ const PREFETCH = 30e6          // bytes: files up to this size are fetched ahead
 const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true
 const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
 
-// The owner's computers as one: this page's own one (HOME) finds the others running Ferry; Received and Sent list what all
+// The owner's computers as one: this page's own one (HOME) finds the others running Ferry; Received lists what all
 // of them hold, and Send goes to the one picked above the form (target). Push subscriptions stay with HOME, which passes
 // the others' notifications on.
 const HOME = new URL(document.baseURI).href
@@ -252,6 +251,7 @@ async function refresh() {
   if (!up.length) offline(state[HOME] ? state[HOME].err : null)
   else {
     document.body.classList.remove("offline")
+    triedAt = ""
     $("offline").hidden = true
     setStatus("ok", many() ? `${up.length}/${machines.length} online` : nameOf(HOME))
   }
@@ -277,11 +277,25 @@ function offline(err) {
     what = "Can't reach " + who
     why = many() ? "They're asleep, or Tailscale is off." : "It's asleep, or Tailscale is off."
   }
-  setStatus("bad", what)
+  if (triedAt) why += " Tried at " + triedAt + "."
+  setStatus(retrying ? "wait" : "bad", retrying ? "…" : what)
   const b = $("offline")
   b.replaceChildren(el("b", {}, what), el("div", {}, why),
-                    el("button", { class: "small", onclick: () => { setStatus("wait", "…"); refresh() } }, icon("refresh-cw"), "Try again"))
+                    el("button", { class: "small" + (retrying ? " spin" : ""), disabled: retrying, onclick: retry },
+                       icon("refresh-cw"), retrying ? "Trying…" : "Try again"))
   b.hidden = false
+}
+
+// Try again shows that it's trying until the answer (or the timeout), and when it last tried: a failed retry redraws
+// the same box, which would otherwise look like the tap did nothing
+let retrying = false, triedAt = ""
+async function retry() {
+  retrying = true
+  offline(state[HOME] ? state[HOME].err : null)
+  await Promise.all([refresh(), new Promise(r => setTimeout(r, 600))])
+  retrying = false
+  triedAt = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+  if (document.body.classList.contains("offline")) offline(state[HOME] ? state[HOME].err : null)
 }
 
 function ago(t) {
@@ -357,34 +371,29 @@ function clearButton(btn, to) {
   }
 }
 clearButton($("clearReceived"), "phone")
-clearButton($("clearSent"), "computer")
 
 function card(it) {
-  const fresh = it.to === "phone" && !seenIds.has(it.id)
-  // With several computers: which one it came from, or went to
+  const fresh = !seenIds.has(it.id)
+  // With several computers: which one it came from
   const meta = (many() ? nameOf(it.m) + " · " : "") + (it.kind === "file" ? size(it.size) + " · " : "") + ago(it.time)
   let lead, main, actions = null
   if (it.kind === "text") {
     lead = el("div", { class: "kind" }, "TEXT")
     main = el("div", { class: "text" }, it.text)
-    if (it.to === "phone") {
-      const b = el("button", { class: "primary small", onclick: () => copy(it.text, b) }, icon("copy"), "Copy")
-      actions = el("div", { class: "row" }, b)
-      if (/^https?:\/\/\S+$/.test(it.text.trim()))
-        actions.append(el("a", { class: "btn small", href: it.text.trim(), target: "_blank", rel: "noopener" }, icon("external-link"), "Open"))
-    }
+    const b = el("button", { class: "primary small", onclick: () => copy(it.text, b) }, icon("copy"), "Copy")
+    actions = el("div", { class: "row" }, b)
+    if (/^https?:\/\/\S+$/.test(it.text.trim()))
+      actions.append(el("a", { class: "btn small", href: it.text.trim(), target: "_blank", rel: "noopener" }, icon("external-link"), "Open"))
   } else {
     const ext = (it.name.split(".").pop() || "").slice(0, 4).toUpperCase()
-    lead = isImage(it) && it.to === "phone" && it.size < PREFETCH
+    lead = isImage(it) && it.size < PREFETCH
       ? el("img", { class: "thumb", src: it.m + "api/file/" + it.id, alt: "", loading: "lazy" })
       : el("div", { class: "kind" }, ext || "FILE")
     main = el("div", { class: "name" }, it.name)
-    if (it.to === "phone") {
-      prefetch(it)
-      const b = el("button", { class: "primary small", onclick: () => save(it, b) }, icon("download"), "Save")
-      actions = el("div", { class: "row" }, b,
-                   el("a", { class: "btn small", href: it.m + "api/file/" + it.id, target: "_blank" }, icon("external-link"), "Open"))
-    }
+    prefetch(it)
+    const b = el("button", { class: "primary small", onclick: () => save(it, b) }, icon("download"), "Save")
+    actions = el("div", { class: "row" }, b,
+                 el("a", { class: "btn small", href: it.m + "api/file/" + it.id, target: "_blank" }, icon("external-link"), "Open"))
   }
   const c = el("div", { class: "item" + (fresh ? " new" : "") },
                el("div", { class: "top" }, lead, el("div", { class: "body" }, main, el("div", { class: "meta" }, meta), actions)))
@@ -396,11 +405,9 @@ function card(it) {
 
 function render(all) {
   const newest = (a, b) => b.time - a.time
+  // Only what came to the phone: what it sent is the computers' to show, and needs no history here
   const toPhone = all.filter(i => i.to === "phone").sort(newest)
-  const toComputer = all.filter(i => i.to === "computer").sort(newest)
   $("toPhone").replaceChildren(...(toPhone.length ? toPhone.map(card) : [el("div", { class: "empty" }, "Nothing yet")]))
-  $("toComputer").replaceChildren(...toComputer.map(card))
-  $("sent").hidden = !toComputer.length
   $("clearReceived").hidden = !toPhone.length
   // Marked as seen once shown: the highlight stays until the next update
   setTimeout(() => { for (const i of toPhone) seenIds.add(i.id); localStorage.setItem("ferry.seen", JSON.stringify([...seenIds].slice(-200))) }, 3000)
