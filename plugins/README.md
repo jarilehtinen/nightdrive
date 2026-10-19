@@ -178,7 +178,7 @@ and description come from `plugin.conf`; the README is the body. Follow this sha
    `## On the phone`, `## In a terminal` and `## Privacy` (Ferry's README); the launcher shows them as section titles.
    Commands read best as a table (`| Command | What it does |`), which the launcher shows as items.
 5. Last, the fact lines, each on its own line and in this order (the ones that apply, at least one):
-   `Homepage: https://…`, `Needs: …`, `Keys: ⌘⇧U` (required when the plugin has `bindings.lua`). The launcher shows
+   `Homepage: https://…`, `Needs: …`, `Keys: ⌘⇧I` (required when the plugin has `bindings.lua`). The launcher shows
    them as facts under the text.
 
 The launcher shows each paragraph and each `- ` item as plain text: links keep their text, `**` and backticks go. Write
@@ -205,7 +205,7 @@ the plugin by its SHORTCUTS.md section, so give the key's line the app's name (`
 
 ```lua
 local p = ...
-hl.bind(p.mod .. " + SHIFT + U", hl.dsp.exec_cmd("qs ipc call menu toggle disk"))   -- opens the plugin's menu
+hl.bind(p.mod .. " + SHIFT + I", hl.dsp.exec_cmd("qs ipc call menu toggle disk"))   -- opens the plugin's menu
 ```
 
 Check that the key is free in [`config/hypr/bindings.lua`](../config/hypr/bindings.lua) and
@@ -215,7 +215,7 @@ column 22, as in the core's file). Its lines show only while the plugin is on, s
 
 ```
 ## Disk
-  ⌘ ⇧ U              Disk: free space and what takes it
+  ⌘ ⇧ I              Disk: free space and what takes it
 ```
 
 Hyprland reloads by itself when `nightdrive plugins installed` changes the list of plugins that are on. After editing
@@ -472,8 +472,8 @@ How much room is left on the disk, at a glance in the top bar, and what takes it
 - What takes up the space (also a right click on the icon) opens ncdu on your home folder: browse the biggest folders and delete what you don't need.
 
 Homepage: https://dev.yorhel.nl/ncdu
-Keys: ⌘⇧U
+Keys: ⌘⇧I
 ```
 
-Add `bindings.lua` and `SHORTCUTS.md` from [Keys](#keys-bindingslua-and-shortcutsmd) for ⌘⇧U, then
+Add `bindings.lua` and `SHORTCUTS.md` from [Keys](#keys-bindingslua-and-shortcutsmd) for ⌘⇧I, then
 `nightdrive plugins install disk` and `nightdrive plugin check disk`.

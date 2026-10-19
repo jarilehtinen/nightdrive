@@ -1,0 +1,18 @@
+# Programs that ⌘⇧U starts again when it opens a closed terminal (hypr/scripts/reopen), with the same arguments in the
+# same folder. Anything else that was running there isn't run again: the terminal only opens in the same folder.
+# Claude Code is always resumed (the same conversation) and needs no line here.
+# One program name a line. Personal additions go to reopen-commands.local (same format, not in the repo).
+nvim
+vim
+vi
+hx
+helix
+micro
+nano
+less
+man
+btop
+htop
+top
+lazygit
+yazi

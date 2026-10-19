@@ -92,6 +92,8 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
 - **Screensavers**: a synthwave sunset and a falling-characters rain, both drawn in the terminal, and a big clock whose
   digits slide up as the minutes change.
 - **Background apps**: ⌘W only hides chat apps and the music player, so they keep running. Their shortcut brings them straight back.
+- **Closed by mistake?** ⌘⇧U opens the window you closed with ⌘W again, in the same place. A terminal comes back in the
+  same folder, with Claude Code in the same conversation. Press again for the one before it.
 - **Web apps**: turn any site into an app window from the launcher (System › Install › Webapp), and remove one in System ›
   Remove › Webapps (its logins go with it). Their notifications come with the web app's own name and icon, not Chromium's.
 - **Default apps**: which app opens links, mail, folders, text, code, images, video, music, PDFs and calendar files, in the launcher
@@ -278,7 +280,7 @@ which app is yours to choose (launcher › Settings › Keyboard Shortcuts).
 | ⌘ Space · ⌘ Enter | Launcher · terminal |
 | ⌘ ⌥ Enter | Claude Code (with text typed in the launcher: sends it as the prompt) |
 | ⌘ C / V / X · ⌘ S | Copy / paste / cut, in every app · save |
-| ⌘ W · ⌘ Q | Close (background apps are only hidden) · really quit |
+| ⌘ W · ⌘ Q · ⌘ ⇧ U | Close (background apps are only hidden) · really quit · open the closed window again |
 | ⌘ ⇧ F · ⌘ ⇧ T · ⌘ ⇧ J | The window: fullscreen · tile or float · split direction (⌘ ⇧ arrows move it) |
 | ⌥ Tab · ⌥ ⇧ Tab | The app's next · previous window |
 | ⌘ F · ⌘ T · ⌘ J | The app's own: find · new tab · downloads |
@@ -315,6 +317,8 @@ The full list is in [`config/hypr/SHORTCUTS.md`](config/hypr/SHORTCUTS.md).
   folder's files at its top: `nightdrive plugins add <git-url>` clones it.
 - **Background apps**: apps that ⌘W should only hide are in
   [`config/hypr/background-apps`](config/hypr/background-apps).
+- **Reopened terminals**: the programs that ⌘⇧U starts again in a closed terminal (editors and the like) are in
+  [`config/hypr/reopen-commands`](config/hypr/reopen-commands).
 - **Launcher apps**: only the apps in [`config/fuzzel/apps-allow.txt`](config/fuzzel/apps-allow.txt) are listed. Search finds
   the rest.
 - **Private additions**: some things don't belong in a public repo, like work tools or a personal dashboard. You can keep them in
@@ -323,7 +327,7 @@ The full list is in [`config/hypr/SHORTCUTS.md`](config/hypr/SHORTCUTS.md).
   | Slot | What you can add there |
   |---|---|
   | `config/hypr/local.d/*.lua` | autostart entries, window rules, keybindings |
-  | `config/hypr/background-apps.local`, `SHORTCUTS.local.md` | more background apps, your own entries in the shortcut list |
+  | `config/hypr/background-apps.local`, `reopen-commands.local`, `SHORTCUTS.local.md` | more background apps, more programs ⌘⇧U starts again, your own entries in the shortcut list |
   | `config/quickshell/local/` | `<Name>Menu.qml` bar menus, and `LauncherExtension.qml` for your own launcher levels |
   | `config/fuzzel/apps-allow.local.txt` | more apps shown in the launcher |
   | `config/topbar/local.modules.jsonc`, `status.local`, `local.adjust.conf` | your own bar modules (at the left end of the icons), their status and icon sizes |

@@ -8,6 +8,7 @@ config/hypr/xdph.conf
 # Personal additions from a private overlay (linked in by the overlay's own link.sh; see README)
 config/hypr/local.d/
 config/hypr/background-apps.local
+config/hypr/reopen-commands.local
 config/hypr/SHORTCUTS.local.md
 config/quickshell/local
 config/topbar/local.modules.jsonc

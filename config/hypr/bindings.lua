@@ -191,6 +191,7 @@ hl.bind(mod .. " + ALT + right", hl.dsp.send_shortcut({ mods = "CTRL", key = "Ne
 -- Windows
 hl.bind(mod .. " + W",          hl.dsp.exec_cmd(scripts .. "/close-or-hide"))   -- closes; background apps (hypr/background-apps) are hidden in the background instead
 hl.bind(mod .. " + Q",           hl.dsp.exec_cmd(scripts .. "/quit-app"))   -- quits the app for real, background apps too (Deck, WhatsApp…); ⌘W hides them
+hl.bind(mod .. " + SHIFT + U",   hl.dsp.exec_cmd(scripts .. "/reopen"))   -- opens the window last closed with ⌘W again, where it was; again: the one before it
 -- The window's own keys are ⌘⇧: fullscreen, floating, split direction and the arrows that move it. ⌘F / ⌘T / ⌘J are the
 -- apps' (find, new tab, downloads: the list below the copy keys)
 hl.bind(mod .. " + SHIFT + F",   hl.dsp.window.fullscreen())
@@ -316,25 +317,28 @@ local function drawer_throw(w)
         else hl.dispatch(hl.dsp.window.center({ window = win })) end   -- a floating one: in the middle of the drawer
     end, { timeout = 360, type = "oneshot" })
 end
-local function drawer_return(w)
-    local win = "address:" .. w.address
-    local o = drawerOrigin[w.address]
-    drawerOrigin[w.address] = nil
-    local target = o and hl.get_workspace(o.ws) and o.ws or w.monitor.active_workspace.id
-    hl.dispatch(hl.dsp.workspace.toggle_special("drawer"))   -- hide the drawer, the window is shown where it lands
+-- Puts a window back where it was: o = { floating, x, y, w, h } from before (nil: anywhere), on workspace `target`.
+-- With win = nil it only focuses the spot, so that the window opening next lands there. Returns the focus for
+-- hl.dispatch: global for ⌘⇧U too (scripts/reopen, a window closed with ⌘W opened again), whose hyprctl dispatch
+-- needs a dispatcher back.
+function NIGHTDRIVE_PLACE(win, o, target)
     hl.dispatch(hl.dsp.focus({ workspace = target }))
+    local spot = hl.dsp.focus({ workspace = target })
     if o and not o.floating then
         -- the tiled window at the old spot's centre gets split, so the window lands about where it was
         local cx, cy = o.x + o.w / 2, o.y + o.h / 2
         for _, t in ipairs(hl.get_workspace_windows(target) or {}) do
             local tx, ty = xy(t.at)
             local tw, th = xy(t.size)
-            if not t.floating and cx >= tx and cx < tx + tw and cy >= ty and cy < ty + th then
-                hl.dispatch(hl.dsp.focus({ window = "address:" .. t.address }))
+            if not t.floating and "address:" .. t.address ~= win and cx >= tx and cx < tx + tw and cy >= ty and cy < ty + th then
+                spot = hl.dsp.focus({ window = "address:" .. t.address })
                 break
             end
         end
     end
+    hl.dispatch(spot)
+    if not win then return spot end
+    if o then hl.dispatch(hl.dsp.window.float({ action = o.floating and "enable" or "disable", window = win })) end
     hl.dispatch(hl.dsp.window.move({ workspace = target, window = win }))
     if o and not o.floating then
         -- the new half may be on the wrong side (dwindle puts it right/below): swap towards the old spot
@@ -353,7 +357,14 @@ local function drawer_return(w)
         hl.dispatch(hl.dsp.window.resize({ x = o.w, y = o.h, exact = true, window = win }))
         hl.dispatch(hl.dsp.window.move({ x = o.x, y = o.y, exact = true, window = win }))
     end
-    hl.dispatch(hl.dsp.focus({ window = win }))
+    return hl.dsp.focus({ window = win })
+end
+local function drawer_return(w)
+    local o = drawerOrigin[w.address]
+    drawerOrigin[w.address] = nil
+    local target = o and hl.get_workspace(o.ws) and o.ws or w.monitor.active_workspace.id
+    hl.dispatch(hl.dsp.workspace.toggle_special("drawer"))   -- hide the drawer, the window is shown where it lands
+    hl.dispatch(NIGHTDRIVE_PLACE("address:" .. w.address, o, target))
 end
 local function drawer_send()
     local w = hl.get_active_window()

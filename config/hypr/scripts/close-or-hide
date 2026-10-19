@@ -1,5 +1,5 @@
 #!/bin/bash
-# ⌘W: closes the active window, except background apps (hypr/background-apps): those are hidden to special:bg and keep running.
+# ⌘W: closes the active window (⌘⇧U opens it again: scripts/reopen), except background apps (hypr/background-apps): those are hidden to special:bg and keep running.
 # A hidden window comes back with its shortcut (launch-or-focus brings it to the current workspace).
 # Only the app's main window (its oldest) is hidden; its other windows (1Password's Settings, dialogs) close as usual,
 # otherwise launch-or-focus would bring them back with the main window.
@@ -23,5 +23,6 @@ if [[ -n $main && $addr == "$main" ]]; then
     hyprctl dispatch "hl.dsp.window.move({ workspace = \"special:bg\", follow = false, window = \"address:$addr\" })" >/dev/null
   fi
 else
+  "$d/scripts/reopen" save 2>/dev/null   # ⌘⇧U opens it again
   hyprctl dispatch "hl.dsp.window.close()" >/dev/null
 fi

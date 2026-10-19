@@ -1,0 +1,315 @@
+#!/usr/bin/env python3
+"""⌘⇧U: opens the window last closed with ⌘W again, where it was: on its workspace, in its place among the tiles, or a
+floating one at its old place and size. Each press opens the one closed before it, up to MAX_KEPT windows back.
+
+  reopen save [ADDRESS]   close-or-hide runs this before closing the active window (or that one): how to open it
+                          again, and where it was
+  reopen                  opens the last one again
+
+The program starts anew, so a window comes back as it starts, not as it was:
+- A terminal (kitty) opens in the same folder. What ran in it starts again only when it's in hypr/reopen-commands
+  (+ .local): editors and the like, never just anything (rm, a build). Claude Code resumes the same conversation.
+- A browser window, while the browser still has others open: the browser's own key for a closed window, tabs and all.
+- Any other app: its command line, so a file it had open opens too, or its desktop entry when the command line can't
+  be run again (a process shared by several windows, a sandbox, a D-Bus service).
+The list is kept in $XDG_RUNTIME_DIR, so it's gone after logging out.
+"""
+import fcntl, json, os, re, shutil, subprocess, sys, time
+from importlib.machinery import SourceFileLoader
+from importlib.util import module_from_spec, spec_from_loader
+
+HOME = os.path.expanduser("~")
+HYPR = os.environ.get("XDG_CONFIG_HOME", HOME + "/.config") + "/hypr"
+STACK = os.environ.get("XDG_RUNTIME_DIR", "/tmp") + "/nightdrive/closed-windows.json"
+SCRIPTS = os.path.dirname(os.path.realpath(__file__))
+MAX_KEPT = 10
+WAIT = 20           # seconds to wait for the window: a big app can take a while to start
+WAIT_BROWSER = 4    # the browser's key opens nothing when the window had one tab: it comes back as a tab instead
+TERMINAL = "kitty"
+# Terminals in a window of their own class (kitty's floating-tui, floating-help…) are the desktop's popups, opened from a
+# menu with a command of their own (an update): never run again
+TERMINAL_EXES = {"kitty", "foot", "alacritty", "wezterm-gui", "ghostty"}
+SHELLS = {"bash", "zsh", "fish", "sh", "dash", "nu", "xonsh", "elvish"}
+# Window class -> the browser's key that reopens its last closed window (Firefox's Ctrl+Shift+T is for tabs only)
+BROWSERS = [(r"^(chromium(-browser)?|google-chrome.*|brave-browser.*|vivaldi.*|microsoft-edge.*)$", "T"),
+            (r"^(firefox.*|org\.mozilla\.firefox|librewolf|zen.*)$", "N")]
+SESSIONS = HOME + "/.claude/sessions"   # Claude Code's <pid>.json: the running session's id
+
+# default-apps reads the desktop entries (no .py: loaded by its path, no __pycache__ in the repo)
+sys.dont_write_bytecode = True
+_loader = SourceFileLoader("default_apps", SCRIPTS + "/default-apps")
+da = module_from_spec(spec_from_loader("default_apps", _loader))
+_loader.exec_module(da)
+
+
+def hypr(what):
+    try:
+        return json.loads(subprocess.run(["hyprctl", "-j", what], capture_output=True, text=True).stdout or "null")
+    except ValueError:
+        return None
+
+
+def dispatch(expr):
+    subprocess.run(["hyprctl", "dispatch", expr], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def notify(title, body=""):
+    subprocess.run(["notify-send", "-a", "Nightdrive", title, body])
+
+
+# Processes (/proc): the fields of stat after "pid (comm)", which may contain spaces: [1] ppid, [5] tpgid (the
+# terminal's foreground process group), [19] start time
+def stat(pid):
+    try:
+        text = open(f"/proc/{pid}/stat").read()
+    except OSError:
+        return "", []
+    return text[text.index("(") + 1:text.rindex(")")], text[text.rindex(")") + 2:].split()
+
+
+def argv(pid):
+    try:
+        return [a for a in open(f"/proc/{pid}/cmdline", "rb").read().decode(errors="replace").split("\0") if a]
+    except OSError:
+        return []
+
+
+def cwd(pid):
+    try:
+        return os.readlink(f"/proc/{pid}/cwd")
+    except OSError:
+        return None
+
+
+def children(pid):
+    kids = []
+    for p in os.listdir("/proc"):
+        if p.isdigit():
+            _, f = stat(p)
+            if len(f) > 19 and f[1] == str(pid):
+                kids.append((int(f[19]), int(p)))
+    return [p for _, p in sorted(kids)]
+
+
+def own_process(pid):
+    """An ordinary process of this user, outside any sandbox (Flatpak's command line runs only inside its own)."""
+    try:
+        return os.stat(f"/proc/{pid}").st_uid == os.getuid() and os.readlink(f"/proc/{pid}/root") == "/"
+    except OSError:
+        return False
+
+
+# Terminals: what ran in it, and whether it may run again
+def allowed():
+    names = set()
+    for path in (HYPR + "/reopen-commands", HYPR + "/reopen-commands.local"):
+        try:
+            names |= {l.strip() for l in open(path) if l.strip() and not l.lstrip().startswith("#")}
+        except OSError:
+            pass
+    return names
+
+
+def is_claude(pid, args):
+    try:
+        exe = os.readlink(f"/proc/{pid}/exe")
+    except OSError:
+        exe = ""
+    return bool(args) and os.path.basename(args[0]) == "claude" or "/claude/versions/" in exe
+
+
+def claude_again(pid, args):
+    """Claude Code with the same conversation: the session id from its sessions file, or the folder's latest one."""
+    claude = args[0] if os.path.isabs(args[0]) and os.path.exists(args[0]) else \
+        shutil.which("claude") or HOME + "/.local/bin/claude"
+    try:
+        s = json.load(open(f"{SESSIONS}/{pid}.json"))
+        if s.get("pid") == pid and s.get("sessionId"):
+            return [claude, "--resume", s["sessionId"]]
+    except (OSError, ValueError):
+        pass
+    return [claude, "--continue"]
+
+
+def terminal(pid):
+    """kitty runs a shell, or a program straight (⌘⌥Enter's Claude). With tabs or splits, the one running Claude, or
+    the newest."""
+    found = []
+    for kid in children(pid):
+        comm, f = stat(kid)
+        if comm == "kitten" and any(a.startswith("__") for a in argv(kid)[1:2]):
+            continue   # kitty's own helpers (__atexit__, __watch_conf__)
+        if comm in SHELLS:
+            fg = int(f[5]) if len(f) > 5 else 0
+            found.append((kid, fg if fg > 0 and fg != kid and os.path.exists(f"/proc/{fg}") else None))
+        else:
+            found.append((None, kid))
+    if not found:
+        return None
+    found.sort(key=lambda sf: sf[1] is not None and is_claude(sf[1], argv(sf[1])))
+    shell, fg = found[-1]
+    run = None
+    if fg:
+        args = argv(fg)
+        if is_claude(fg, args):
+            run = claude_again(fg, args)
+        elif args and os.path.basename(args[0]) in allowed():
+            run = args
+    folder = (cwd(fg) if run else None) or (cwd(shell) if shell else None) or HOME
+    return {"cwd": folder, "run": run, "shell": shell is not None}
+
+
+def runnable(pid, args):
+    """The app's command line, when running it again opens the window again."""
+    if not args or not own_process(pid):
+        return False
+    if any(a == "--gapplication-service" or a.startswith("--type=") for a in args):
+        return False   # a D-Bus activated service, or a helper process: no window of its own
+    exe = args[0]
+    path = exe if os.path.isabs(exe) else shutil.which(exe)
+    return bool(path) and os.path.exists(path) and not path.startswith("/tmp/")   # an AppImage's mount goes away
+
+
+def browser_key(cls):
+    return next((k for r, k in BROWSERS if re.match(r, cls, re.I)), None)
+
+
+def save(address=None):
+    w = next((c for c in hypr("clients") or [] if c.get("address") == address), None) if address else hypr("activewindow")
+    if not w or not w.get("address"):
+        return
+    cls, pid = w.get("class") or w.get("initialClass") or "", w.get("pid") or 0
+    if not cls:
+        return
+    ws = w.get("workspace") or {}
+    x, y = w.get("at") or [0, 0]
+    sw, sh = w.get("size") or [0, 0]
+    entry = {"class": cls, "title": w.get("title", ""), "ws": ws.get("id"), "wsname": ws.get("name", ""),
+             "floating": bool(w.get("floating")), "x": x, "y": y, "w": sw, "h": sh,
+             "fullscreen": bool(w.get("fullscreen")), "closed": int(time.time())}
+    others = [c for c in hypr("clients") or [] if c.get("pid") == pid and c.get("address") != w["address"]]
+    if cls == TERMINAL:
+        if w.get("xwayland") or not own_process(pid):
+            return
+        t = terminal(pid)
+        if not t:
+            return
+        entry["terminal"] = t
+    else:
+        args = argv(pid)
+        if args and os.path.basename(args[0]) in TERMINAL_EXES:
+            return
+        if not others and not w.get("xwayland") and runnable(pid, args):
+            entry["cmd"], entry["cwd"] = args, cwd(pid) or HOME
+    with locked() as stack:
+        stack.append(entry)
+        del stack[:-MAX_KEPT]
+
+
+class locked:
+    """The list, read and written under a lock: two quick presses open two windows, not the same one twice."""
+    def __enter__(self):
+        os.makedirs(os.path.dirname(STACK), exist_ok=True)
+        self.f = open(STACK, "a+")
+        fcntl.flock(self.f, fcntl.LOCK_EX)
+        self.f.seek(0)
+        try:
+            self.stack = json.loads(self.f.read() or "[]")
+        except ValueError:
+            self.stack = []
+        return self.stack
+
+    def __exit__(self, *exc):
+        self.f.seek(0)
+        self.f.truncate()
+        json.dump(self.stack, self.f)
+        self.f.close()
+
+
+def desktop_entry(cls):
+    """The app's desktop id for its window class: StartupWMClass, the id, or its last part (as default-apps does)."""
+    match = None
+    for app_id, keys in da.entries().items():
+        names = {keys.get("StartupWMClass", ""), app_id[:-8], app_id[:-8].split(".")[-1]} - {""}
+        if any(n.lower() == cls.lower() for n in names):
+            if da.usable(keys):
+                return app_id
+            match = match or app_id
+    return match
+
+
+def launch(cmd, folder):
+    env = {k: v for k, v in os.environ.items() if not k.startswith("CLAUDE")}   # not a child of this session's Claude
+    try:
+        subprocess.Popen(cmd, cwd=folder if folder and os.path.isdir(folder) else HOME, env=env, start_new_session=True,
+                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return True
+    except OSError:
+        return False
+
+
+def lua(e):
+    return (f'{{ floating = {str(e["floating"]).lower()}, x = {int(e["x"])}, y = {int(e["y"])}, '
+            f'w = {int(e["w"])}, h = {int(e["h"])} }}')
+
+
+def reopen():
+    with locked() as stack:
+        e = stack.pop() if stack else None
+    if not e:
+        notify("No closed windows", "A window closed with ⌘W opens again with ⌘⇧U, the last one first")
+        return
+    cls, name = e["class"], e.get("title") or e["class"]
+    clients = hypr("clients") or []
+    before = {c.get("address") for c in clients}
+    if e["wsname"].startswith("special:") or not e["ws"]:
+        target = (hypr("activeworkspace") or {}).get("id", 1)   # the drawer's windows come back on the screen
+    else:
+        target = e["ws"]
+
+    wait = WAIT
+    key = browser_key(cls)
+    open_browser = [c for c in clients if c.get("class") == cls and not c.get("workspace", {}).get("name", "").startswith("special:")]
+    if key and open_browser:
+        # The browser's key goes to the window that has the focus: one of its own. Its new window is moved to the spot
+        # after it opens.
+        wait = WAIT_BROWSER
+        dispatch(f'hl.dsp.focus({{ window = "address:{open_browser[0]["address"]}" }})')
+        dispatch(f'hl.dsp.send_shortcut({{ mods = "CTRL SHIFT", key = "{key}" }})')
+    else:
+        if "terminal" in e:
+            t = e["terminal"]
+            cmd = [TERMINAL, "--directory", t["cwd"]] + (["--hold"] if t["run"] and t["shell"] else []) + (t["run"] or [])
+            folder = t["cwd"]
+        elif e.get("cmd"):
+            cmd, folder = e["cmd"], e.get("cwd")
+        else:
+            app = desktop_entry(cls)
+            cmd, folder = (["gtk-launch", app[:-8]], HOME) if app else (None, None)
+        dispatch(f"NIGHTDRIVE_PLACE(nil, {lua(e)}, {target})")   # so it opens there, not somewhere else first
+        if not cmd or not launch(cmd, folder):
+            notify("Can't open the window again", name)
+            return
+
+    end = time.time() + wait
+    while time.time() < end:
+        time.sleep(0.2)
+        new = [c for c in hypr("clients") or [] if c.get("address") not in before and
+               cls.lower() in ((c.get("class") or "").lower(), (c.get("initialClass") or "").lower())]
+        if new:
+            addr = new[0]["address"]
+            dispatch(f'NIGHTDRIVE_PLACE("address:{addr}", {lua(e)}, {target})')
+            if e.get("fullscreen"):
+                dispatch("hl.dsp.window.fullscreen()")
+            return
+    if not key:
+        notify("The window didn't open again", name)
+
+
+if __name__ == "__main__":
+    if sys.argv[1:2] == ["save"] and len(sys.argv) <= 3:
+        save(*sys.argv[2:])
+    elif not sys.argv[1:]:
+        reopen()
+    else:
+        sys.exit(__doc__)
