@@ -216,7 +216,7 @@ Rectangle {
                     elide: Text.ElideRight
                     textFormat: Text.PlainText
                     text: card.n ? card.n.summary : card.row.summary
-                    color: Theme.primary
+                    color: Theme.title
                     font { family: Theme.font; pointSize: 9.25; weight: Font.Bold }   // 1 px under mako's 10 pt
                 }
                 Text {
