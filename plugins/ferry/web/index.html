@@ -56,8 +56,11 @@
   .banner.info { background: var(--card); }
   .banner.info b { color: var(--accent); }
   .banner button { margin-top: 10px; }
+  /* Turn on notifications alone: the button by itself, in the middle, no box around it */
+  .banner.bare { background: none; padding: 0; display: flex; justify-content: center; }
+  .banner.bare button { margin-top: 0; }
   section { margin: 0 0 18px; }
-  h2 { font-size: 13px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: var(--primary);
+  h2 { font-size: 13px; font-weight: 500; letter-spacing: .09em; text-transform: uppercase; color: var(--primary);
        margin: 0 6px 10px 10px; display: flex; justify-content: space-between; align-items: baseline; }
   /* Clear: quiet beside the title; the first tap asks */
   h2 button.clear { background: transparent; color: var(--dim); min-height: 0; padding: 2px 0; font-size: 15px; font-weight: 400;
@@ -76,7 +79,7 @@
   input[type=file] { display: none; }
 
   /* Received: one card, a divider between the rows from the text on (not under the icon) */
-  .list { background: var(--card); border-radius: 22px; overflow: hidden; }
+  .list { background: var(--card); border-radius: 18px; overflow: hidden; }
   .swipe { position: relative; overflow: hidden; background: #3a1a26; }
   .swipe + .swipe::before { content: ""; position: absolute; top: 0; left: 84px; right: 18px; height: 1px;
                             background: rgba(58, 47, 69, .7); z-index: 1; }
@@ -93,7 +96,7 @@
   .item .lead img { width: 100%; height: 100%; object-fit: cover; }
   .item .lead .i { width: 26px; height: 26px; stroke-width: 1.75; }
   .item .body { flex: 1; min-width: 0; }
-  .item .title { font-size: 17px; color: var(--accent); letter-spacing: .04em; overflow: hidden; text-overflow: ellipsis;
+  .item .title { font-size: 15px; color: var(--accent); letter-spacing: .04em; overflow: hidden; text-overflow: ellipsis;
                  white-space: nowrap; }
   .item .meta { font-size: 13px; color: var(--dim); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .item .act { width: 46px; height: 46px; min-height: 0; padding: 0; border-radius: 50%; flex: none; }
@@ -376,7 +379,7 @@ async function save(it, btn) {
 
 async function removeItem(it) {
   try { await api(it.m, "api/remove?id=" + encodeURIComponent(it.id), { method: "POST" }); refresh() }
-  catch (e) { note("Not removed", true); refresh() }
+  catch (e) { note("Not removed", true); cards.delete(it.id); refresh() }   // its row is swiped shut: a new one
 }
 
 // Clear: the first tap asks ("Clear all?"), a second one within a few seconds empties the list on every computer
@@ -399,9 +402,10 @@ clearButton($("clearReceived"), "phone")
 
 // One row: the icon (a picture's own), the text or the file's name, its size, age and computer, and the round button
 // for what a tap anywhere on the row does: copy a text, save a file (the share sheet: Save Image, Save to Files, …)
+const metaOf = it => [it.kind === "file" ? size(it.size) : "", ago(it.time), nameOf(it.m)].filter(x => x).join(" · ")
 function card(it) {
   const fresh = !seenIds.has(it.id)
-  const meta = [it.kind === "file" ? size(it.size) : "", ago(it.time), nameOf(it.m)].filter(x => x).join(" · ")
+  const meta = metaOf(it)
   let lead, title, act
   if (it.kind === "text") {
     lead = el("div", { class: "lead" }, icon("text"))
@@ -424,11 +428,22 @@ function card(it) {
   return wrap
 }
 
+// The rows already drawn, by item: a redraw keeps them (only the age and the highlight change), so a picture doesn't
+// load again and the list doesn't blink
+const cards = new Map()
 function render(all) {
   const newest = (a, b) => b.time - a.time
   // Only what came to the phone: what it sent is the computers' to show, and needs no history here
   const toPhone = all.filter(i => i.to === "phone").sort(newest)
-  $("toPhone").replaceChildren(...(toPhone.length ? toPhone.map(card) : [el("div", { class: "empty" }, "Nothing yet")]))
+  const rows = toPhone.map(it => {
+    let w = cards.get(it.id)
+    if (!w) { w = card(it); cards.set(it.id, w); return w }
+    w.querySelector(".meta").textContent = metaOf(it)
+    w.querySelector(".item").classList.toggle("new", !seenIds.has(it.id))
+    return w
+  })
+  for (const id of [...cards.keys()]) if (!toPhone.some(i => i.id === id)) cards.delete(id)
+  $("toPhone").replaceChildren(...(rows.length ? rows : [el("div", { class: "empty" }, "Nothing yet")]))
   $("clearReceived").hidden = !toPhone.length
   // Marked as seen once shown: the highlight stays until the next update
   setTimeout(() => { for (const i of toPhone) seenIds.add(i.id); localStorage.setItem("ferry.seen", JSON.stringify([...seenIds].slice(-200))) }, 3000)
@@ -640,31 +655,31 @@ function b64(s) {
   const raw = atob((s + "=".repeat((4 - s.length % 4) % 4)).replace(/-/g, "+").replace(/_/g, "/"))
   return Uint8Array.from(raw, c => c.charCodeAt(0))
 }
-async function pushState() {
+// What the box above the list says about notifications; drawn again only when that changes (every update asks)
+function hint(what) {
   const box = $("pushHint")
-  if (!("serviceWorker" in navigator)) { box.hidden = true; return }
-  if (ios && !standalone) {
-    box.replaceChildren("For notifications: Share › Add to Home Screen")
-    box.hidden = false
-    return
-  }
-  if (!("PushManager" in window) || !pushKey) { box.hidden = true; return }
+  if (box.dataset.what === (what || "")) return
+  box.dataset.what = what || ""
+  box.hidden = !what
+  box.classList.toggle("bare", what === "button")   // the button alone; a line of text keeps its box
+  if (what === "home") box.replaceChildren("For notifications: Share › Add to Home Screen")
+  else if (what === "denied") box.replaceChildren("Notifications are off in Settings")
+  else if (what === "button")
+    box.replaceChildren(el("button", { class: "primary small", onclick: enablePush }, icon("bell"), "Turn on notifications"))
+}
+async function pushState() {
+  if (!("serviceWorker" in navigator)) return hint(null)
+  if (ios && !standalone) return hint("home")
+  if (!("PushManager" in window) || !pushKey) return hint(null)
   const reg = await navigator.serviceWorker.ready
   const sub = await reg.pushManager.getSubscription()
   if (sub && Notification.permission === "granted") {
     // Told again on every start: the computer may have lost it, or it may have changed
     if (!pushState.sent) { pushState.sent = true; api(HOME, "api/subscribe", { method: "POST", body: JSON.stringify(sub) }).catch(() => {}) }
     relayAll()
-    box.hidden = true
-    return
+    return hint(null)
   }
-  if (Notification.permission === "denied") {
-    box.replaceChildren("Notifications are off in Settings")
-    box.hidden = false
-    return
-  }
-  box.replaceChildren(el("button", { class: "primary small", onclick: enablePush }, icon("bell"), "Turn on notifications"))
-  box.hidden = false
+  hint(Notification.permission === "denied" ? "denied" : "button")
 }
 async function enablePush() {
   try {

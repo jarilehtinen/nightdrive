@@ -28,7 +28,7 @@ Column {
     property string picked: ""         // the device just picked, until `ferry list` says so too
     readonly property string targetId: picked || (st ? st.target || "" : "")
     readonly property var target: devices.find(d => d.id === targetId) || null
-    property string mode: "list"       // list | pick (the devices instead of the list) | write (a text to send)
+    property string mode: "list"       // list | pick (the pill's list floating over the list) | write (a text to send)
     property string flash: ""          // what says "copied" for a moment: an item's id or "url"
     property bool adding: false        // Add Device: the QR code in the middle of the screen
     property string qr: ""             // the QR code's SVG once made
@@ -250,8 +250,8 @@ Column {
     // Clear: what the other devices sent here leaves the box (files stay in Downloads)
     MenuHeader {
         width: parent.width
-        title: m.dropping || m.mode === "pick" ? "Send to" : "Received"
-        action: m.mode !== "pick" && !m.dropping && m.received.length ? "Clear" : ""
+        title: m.dropping ? "Send to" : "Received"
+        action: !m.dropping && m.received.length ? "Clear" : ""
         onActionClicked: m.run(["clear", "received"])
     }
 
@@ -282,11 +282,11 @@ Column {
         }
     }
 
-    // The list (or the devices, or the text), the pill and the buttons; files over any of it turn it into tiles
+    // The list, the pill (its list floats over the list) and the buttons; files over any of it turn it into tiles
     Item {
         id: body
         width: parent.width
-        height: stack.height
+        height: stack.y + stack.height
 
         // Files dropped between the tiles go to the pill's device, as on the bar icon. Under the tiles, which take
         // the drop over them.
@@ -306,6 +306,8 @@ Column {
 
         Column {
             id: stack
+            // Room above the pill for its list when the list is short
+            y: picker.visible ? Math.max(0, picker.height - 2 - pillWrap.y) : 0
             width: parent.width
             spacing: 12
 
@@ -332,7 +334,7 @@ Column {
 
             // ---- the list: what the other devices sent ----
             Rectangle {
-                visible: !m.dropping && m.mode !== "pick" && m.received.length > 0
+                visible: !m.dropping && m.received.length > 0
                 width: parent.width
                 height: flick.height + 8
                 radius: 14
@@ -477,7 +479,7 @@ Column {
 
             // ---- nothing received ----
             Rectangle {
-                visible: !m.dropping && m.mode !== "pick" && m.received.length === 0
+                visible: !m.dropping && m.received.length === 0
                 width: parent.width
                 height: 120
                 radius: 14
@@ -501,40 +503,6 @@ Column {
                         text: "Nothing received yet"
                         color: Theme.dim
                         font { family: Theme.font; pixelSize: 12 }
-                    }
-                }
-            }
-
-            // ---- the pill's list: the devices, and Add Device ----
-            Rectangle {
-                visible: !m.dropping && m.mode === "pick"
-                width: parent.width
-                height: pickList.height + 12
-                radius: 14
-                color: Theme.card
-                Column {
-                    id: pickList
-                    x: 6; y: 6
-                    width: parent.width - 12
-                    spacing: 2
-                    Repeater {
-                        model: m.devices
-                        delegate: DeviceRow {
-                            required property var modelData
-                            dev: modelData
-                            onClicked: m.pick(modelData)
-                        }
-                    }
-                    Rectangle {
-                        visible: m.devices.length > 0
-                        width: parent.width - 12; x: 6
-                        height: 1
-                        color: Qt.rgba(Theme.border.r, Theme.border.g, Theme.border.b, 0.6)
-                    }
-                    DeviceRow {
-                        label: "Add Device…"
-                        icon: "qr-code"
-                        onClicked: m.addDevice()
                     }
                 }
             }
@@ -651,8 +619,8 @@ Column {
                     width: parent.width - 2 * (36 + parent.spacing)
                     height: 36; radius: 18
                     // A soft wash of the theme colour, not a filled button: no menu has one
-                    color: sendArea.containsMouse || navSelected ? Theme.hover : Theme.sel
-                    border { width: 1; color: sendArea.containsMouse || navSelected ? Theme.primary : Theme.border }
+                    color: sendArea.containsMouse ? Qt.lighter(Theme.sel, 1.3) : Theme.sel   // under the mouse just brighter
+                    border { width: 1; color: navSelected ? Theme.primary : Theme.border }
                     opacity: usable ? 1 : 0.4
                     Row {
                         anchors.centerIn: parent
@@ -688,10 +656,58 @@ Column {
             }
         }
 
+        // The pill's list, floating above the pill over the list (the menu grows when there's no room above it). A click
+        // beside it closes it, the pill's own too.
+        MouseArea {
+            visible: picker.visible
+            anchors.fill: parent
+            z: 9
+            hoverEnabled: true   // takes the hover too: the rows under it don't light up
+            onClicked: m.mode = "list"
+        }
+        Rectangle {
+            id: picker
+            visible: !m.dropping && m.mode === "pick"
+            z: 10
+            anchors.horizontalCenter: parent.horizontalCenter
+            y: stack.y + pillWrap.y + 10 - height - 8   // the pill sits 10 px into its wrapper
+            width: Math.min(parent.width, 290)
+            height: pickList.height + 12
+            radius: 14
+            color: Theme.card
+            border { width: 1; color: Theme.border }
+            MouseArea { anchors.fill: parent; hoverEnabled: true }   // a click between the rows doesn't close it, nor light the list below
+            Column {
+                id: pickList
+                x: 6; y: 6
+                width: parent.width - 12
+                spacing: 2
+                Repeater {
+                    model: m.devices
+                    delegate: DeviceRow {
+                        required property var modelData
+                        dev: modelData
+                        onClicked: m.pick(modelData)
+                    }
+                }
+                Rectangle {
+                    visible: m.devices.length > 0
+                    width: parent.width - 12; x: 6
+                    height: 1
+                    color: Qt.rgba(Theme.border.r, Theme.border.g, Theme.border.b, 0.6)
+                }
+                DeviceRow {
+                    label: "Add Device…"
+                    icon: "qr-code"
+                    onClicked: m.addDevice()
+                }
+            }
+        }
+
         // For a moment what was just sent, over the list: from here, the bar icon or `ferry send`
         Rectangle {
             visible: !!(m.st && m.st.sent) && !m.dropping
-            anchors { left: parent.left; right: parent.right; top: parent.top }
+            anchors { left: parent.left; right: parent.right; top: stack.top }
             height: Math.max(64, pillWrap.y - stack.spacing)   // the list's part, down to the pill
             radius: 14
             color: Qt.rgba(Theme.sel.r, Theme.sel.g, Theme.sel.b, 0.95)
@@ -748,32 +764,34 @@ Column {
         }
         Rectangle {
             anchors.centerIn: parent
-            width: 580
-            height: Math.max(qrBox.height, addText.height) + 48
+            width: 720
+            height: Math.max(qrBox.height, addText.height) + 56
             radius: 18
             color: Theme.bg
             border { width: 1; color: Theme.border }
             MouseArea { anchors.fill: parent }   // a click on the card doesn't close it
             Rectangle {
                 id: qrBox
-                x: 24; y: 24
-                width: 200; height: 200; radius: 12
+                x: 28; y: 28
+                width: 240; height: 240; radius: 14
                 color: "white"
                 Image {
-                    anchors { fill: parent; margins: 10 }
+                    anchors { fill: parent; margins: 12 }
                     source: m.qr !== "" ? "file://" + m.qr : ""
-                    sourceSize: Qt.size(360, 360)
+                    sourceSize: Qt.size(432, 432)
                     smooth: false
                     cache: false
                 }
             }
+            // Bigger text than a menu's: it's read from across the desk, phone in hand
             Column {
                 id: addText
-                anchors { left: qrBox.right; leftMargin: 24; right: parent.right; rightMargin: 24; top: qrBox.top }
-                spacing: 12
-                MenuHeader {
-                    width: parent.width
-                    title: "Add Device"
+                anchors { left: qrBox.right; leftMargin: 28; right: parent.right; rightMargin: 28; top: qrBox.top }
+                spacing: 16
+                Text {
+                    text: "ADD DEVICE"
+                    color: Theme.primary
+                    font { family: Theme.font; pixelSize: 15; weight: Font.Medium; letterSpacing: 1.2 }
                 }
                 Repeater {
                     model: ["Scan the code with the phone's camera", "Share › Add to Home Screen",
@@ -782,32 +800,55 @@ Column {
                         required property string modelData
                         required property int index
                         width: parent.width
-                        spacing: 10
+                        spacing: 12
                         Text {
                             text: index + 1
                             color: Theme.primary
-                            font { family: Theme.font; pixelSize: 12; weight: Font.Medium }
+                            font { family: Theme.font; pixelSize: 15; weight: Font.Medium }
                         }
                         Text {
-                            width: parent.width - 20
+                            width: parent.width - 24
                             wrapMode: Text.Wrap
                             text: modelData
                             color: Theme.text
-                            font { family: Theme.font; pixelSize: 12 }
+                            font { family: Theme.font; pixelSize: 15 }
                         }
                     }
                 }
-                Item { width: 1; height: 2 }
-                MenuRow {
+                Item { width: 1; height: 4 }
+                // The address: a click copies it
+                Rectangle {
                     width: parent.width
-                    icon: "copy"
-                    tinted: true
-                    label: m.flash === "url" ? "Copied" : m.st ? m.st.url.replace(/^https:\/\//, "").replace(/\/$/, "") : ""
-                    onClicked: { Quickshell.execDetached(["wl-copy", m.st.url]); m.flashOn("url") }
+                    height: 44; radius: 10
+                    color: urlArea.containsMouse ? Theme.hover : Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.07)
+                    Text {
+                        id: urlIcon
+                        anchors { left: parent.left; leftMargin: 14; verticalCenter: parent.verticalCenter }
+                        text: Icons.g(m.flash === "url" ? "check" : "copy")
+                        color: Theme.dim
+                        font { family: Icons.family; pixelSize: 17 }
+                    }
+                    Text {
+                        anchors { left: urlIcon.right; leftMargin: 12; right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
+                        elide: Text.ElideRight
+                        text: m.flash === "url" ? "Copied" : m.st ? m.st.url.replace(/^https:\/\//, "").replace(/\/$/, "") : ""
+                        color: Theme.text
+                        font { family: Theme.font; pixelSize: 14 }
+                    }
+                    MouseArea {
+                        id: urlArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: { Quickshell.execDetached(["wl-copy", m.st.url]); m.flashOn("url") }
+                    }
                 }
-                MenuNote {
+                Text {
                     width: parent.width
+                    wrapMode: Text.Wrap
                     text: "Another computer: open the address in its browser"
+                    color: Theme.dim
+                    font { family: Theme.font; pixelSize: 13 }
                 }
             }
             Text {
