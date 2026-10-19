@@ -1,0 +1,193 @@
+import QtQuick
+import Quickshell
+
+// The launcher's Settings › Launcher (fuzzy search, shortcut hints), Computer name, Notifications (how long a popup stays,
+// the two sounds, FUMonitor's alerts) and Update channel. Startup stays in Launcher.qml: its rows are the app rows.
+// Launcher.qml asks it like DefaultAppsLevels (levels, titles, parents, items, activate, footer, entered), shows compName
+// and channel on Settings' own rows, and calls entered("settings") to read them.
+Item {
+    id: b
+    property var launcher: null
+
+    readonly property string scripts: Quickshell.env("HOME") + "/.config/hypr/scripts"
+    readonly property var levels: ["launcherprefs", "compname", "sounds", "notiftime", "soundregular", "soundurgent", "channel"]
+    readonly property var titles: ({ launcherprefs: "Settings › Launcher", compname: "Settings › Computer name", channel: "Settings › Update channel",
+                                     sounds: "Settings › Notifications", notiftime: "Notifications › Show for",
+                                     soundregular: "Notifications › Regular sound", soundurgent: "Notifications › Urgent sound" })
+    readonly property var parents: ({ launcherprefs: "settings", compname: "settings", channel: "settings", sounds: "settings",
+                                      notiftime: "sounds", soundregular: "sounds", soundurgent: "sounds" })
+
+    // Settings › Computer name: the pretty host name, or the host name as LocalSend and Ferry show it without one
+    property string compName: ""
+    Sh {
+        id: compNameProc
+        script: 'n=$(hostnamectl --pretty 2>/dev/null); [ -n "$n" ] || { n=$(uname -n); n=${n%%.*}; n=${n^}; }; echo "$n"'
+        onResult: text => b.compName = text.trim()
+    }
+    // Settings › Update channel: stable | dev | custom (nightdrive channel; the channel is the checkout's branch)
+    property string channel: ""
+    property string channelBranch: ""
+    readonly property var channels: [["stable", "Stable", "shield-check"], ["dev", "Development", "flask-conical"]]
+    Sh {
+        id: channelProc
+        script: '"$HOME/.local/bin/nightdrive" channel'
+        onResult: text => {
+            const m = text.trim().match(/^(\S+)(?: \(branch (.+)\))?/)
+            b.channel = m ? m[1] : ""
+            b.channelBranch = m && m[2] ? m[2] : ""
+            const l = b.launcher
+            if (l.level === "channel" && l.query === "") l.selectWhere(r => r.value === b.channel)
+        }
+    }
+    // Settings › Notifications (hypr/scripts/sounds): file name, shown name, icon
+    property string soundRegular: ""
+    property string soundUrgent: ""
+    readonly property var soundChoices: ({
+        regular: [["plip", "Plip", "bell"], ["drop", "Drop", "bell"], ["tick", "Tick", "bell"], ["retro", "Retro", "bell"], ["glass", "Glass", "bell"]],
+        urgent: [["double-plip", "Double plip", "bell-ring"], ["plip-fall", "Falling plip", "bell-ring"], ["synth-fall", "Synth fall", "bell-ring"],
+                 ["arpeggio", "Arpeggio", "bell-ring"], ["pulse", "Pulse", "bell-ring"]]
+    })
+    readonly property var soundDefaults: ({ regular: "plip", urgent: "double-plip" })
+    property string fumon: ""                 // uwsm's failed unit monitor (hypr/scripts/fumon): on | off | none, "" = not read yet
+    function soundName(which, v) { return v === "none" ? "none" : (soundChoices[which].find(t => t[0] === v) || [])[1] }
+    // Settings › Notifications › Show for: how long a popup stays (Notifs.timeout, read from its file)
+    readonly property var notifTimes: [2, 3, 4, 5, 7, 10, 15, 20, 30]
+    function setNotifTime(sec) {
+        Quickshell.execDetached(["bash", "-c", 'mkdir -p "$(dirname "$2")" && printf "%s\\n" "$1" > "$2.tmp" && mv "$2.tmp" "$2"',
+                                 "_", JSON.stringify({ seconds: sec }), Notifs.prefsFile])
+    }
+    // Settings › Notifications: how long they show, and the two choices with their current sound
+    function soundsItems() {
+        return [
+            { kind: "nav", name: "Show for", glyph: "timer", target: "notiftime", summary: Math.round(Notifs.timeout / 1000) + " s" },
+            { kind: "nav", name: "Regular sound", glyph: "bell", target: "soundregular", summary: soundName("regular", soundRegular) },
+            { kind: "nav", name: "Urgent sound", glyph: "bell-ring", target: "soundurgent", summary: soundName("urgent", soundUrgent) }
+        ].concat(fumon === "on" || fumon === "off" ? [   // only where uwsm has fumon (up to 0.26)
+            { kind: "fumon", name: "Failed service alerts", glyph: "triangle-alert", switchOn: fumon === "on",
+              sub: "FUMonitor’s “Failed unit detected” and “Unit recovered”" }] : [])
+    }
+    // ⇧Enter on a sound: plays it without choosing it ("None" has nothing to play)
+    function listenSound(it) {
+        if (it.value === "none") { launcher.shakeNow(); return }
+        Quickshell.execDetached([scripts + "/sounds", "play", it.which, it.value])
+    }
+    // Settings › Notifications: the current sounds; select the current one
+    Sh {
+        id: soundsProc
+        script: 's="$HOME/.config/hypr/scripts/sounds"; "$s" regular; "$s" urgent'
+        onResult: text => {
+            const f = text.trim().split("\n")
+            b.soundRegular = f[0] || ""
+            b.soundUrgent = f[1] || ""
+            const l = b.launcher
+            if ((l.level === "soundregular" || l.level === "soundurgent") && l.query === "")
+                l.selectWhere(r => r.value === (l.level === "soundregular" ? b.soundRegular : b.soundUrgent))
+        }
+    }
+    // Settings › Notifications: whether FUMonitor runs (its row shows only where uwsm has it)
+    Sh {
+        id: fumonProc
+        script: '"$HOME/.config/hypr/scripts/fumon" status'
+        onResult: text => { b.fumon = text.trim() }
+    }
+
+    function footer(level, query) {
+        const cur = launcher.results[launcher.selIndex] || {}
+        if (level === "launcherprefs" || cur.kind === "fumon") return "Enter: on/off"
+        if (cur.kind === "sound") return "Enter: choose  ·  Shift+Enter: listen"
+        if (level === "compname" && query.trim() !== "") return "Enter: rename (asks for your password)"
+        return ""
+    }
+    function opened() {}
+    function entered(level) {
+        if (level === "settings" || level === "compname") compNameProc.running = true
+        if (level === "settings" || level === "channel") channelProc.running = true
+        if (level === "sounds" || level === "soundregular" || level === "soundurgent") soundsProc.running = true
+        if (level === "sounds") fumonProc.running = true
+        if (level === "notiftime") Qt.callLater(() => launcher.selectWhere(r => r.summary === "current"))   // the cursor on the current time
+    }
+    function shiftActivate(it) { if (it.kind === "sound") listenSound(it) }
+
+    function items(level, q) {
+        if (level === "launcherprefs") {
+            // The footer's key hints always show; these are the extras
+            return [{ kind: "lpref", key: "fuzzy", name: "Fuzzy search", glyph: "wand-sparkles",
+                      sub: "Typos and initials also match: firefx, vsc", switchOn: launcher.prefs.fuzzy },
+                    { kind: "lpref", key: "shortcuts", name: "Shortcut hints", glyph: "keyboard",
+                      sub: "An app’s or menu’s keys on its row (Hyper P)", switchOn: launcher.prefs.shortcuts }]
+        }
+        if (level === "compname") {
+            // Phones see it in LocalSend, AirPlay and Ferry. The name as typed: q is lower-cased
+            const name = launcher.query.trim()
+            if (name === "") return launcher.hint("Now “" + compName + "”. Type a new name")
+            return [{ kind: "compset", name: "Rename to “" + name + "”", glyph: "laptop", value: name }]
+        }
+        if (level === "sounds") return { all: soundsItems().map(t => ({ item: t, text: t.name })) }
+        if (level === "notiftime") {
+            const cur = Math.round(Notifs.timeout / 1000)
+            return notifTimes.map(v => ({ kind: "notiftime", value: v, name: v + " seconds", glyph: v === cur ? "check" : "timer",
+                summary: v === cur ? "current" : (v * 1000 === Notifs.defaultTimeout ? "default" : undefined) }))
+        }
+        if (level === "soundregular" || level === "soundurgent") {
+            const which = level === "soundregular" ? "regular" : "urgent"
+            const cur = which === "regular" ? soundRegular : soundUrgent
+            return soundChoices[which].concat([["none", "None", "bell-off"]]).map(t => ({ kind: "sound", which: which, value: t[0], name: t[1],
+                glyph: t[0] === cur ? "check" : t[2], summary: t[0] === cur ? "current" : (t[0] === soundDefaults[which] ? "default" : undefined) }))
+        }
+        if (level === "channel") {
+            // Choosing the other one switches the branch and updates in a terminal (it says why if it can't, e.g. own changes)
+            return channels.map(t => ({ kind: "channel", value: t[0], name: t[1], glyph: t[0] === channel ? "check" : t[2], armKey: "channel:" + t[0],
+                                        summary: t[0] === channel ? "current" : (t[0] === "stable" ? "default" : undefined) }))
+                .concat([{ kind: "note", name: channel === "custom" ? "On a branch of its own (" + (channelBranch || "none") + "): choosing one switches to it"
+                                                                   : "Development gets the bigger changes before Stable" }])
+        }
+        return []
+    }
+
+    function activate(it) {
+        const l = launcher
+        if (it.kind === "lpref") { l.keepSelection(); l.setPref(it.key, !l.prefs[it.key]); return true }
+        if (it.kind === "notiftime") {   // stays open, like the sounds: the check moves once Notifs has read the file
+            l.keepSelection()
+            setNotifTime(it.value)
+            return true
+        }
+        if (it.kind === "fumon") {
+            l.keepSelection()
+            fumon = fumon === "on" ? "off" : "on"
+            Quickshell.execDetached([scripts + "/fumon", fumon])
+            return true
+        }
+        if (it.kind === "sound") {       // stays open: each sound plays as it's chosen, so they can be compared
+            l.keepSelection()
+            if (it.which === "regular") soundRegular = it.value
+            else soundUrgent = it.value
+            Quickshell.execDetached(["bash", "-c", '"$1" "$2" "$3" && "$1" play "$2"', "_", scripts + "/sounds", it.which, it.value])
+            return true
+        }
+        if (it.kind === "channel") {
+            if (it.value === channel) { l.shakeNow(); return true }
+            if (!arm(it.armKey)) return true
+            l.open = false
+            Quickshell.execDetached(l.term('"$HOME/.local/bin/nightdrive" channel "$1" --update', it.value))
+            return true
+        }
+        if (it.kind === "compset") {
+            // The pretty host name (systemd-hostnamed; polkit asks for the password). AirPlay Receiver reads it when it
+            // starts; LocalSend and Ferry on every use
+            l.open = false
+            Quickshell.execDetached(["bash", "-c",
+                'out=$(hostnamectl set-hostname --pretty "$1" 2>&1) && { systemctl --user try-restart nightdrive-airplay.service; notify-send -a Settings "Computer name" "$1"; } || notify-send -u critical -a Settings "Renaming failed" "$out"',
+                "_", it.value])
+            return true
+        }
+        return false
+    }
+    // Rows that need a second Enter (the launcher shows "Enter again to confirm" while armed); true = confirmed
+    function arm(key) {
+        if (launcher.armed !== key) { launcher.armed = key; disarmTimer.restart(); return false }
+        launcher.armed = ""
+        return true
+    }
+    Timer { id: disarmTimer; interval: 4000; onTriggered: if (b.launcher) b.launcher.armed = "" }
+}

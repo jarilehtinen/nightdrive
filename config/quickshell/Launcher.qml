@@ -65,27 +65,6 @@ PanelWindow {
     property var swCat: ({ key: "", name: "" })   // the open category (level swcat)
     property var swList: null                 // its rows (pkg-search --list), null = loading
     property string webName: ""               // Install › Webapp: the name, while asking for the address
-    // Settings › Computer name: the pretty host name, or the host name as LocalSend and Ferry show it without one
-    property string compName: ""
-    Sh {
-        id: compNameProc
-        script: 'n=$(hostnamectl --pretty 2>/dev/null); [ -n "$n" ] || { n=$(uname -n); n=${n%%.*}; n=${n^}; }; echo "$n"'
-        onResult: text => win.compName = text.trim()
-    }
-    // Settings › Update channel: stable | dev | custom (nightdrive channel; the channel is the checkout's branch)
-    property string channel: ""
-    property string channelBranch: ""
-    readonly property var channels: [["stable", "Stable", "shield-check"], ["dev", "Development", "flask-conical"]]
-    Sh {
-        id: channelProc
-        script: '"$HOME/.local/bin/nightdrive" channel'
-        onResult: text => {
-            const m = text.trim().match(/^(\S+)(?: \(branch (.+)\))?/)
-            win.channel = m ? m[1] : ""
-            win.channelBranch = m && m[2] ? m[2] : ""
-            if (win.level === "channel" && win.query === "") win.selectWhere(r => r.value === win.channel)
-        }
-    }
     property var emojiList: []               // Emoji: [{ ch, name, kw }] (data/emoji.tsv, CLDR names in English and Finnish)
     property bool emojiLoaded: false
     property var snipList: []                // Snippets: [{ trigger, text }] (hypr/scripts/snippets list)
@@ -131,17 +110,6 @@ PanelWindow {
     property int idleSaver: -1                // Settings › Screensaver: minutes until the screensaver / screen off, 0 = never,
     property int idleOff: -1                  // -1 = not read yet (hypr/scripts/idle)
     property string idleStyle: ""             // which screensaver: random | saver | rain | clock
-    // Settings › Notifications (hypr/scripts/sounds): file name, shown name, icon
-    property string soundRegular: ""
-    property string soundUrgent: ""
-    readonly property var soundChoices: ({
-        regular: [["plip", "Plip", "bell"], ["drop", "Drop", "bell"], ["tick", "Tick", "bell"], ["retro", "Retro", "bell"], ["glass", "Glass", "bell"]],
-        urgent: [["double-plip", "Double plip", "bell-ring"], ["plip-fall", "Falling plip", "bell-ring"], ["synth-fall", "Synth fall", "bell-ring"],
-                 ["arpeggio", "Arpeggio", "bell-ring"], ["pulse", "Pulse", "bell-ring"]]
-    })
-    readonly property var soundDefaults: ({ regular: "plip", urgent: "double-plip" })
-    property string fumon: ""                 // uwsm's failed unit monitor (hypr/scripts/fumon): on | off | none, "" = not read yet
-    function soundName(which, v) { return v === "none" ? "none" : (soundChoices[which].find(t => t[0] === v) || [])[1] }
     readonly property var saverStyles: [["random", "Random", "shuffle"], ["saver", "Synthwave", "sunset"], ["rain", "Rain", "cloud-rain"], ["clock", "Clock", "clock"]]
     property int barOpacity: -1               // Settings › Top bar opacity: current value (hypr/scripts/bar-style), -1 = not read yet
     property string barIcons: ""              // Settings › Top bar icons: light | dark
@@ -167,16 +135,15 @@ PanelWindow {
     property string extSource: ""             // shell.qml sets this when the file exists
     readonly property var ext: extLoader.item
     // Levels from other files: SystemLevels.qml (Wi-Fi, Bluetooth, Sound, Tailscale), HomeLevels.qml (Home Assistant),
-    // DefaultAppsLevels.qml (Settings › Default apps), AppKeyLevels.qml (Settings › Keyboard Shortcuts) and the private
-    // extension; they answer
-    // the same questions (items, activate, footer, entered). A new file goes in this list, not in each question's code
-    readonly property var exts: [sys, home, defs, akeys].concat(ext ? [ext] : [])
+    // DefaultAppsLevels.qml (Settings › Default apps), AppKeyLevels.qml (Settings › Keyboard Shortcuts), BehaviourLevels.qml
+    // (Settings › Launcher, Computer name, Notifications, Update channel) and the private extension; they answer the same questions (items, activate, footer, entered). A new file goes in this list, not in each question's code
+    readonly property var exts: [sys, home, defs, akeys, behave].concat(ext ? [ext] : [])
     function extOf(l) { return exts.find(e => e.levels.indexOf(l) >= 0) || null }
     readonly property bool extLevel: extOf(level) !== null
     readonly property int selIndex: list.currentIndex
     function shakeNow() { shake.restart() }
     function search(target, text) { go(target); input.text = text }   // a level with its query typed (Default apps › Find more)
-    readonly property var parents: Object.assign({ launcherprefs: "settings", shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", battery: "settings", install: "system", remove: "system", removesw: "remove", removeweb: "remove", emoji: "tools", snippets: "tools", snipkey: "snippets", sniptext: "snippets", screenshot: "tools", software: "install", swcat: "software", swsearch: "software", webapp: "install", recommended: "install", plugins: "install", webname: "webapp", webaddr: "webname", compname: "settings", channel: "settings", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", sounds: "settings", notiftime: "sounds", soundregular: "sounds", soundurgent: "sounds", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, ...exts.map(e => e.parents))
+    readonly property var parents: Object.assign({ shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", battery: "settings", install: "system", remove: "system", removesw: "remove", removeweb: "remove", emoji: "tools", snippets: "tools", snipkey: "snippets", sniptext: "snippets", screenshot: "tools", software: "install", swcat: "software", swsearch: "software", webapp: "install", recommended: "install", plugins: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, ...exts.map(e => e.parents))
     // Search found nothing: hint below ⌘⌥⏎ (icons) → send the text to Claude
     readonly property bool noHit: (level === "root" || level === "apps") && query.trim() !== "" && results.length === 0
     // The selected row is an app: ⌃Enter shows it in Apps (the list with an empty query) or hides it from there.
@@ -189,14 +156,11 @@ PanelWindow {
                                                        + "  ·  Esc: back"
         : selApp ? "Enter: open  ·  Ctrl+Enter: " + (selApp.shown ? "hide from Apps" : "show in Apps")
                                               + "  ·  Alt+Enter: " + (autostartIds.indexOf(appId(selApp)) >= 0 ? "don’t start at login" : "start at login")
-        : level === "launcherprefs" ? "Enter: on/off"
         : level === "startup" ? "Enter: start at login on/off  ·  background apps start hidden"
         : (results[list.currentIndex] || {}).kind === "brightness" ? "Left+Right: brightness"
         : (results[list.currentIndex] || {}).kind === "mirrordev" ? sys.footer(level, query)
         : (results[list.currentIndex] || {}).kind === "haent" ? home.footer(level, query)
         : (results[list.currentIndex] || {}).kind === "nightlight" ? "Enter: night light on/off"
-        : (results[list.currentIndex] || {}).kind === "fumon" ? "Enter: on/off"
-        : (results[list.currentIndex] || {}).kind === "sound" ? "Enter: choose  ·  Shift+Enter: listen"
         : level === "baritems" ? "Enter: show / hide  ·  Ctrl+Up+Down: reorder"
         : level === "passwords" && pwState === "ready" ? "Enter: password  ·  Shift+Enter: username  ·  Ctrl+Enter: one-time code"
         : extOf(level) ? extOf(level).footer(level, query)   // not extLevel: it can lag a level change by one update
@@ -209,8 +173,7 @@ PanelWindow {
         : level === "sniptext" && query !== "" ? "Enter: save"
         : level === "webapp" && (results[list.currentIndex] || {}).ready ? ((results[list.currentIndex] || {}).installed ? "Enter: add again" : "Enter: add")
         : level === "webname" && query.trim() !== "" ? "Enter: continue to the address"
-        : level === "webaddr" && query.trim() !== "" ? "Enter: create the webapp"
-        : level === "compname" && query.trim() !== "" ? "Enter: rename (asks for your password)" : ""
+        : level === "webaddr" && query.trim() !== "" ? "Enter: create the webapp" : ""
     // The footer as key caps: "Ctrl+Enter: show in Apps  ·  Esc: back" → [{ keys: ["Ctrl", "Enter"], text: "show in Apps" }, ...].
     // "Enter creates …" (no colon) works too; a part that doesn't start with a key is plain text.
     readonly property var keyGlyphs: ({ Enter: "corner-down-left", Ctrl: "chevron-up", Shift: "arrow-big-up", Alt: "option", Cmd: "command",
@@ -230,8 +193,8 @@ PanelWindow {
     readonly property var deckLiked: deckOverride.liked !== undefined ? deckOverride.liked : (deckInfo ? deckInfo.liked : null)
     signal openMenu(string name)              // Settings: opens a Quickshell menu (wifi, bluetooth, ...)
 
-    readonly property var titles: Object.assign({ apps: "Apps", music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", musicsearch: "Music › Search", artist: "Music › " + artist.name, keys: "Keybindings", screenshot: "Tools › Screenshot", settings: "Settings", display: "Settings › Display", battery: "Settings › Battery", startup: "Settings › Startup", channel: "Settings › Update channel", screensaver: "Settings › Screensaver", saverafter: "Screensaver › Start after", screenoff: "Screensaver › Screen off after", saverstyle: "Screensaver › Style", sounds: "Settings › Notifications", notiftime: "Notifications › Show for", soundregular: "Notifications › Regular sound", soundurgent: "Notifications › Urgent sound", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
-                                     launcherprefs: "Settings › Launcher", compname: "Settings › Computer name", topbar: "Settings › Top bar", baropacity: "Top bar › Opacity", baricons: "Top bar › Icon colors", barhl: "Top bar › Highlight", baritems: "Top bar › Items",
+    readonly property var titles: Object.assign({ apps: "Apps", music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", musicsearch: "Music › Search", artist: "Music › " + artist.name, keys: "Keybindings", screenshot: "Tools › Screenshot", settings: "Settings", display: "Settings › Display", battery: "Settings › Battery", startup: "Settings › Startup", screensaver: "Settings › Screensaver", saverafter: "Screensaver › Start after", screenoff: "Screensaver › Screen off after", saverstyle: "Screensaver › Style", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
+                                     topbar: "Settings › Top bar", baropacity: "Top bar › Opacity", baricons: "Top bar › Icon colors", barhl: "Top bar › Highlight", baritems: "Top bar › Items",
                                      system: "System", install: "System › Install", emoji: "Tools › Emoji", snippets: "Tools › Snippets", snipkey: "Snippets › Trigger", sniptext: "Snippets › “" + snipTrigger + "”", software: "Install › Software", swcat: "Software › " + swCat.name, swsearch: "Software › Search", webapp: "Install › Webapp", recommended: "Install › Recommended", plugins: "Install › Plugins", webname: "Install › Webapp › Name", webaddr: "Install › Webapp › Address", remove: "System › Remove", removesw: "Remove › Software", removeweb: "Remove › Webapps", power: "Power", passwords: "Passwords", clipboard: "Clipboard",
                                      tools: "Tools" }, ...exts.map(e => e.titles))
 
@@ -316,12 +279,12 @@ PanelWindow {
             { kind: "header", name: "Behaviour" },
             { kind: "nav", name: "Launcher", glyph: "text-search", target: "launcherprefs" }
         ], defs.settingsItems, akeys.settingsItems, [
-            { kind: "nav", name: "Computer name", glyph: "laptop", target: "compname", summary: compName }   // what phones see
+            { kind: "nav", name: "Computer name", glyph: "laptop", target: "compname", summary: behave.compName }   // what phones see
         ], home.settingsItems, [   // Home: only while Home Assistant is set up
             { kind: "nav", name: "Notifications", glyph: "bell-ring", target: "sounds" },
             { kind: "nav", name: "Startup", glyph: "rocket", target: "startup" },
             { kind: "nav", name: "Update channel", glyph: "git-branch", target: "channel",
-              summary: channel === "dev" ? "development" : (channel === "custom" ? channelBranch || "custom" : channel || undefined) }
+              summary: behave.channel === "dev" ? "development" : (behave.channel === "custom" ? behave.channelBranch || "custom" : behave.channel || undefined) }
         ]),
         power: [
             { kind: "action", name: "Lock", glyph: "lock", cmd: ["loginctl", "lock-session"] },
@@ -370,22 +333,6 @@ PanelWindow {
             { kind: "nav", name: "Screen off after", glyph: "monitor-off", target: "screenoff", summary: minutes(idleOff) },
             { kind: "action", name: "Preview", glyph: "monitor-play", cmd: ["bash", "-c", "sleep 0.4; \"$HOME/.config/screensaver/start\""] }
         ]
-    }
-    // Settings › Notifications › Show for: how long a popup stays (Notifs.timeout, read from its file)
-    readonly property var notifTimes: [2, 3, 4, 5, 7, 10, 15, 20, 30]
-    function setNotifTime(sec) {
-        Quickshell.execDetached(["bash", "-c", 'mkdir -p "$(dirname "$2")" && printf "%s\\n" "$1" > "$2.tmp" && mv "$2.tmp" "$2"',
-                                 "_", JSON.stringify({ seconds: sec }), Notifs.prefsFile])
-    }
-    // Settings › Notifications: how long they show, and the two choices with their current sound
-    function soundsItems() {
-        return [
-            { kind: "nav", name: "Show for", glyph: "timer", target: "notiftime", summary: Math.round(Notifs.timeout / 1000) + " s" },
-            { kind: "nav", name: "Regular sound", glyph: "bell", target: "soundregular", summary: soundName("regular", soundRegular) },
-            { kind: "nav", name: "Urgent sound", glyph: "bell-ring", target: "soundurgent", summary: soundName("urgent", soundUrgent) }
-        ].concat(fumon === "on" || fumon === "off" ? [   // only where uwsm has fumon (up to 0.26)
-            { kind: "fumon", name: "Failed service alerts", glyph: "triangle-alert", switchOn: fumon === "on",
-              sub: "FUMonitor’s “Failed unit detected” and “Unit recovered”" }] : [])
     }
     // Settings › Display for the root search: the brightness slider row itself (←/→ work there too), the night light toggle
     // and Scale (opens Display)
@@ -597,10 +544,6 @@ PanelWindow {
         } else if (level === "webaddr") {
             if (query.trim() === "") return hint("Type the address for “" + webName + "” (e.g. web.whatsapp.com)")
             return [{ kind: "wadd", name: "Add “" + webName + "”", summary: query.trim(), glyph: "app-window", value: query.trim() }]
-        } else if (level === "compname") {
-            // Phones see it in LocalSend, AirPlay and Ferry
-            if (query.trim() === "") return hint("Now “" + compName + "”. Type a new name")
-            return [{ kind: "compset", name: "Rename to “" + query.trim() + "”", glyph: "laptop", value: query.trim() }]
         } else if (extOf(level)) {
             const r = extOf(level).items(level, q)
             if (!r.all) return r          // ready-made rows (hints, etc.)
@@ -695,23 +638,6 @@ PanelWindow {
                                                summary: t.current ? "current" : (t.value === "violet" ? "default" : undefined) }, text: t.name }))
         } else if (level === "screensaver") {
             all = screensaverItems().map(t => ({ item: t, text: t.name }))
-        } else if (level === "sounds") {
-            all = soundsItems().map(t => ({ item: t, text: t.name }))
-        } else if (level === "notiftime") {
-            const cur = Math.round(Notifs.timeout / 1000)
-            return notifTimes.map(v => ({ kind: "notiftime", value: v, name: v + " seconds", glyph: v === cur ? "check" : "timer",
-                summary: v === cur ? "current" : (v * 1000 === Notifs.defaultTimeout ? "default" : undefined) }))
-        } else if (level === "soundregular" || level === "soundurgent") {
-            const which = level === "soundregular" ? "regular" : "urgent"
-            const cur = which === "regular" ? soundRegular : soundUrgent
-            return soundChoices[which].concat([["none", "None", "bell-off"]]).map(t => ({ kind: "sound", which: which, value: t[0], name: t[1],
-                glyph: t[0] === cur ? "check" : t[2], summary: t[0] === cur ? "current" : (t[0] === soundDefaults[which] ? "default" : undefined) }))
-        } else if (level === "channel") {
-            // Choosing the other one switches the branch and updates in a terminal (it says why if it can't, e.g. own changes)
-            return channels.map(t => ({ kind: "channel", value: t[0], name: t[1], glyph: t[0] === channel ? "check" : t[2],
-                                        summary: t[0] === channel ? "current" : (t[0] === "stable" ? "default" : undefined) }))
-                .concat([{ kind: "note", name: channel === "custom" ? "On a branch of its own (" + (channelBranch || "none") + "): choosing one switches to it"
-                                                                   : "Development gets the bigger changes before Stable" }])
         } else if (level === "saverstyle") {
             return saverStyles.map(t => ({ kind: "idlestyle", value: t[0], name: t[1], glyph: t[0] === idleStyle ? "check" : t[2],
                                            summary: t[0] === idleStyle ? "current" : (t[0] === "random" ? "default" : undefined) }))
@@ -752,12 +678,6 @@ PanelWindow {
                 return Object.assign({}, a, { item: Object.assign({}, a.item, { summary: on ? (bgApps[a.item.name] !== undefined ? "at login, hidden" : "at login") : undefined }) })
             })
             if (q === "") return all.sort((a, b) => a.text.localeCompare(b.text)).map(x => x.item)   // a fixed order: toggling doesn't move rows
-        } else if (level === "launcherprefs") {
-            // The footer's key hints always show; these are the extras
-            return [{ kind: "lpref", key: "fuzzy", name: "Fuzzy search", glyph: "wand-sparkles",
-                      sub: "Typos and initials also match: firefx, vsc", switchOn: prefs.fuzzy },
-                    { kind: "lpref", key: "shortcuts", name: "Shortcut hints", glyph: "keyboard",
-                      sub: "An app’s or menu’s keys on its row (Hyper P)", switchOn: prefs.shortcuts }]
         } else if (level === "plugins" || level === "recommended") {
             // Enter opens the details (src "plugin"), whose Enter runs the installer in a terminal (they ask things: sudo, tokens,
             // logins); an installed one can be run again (rerun)
@@ -844,17 +764,13 @@ PanelWindow {
         if (target === "emoji" && !emojiLoaded) emojiProc.running = true
         if (target === "clipboard") { clipLoaded = false; clipProc.running = true }
         if (target === "snippets") snipProc.running = true
-        if (target === "settings" || target === "compname") compNameProc.running = true
-        if (target === "settings" || target === "channel") channelProc.running = true
+        if (target === "settings") behave.entered("settings")   // the computer name and channel on its rows
         if (target === "background") wallProc.running = true
         if (target === "topbar" || target === "baropacity" || target === "baricons" || target === "barhl") barProc.running = true
         if (target === "theme" || target === "themecolor") themeProc.running = true
         if (target === "display") { displayProc.running = true; brightProc.running = true; nightProc.running = true; sys.entered("display") }
         if (target === "battery") { battProc.running = true; battDetailProc.running = true }
         if (target === "screensaver" || target === "saverafter" || target === "screenoff" || target === "saverstyle") idleProc.running = true
-        if (target === "sounds" || target === "soundregular" || target === "soundurgent") soundsProc.running = true
-        if (target === "sounds") fumonProc.running = true
-        if (target === "notiftime") Qt.callLater(() => selectWhere(r => r.summary === "current"))   // the cursor on the current time
         if (extOf(target)) extOf(target).entered(target)
         if (target === "passwords") { pwState = pwItems.length ? "ready" : "loading"; pwProc.running = true }
     }
@@ -995,16 +911,6 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         else if (item.kind === "emoji") emojiPick(item, true)
         else if (item.kind === "stat" && item.copy !== undefined) sys.copyText(item.copy)   // Public IP, Local IP, Router: as ⌘C
         else if (item.kind === "brightness" || item.kind === "stat") shake.restart()   // brightness: ←/→ or the slider; stat: information only
-        else if (item.kind === "lpref") { keepSelection(); setPref(item.key, !prefs[item.key]) }
-        else if (item.kind === "notiftime") {   // stays open, like the sounds: the check moves once Notifs has read the file
-            keepSelection()
-            setNotifTime(item.value)
-        }
-        else if (item.kind === "fumon") {
-            keepSelection()
-            fumon = fumon === "on" ? "off" : "on"
-            Quickshell.execDetached([scripts + "/fumon", fumon])
-        }
         else if (item.kind === "nightlight") {
             keepSelection()
             night = night === "on" ? "off" : "on"
@@ -1016,11 +922,6 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
             Quickshell.execDetached([scripts + "/display", "scale", item.output, String(item.value)])
         }
         else if (item.kind === "baritem") { keepSelection(); TopBar.setHidden(item.value, TopBar.hidden.indexOf(item.value) < 0) }
-        else if (item.kind === "sound") {     // stays open: each sound plays as it's chosen, so they can be compared
-            keepSelection()
-            win[item.which === "regular" ? "soundRegular" : "soundUrgent"] = item.value
-            Quickshell.execDetached(["bash", "-c", '"$1" "$2" "$3" && "$1" play "$2"', "_", scripts + "/sounds", item.which, item.value])
-        }
         else if (live[item.kind]) {           // stays open: values can be tried one after another (theme colors recolor the launcher immediately)
             const [script, verb, prop] = live[item.kind]
             keepSelection()
@@ -1041,12 +942,6 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
             win.open = false
             Quickshell.execDetached(term('"$HOME/.local/bin/nightdrive" snippets ' + (snipAuto === "off" ? "enable" : "disable")))
         }
-        else if (item.kind === "channel") {
-            if (item.value === channel) { shake.restart(); return }
-            if (armed !== item.name) { armed = item.name; disarm.restart(); return }
-            armed = ""; win.open = false
-            Quickshell.execDetached(term('"$HOME/.local/bin/nightdrive" channel "$1" --update', item.value))
-        }
         else if (item.kind === "snipk") { snipTrigger = item.value; go("sniptext") }
         else if (item.kind === "snipadd") {
             snipList = snipList.filter(s => s.trigger !== snipTrigger).concat([{ trigger: snipTrigger, text: item.value }])
@@ -1057,14 +952,6 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
             Qt.callLater(() => { const i = results.findIndex(r => r.kind === "snippet" && r.trigger === t); if (i >= 0) list.currentIndex = i })
         }
         else if (item.kind === "wname") { webName = item.value; go("webaddr") }
-        else if (item.kind === "compset") {
-            // The pretty host name (systemd-hostnamed; polkit asks for the password). AirPlay Receiver reads it when it
-            // starts; LocalSend and Ferry on every use
-            win.open = false
-            Quickshell.execDetached(["bash", "-c",
-                'out=$(hostnamectl set-hostname --pretty "$1" 2>&1) && { systemctl --user try-restart nightdrive-airplay.service; notify-send -a Settings "Computer name" "$1"; } || notify-send -u critical -a Settings "Renaming failed" "$out"',
-                "_", item.value])
-        }
         else if (item.kind === "wadd") {
             win.open = false
             Quickshell.execDetached(["bash", "-c",
@@ -1378,6 +1265,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
     HomeLevels { id: home; launcher: win }
     DefaultAppsLevels { id: defs; launcher: win }
     AppKeyLevels { id: akeys; launcher: win }
+    BehaviourLevels { id: behave; launcher: win }
     Loader {
         id: extLoader
         source: win.extSource
@@ -1548,29 +1436,6 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
             if ((win.level === "saverafter" || win.level === "screenoff") && win.query === "")
                 win.selectWhere(r => r.value === (win.level === "saverafter" ? win.idleSaver : win.idleOff))
         }
-    }
-    // ⇧Enter on a sound: plays it without choosing it ("None" has nothing to play)
-    function listenSound(item) {
-        if (item.value === "none") { shake.restart(); return }
-        Quickshell.execDetached([scripts + "/sounds", "play", item.which, item.value])
-    }
-    // Settings › Notifications: the current sounds; select the current one
-    Sh {
-        id: soundsProc
-        script: 's="$HOME/.config/hypr/scripts/sounds"; "$s" regular; "$s" urgent'
-        onResult: text => {
-            const f = text.trim().split("\n")
-            win.soundRegular = f[0] || ""
-            win.soundUrgent = f[1] || ""
-            if ((win.level === "soundregular" || win.level === "soundurgent") && win.query === "")
-                win.selectWhere(r => r.value === (win.level === "soundregular" ? win.soundRegular : win.soundUrgent))
-        }
-    }
-    // Settings › Notifications: whether FUMonitor runs (its row shows only where uwsm has it)
-    Sh {
-        id: fumonProc
-        script: '"$HOME/.config/hypr/scripts/fumon" status'
-        onResult: text => { win.fumon = text.trim() }
     }
     // Settings › Top bar opacity / icons: current values; select the current one
     Sh {
@@ -2005,7 +1870,6 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                             else if (win.level === "emoji" && cur && cur.kind === "emoji" && (event.modifiers & Qt.ShiftModifier)) win.emojiPick(cur, false)
                             else if (cur && cur.kind === "snippet" && (event.modifiers & Qt.ShiftModifier)) win.snipPick(cur, false)
                             else if (cur && cur.kind === "snippet" && ctrl) win.editSnippet(cur)
-                            else if (cur && cur.kind === "sound" && (event.modifiers & Qt.ShiftModifier)) win.listenSound(cur)
                             else if (win.results.length === 0) shake.restart()
                             else win.activate(cur)
                             event.accepted = true
@@ -2035,7 +1899,7 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                     readonly property bool isNote: modelData.kind === "note"
                     readonly property bool current: !isHeader && !isNote && !win.playerFocused && index === list.currentIndex
                     readonly property bool noIcon: modelData.kind === "key" || modelData.kind === "hint" || isHeader || isNote
-                    readonly property bool armedNow: ((modelData.kind === "action" && modelData.confirm === true || modelData.kind === "channel") && win.armed === modelData.name)
+                    readonly property bool armedNow: (modelData.kind === "action" && modelData.confirm === true && win.armed === modelData.name)
                                                     || (modelData.armKey !== undefined && win.armed === modelData.armKey)
                     readonly property bool chevron: modelData.kind === "nav" || modelData.kind === "menu" || modelData.chevron === true
                     width: list.width
