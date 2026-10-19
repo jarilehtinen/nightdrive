@@ -56,8 +56,8 @@ check` (exit 1 with the findings) and `nightdrive sandbox shot NAME`, `ipc …` 
   with `nightdrive topbar adjust`. Every menu follows the rules in `plugins/README.md` › The menu: `MenuHeader` first, rows
   `MenuRow`, section titles `MenuSection`, hint and error lines `MenuNote`, colours `Theme.*`.
 - *Launcher level:* a page or group of pages goes in its own `quickshell/<Name>Levels.qml` (copy `BehaviourLevels.qml`:
-  `levels`, `titles`, `parents`, `items`, `activate`, `footer`, `entered`), listed in `qmldir` and in `exts` in
-  `Launcher.qml`; the row that opens it goes in `rootItems`/`statics` there.
+  `levels`, `titles`, `parents`, `items`, `activate`, `footer`, `entered`; Ctrl+Enter and ⌘⌫ as in `ToolsLevels.qml`),
+  listed in `qmldir` and in `exts` in `Launcher.qml`; the row that opens it goes in `rootItems`/`statics` there.
 - *Keybinding:* `hypr/bindings.lua`, and the same entry in `hypr/SHORTCUTS.md` (the launcher reads that file). An app opens
   with Hyper + a letter (`"MOD3 + X"`, `Hyper X` in SHORTCUTS.md); desktop features use ⌘⇧ / ⌘⌥; ⌘ + a letter is the apps'.
 - *Command:* a subcommand in the case at the bottom of `bin/nightdrive` (link.sh links it to `~/.local/bin`).

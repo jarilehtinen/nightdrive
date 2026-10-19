@@ -59,12 +59,6 @@ PanelWindow {
     property var keyList: []                  // [{ name, sub, keys, section }]
     property var keyIndex: ({})               // lower-case name → keys (shortcutFor)
     property string armed: ""                 // action awaiting confirmation
-    property var emojiList: []               // Emoji: [{ ch, name, kw }] (data/emoji.tsv, CLDR names in English and Finnish)
-    property bool emojiLoaded: false
-    property var snipList: []                // Snippets: [{ trigger, text }] (hypr/scripts/snippets list)
-    property bool snipLoaded: false
-    property string snipAuto: ""             // auto-expand: on | off | no-access (snippets status)
-    property string snipTrigger: ""          // Snippets › Add / edit: the trigger being given a text
     property var removeList: []               // Remove › Software: user-installed packages
     property var webappList: []               // Remove › Webapps: the web apps (webapp-remove --list)
     property var detail: null                 // Install / Remove: the package row whose details are shown ({ name, summary, src, id, cmd, remove })
@@ -92,8 +86,6 @@ PanelWindow {
     property var pwItems: []                  // Passwords: 1Password items (op item list)
     property string pwState: "idle"           // idle | loading | ready | error
     property string pwError: ""
-    property var clipItems: []                // Clipboard: cliphist history
-    property bool clipLoaded: false
     property var wallList: []                 // Settings › Background: [{ path, thumb, name, group, own }] (hypr/scripts/wallpaper list)
     property bool wallLoaded: false
     property string wallCurrent: ""           // current wallpaper
@@ -127,8 +119,8 @@ PanelWindow {
     // Levels from other files: SystemLevels.qml (Wi-Fi, Bluetooth, Sound, Tailscale), HomeLevels.qml (Home Assistant),
     // DefaultAppsLevels.qml (Settings › Default apps), AppKeyLevels.qml (Settings › Keyboard Shortcuts), BehaviourLevels.qml
     // (Settings › Launcher, Computer name, Notifications, Update channel), MusicLevels.qml (Music, with Deck), InstallLevels.qml
-    // (Install's pages) and the private extension; they answer the same questions (items, activate, footer, entered). A new file goes in this list, not in each question's code
-    readonly property var exts: [sys, home, defs, akeys, behave, music, inst].concat(ext ? [ext] : [])
+    // (Install's pages), ToolsLevels.qml (Clipboard, Emoji, Snippets) and the private extension; they answer the same questions (items, activate, footer, entered). A new file goes in this list, not in each question's code
+    readonly property var exts: [sys, home, defs, akeys, behave, music, inst, tools].concat(ext ? [ext] : [])
     function extOf(l) { return exts.find(e => e.levels.indexOf(l) >= 0) || null }
     readonly property bool extLevel: extOf(level) !== null
     readonly property int selIndex: list.currentIndex
@@ -136,7 +128,7 @@ PanelWindow {
     function search(target, text) { go(target); input.text = text }   // a level with its query typed (Default apps › Find more)
     readonly property var swCats: inst.swCats                          // Install › Software's categories (Default apps › Find more)
     function openCategory(key, name) { inst.openCategory(key, name) }
-    readonly property var parents: Object.assign({ display: "settings", battery: "settings", install: "system", remove: "system", removesw: "remove", removeweb: "remove", emoji: "tools", snippets: "tools", snipkey: "snippets", sniptext: "snippets", screenshot: "tools", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, ...exts.map(e => e.parents))
+    readonly property var parents: Object.assign({ display: "settings", battery: "settings", install: "system", remove: "system", removesw: "remove", removeweb: "remove", screenshot: "tools", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, ...exts.map(e => e.parents))
     // Search found nothing: hint below ⌘⌥⏎ (icons) → send the text to Claude
     readonly property bool noHit: (level === "root" || level === "apps") && query.trim() !== "" && results.length === 0
     // The selected row is an app: ⌃Enter shows it in Apps (the list with an empty query) or hides it from there.
@@ -157,12 +149,6 @@ PanelWindow {
         : level === "baritems" ? "Enter: show / hide  ·  Ctrl+Up+Down: reorder"
         : level === "passwords" && pwState === "ready" ? "Enter: password  ·  Shift+Enter: username  ·  Ctrl+Enter: one-time code"
         : extOf(level) ? extOf(level).footer(level, query)   // not extLevel: it can lag a level change by one update
-        : level === "clipboard" ? "Enter: paste  ·  Shift+Enter: copy only"
-        : level === "emoji" ? "Enter: paste  ·  Shift+Enter: copy only  ·  search in English or Finnish"
-        : level === "snippets" && (results[list.currentIndex] || {}).kind === "snippet" ? "Enter: paste  ·  Shift+Enter: copy only  ·  Ctrl+Enter: edit  ·  Cmd+Backspace: remove"
-        : level === "snippets" && (results[list.currentIndex] || {}).kind === "snipauto" ? (snipAuto === "off" ? "Enter: turn on in a terminal (asks for your password once)" : "Enter: turn off in a terminal")
-        : level === "snipkey" && query.trim() !== "" ? "Enter: continue to the text"
-        : level === "sniptext" && query !== "" ? "Enter: save"
         : ""
     // The footer as key caps: "Ctrl+Enter: show in Apps  ·  Esc: back" → [{ keys: ["Ctrl", "Enter"], text: "show in Apps" }, ...].
     // "Enter creates …" (no colon) works too; a part that doesn't start with a key is plain text.
@@ -185,7 +171,7 @@ PanelWindow {
 
     readonly property var titles: Object.assign({ apps: "Apps", keys: "Keybindings", screenshot: "Tools › Screenshot", settings: "Settings", display: "Settings › Display", battery: "Settings › Battery", startup: "Settings › Startup", screensaver: "Settings › Screensaver", saverafter: "Screensaver › Start after", screenoff: "Screensaver › Screen off after", saverstyle: "Screensaver › Style", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
                                      topbar: "Settings › Top bar", baropacity: "Top bar › Opacity", baricons: "Top bar › Icon colors", barhl: "Top bar › Highlight", baritems: "Top bar › Items",
-                                     system: "System", install: "System › Install", emoji: "Tools › Emoji", snippets: "Tools › Snippets", snipkey: "Snippets › Trigger", sniptext: "Snippets › “" + snipTrigger + "”", remove: "System › Remove", removesw: "Remove › Software", removeweb: "Remove › Webapps", power: "Power", passwords: "Passwords", clipboard: "Clipboard",
+                                     system: "System", install: "System › Install", remove: "System › Remove", removesw: "Remove › Software", removeweb: "Remove › Webapps", power: "Power", passwords: "Passwords",
                                      tools: "Tools" }, ...exts.map(e => e.titles))
 
     // Reference at startup: the app list only loads on first reference
@@ -440,7 +426,7 @@ PanelWindow {
 
     function items() {
         const q = query.trim().toLowerCase()
-        let all, tail = []
+        let all, tail = [], short = false
         if (level === "root") {
             all = rootItems.map(r => ({ item: r, text: r.name, extra: r.extra || "" }))
             // When searching, the root level also finds rows from the sublevels, so there's no need to open a menu first.
@@ -485,36 +471,12 @@ PanelWindow {
         } else if (level === "keys") {
             all = keyList.map(k => ({ item: { kind: "key", name: k.name, sub: k.sub || undefined, keys: k.keys, section: k.section }, text: k.name,
                                       extra: k.keys + " " + k.section + " " + k.sub }))
-        } else if (level === "emoji") {
-            if (!emojiLoaded) return [{ kind: "hint", name: "Loading emoji…" }]
-            all = emojiList.map(e => ({ item: { kind: "emoji", name: e.name, emoji: e.ch }, text: e.name, extra: e.kw }))
-        } else if (level === "snippets") {
-            if (!snipLoaded) return hint("Loading snippets…")
-            const auto = { kind: "snipauto", name: "Auto-expand", glyph: "zap",
-                           summary: snipAuto === "on" ? "on" : snipAuto === "no-access" ? "no keyboard access: log out and in" : "off" }
-            const add = { kind: "nav", name: "Add snippet", glyph: "plus", target: "snipkey" }
-            const rows = snipList.map(s => ({ kind: "snippet", name: s.text.split("\n")[0], summary: s.trigger, glyph: "text-cursor-input",
-                                               trigger: s.trigger, text: s.text, armKey: "snipdel:" + s.trigger,
-                                               armHint: "⌘⌫ again to remove" }))
-            if (q === "") return [auto, { kind: "header", name: "Snippets" }, add].concat(rows)
-            all = rows.map(r => ({ item: r, text: r.trigger, extra: r.text }))
-        } else if (level === "snipkey") {
-            if (query.trim() === "") return hint("Type the trigger, e.g. @@ or f#")
-            const t = query.trim(), old = snipList.find(s => s.trigger === t)
-            return [{ kind: "snipk", name: "Trigger: " + t, summary: old ? "replaces “" + old.text.split("\n")[0] + "”" : "next: text",
-                      glyph: "arrow-right", value: t }]
-        } else if (level === "sniptext") {
-            if (query === "") return hint("Type the text that “" + snipTrigger + "” expands to")
-            return [{ kind: "snipadd", name: "Save “" + snipTrigger + "”", summary: query, glyph: "text-cursor-input", value: query }]
         } else if (extOf(level)) {
             const r = extOf(level).items(level, q)
             if (!r.all) return r          // ready-made rows (hints, etc.)
             all = r.all                   // [{ item, text, extra }], filtered by the query below
             tail = r.tail || []           // rows after a search's hits
-        } else if (level === "clipboard") {
-            if (!clipLoaded) return [{ kind: "hint", name: "Loading clipboard history…" }]
-            if (clipItems.length === 0) return [{ kind: "hint", name: "Clipboard history is empty" }]
-            all = clipItems.map(c => ({ item: c, text: c.name }))
+            short = r.short === true      // thousands of short names (Emoji): no fuzzy matching, the shortest first
         } else if (level === "background") {
             if (!wallLoaded) return [{ kind: "hint", name: "Loading backgrounds… (first time creates previews)" }]
             // "Add new…" first: file picker (hypr/scripts/wallpaper add), images are copied to ~/Pictures/Wallpapers
@@ -634,7 +596,7 @@ PanelWindow {
         // Several words: each may hit the name or the search words ("olohuone kattovalo" → the room is in extra, the name in text)
         const fq = fold(q)
         const words = fq.split(/\s+/).filter(w => w !== "")
-        const fuzzyOk = prefs.fuzzy && level !== "emoji"   // thousands of short names: letters in order would hit too many
+        const fuzzyOk = prefs.fuzzy && !short   // letters in order would hit too many of them
         all.forEach((x, i) => {
             let s = score(x.text, fq)
             const extra = x.extra ? fold(x.extra) : ""
@@ -648,7 +610,7 @@ PanelWindow {
             if (s < 0 && fuzzyOk && words.length === 1 && fuzzy(fold(x.text), fq)) s = 5
             if (s >= 0) scored.push({ x: x, s: s, i: i })
         })
-        scored.sort((a, b) => (a.s - b.s) || (level === "apps" ? a.x.text.localeCompare(b.x.text) : level === "emoji" ? (a.x.text.length - b.x.text.length) || (a.i - b.i) : a.i - b.i))
+        scored.sort((a, b) => (a.s - b.s) || (level === "apps" ? a.x.text.localeCompare(b.x.text) : short ? (a.x.text.length - b.x.text.length) || (a.i - b.i) : a.i - b.i))
         const res = scored.map(o => o.x.item).concat(tail)
         return level === "keys" ? grouped(res) : res
     }
@@ -665,9 +627,6 @@ PanelWindow {
         if (target === "keys") keysProc.running = true     // re-read SHORTCUTS.md: changes show up immediately
         list.currentIndex = firstSelectable()
         if (target === "remove" || target === "removesw" || target === "removeweb") { removeProc.running = true; webappProc.running = true }
-        if (target === "emoji" && !emojiLoaded) emojiProc.running = true
-        if (target === "clipboard") { clipLoaded = false; clipProc.running = true }
-        if (target === "snippets") snipProc.running = true
         if (target === "settings") behave.entered("settings")   // the computer name and channel on its rows
         if (target === "background") wallProc.running = true
         if (target === "topbar" || target === "baropacity" || target === "baricons" || target === "barhl") barProc.running = true
@@ -801,8 +760,6 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                 Quickshell.execDetached([scripts + "/launch-or-focus", bgApps[item.name], "gtk-launch", item.entry.id + ".desktop"])
             else if (item.entry) item.entry.execute(); else Quickshell.execDetached(["gio", "launch", item.path])
         }
-        else if (item.kind === "clip") clipPick(item, true)
-        else if (item.kind === "emoji") emojiPick(item, true)
         else if (item.kind === "stat" && item.copy !== undefined) sys.copyText(item.copy)   // Public IP, Local IP, Router: as ⌘C
         else if (item.kind === "brightness" || item.kind === "stat") shake.restart()   // brightness: ←/→ or the slider; stat: information only
         else if (item.kind === "nightlight") {
@@ -831,20 +788,6 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
             wallCurrent = item.path
             Quickshell.execDetached([scripts + "/wallpaper", "set", item.path])
         }
-        else if (item.kind === "snippet") snipPick(item, true)
-        else if (item.kind === "snipauto") {
-            win.open = false
-            Quickshell.execDetached(term('"$HOME/.local/bin/nightdrive" snippets ' + (snipAuto === "off" ? "enable" : "disable")))
-        }
-        else if (item.kind === "snipk") { snipTrigger = item.value; go("sniptext") }
-        else if (item.kind === "snipadd") {
-            snipList = snipList.filter(s => s.trigger !== snipTrigger).concat([{ trigger: snipTrigger, text: item.value }])
-                               .sort((a, b) => a.trigger.localeCompare(b.trigger))
-            Quickshell.execDetached([scripts + "/snippets", "set", snipTrigger, item.value])
-            const t = snipTrigger
-            go("snippets")
-            Qt.callLater(() => { const i = results.findIndex(r => r.kind === "snippet" && r.trigger === t); if (i >= 0) list.currentIndex = i })
-        }
         else if (exts.some(e => e.activate(item))) {}
         else if (item.kind === "pw") copyField(item, "password")
         else if (item.kind === "menu") { win.open = false; win.openMenu(item.target) }
@@ -854,46 +797,6 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
             armed = ""; win.open = false
             Quickshell.execDetached(item.cmd)
         }
-    }
-    // Pastes into the active window by sending Shift+Insert (same as ⌘V; kitty etc. treat it as a clipboard paste).
-    // The launcher closes first, so the short sleep lets focus return to the previous window.
-    readonly property string pasteCmd: 'sleep 0.2; hyprctl dispatch \'hl.dsp.send_shortcut({ mods = "SHIFT", key = "Insert" })\' >/dev/null'
-    // Clipboard: copies the selection to the clipboard and (paste) pastes it into the active window
-    function clipPick(item, paste) {
-        win.open = false
-        Quickshell.execDetached(["bash", "-c",
-            'cliphist decode "$1" | wl-copy; [ "$2" = 1 ] && { ' + pasteCmd + '; }',
-            "_", item.id, paste ? "1" : "0"])
-    }
-    // Emoji: copies to the clipboard and (paste) pastes into the active window like clipPick; copy-only shows a notification
-    function emojiPick(item, paste) {
-        win.open = false
-        Quickshell.execDetached(["bash", "-c",
-            'printf %s "$1" | wl-copy; if [ "$3" = 1 ]; then ' + pasteCmd + '; else notify-send -e -a Emoji -t 1500 "Copied $1" "$2"; fi',
-            "_", item.emoji, item.name, paste ? "1" : "0"])
-    }
-    // Snippets: pasted like an emoji (also works with auto-expand off)
-    function snipPick(item, paste) {
-        win.open = false
-        Quickshell.execDetached(["bash", "-c",
-            'printf %s "$1" | wl-copy; if [ "$3" = 1 ]; then ' + pasteCmd + '; else notify-send -a Snippets -t 1500 "Copied" "$2"; fi',
-            "_", item.text, item.trigger, paste ? "1" : "0"])
-    }
-    // Ctrl+Enter: the snippet's text in the input, to change it
-    function editSnippet(item) {
-        snipTrigger = item.trigger
-        go("sniptext")
-        input.text = item.text
-    }
-    // ⌘⌫ (IPC deleteSelected): a second press removes the selected snippet
-    function deleteSnippet() {
-        const item = results[list.currentIndex]
-        if (!item || item.kind !== "snippet") { shake.restart(); return }
-        if (armed !== item.armKey) { armed = item.armKey; disarm.restart(); return }
-        armed = ""
-        snipList = snipList.filter(s => s.trigger !== item.trigger)
-        if (list.currentIndex >= results.length) list.currentIndex = results.length - 1
-        Quickshell.execDetached([scripts + "/snippets", "remove", item.trigger])
     }
     // Passwords: field → [message when missing, message when copied, secret (1 = sensitive + cleared after 45 s), op item get options...]
     readonly property var pwFields: ({
@@ -913,12 +816,16 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         Quickshell.execDetached(["bash", "-c", script, "_", item.id].concat(pwFields[field] || pwFields.username))
     }
     // Shift+Enter on an extension row; rows with armKey need a second press to confirm
+    // (a file that arms its rows itself, armsItself, gets them as they are: Snippets' armKey is for ⌘⌫)
     function extShift(item) {
-        if (item.armKey !== undefined && armed !== item.armKey) { armed = item.armKey; disarm.restart(); return }
+        const target = extOf(level) || ext
+        if (target.armsItself !== true && item.armKey !== undefined && armed !== item.armKey) { armed = item.armKey; disarm.restart(); return }
         armed = ""
-        const target = extOf(level) || ext   // not "armed = ''\n(…)": that would parse as a call of ""
         target.shiftActivate(item)
     }
+    // Ctrl+Enter and ⌘⌫ / Delete on an extension level, if its file has them (ctrlActivate, deleteSelected); true = done
+    function extCtrl(item) { const t = extOf(level); return !!(t && t.ctrlActivate && t.ctrlActivate(item)) }
+    function extDelete() { const t = extOf(level); return !!(t && t.deleteSelected && t.deleteSelected()) }
     // ⌘⌫ / ⌥⌫ in the query: a selection goes first, otherwise to the line start (word = only the word before the cursor)
     function deleteBack(word) {
         if (input.selectedText !== "") { input.remove(input.selectionStart, input.selectionEnd); return }
@@ -967,6 +874,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         Qt.callLater(() => { list.currentIndex = i; Qt.callLater(() => { list.contentY = Math.min(y, Math.max(0, list.contentHeight - list.height)) }) })
     }
     // Selects the first row matching pred (e.g. a setting's current value), if any
+    function select(i) { list.currentIndex = i }
     function selectFirst() { list.currentIndex = firstSelectable() }
     function selectWhere(pred) { const i = results.findIndex(pred); if (i >= 0) list.currentIndex = i }
     function back() {
@@ -1097,6 +1005,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
     BehaviourLevels { id: behave; launcher: win }
     MusicLevels { id: music; launcher: win }
     InstallLevels { id: inst; launcher: win }
+    ToolsLevels { id: tools; launcher: win }
     Loader {
         id: extLoader
         source: win.extSource
@@ -1240,24 +1149,6 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
             if (win.level === "baricons" && win.query === "") win.selectWhere(r => r.value === win.barIcons)
         }
     }
-    // Clipboard: cliphist list ("<id>\t<preview>", newest first). Sensitive entries (passwords) don't end up in history.
-    Sh {
-        id: clipProc
-        command: ["bash", "-c", "cliphist list 2>/dev/null | head -300"]
-        onResult: text => {
-            const out = []
-            for (const line of text.split("\n")) {
-                const i = line.indexOf("\t")
-                if (i < 0) continue
-                const raw = line.slice(i + 1)
-                const binary = /^\[\[ binary data/.test(raw)
-                out.push({ kind: "clip", id: line.slice(0, i), name: raw.replace(/\s+/g, " ").trim().slice(0, 200) || "(blank)",
-                           glyph: binary ? "image" : "clipboard" })
-            }
-            win.clipItems = out
-            win.clipLoaded = true
-        }
-    }
     // Passwords: op item list (requires the 1Password app and CLI integration: Settings › Developer › Integrate with 1Password CLI)
     Sh {
         id: pwProc
@@ -1283,31 +1174,6 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                 glyph: glyphs[it.category] || "key-round"
             })).sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
             win.pwState = "ready"
-        }
-    }
-    // Snippets: the list and whether auto-expand is on, read again each time the level opens (a change in the file shows up)
-    Sh {
-        id: snipProc
-        script: 's="$HOME/.config/hypr/scripts/snippets"; "$s" status; "$s" list'
-        onResult: text => {
-            const i = text.indexOf("\n")
-            win.snipAuto = text.slice(0, i).trim()
-            try { win.snipList = JSON.parse(text.slice(i + 1)) } catch (e) { win.snipList = [] }
-            win.snipLoaded = true
-        }
-    }
-    // Emoji: data/emoji.tsv ("char<TAB>name<TAB>keywords", generated from CLDR annotations)
-    Sh {
-        id: emojiProc
-        command: ["cat", Quickshell.env("HOME") + "/.config/quickshell/data/emoji.tsv"]
-        onResult: text => {
-            const out = []
-            for (const line of text.split("\n")) {
-                const f = line.split("\t")
-                if (f.length >= 2) out.push({ ch: f[0], name: f[1], kw: f[2] || "" })
-            }
-            win.emojiList = out
-            win.emojiLoaded = true
         }
     }
     // Remove: packages the user installed, then the user's Flatpak apps (after a "--flatpak--" line, tab-separated)
@@ -1452,7 +1318,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         function deleteSelected(): void {
             if (!win.open) return
             if (win.level === "background" && win.wallLoaded) win.deleteWall()
-            else if (win.level === "snippets" && win.query === "") win.deleteSnippet()
+            else if (win.extDelete()) {}
             else win.deleteBack(false)
         }
         // ⌘Q (hypr/scripts/quit-app asks first): with the launcher open quits the selected app if it's running, otherwise
@@ -1610,7 +1476,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                         // Delete: removes your own wallpaper in Background, the selected snippet in Snippets (empty search). ⌘⌫
                         // arrives as ⇧Home + Delete with the keyd plugin (plugins/keyd/app.conf), so it does the same
                         else if (event.key === Qt.Key_Delete && win.level === "background" && win.wallLoaded) { win.deleteWall(); event.accepted = true }
-                        else if (event.key === Qt.Key_Delete && win.level === "snippets" && text === "") { win.deleteSnippet(); event.accepted = true }
+                        else if (event.key === Qt.Key_Delete && win.extDelete()) event.accepted = true
                         // Backspace with an empty search goes back; Ctrl+⌫ (⌥⌫ with keyd: delete a word) doesn't
                         else if (event.key === Qt.Key_Backspace && !ctrl && text === "" && win.level !== "root") { win.back(); event.accepted = true }
                         else if (win.grid && win.wallLoaded && (event.key === Qt.Key_Left || event.key === Qt.Key_Right)) {
@@ -1644,10 +1510,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                             else if (win.selApp && ctrl) win.togglePin(cur)
                             else if (win.selApp && (event.modifiers & Qt.AltModifier)) win.toggleAutostart(cur)
                             else if (win.extLevel && cur && (event.modifiers & Qt.ShiftModifier)) win.extShift(cur)
-                            else if (win.level === "clipboard" && cur && cur.kind === "clip" && (event.modifiers & Qt.ShiftModifier)) win.clipPick(cur, false)
-                            else if (win.level === "emoji" && cur && cur.kind === "emoji" && (event.modifiers & Qt.ShiftModifier)) win.emojiPick(cur, false)
-                            else if (cur && cur.kind === "snippet" && (event.modifiers & Qt.ShiftModifier)) win.snipPick(cur, false)
-                            else if (cur && cur.kind === "snippet" && ctrl) win.editSnippet(cur)
+                            else if (win.extLevel && cur && ctrl && win.extCtrl(cur)) {}
                             else if (win.results.length === 0) shake.restart()
                             else win.activate(cur)
                             event.accepted = true

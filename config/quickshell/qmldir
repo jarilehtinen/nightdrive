@@ -38,3 +38,4 @@ AirPodsSettings 1.0 AirPodsSettings.qml
 BehaviourLevels 1.0 BehaviourLevels.qml
 MusicLevels 1.0 MusicLevels.qml
 InstallLevels 1.0 InstallLevels.qml
+ToolsLevels 1.0 ToolsLevels.qml
