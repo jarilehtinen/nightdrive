@@ -173,9 +173,11 @@ Column {
                     checkIcon: cur ? "check" : ""
                     onClicked: {
                         if (cur) return
+                        // Copied first: the new m.displays rebuilds this delegate, and d and modelData go with it
+                        const name = d.name, value = modelData.value
+                        Quickshell.execDetached([Quickshell.env("HOME") + "/.config/hypr/scripts/display", "scale", name, String(value)])
                         // Shown as chosen at once; Hyprland reloads with the new scale and the menu follows
-                        m.displays = m.displays.map(x => x.name === d.name ? Object.assign({}, x, { scale: modelData.value }) : x)
-                        Quickshell.execDetached([Quickshell.env("HOME") + "/.config/hypr/scripts/display", "scale", d.name, String(modelData.value)])
+                        m.displays = m.displays.map(x => x.name === name ? Object.assign({}, x, { scale: value }) : x)
                     }
                 }
             }
