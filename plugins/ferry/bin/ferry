@@ -510,9 +510,12 @@ def payload(title, body, machine="", item=None):
         whole = json.dumps(dict(d, text=item.get("text", "")), ensure_ascii=False).encode()
         if len(whole) <= PUSH_PAYLOAD:
             return whole
-    while len(out) > PUSH_PAYLOAD:   # only a name or title far longer than any real one gets here
+    while len(out) > PUSH_PAYLOAD and (d["title"] or d["body"]):   # only absurdly long names get here
         d["body"] = d["body"][:len(d["body"]) // 2]
         d["title"] = d["title"][:len(d["title"]) // 2]
+        out = json.dumps(d, ensure_ascii=False).encode()
+    if len(out) > PUSH_PAYLOAD:   # a machine address no computer has (api/relay-push takes it from the request)
+        d["machine"] = ""
         out = json.dumps(d, ensure_ascii=False).encode()
     return out
 

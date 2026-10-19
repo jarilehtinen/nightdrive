@@ -54,6 +54,11 @@ class Payload(unittest.TestCase):
         self.assertEqual((d["id"], d["kind"]), ("f1", "file"))
         self.assertNotIn("text", d)
 
+    def test_ends_with_a_huge_machine(self):   # api/relay-push takes machine from the request
+        p = ferry.payload("N", "x", "https://m/" + "a" * 2700)
+        self.assertLessEqual(len(p), ferry.PUSH_PAYLOAD)
+        json.loads(p)
+
     def test_without_item(self):   # api/test-push, api/relay-push
         self.assertEqual(json.loads(ferry.payload("N", "Notifications work", "https://m/ferry/")),
                          {"title": "N", "body": "Notifications work", "machine": "https://m/ferry/"})
