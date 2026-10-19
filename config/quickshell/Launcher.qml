@@ -655,7 +655,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
 
     // Closing leaves the details right away (after the Behavior above has seen open = false), so the next open starts narrow
     onOpenChanged: if (!open) Qt.callLater(() => { if (!win.open) { win.detail = null; win.detailInfo = null } })
-    else { lastMouse = null; lastSel = ({}); exts.forEach(e => e.opened()); Plugins.check(); go("root"); deckProc.running = hasDeck; bgProc.running = true; bgAppsProc.running = true; autostartProc.running = true; updatesProc.running = true; brightProc.running = true; nightProc.running = true; sys.entered("display"); sys.soundRefresh(); input.forceActiveFocus() }
+    else { lastMouse = null; lastSel = ({}); exts.forEach(e => e.opened()); Plugins.check(); go("root"); deckProc.running = hasDeck; bgProc.running = true; bgAppsProc.running = true; autostartProc.running = true; updatesProc.running = true; sys.entered("display"); sys.soundRefresh(); input.forceActiveFocus() }
     Component.onCompleted: keysProc.running = true
 
     Timer { id: disarm; interval: 4000; onTriggered: win.armed = "" }

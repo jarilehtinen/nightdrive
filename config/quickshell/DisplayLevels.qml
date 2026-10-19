@@ -25,7 +25,8 @@ Item {
 
     // The brightness and night light rows' footers are Launcher.qml's: the root search has them too
     function footer(level, query) { return "" }
-    function opened() {}
+    // On every open: the root search has the brightness and night light rows too
+    function opened() { brightProc.running = true; nightProc.running = true }
     function entered(level) {
         if (level === "display") { displayProc.running = true; brightProc.running = true; nightProc.running = true }
         if (level === "battery") { battProc.running = true; battDetailProc.running = true }
