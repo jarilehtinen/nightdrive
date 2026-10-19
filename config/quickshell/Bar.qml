@@ -11,6 +11,7 @@ Variants {
     property string current: ""         // the open menu
     property var menus: []              // menus that exist (<Name>Menu.qml)
     signal menuClicked(string menu, real x, var screen)
+    signal moveStarted()                // ⌘+drag moves a module: its menu closes
 
     function menuOf(def) {
         const m = def.menu !== undefined ? def.menu : def.name
@@ -120,7 +121,9 @@ Variants {
             const nl = (width - notchWidth) / 2, nr = (width + notchWidth) / 2
             let cursor = width - 10, jumped = notchWidth <= 0
             const out = []
-            for (let i = rep.count - 1; i >= 0; i--) {
+            const order = dragOrder.length === rep.count ? dragOrder : Array.from({ length: rep.count }, (_, i) => i)
+            for (let k = order.length - 1; k >= 0; k--) {
+                const i = order[k]
                 const m = rep.itemAt(i)
                 if (!m || !m.visible) { out[i] = 0; continue }
                 let x = cursor - m.width
@@ -133,6 +136,51 @@ Variants {
         onWidthChanged: Qt.callLater(layout)
         onNotchWidthChanged: Qt.callLater(layout)
 
+        // ⌘+drag (BarModule) moves a module: it follows the pointer and the others make room; the order is saved on release
+        // (TopBar.reorder: the same order as launcher › Settings › Top bar › Items). Hyprland tells when ⌘ is pressed with
+        // the left button (hypr/bindings.lua): the bar has no keyboard focus to see ⌘ itself.
+        property real cmdAt: 0
+        Connections {
+            target: Hyprland
+            function onRawEvent(e) { if (e.name === "custom" && e.data === "nightdrive-cmd-press") win.cmdAt = Date.now() }
+        }
+        property int dragIndex: -1      // the module being moved (rep's index)
+        property var dragOrder: []      // rep's indices left to right while moving
+        property real dragX: 0          // its left edge
+        property real grab: 0           // the pointer's offset from it
+        function moveStart(i, px) {
+            const m = rep.itemAt(i)
+            grab = px - m.x; dragX = m.x
+            dragOrder = Array.from({ length: rep.count }, (_, k) => k)
+            dragIndex = i
+            bar.moveStarted()
+        }
+        function moveTo(px) {
+            const m = rep.itemAt(dragIndex)
+            if (!m) return
+            dragX = Math.max(0, Math.min(width - m.width, px - grab))
+            const c = dragX + m.width / 2
+            // Past a visible neighbour's centre: to its other side (the hidden ones between stay where they are)
+            for (let n = 0; n < rep.count; n++) {
+                const order = dragOrder.slice(), k = order.indexOf(dragIndex)
+                const near = d => { for (let j = k + d; j >= 0 && j < order.length; j += d) if (rep.itemAt(order[j]).visible) return j; return -1 }
+                const centre = j => xs[order[j]] + rep.itemAt(order[j]).width / 2
+                const l = near(-1), r = near(1)
+                const to = l >= 0 && c < centre(l) ? l : r >= 0 && c > centre(r) ? r : -1
+                if (to < 0) break
+                order.splice(k, 1); order.splice(to, 0, dragIndex)
+                dragOrder = order
+                layout()
+            }
+        }
+        function moveEnd() {
+            if (dragIndex < 0) return
+            dragIndex = -1
+            const names = dragOrder.map(i => rep.itemAt(i).name)
+            // After the release's click: saving rebuilds the modules (and this one's mouse area)
+            Qt.callLater(() => { TopBar.reorder(names); dragOrder = []; layout() })
+        }
+
         Item {
             anchors.fill: parent
             Repeater {
@@ -144,11 +192,20 @@ Variants {
                     required property int index
                     def: modelData
                     dpr: win.dpr
-                    x: win.xs[index] || 0
+                    x: win.dragIndex === index ? win.dragX : win.xs[index] || 0
+                    z: win.dragIndex === index ? 1 : 0
+                    Behavior on x {      // the others making room
+                        enabled: win.dragIndex >= 0 && win.dragIndex !== index
+                        NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
+                    }
                     anchors.verticalCenter: parent.verticalCenter
                     hasMenu: bar.menuOf(modelData) !== ""
                     open: hasMenu && bar.current === bar.menuOf(modelData)
                     onLeftClicked: x => bar.menuClicked(bar.menuOf(modelData), x, win.modelData)
+                    cmdAt: win.cmdAt
+                    onMoveStarted: x => win.moveStart(index, x)
+                    onMoveTo: x => win.moveTo(x)
+                    onMoveEnded: win.moveEnd()
                     onDragOver: x => { if (hasMenu && !open) bar.menuClicked(bar.menuOf(modelData), x, win.modelData) }
                     onWidthChanged: Qt.callLater(win.layout)
                     onVisibleChanged: Qt.callLater(win.layout)

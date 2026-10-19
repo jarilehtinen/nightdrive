@@ -368,7 +368,10 @@ end
 hl.bind(mod .. " + SHIFT + D", drawer_send)
 hl.bind(mod .. " + D", hl.dsp.workspace.toggle_special("drawer"))   -- empty, it shows a hint (quickshell/Drawer.qml)
 
--- Mouse: ⌘+drag moves, ⌘+right-drag resizes
+-- Mouse: ⌘+drag moves, ⌘+right-drag resizes. Over the top bar there's no window, so the press goes on to the bar, where
+-- ⌘+drag moves an icon (quickshell/Bar.qml); the bar has no keyboard focus to see ⌘, so this event tells it. It comes
+-- first: the last binding's result decides whether the press goes on.
+hl.bind(mod .. " + mouse:272", hl.dsp.event("nightdrive-cmd-press"), { non_consuming = true })
 hl.bind(mod .. " + mouse:272", hl.dsp.window.drag(),   { mouse = true })
 hl.bind(mod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
 

@@ -10,7 +10,7 @@ import Quickshell.Io
 //                                                             (hypr/scripts/plugin-parts)
 //   ~/.cache/nightdrive/bar.json                              colours (hypr/scripts/bar-style)
 //   ~/.local/state/nightdrive/bar-items.json                  {hidden, order}: modules turned off and their order
-//                                                             (launcher › Settings › Top bar › Items)
+//                                                             (launcher › Settings › Top bar › Items, ⌘+drag in the bar)
 // A module's state comes from its status command (one line of JSON {icon, text, class}); icons are SVGs from
 // topbar/scripts/icon, cached here by name.
 Singleton {
@@ -56,7 +56,8 @@ Singleton {
         }
         return out
     }
-    // In your order (Items: Ctrl+arrows), then modules not in it in the files' order (a new one goes to the right end).
+    // In your order (Items: Ctrl+arrows, or ⌘+drag in the bar), then modules not in it in the files' order (a new one goes
+    // to the right end).
     // A module whose optional part isn't installed ("needs") isn't listed at all.
     readonly property var allModules: {
         const def = localModules.concat(withPlugins(publicModules)).filter(m => !m.needs || Plugins.has(m.needs))
@@ -96,6 +97,13 @@ Singleton {
         names[i] = names[j]; names[j] = name
         saveItems({ hidden: items.hidden, order: names })
         return j
+    }
+    // The shown modules in a new order (⌘+drag in the bar); the hidden ones keep their places between them
+    function reorder(shown) {
+        if (shown.length !== modules.length) return
+        let k = 0
+        const names = allModules.map(m => hidden.indexOf(m.name) < 0 ? shown[k++] : m.name)
+        if (names.join() !== allModules.map(m => m.name).join()) saveItems({ hidden: items.hidden, order: names })
     }
     // Names and glyphs for the launcher's list; a module can give its own "label" and "glyph" in modules.jsonc
     readonly property var moduleLabels: ({ claude: ["Claude usage", "gauge"], system: ["CPU and memory", "cpu"],

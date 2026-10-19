@@ -276,6 +276,7 @@ which app is yours to choose (launcher › Settings › Keyboard Shortcuts).
 | ⌘ ⇧ S · ⌘ ⌥ S · ⌘ ⌥ ⇧ S | Screenshot of a region · of a window · of the screen, to the clipboard |
 | Hyper B / F / P / M / E | Browser / Files / 1Password / Music / Email |
 | ⌘ ⇧ Space | Walk through the top bar menus with the keyboard |
+| ⌘ + drag | On a top bar icon: move it to another place in the bar |
 | ⌘ Esc | Notifications |
 | F5 (hold; Fn on a Mac) | Dictation |
 | ⌘ ⇧ K | All shortcuts (also in the launcher under *Keybindings*) |

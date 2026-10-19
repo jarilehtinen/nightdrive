@@ -39,6 +39,7 @@
   ⌥ Tab / ⌥ ⇧ Tab    Next / previous window of the same app (on any workspace)
   ⌘ ⇧ arrows         Move window
   ⌘ + mouse drag     Move window / right button: resize
+  ⌘ + drag           A top bar icon: move it (the order is kept; also launcher › Settings › Top bar › Items)
   ⌘ ⌥ ← / →         Previous / next tab (any app: sends Ctrl+PageUp/PageDown)
   ⌃ ⌘ ← / →         Back / forward (browsers, web apps, Nautilus)
   ⌥ ← / →           Move by word (⇧ selects)

@@ -11,6 +11,10 @@ Item {
     property real dpr: 1
     signal leftClicked(real centerX)
     signal dragOver(real centerX)           // files dragged over a module with "drop": its menu opens (Bar.qml)
+    property real cmdAt: 0                  // when ⌘ was last pressed with the left button (Bar.qml)
+    signal moveStarted(real pointerX)       // ⌘+drag moves the module (Bar.qml); x in the window
+    signal moveTo(real pointerX)
+    signal moveEnded()
 
     readonly property string name: def.name
     readonly property var st: TopBar.states[name] || null
@@ -43,7 +47,7 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: 8
-        color: mod.open ? TopBar.c("hlBg") : mod.active ? TopBar.c("actBg") : "transparent"
+        color: mod.open || ma.moving ? TopBar.c("hlBg") : mod.active ? TopBar.c("actBg") : "transparent"
     }
 
     Item {
@@ -101,12 +105,30 @@ Item {
         border { width: 1.5; color: TopBar.c("hlFg") }
     }
 
+    // ⌘+drag moves the module. ⌘ comes from Hyprland just before or after the press, so the move starts on the first
+    // drag, when both are in; a ⌘-click opens nothing.
     MouseArea {
+        id: ma
+        property real pressX: 0
+        property real pressAt: 0
+        property bool moving: false
+        readonly property bool cmd: Math.abs(mod.cmdAt - pressAt) < 500
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
-        cursorShape: Qt.PointingHandCursor
+        cursorShape: moving ? Qt.ClosedHandCursor : Qt.PointingHandCursor
+        preventStealing: true
+        onPressed: mouse => { pressX = mouse.x; pressAt = Date.now() }
+        onPositionChanged: mouse => {
+            if (!moving && (pressedButtons & Qt.LeftButton) && cmd && Math.abs(mouse.x - pressX) > 3) {
+                moving = true
+                mod.moveStarted(mapToItem(null, pressX, 0).x)   // the module hasn't moved yet
+            }
+            if (moving) mod.moveTo(mapToItem(null, mouse.x, 0).x)
+        }
+        onReleased: if (moving) { moving = false; mod.moveEnded() }
+        onCanceled: if (moving) { moving = false; mod.moveEnded() }
         onClicked: mouse => {
-            if (mouse.button === Qt.LeftButton) { if (mod.hasMenu) mod.leftClicked(mod.mapToItem(null, mod.width / 2, 0).x) }
+            if (mouse.button === Qt.LeftButton) { if (mod.hasMenu && !cmd) mod.leftClicked(mod.mapToItem(null, mod.width / 2, 0).x) }
             else if (mouse.button === Qt.RightButton && mod.def.right) TopBar.run(mod.def.right, mod.name)
             else if (mouse.button === Qt.MiddleButton && mod.def.middle) TopBar.run(mod.def.middle, mod.name)
         }

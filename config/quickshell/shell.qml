@@ -140,6 +140,7 @@ ShellRoot {
         current: root.current
         menus: root.menus
         onMenuClicked: (name, x, screen) => root.clickMenu(name, x, screen)
+        onMoveStarted: root.current = ""
     }
 
     Osd {}
