@@ -116,7 +116,7 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
 | Mail (optional) | Thunderbird | themed, with a minimal toolbar ([details](docs/thunderbird.md)) |
 | Music (optional) | [Deck](plugins/deck/README.md) (Spotify in the terminal, needs Spotify Premium) | bar icon, music menu, player row in the launcher, media keys |
 | Passwords (optional) | [1Password](plugins/1password/README.md) + `op` CLI | Passwords level in the launcher, SSH agent |
-| AI | [Claude Code](https://claude.com/claude-code) (not installed by Nightdrive: `curl -fsSL https://claude.ai/install.sh \| bash`) | ⌘⌥Enter in `~/Projects`, ask from the launcher, usage limits in the bar |
+| AI | [Claude Code](https://claude.com/claude-code) (the installer sets it up; log in once with `claude`) | ⌘⌥Enter in `~/Projects`, ask from the launcher, usage limits in the bar |
 | Dictation | [Voxtype](https://github.com/peteonrails/voxtype) (Parakeet) | F5 / Fn push-to-talk, recording card on screen |
 | Network | NetworkManager, BlueZ, [Tailscale](plugins/tailscale/README.md) (optional) | Wi-Fi, Bluetooth and Tailscale menus |
 | Audio | PipeWire, [EasyEffects](https://github.com/wwmm/easyeffects) | output switching (AirPlay speakers too), EQ presets for headphones; Sony and AirPods listening mode, AirPods battery per pod and case and their own settings |
@@ -161,7 +161,7 @@ git clone https://github.com/nightdrive-sh/nightdrive.git ~/dotfiles
 cd ~/dotfiles
 ./install.sh              # asks which optional parts to install, then: removes the KDE apps and services Nightdrive
                           # doesn't use (packages-remove.txt), system update, packages, fonts, the notch setting,
-                          # config links, login screen and the optional parts
+                          # config links, Claude Code, login screen and the optional parts
 ```
 
 It tells which machine it's on and asks first which optional parts you want (number toggles one, Enter continues):

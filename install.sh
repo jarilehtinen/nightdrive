@@ -6,8 +6,9 @@
 #   ./install.sh               asks which optional parts to install (1Password, Deck, web apps…, plugins.txt) and whether
 #                              to remove the apps Nightdrive doesn't use (packages-remove.txt), then runs unattended:
 #                              removes those, updates the system, installs packages, fonts, the notch setting, links the
-#                              configs, installs the Nightdrive login screen and boot splash (active from the next boot:
-#                              the splash, then the desktop under the login screen as its lock) and the chosen parts.
+#                              configs, installs Claude Code, the Nightdrive login screen and boot splash (active from the
+#                              next boot: the splash, then the desktop under the login screen as its lock) and the chosen
+#                              parts.
 #                              Home Assistant, if chosen, asks for its address at the end.
 #                              The removals are on by default only on a fresh system (installed under 3 days ago).
 #   ./install.sh --with deck,1password   these parts on top of the defaults, without asking (ids: --dry-run lists them)
@@ -268,6 +269,12 @@ flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/fl
 # Fonts, ble.sh, GTK settings, default apps: also run by `nightdrive update`
 "$repo/setup-user.sh"
 
+# Part of the desktop (⌘⌥Enter, the launcher's questions, the usage limits in the top bar), so not asked. Its own
+# installer puts it in ~/.local/bin and keeps it up to date.
+echo "==> Claude Code"
+if [[ -x $HOME/.local/bin/claude ]]; then echo "    already installed"
+else curl -fsSL https://claude.ai/install.sh | bash || failed_claude=1; fi
+
 echo "==> Sleep hook (Wi-Fi and Bluetooth off during sleep, battery drain logging)"
 sudo install -m 0755 "$repo/config/system/nightdrive-sleep" /usr/lib/systemd/system-sleep/nightdrive-sleep
 
@@ -317,7 +324,9 @@ fi
 
 echo
 (( ${#failed[@]} )) && echo "Not installed (an error, see above): ${failed[*]}. Run again: nightdrive plugins install ID" && echo
+(( ${failed_claude:-0} )) && echo "Claude Code not installed (an error, see above). Run again: curl -fsSL https://claude.ai/install.sh | bash" && echo
 echo "Done. Still to do by hand:"
+echo "  Claude Code: run claude once and log in (⌘⌥Enter and the top bar's usage menu use that sign-in)."
 if has tailscale; then
   echo '  sudo tailscale up                          # log in'
   echo '  sudo tailscale set --operator=$USER        # lets the top bar Tailscale click work without a password'

@@ -207,8 +207,8 @@ PanelWindow {
             { kind: "header", name: "Hardware" },
             { kind: "nav", name: "Sound", glyph: "volume-2", target: "sound" },
             { kind: "nav", name: "Headphones", glyph: "headphones", target: "headphones" },
-            { kind: "nav", name: "Display", glyph: "monitor", target: "display" },
-            { kind: "nav", name: "Battery", glyph: "battery-medium", target: "battery" },
+            { kind: "nav", name: "Display", glyph: "monitor", target: "display" }
+        ], disp.hasBattery ? [{ kind: "nav", name: "Battery", glyph: "battery-medium", target: "battery" }] : [], [
             { kind: "header", name: "Appearance" },
             { kind: "nav", name: "Theme", glyph: "palette", target: "theme" },
             { kind: "nav", name: "Top bar", glyph: "panel-top", target: "topbar" },   // its look and what it shows

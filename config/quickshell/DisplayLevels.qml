@@ -16,6 +16,7 @@ Item {
     property string night: ""                 // Night light: on | off (hypr/scripts/nightlight status)
     property var batt: null                   // Battery: { percent, state, timeText } (upower)
     property var battDetail: null             // and its details (topbar/scripts/sysinfo battery), null on a desktop
+    property bool hasBattery: false           // the machine has its own battery: Settings lists Battery only then
     readonly property int brightStep: 5       // ←/→ on the brightness row, the same step as the brightness keys (hypr/scripts/brightness)
 
     readonly property string scripts: Quickshell.env("HOME") + "/.config/hypr/scripts"
@@ -58,7 +59,7 @@ Item {
         }
         if (level === "battery") {
             // The same as the top bar's battery menu: charge and state, then the details
-            if (batt === null) return l.hint("Loading…")
+            if (batt === null) return l.hint(p.hasBattery ? "Loading…" : "No battery in this computer")
             const b = battDetail
             const stateText = { discharging: "Discharging", charging: "Charging", "fully-charged": "Fully charged", "pending-charge": "Not charging" }[batt.state] || batt.state
             const rows = [{ kind: "stat", name: batt.percent + "%  " + stateText,
@@ -171,6 +172,12 @@ Item {
             p.batt = { percent: parseInt(g(/percentage:\s*(\d+)/)) || 0, state: st,
                        timeText: st === "discharging" && tte ? fmt(tte[1], tte[2]) : st === "charging" && ttf ? fmt(ttf[1], ttf[2]) : "" }
         }
+    }
+    // Once at start: a desktop has none, and its Battery page would only say so
+    Sh {
+        running: true
+        script: 'for d in /sys/class/power_supply/*; do [ "$(cat "$d/type")" = Battery ] && [ "$(cat "$d/scope" 2>/dev/null)" != Device ] && { echo yes; break; }; done'
+        onResult: text => { p.hasBattery = text.trim() === "yes" }
     }
     Sh {
         id: battDetailProc
