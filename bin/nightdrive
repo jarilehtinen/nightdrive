@@ -212,6 +212,10 @@ update() {
   deck=${ND_UPDATE_DECK:-0}
   # Where the update started: kept over the restart below, for What's new at the end
   local was=${ND_UPDATE_WAS:-}; [[ -n $was ]] || was=$(git -C "$repo" rev-parse HEAD)
+  # Hyprland reloads on every save, and a pull replaces hyprland.lua by deleting and writing it: a reload in between
+  # showed "config has errors" (cannot open hyprland.lua) until the end. Off for the update; the reload below turns it
+  # back on (a failed update leaves it off until the next reload or login).
+  [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]] && hyprctl eval 'hl.config({ misc = { disable_autoreload = true } })' >/dev/null 2>&1
   while read -r r; do
     name=$(basename "$r")
     echo "==> $name"
