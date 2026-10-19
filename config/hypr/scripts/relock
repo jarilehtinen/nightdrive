@@ -1,0 +1,10 @@
+#!/bin/bash
+# After sleep (hypridle's after_sleep_cmd): a hyprlock started before it doesn't get the keyboard back. Hyprland adds
+# the keyboards again on resume, and that hyprlock keeps the one it had, so the password field shows but typing does
+# nothing (a PC with a USB keyboard). A new hyprlock takes the lock over (allow_session_lock_restore in hyprland.lua),
+# and starts well within misc:lockdead_screen_delay (1 s), so Hyprland's "lock died" screen doesn't show.
+pidof hyprlock >/dev/null || exit 0
+sleep 1   # the keyboards come back a moment after the resume
+pidof hyprlock >/dev/null || exit 0   # already unlocked
+pkill -9 -x hyprlock
+exec hyprlock
