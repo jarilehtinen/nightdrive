@@ -52,7 +52,8 @@ check` (exit 1 with the findings) and `nightdrive sandbox shot NAME`, `ipc …` 
 **Recipes**
 - *Plugin* (an optional feature: a bar icon and menu, keys, a service): a folder `plugins/<id>/` as `plugins/README.md`
   explains (copy its Disk example, or `plugins/ferry`), then `nightdrive plugin check <id>`. After changing its
-  `module.jsonc` or adding a menu, run `nightdrive plugins installed`; after changing its keys, `hyprctl reload`.
+  `module.jsonc` or adding a menu or launcher levels (`<Name>Levels.qml`), run `nightdrive plugins installed`; after
+  changing its keys, `hyprctl reload`.
 - *Bar icon and menu* in the core (on every desktop): an entry in `topbar/modules.jsonc` (its place in the bar), a case
   in `topbar/scripts/status` (`emit ICON TEXT CLASS`), and `quickshell/<Name>Menu.qml` (copy an existing menu). Size it
   with `nightdrive topbar adjust`. Every menu follows the rules in `plugins/README.md` › The menu: `MenuHeader` first, rows

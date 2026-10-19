@@ -1,27 +1,31 @@
 import QtQuick
 import Quickshell
+import qs
 
-// The launcher's Music (with Deck, an optional part): Album Shelf and Curated from Deck's files, and Search Spotify
-// through Deck's own client, with an artist's albums. Enter on an album plays it in Deck. The root search finds the
-// shelf's and Curated's albums too (rootRows). The player row above the search field stays in Launcher.qml.
-// Launcher.qml asks it like DefaultAppsLevels (levels, titles, parents, items, activate, footer, entered).
+// Deck's part of the launcher (plugin-parts lists it while Deck is on): Music at the root, with Album Shelf and Curated
+// from Deck's files and Search Spotify through Deck's own client (an artist's albums too); Enter on an album plays it.
+// The root search finds the shelf's and Curated's albums (rootRows). The player row above the search field (topRow):
+// play/pause, the track, next and like; ↑ from the list's first row selects it, and Ctrl+Space plays or pauses anywhere.
+// Launcher.qml asks it like its own level files (levels, titles, parents, items, activate, footer, entered).
 Item {
     id: m
-    property var launcher: null
+    property var launcher: null               // Launcher.qml sets it once the file is loaded
+
+    readonly property var rootItems: [{ kind: "nav", name: "Music", glyph: "disc-3", target: "music" }]
 
     property var albums: []                   // Deck's shelf and Curated albums [{ uri, name, artist, year, list }]
     property var spotify: null                // Music › Search: { query, artists, albums, error } (deck search --json)
     property var artist: ({ id: "", name: "", albums: null })   // Music › Search › an artist's albums
 
-    readonly property string bin: Quickshell.env("HOME") + "/.local/bin"   // deck-ctl: plugins/deck/bin
+    readonly property string bin: Quickshell.env("HOME") + "/.local/bin"   // deck, and deck-ctl and deck-open (bin/ here)
     readonly property var levels: ["music", "shelf", "curated", "musicsearch", "artist"]
     readonly property var titles: ({ music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", musicsearch: "Music › Search",
                                      artist: "Music › " + artist.name })
     readonly property var parents: ({ shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch" })
 
     function footer(level, query) { return level === "shelf" || level === "curated" ? "Enter: play in Deck" : "" }
-    // Shelf and Curated are read on every open; a Spotify search is only kept while the launcher is open
-    function opened() { spotify = null; if (launcher.hasDeck) musicProc.running = true }
+    // Shelf, Curated and the player's state are read on every open; a Spotify search is only kept while the launcher is open
+    function opened() { spotify = null; musicProc.running = true; deckProc.running = true }
     function entered(level) {}
     function shiftActivate(it) {}
 
@@ -32,7 +36,6 @@ Item {
     }
     // The root search's album rows ("fm-84" → Atlas): the MUSIC tag on the right instead of the year
     function rootRows() {
-        if (!launcher.hasDeck) return []
         return albums.map(a => ({ item: Object.assign(albumItem(a), { summary: undefined, from: "Music" }), text: a.name, extra: a.artist }))
     }
 
@@ -129,6 +132,94 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
             let albums = []
             try { albums = JSON.parse(text) } catch (e) {}
             if (m.artist.id === artistProc.environment.ID) m.artist = Object.assign({}, m.artist, { albums: albums })
+        }
+    }
+
+    // --- The player row ---
+    property var info: null                   // Deck's playback state (state.json): null = not playing / not running
+    property bool alive: false                // Deck's helper process is running
+    property var override: ({})               // pending local changes (playing, liked)
+    readonly property bool playing: override.playing !== undefined ? override.playing : (info !== null && info.playing)
+    readonly property var liked: override.liked !== undefined ? override.liked : (info ? info.liked : null)
+    readonly property string deckBin: bin + "/deck"
+
+    // Keys while the player row is selected. Returns true if the key was handled.
+    function topKey(event) {
+        const k = event.key
+        const ctrl = event.modifiers & Qt.ControlModifier
+        if (k === Qt.Key_Down || (ctrl && (k === Qt.Key_N || k === Qt.Key_J))) { launcher.topFocused = false; return true }
+        if (k === Qt.Key_Up) return true
+        if (k === Qt.Key_Return || k === Qt.Key_Enter || k === Qt.Key_Space) { topPress(); return true }
+        if (k === Qt.Key_Right) { if (info !== null) ctl("next"); return true }
+        if (k === Qt.Key_Left) { if (info !== null) ctl("previous"); return true }
+        if (ctrl && k === Qt.Key_L) { if (info !== null) ctl("like"); return true }
+        if (k === Qt.Key_Escape || k === Qt.Key_Backspace) return false
+        if (event.text !== "" && !ctrl) launcher.topFocused = false      // typing returns to the search
+        return false
+    }
+    // Play (Ctrl+Space anywhere): something playing → play/pause; nothing playing → start / bring up Deck
+    function topPress() { if (info === null) launchDeck(); else ctl("toggle") }
+    function launchDeck() {
+        launcher.open = false
+        Quickshell.execDetached([bin + "/deck-open"])
+    }
+    function ctl(cmd) {
+        if (cmd === "toggle") override = Object.assign({}, override, { playing: !playing })
+        if (cmd === "like" && liked !== null && liked !== undefined) override = Object.assign({}, override, { liked: !liked })
+        Quickshell.execDetached([deckBin, "ctl", cmd])
+        settle.restart()
+    }
+    Timer { id: settle; interval: 1000; onTriggered: { m.override = ({}); deckProc.running = true } }
+    Timer { interval: 1500; repeat: true; running: m.launcher !== null && m.launcher.open; onTriggered: deckProc.running = true }
+    Sh {
+        id: deckProc
+        script: 'f="$XDG_RUNTIME_DIR/deck/state.json"; [ -s "$f" ] || exit 3; pid=$(jq -r .pid "$f"); [ -d "/proc/$pid" ] || exit 4; cat "$f"'
+        onResult: text => {
+            if (deckProc.exitCode !== 0) { m.alive = false; m.info = null; return }
+            try { m.info = JSON.parse(text).info; m.alive = true } catch (e) { m.alive = false; m.info = null }
+        }
+    }
+
+    // Play/pause, track, next, like. Not playing → play starts Deck
+    readonly property Component topRow: Rectangle {
+        implicitHeight: 40
+        radius: 10
+        color: m.launcher.topFocused ? Theme.sel : "transparent"
+
+        Text {
+            id: playBtn
+            anchors { left: parent.left; leftMargin: 14; verticalCenter: parent.verticalCenter }
+            text: Icons.g(m.playing ? "pause" : "play")
+            color: (playArea.containsMouse || m.launcher.topFocused) ? Theme.accent : (m.info === null ? Theme.dim : Theme.text)
+            font { family: Icons.familyMedium; pixelSize: 19 }
+            MouseArea { cursorShape: Qt.PointingHandCursor; id: playArea; anchors { fill: parent; margins: -8 } hoverEnabled: true; onClicked: m.topPress() }
+        }
+        Text {
+            anchors { left: playBtn.right; leftMargin: 16; right: nextBtn.visible ? nextBtn.left : parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter }
+            elide: Text.ElideRight
+            textFormat: Text.PlainText
+            text: m.info ? (m.info.title + "  —  " + m.info.artist)
+                         : (m.alive ? "Deck — nothing playing" : "Deck — not running (press play to start)")
+            color: m.info === null ? Theme.dim : (m.playing ? Theme.accent : Theme.text)
+            font { family: Theme.font; pixelSize: m.launcher.fontSize - 3; weight: m.launcher.fontWeight }
+        }
+        Text {
+            id: nextBtn
+            visible: m.info !== null
+            anchors { right: heartBtn.visible ? heartBtn.left : parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
+            text: Icons.g("skip-forward")
+            color: nextArea.containsMouse ? Theme.accent : Theme.text
+            font { family: Icons.familyMedium; pixelSize: 17 }
+            MouseArea { cursorShape: Qt.PointingHandCursor; id: nextArea; anchors { fill: parent; margins: -8 } hoverEnabled: true; onClicked: m.ctl("next") }
+        }
+        Text {
+            id: heartBtn
+            visible: m.liked !== null && m.liked !== undefined
+            anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
+            text: Icons.g("heart")
+            color: m.liked ? Theme.primary : (heartArea.containsMouse ? Theme.accent : Theme.dim)
+            font { family: Icons.familyMedium; pixelSize: 17 }
+            MouseArea { cursorShape: Qt.PointingHandCursor; id: heartArea; anchors { fill: parent; margins: -8 } hoverEnabled: true; onClicked: m.ctl("like") }
         }
     }
 }

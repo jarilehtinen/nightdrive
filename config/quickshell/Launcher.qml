@@ -4,7 +4,7 @@ import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Widgets
 
-// Launcher (⌘Space). Player row above the search field while Deck is playing (Ctrl+Space = play/pause). Root level: Apps, Passwords, Clipboard, Screenshot, Keybindings, Settings, Install, Remove, Update, Power. Enter opens an item, Esc/Backspace (with an empty query) goes back,
+// Launcher (⌘Space). A plugin's row above the search field (Deck's player: Ctrl+Space = play/pause). Root level: Apps, Passwords, Clipboard, Screenshot, Keybindings, Settings, Install, Remove, Update, Power. Enter opens an item, Esc/Backspace (with an empty query) goes back,
 // at the root level Esc closes. Up/down arrows or Ctrl+N/P/J/K move the selection.
 // Apps: with an empty query, the allow-listed apps; when searching, also those hidden by sync-apps (hidden-apps.sh). See fuzzel/sync-apps, apps-allow.txt.
 // ⌃Enter shows the selected app in Apps or hides it from there; a hidden app is still found by searching, and nothing is
@@ -83,22 +83,23 @@ PanelWindow {
     // Background's wallpapers as a grid once they're read (ThemeLevels.qml), other levels as a list
     readonly property bool grid: level === "background" && themes.wallLoaded
     readonly property int gridCols: 2
-    readonly property bool hasDeck: Plugins.has("deck")   // Deck (an optional part): the player row, Music, Ctrl+Space
-    property var deckInfo: null               // Deck playback state (state.json): null = not playing / not running
-    property bool deckAlive: false            // Deck's helper process is running
-    property bool playerFocused: false        // player row is selected (up arrow from the first list row)
+    property bool topFocused: false           // a plugin's row above the search field is selected (up arrow from the first list row)
     // Personal additions from a private overlay: local/LauncherExtension.qml (not in the repo, see README).
     // It may add root items and whole levels; see the functions it is asked for below (extItems, activate, ...).
     property string extSource: ""             // shell.qml sets this when the file exists
     readonly property var ext: extLoader.item
-    // Levels from other files: SystemLevels.qml (Wi-Fi, Bluetooth, Sound, Tailscale), HomeLevels.qml (Home Assistant),
-    // DefaultAppsLevels.qml (Settings › Default apps), AppKeyLevels.qml (Settings › Keyboard Shortcuts), BehaviourLevels.qml
-    // (Settings › Launcher, Computer name, Notifications, Update channel), MusicLevels.qml (Music, with Deck), InstallLevels.qml
-    // (Install's pages), ToolsLevels.qml (Clipboard, Emoji, Snippets),
-    // AppearanceLevels.qml (Top bar, Screensaver), DisplayLevels.qml (Display, Battery), RemoveLevels.qml
-    // (Remove), PasswordLevels.qml (Passwords, with 1Password), ThemeLevels.qml
-    // (Theme, Background) and the private extension; they answer the same questions (items, activate, footer, entered). A new file goes in this list, not in each question's code
-    readonly property var exts: [sys, home, defs, akeys, behave, music, inst, tools, look, disp, rm, pw, themes].concat(ext ? [ext] : [])
+    // Levels from other files, which answer the same questions (items, activate, footer, entered; the optional ones below):
+    // SystemLevels (Wi-Fi, Bluetooth, Sound, Tailscale, Status), HomeLevels (Home Assistant), DefaultAppsLevels, AppKeyLevels
+    // (Keyboard Shortcuts), BehaviourLevels (Launcher, Computer name, Notifications, Update channel), InstallLevels,
+    // ToolsLevels (Clipboard, Emoji, Snippets), AppearanceLevels (Top bar, Screensaver), DisplayLevels (Display, Battery),
+    // RemoveLevels, PasswordLevels (with 1Password), ThemeLevels (Theme, Background), the plugins' and the private
+    // extension. A new file goes in this list, not in each question's code
+    // The installed plugins' level files (their <Name>Levels.qml, TopBar.plugin.levels: Deck's Music) come after the core's
+    property var pluginExts: []
+    readonly property var exts: [sys, home, defs, akeys, behave, inst, tools, look, disp, rm, pw, themes].concat(pluginExts, ext ? [ext] : [])
+    // A plugin's row above the search field (topRow; Deck's player): the first file that has one. ↑ from the list's first
+    // row selects it, its keys then go to topKey(event), and Ctrl+Space anywhere to topPress()
+    readonly property var topExt: exts.find(e => e.topRow) || null
     function extOf(l) { return exts.find(e => e.levels.indexOf(l) >= 0) || null }
     readonly property bool extLevel: extOf(level) !== null
     readonly property int selIndex: list.currentIndex
@@ -133,12 +134,7 @@ PanelWindow {
         return m ? { keys: m[1].split("+"), text: m[2] } : { keys: [], text: part }
     })
     property var lastMouse: null              // last mouse position (window coordinates); null = not seen yet since opening
-    property var deckOverride: ({})           // pending local changes (playing, liked)
     readonly property string scripts: Quickshell.env("HOME") + "/.config/hypr/scripts"
-    readonly property string deckBin: Quickshell.env("HOME") + "/.local/bin/deck"
-    readonly property string bin: Quickshell.env("HOME") + "/.local/bin"   // plugins' commands (deck-ctl, deck-open: plugins/deck/bin)
-    readonly property bool deckPlaying: deckOverride.playing !== undefined ? deckOverride.playing : (deckInfo !== null && deckInfo.playing)
-    readonly property var deckLiked: deckOverride.liked !== undefined ? deckOverride.liked : (deckInfo ? deckInfo.liked : null)
     signal openMenu(string name)              // Settings: opens a Quickshell menu (wifi, bluetooth, ...)
 
     readonly property var titles: Object.assign({ apps: "Apps", keys: "Keybindings", screenshot: "Tools › Screenshot", settings: "Settings", startup: "Settings › Startup", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
@@ -155,12 +151,12 @@ PanelWindow {
     }
     function shot(mode) { return ["bash", "-c", "sleep 0.4; \"$HOME/.config/hypr/scripts/screenshot\" \"$1\"", "_", mode] }
 
-    // Passwords and Music only with their optional part (1Password, Deck)
+    // Passwords only with 1Password; the plugins' level files add their own (rootItems: Deck's Music)
     readonly property var rootItems: [
         { kind: "nav", name: "Apps", glyph: "layout-grid", target: "apps" },
     ].concat(Plugins.has("1password") ? [{ kind: "nav", name: "Passwords", glyph: "key-round", target: "passwords" }] : [], [
         { kind: "nav", name: "Clipboard", glyph: "clipboard-list", target: "clipboard" },
-    ], hasDeck ? [{ kind: "nav", name: "Music", glyph: "disc-3", target: "music" }] : [], home.rootItems, ext ? ext.rootItems : [], [
+    ], ...pluginExts.map(e => e.rootItems || []), home.rootItems, ext ? ext.rootItems : [], [
         { kind: "nav", name: "Tools", glyph: "wrench", target: "tools" },
         { kind: "nav", name: "Keybindings", glyph: "keyboard", target: "keys" },
         { kind: "nav", name: "Settings", glyph: "settings", target: "settings" },
@@ -326,7 +322,7 @@ PanelWindow {
     function step(dir) {
         let i = list.currentIndex + dir
         while (i >= 0 && i < results.length && fixedRow(results[i])) i += dir
-        if (i < 0 && dir < 0) { playerFocused = hasDeck; return }    // up from the top of the list: player row
+        if (i < 0 && dir < 0) { topFocused = topExt !== null; return }   // up from the top of the list: a plugin's row
         if (i >= 0 && i < results.length) {
             list.currentIndex = i
             // Up onto a section's first row: its header comes into view too (the list only scrolls to the row itself)
@@ -404,8 +400,8 @@ PanelWindow {
                 appEntries(q).map(a => Object.assign({}, a, { item: Object.assign({}, a.item, { from: "Apps" }) })),
                 // Home Assistant's devices ("olohuone" → its lights): Enter turns one on/off right from the search
                 home.rootRows(),
-                // Deck's albums ("fm-84" → Atlas; MusicLevels.qml)
-                music.rootRows()
+                // The plugins' own rows (rootRows: Deck's albums, "fm-84" → Atlas)
+                ...pluginExts.map(e => e.rootRows ? e.rootRows() : [])
             ]) all = all.concat(src)
         } else if (level === "apps") {
             all = appEntries(q)
@@ -459,7 +455,7 @@ PanelWindow {
         const cur = results[list.currentIndex]
         if (cur && cur.name && target !== level && (parents[target] || "root") === level)   // going down one level
             lastSel[level] = { kind: cur.kind, name: cur.name }
-        level = target; input.text = ""; query = ""; armed = ""; playerFocused = false; details.close()
+        level = target; input.text = ""; query = ""; armed = ""; topFocused = false; details.close()
         hiddenProc.running = true
         if (target === "keys") keysProc.running = true     // re-read SHORTCUTS.md: changes show up immediately
         list.currentIndex = firstSelectable()
@@ -624,7 +620,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         // Threshold: a sub-pixel jitter from scaling (e.g. 520 → 519.9) isn't movement
         if (Math.abs(p.x - lastMouse.x) + Math.abs(p.y - lastMouse.y) < 3) return
         lastMouse = Qt.point(p.x, p.y)
-        playerFocused = false
+        topFocused = false
         list.currentIndex = index
     }
     // The current value is part of the rows (✓, "current"), so changing it rebuilds the list and the selection would jump to the top:
@@ -650,48 +646,11 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
 
     // Closing leaves the details right away (after the Behavior above has seen open = false), so the next open starts narrow
     onOpenChanged: if (!open) Qt.callLater(() => { if (!win.open) details.close() })
-    else { lastMouse = null; lastSel = ({}); exts.forEach(e => e.opened()); Plugins.check(); go("root"); deckProc.running = hasDeck; bgProc.running = true; bgAppsProc.running = true; autostartProc.running = true; updatesProc.running = true; sys.entered("display"); sys.soundRefresh(); input.forceActiveFocus() }
+    else { lastMouse = null; lastSel = ({}); exts.forEach(e => e.opened()); Plugins.check(); go("root"); bgProc.running = true; bgAppsProc.running = true; autostartProc.running = true; updatesProc.running = true; sys.entered("display"); sys.soundRefresh(); input.forceActiveFocus() }
     Component.onCompleted: keysProc.running = true
 
     Timer { id: disarm; interval: 4000; onTriggered: win.armed = "" }
 
-    // Player row: Deck's state is read while the launcher is open
-    // Keys while the player row is selected. Returns true if the key was handled.
-    function handlePlayerKey(event) {
-        const k = event.key
-        const ctrl = event.modifiers & Qt.ControlModifier
-        if (k === Qt.Key_Down || (ctrl && (k === Qt.Key_N || k === Qt.Key_J))) { playerFocused = false; return true }
-        if (k === Qt.Key_Up) return true
-        if (k === Qt.Key_Return || k === Qt.Key_Enter || k === Qt.Key_Space) { deckPlayPress(); return true }
-        if (k === Qt.Key_Right) { if (deckInfo !== null) deckCtl("next"); return true }
-        if (k === Qt.Key_Left) { if (deckInfo !== null) deckCtl("previous"); return true }
-        if (ctrl && k === Qt.Key_L) { if (deckInfo !== null) deckCtl("like"); return true }
-        if (k === Qt.Key_Escape || k === Qt.Key_Backspace) return false
-        if (event.text !== "" && !ctrl) playerFocused = false            // typing returns to the search
-        return false
-    }
-    function launchDeck() {
-        win.open = false
-        Quickshell.execDetached([bin + "/deck-open"])
-    }
-    // Play: something playing → play/pause; nothing playing → start / bring up Deck
-    function deckPlayPress() { if (deckInfo === null) launchDeck(); else deckCtl("toggle") }
-    function deckCtl(cmd) {
-        if (cmd === "toggle") deckOverride = Object.assign({}, deckOverride, { playing: !deckPlaying })
-        if (cmd === "like" && deckLiked !== null && deckLiked !== undefined) deckOverride = Object.assign({}, deckOverride, { liked: !deckLiked })
-        Quickshell.execDetached([deckBin, "ctl", cmd])
-        deckSettle.restart()
-    }
-    Timer { id: deckSettle; interval: 1000; onTriggered: { win.deckOverride = ({}); deckProc.running = true } }
-    Timer { interval: 1500; repeat: true; running: win.open && win.hasDeck; onTriggered: deckProc.running = true }
-    Sh {
-        id: deckProc
-        script: 'f="$XDG_RUNTIME_DIR/deck/state.json"; [ -s "$f" ] || exit 3; pid=$(jq -r .pid "$f"); [ -d "/proc/$pid" ] || exit 4; cat "$f"'
-        onResult: text => {
-            if (deckProc.exitCode !== 0) { win.deckAlive = false; win.deckInfo = null; return }
-            try { win.deckInfo = JSON.parse(text).info; win.deckAlive = true } catch (e) { win.deckAlive = false; win.deckInfo = null }
-        }
-    }
 
     // Install › Software's rows and a details card's Tab (the other source)
     function installCmd(src, id) {
@@ -702,7 +661,6 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
     DefaultAppsLevels { id: defs; launcher: win }
     AppKeyLevels { id: akeys; launcher: win }
     BehaviourLevels { id: behave; launcher: win }
-    MusicLevels { id: music; launcher: win }
     InstallLevels { id: inst; launcher: win }
     ToolsLevels { id: tools; launcher: win }
     AppearanceLevels { id: look; launcher: win }
@@ -710,6 +668,19 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
     RemoveLevels { id: rm; launcher: win }
     PasswordLevels { id: pw; launcher: win }
     ThemeLevels { id: themes; launcher: win }
+    Instantiator {
+        id: pluginLevels
+        model: TopBar.plugin.levels
+        delegate: Loader { source: "file://" + modelData; onLoaded: item.launcher = win }
+        // later: while a file loads, the Instantiator doesn't list its Loader yet (objectAt is null)
+        onObjectAdded: Qt.callLater(win.listPluginExts)
+        onObjectRemoved: Qt.callLater(win.listPluginExts)
+    }
+    function listPluginExts() {
+        const out = []
+        for (let i = 0; i < pluginLevels.count; i++) { const o = pluginLevels.objectAt(i); if (o && o.item) out.push(o.item) }
+        pluginExts = out
+    }
     Loader {
         id: extLoader
         source: win.extSource
@@ -854,7 +825,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         // ⌥⌫: deletes the word to the cursor's left (Hyprland's binding takes the key, so the launcher does it here)
         function deleteWord(): void { if (win.open) win.deleteBack(true) }
         function stepUp(): void { win.detail !== null ? details.scroll(-win.rowHeight) : win.step(-1) }
-        function stepDown(): void { win.detail !== null ? details.scroll(win.rowHeight) : win.playerFocused ? (win.playerFocused = false) : win.step(1) }
+        function stepDown(): void { win.detail !== null ? details.scroll(win.rowHeight) : win.topFocused ? (win.topFocused = false) : win.step(1) }
         function back(): void { win.back() }
     }
 
@@ -896,49 +867,13 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
             anchors { top: parent.top; left: parent.left; right: parent.right; margins: 18 }
             spacing: 12
 
-            // Deck player row (when Deck is installed): play/pause, track, next, like. Not playing → play starts Deck
-            Rectangle {
-                visible: win.hasDeck
+            // A plugin's row (topExt.topRow: Deck's player)
+            Loader {
+                active: win.topExt !== null
+                visible: active
                 width: parent.width
-                height: 40
-                radius: 10
-                color: win.playerFocused ? Theme.sel : "transparent"
-
-                Text {
-                    id: playBtn
-                    anchors { left: parent.left; leftMargin: 14; verticalCenter: parent.verticalCenter }
-                    text: Icons.g(win.deckPlaying ? "pause" : "play")
-                    color: (playArea.containsMouse || win.playerFocused) ? Theme.accent : (win.deckInfo === null ? Theme.dim : Theme.text)
-                    font { family: Icons.familyMedium; pixelSize: 19 }
-                    MouseArea { cursorShape: Qt.PointingHandCursor; id: playArea; anchors { fill: parent; margins: -8 } hoverEnabled: true; onClicked: win.deckPlayPress() }
-                }
-                Text {
-                    anchors { left: playBtn.right; leftMargin: 16; right: nextBtn.visible ? nextBtn.left : parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter }
-                    elide: Text.ElideRight
-                    textFormat: Text.PlainText
-                    text: win.deckInfo ? (win.deckInfo.title + "  —  " + win.deckInfo.artist)
-                                       : (win.deckAlive ? "Deck — nothing playing" : "Deck — not running (press play to start)")
-                    color: win.deckInfo === null ? Theme.dim : (win.deckPlaying ? Theme.accent : Theme.text)
-                    font { family: Theme.font; pixelSize: win.fontSize - 3; weight: win.fontWeight }
-                }
-                Text {
-                    id: nextBtn
-                    visible: win.deckInfo !== null
-                    anchors { right: heartBtn.visible ? heartBtn.left : parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
-                    text: Icons.g("skip-forward")
-                    color: nextArea.containsMouse ? Theme.accent : Theme.text
-                    font { family: Icons.familyMedium; pixelSize: 17 }
-                    MouseArea { cursorShape: Qt.PointingHandCursor; id: nextArea; anchors { fill: parent; margins: -8 } hoverEnabled: true; onClicked: win.deckCtl("next") }
-                }
-                Text {
-                    id: heartBtn
-                    visible: win.deckLiked !== null && win.deckLiked !== undefined
-                    anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
-                    text: Icons.g("heart")
-                    color: win.deckLiked ? Theme.primary : (heartArea.containsMouse ? Theme.accent : Theme.dim)
-                    font { family: Icons.familyMedium; pixelSize: 17 }
-                    MouseArea { cursorShape: Qt.PointingHandCursor; id: heartArea; anchors { fill: parent; margins: -8 } hoverEnabled: true; onClicked: win.deckCtl("like") }
-                }
+                height: item ? item.implicitHeight : 0
+                sourceComponent: win.topExt ? win.topExt.topRow : null
             }
 
             // Search field (+ path when in a sublevel)
@@ -968,10 +903,10 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                     focus: true
                     clip: true
                     onTextChanged: { if (win.detail !== null) details.close()   // a new search (IPC setQuery)
-                                     win.query = text; win.armed = ""; win.playerFocused = false; list.currentIndex = win.firstSelectable() }
+                                     win.query = text; win.armed = ""; win.topFocused = false; list.currentIndex = win.firstSelectable() }
                     Keys.onPressed: event => {
                         const ctrl = event.modifiers & Qt.ControlModifier
-                        if (win.playerFocused && win.handlePlayerKey(event)) { event.accepted = true; return }
+                        if (win.topFocused && win.topExt && win.topExt.topKey(event)) { event.accepted = true; return }
                         // ⌘C (Hyprland sends Ctrl+Insert; Ctrl+C too) on a row with a `copy` value, e.g. an IP address;
                         // selected text in the search field is copied as usual
                         const copyRow = win.results[list.currentIndex]
@@ -991,7 +926,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                         }
                         // Esc with a search typed clears it first (on any level); with an empty one it goes back / closes
                         if (event.key === Qt.Key_Escape) { if (text !== "") text = ""; else win.back(); event.accepted = true }
-                        else if (ctrl && event.key === Qt.Key_Space) { if (win.hasDeck) win.deckPlayPress(); event.accepted = true }
+                        else if (ctrl && event.key === Qt.Key_Space) { if (win.topExt) win.topExt.topPress(); event.accepted = true }
                         // Delete: removes your own wallpaper in Background, the selected snippet in Snippets (empty search). ⌘⌫
                         // arrives as ⇧Home + Delete with the keyd plugin (plugins/keyd/app.conf), so it does the same
                         else if (event.key === Qt.Key_Delete && win.extDelete()) event.accepted = true
@@ -1002,7 +937,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                         } else if (win.grid && (event.key === Qt.Key_Down || event.key === Qt.Key_Up)) {
                             const i = list.currentIndex + (event.key === Qt.Key_Down ? win.gridCols : -win.gridCols)
                             if (i >= 0 && i < win.results.length) list.currentIndex = i
-                            else if (i < 0) win.playerFocused = win.hasDeck
+                            else if (i < 0) win.topFocused = win.topExt !== null
                             event.accepted = true
                         } else if (win.extLevel && ctrl && (event.key === Qt.Key_Up || event.key === Qt.Key_Down) && win.extMove(event.key === Qt.Key_Up ? -1 : 1)) {
                             event.accepted = true
@@ -1049,7 +984,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                     required property int index
                     readonly property bool isHeader: modelData.kind === "header"
                     readonly property bool isNote: modelData.kind === "note"
-                    readonly property bool current: !isHeader && !isNote && !win.playerFocused && index === list.currentIndex
+                    readonly property bool current: !isHeader && !isNote && !win.topFocused && index === list.currentIndex
                     readonly property bool noIcon: modelData.kind === "key" || modelData.kind === "hint" || isHeader || isNote
                     readonly property bool armedNow: (modelData.kind === "action" && modelData.confirm === true && win.armed === modelData.name)
                                                     || (modelData.armKey !== undefined && win.armed === modelData.armKey)
@@ -1310,7 +1245,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                 cellHeight: thumbH + 40
                 height: visible ? Math.min(Math.ceil(win.results.length / win.gridCols) * cellHeight, 2.2 * cellHeight) : 0
                 model: visible ? win.results : []
-                currentIndex: win.playerFocused ? -1 : list.currentIndex
+                currentIndex: win.topFocused ? -1 : list.currentIndex
                 highlightMoveDuration: 0
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
@@ -1319,7 +1254,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                     id: cell
                     required property var modelData
                     required property int index
-                    readonly property bool current: !win.playerFocused && index === list.currentIndex
+                    readonly property bool current: !win.topFocused && index === list.currentIndex
                     readonly property bool active: modelData.path === themes.wallCurrent
                     width: wallGrid.cellWidth
                     height: wallGrid.cellHeight

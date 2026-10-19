@@ -24,6 +24,7 @@ Only `plugin.conf` and `README.md` are required. The other files are used only w
 | `status` | The module's state, one line of JSON | [status](ferry/status) |
 | `icons/` | The module's own SVG icons, for a logo Lucide hasn't got | — (Tailscale's [icons/](tailscale/icons)) |
 | `<Name>Menu.qml` | The menu a click on the module opens (more `.qml` files beside it if it needs them) | [FerryMenu.qml](ferry/FerryMenu.qml) |
+| `<Name>Levels.qml` | Its pages in the launcher, and rows of its own at the root, in the root search and above the search field | — (Deck's [MusicLevels.qml](deck/MusicLevels.qml)) |
 | `bindings.lua` | Keys | — (Deck's [bindings.lua](deck/bindings.lua)) |
 | `SHORTCUTS.md` | Its lines in the key list (⌘⇧K, launcher › Keybindings) | — (Deck's [SHORTCUTS.md](deck/SHORTCUTS.md)) |
 | `hyprland.lua` | Hyprland settings: window rules, and programs that start with the session | — (Deck's [hyprland.lua](deck/hyprland.lua)) |
@@ -157,6 +158,12 @@ Column {
 
 A change to a plugin's menu doesn't reload on save like the core menus: restart Quickshell to see
 it (`qs kill; setsid -f qs`).
+
+**Pages in the launcher.** A `<Name>Levels.qml` is a launcher level file like the core's (`config/quickshell/*Levels.qml`;
+`levels`, `titles`, `parents`, `items`, `activate`, `footer`, `entered`), loaded only while the plugin is on. It may also
+have `rootItems` (rows at the launcher's root: Deck's Music), `rootRows()` (rows for the root search: Deck's albums) and
+`topRow`, a row above the search field (Deck's player), with `topKey(event)` for its keys and `topPress()` for Ctrl+Space.
+Deck's [MusicLevels.qml](deck/MusicLevels.qml) has all of them. The same restart applies.
 
 ## The page: README.md
 
