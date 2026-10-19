@@ -9,6 +9,7 @@ A mailbox between your computers and your phone. Leave photos, files, text or a 
 - Drop files on the inbox icon in the top bar or in its menu, or press Send Clipboard.
 - The menu lists what your other devices sent: a click copies a text or opens a file, a file drags out into another app, and Clear empties the list (files stay in Downloads).
 - Files from the phone go to Downloads, and you get a notification when something arrives.
+- What the phone sends with Clipboard lands on the computer's clipboard too, ready to paste (an image also stays in Downloads).
 - Everything leaves the box after 7 days.
 
 ## On the phone

@@ -488,10 +488,10 @@ function sentOn(btn) {
   btn.sentTimer = setTimeout(() => { use.setAttribute("href", icon0); label(btn, text0) }, SENT_SHOWN)
 }
 
-async function sendText(text, btn) {
+async function sendText(text, btn, clip = false) {
   if (away()) { note("Can't reach " + nameOf(target), true); return false }
   try {
-    await api(target, "api/text", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) })
+    await api(target, "api/text", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, clip }) })
     sentOn(btn)
     refresh()
     return true
@@ -526,8 +526,9 @@ $("sendClip").onclick = async () => {
     $("text").focus()
     return
   }
-  if (image) sendFiles([image], $("sendClip"))
-  else if (text.trim()) sendText(text, $("sendClip"))
+  // clip: the computer puts it on its own clipboard too
+  if (image) sendFiles([image], $("sendClip"), true)
+  else if (text.trim()) sendText(text, $("sendClip"), true)
   // Something the page can't send: say what, rather than "empty". Safari gives a page a copied image only as PNG
   // (a screenshot): a photo from Photos (HEIC, JPEG) doesn't show at all, so "empty" points to Photos & files.
   else note(types.length ? "Can't send this from the clipboard (" + types.join(", ") + ")"
@@ -544,7 +545,7 @@ $("files").onchange = () => {
   $("files").value = ""
   if (files.length) sendFiles(files, $("files").labels[0])
 }
-async function sendFiles(files, btn) {
+async function sendFiles(files, btn, clip = false) {
   if (away()) { note("Can't reach " + nameOf(target), true); return }
   const to = target
   const bar = $("progress"), fill = bar.firstElementChild
@@ -554,7 +555,7 @@ async function sendFiles(files, btn) {
   for (const [i, f] of files.entries()) {
     note(files.length > 1 ? `Sending ${i + 1}/${files.length}` : "Sending")
     try {
-      await upload(to, f, sent => fill.style.width = (100 * (done + sent) / Math.max(1, total)) + "%")
+      await upload(to, f, clip, sent => fill.style.width = (100 * (done + sent) / Math.max(1, total)) + "%")
       done += f.size
     } catch (e) {
       bar.style.display = "none"
@@ -569,10 +570,10 @@ async function sendFiles(files, btn) {
 }
 
 // XMLHttpRequest for the progress (fetch has no upload progress)
-function upload(m, file, progress) {
+function upload(m, file, clip, progress) {
   return new Promise((resolve, reject) => {
     const x = new XMLHttpRequest()
-    x.open("POST", m + "api/upload?" + new URLSearchParams({ name: file.name, type: file.type || "" }))
+    x.open("POST", m + "api/upload?" + new URLSearchParams({ name: file.name, type: file.type || "", ...(clip && { clip: "1" }) }))
     x.setRequestHeader("X-Ferry", "1")
     x.setRequestHeader("Content-Type", "application/octet-stream")
     x.upload.onprogress = e => progress(e.loaded)

@@ -563,16 +563,30 @@ class Ferry:
             self.found = (time.monotonic(), found)
         return [{"url": url(), "name": alias(), "self": True}] + found
 
-    def received_text(self, text, who):
+    def received_text(self, text, who, clip=False):
         with box(write=True) as items:
             items.append(new_item(to="computer", kind="text", text=text, seen=False, **{"from": who}))
-        notify(f"Text from {who}", text[:300], {"copy": ("Copy", lambda: subprocess.run(["wl-copy", "--", text]))})
+        # The phone's Clipboard button means "onto this computer's clipboard": no Copy to press. A typed text waits
+        # for one, so it doesn't replace what was just copied here.
+        if clip:
+            subprocess.run(["wl-copy", "--", text])
+            notify(f"Copied from {who}", text[:300])
+        else:
+            notify(f"Text from {who}", text[:300], {"copy": ("Copy", lambda: subprocess.run(["wl-copy", "--", text]))})
         refresh_bar()
 
-    def received_file(self, path, size, kind, who):
+    def received_file(self, path, size, kind, who, clip=False):
         with box(write=True) as items:
             items.append(new_item(to="computer", kind="file", name=os.path.basename(path), size=size, type=kind,
                                   path=path, seen=False, **{"from": who}))
+        if clip and kind.startswith("image/"):
+            # An image from the phone's clipboard goes onto this one's too, ready to paste; the file stays in Downloads
+            with open(path, "rb") as f:
+                subprocess.run(["wl-copy", "--type", kind], stdin=f)
+            notify(f"Copied {os.path.basename(path)}", f"From {who} · {os.path.basename(os.path.dirname(path))}", {
+                "default": ("Open", lambda: subprocess.Popen(["xdg-open", path])),
+                "show": ("Show in Files", lambda: subprocess.Popen(["nautilus", "--select", path]))})
+            return refresh_bar()
         with self.lock:
             when, paths, nid = self.recent
             paths = (paths if time.monotonic() - when < GROUP_NOTIFY else []) + [path]
@@ -786,7 +800,7 @@ def handler(app):
                     text = str(body.get("text") or "")
                     if not text.strip():
                         return self.send(400, "Empty text")
-                    app.received_text(text[:MAX_TEXT], self.who())
+                    app.received_text(text[:MAX_TEXT], self.who(), clip=bool(body.get("clip")))
                     self.send(200, {"ok": True})
                 elif path == "/api/upload":
                     self.upload(q)
@@ -873,7 +887,7 @@ def handler(app):
                 path = unique(path)
             os.replace(part, path)
             kind = q.get("type") or mimetypes.guess_type(path)[0] or "application/octet-stream"
-            app.received_file(path, size, kind, self.who())
+            app.received_file(path, size, kind, self.who(), clip=q.get("clip") == "1")
             self.send(200, {"ok": True, "name": os.path.basename(path)})
     return Handler
 
