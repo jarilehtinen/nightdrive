@@ -92,6 +92,12 @@ deck_desktop=$HOME/.local/share/applications/deck.desktop
 if [[ -f $deck_desktop ]] && grep -q '/\.config/hypr/scripts/deck-open' "$deck_desktop"; then
   sed -i 's#/\.config/hypr/scripts/deck-open#/.local/bin/deck-open#' "$deck_desktop" && echo "fixed       $deck_desktop"
 fi
+# Web apps from before 19.10.2026 lack --no-first-run (webapp-add): each has a Chromium profile of its own, so each was a
+# first run, and Fedora's /etc/chromium/master_preferences opened its first_run_tabs page in a window of its own
+for f in "$HOME"/.local/share/applications/webapp-*.desktop; do
+  [[ -f $f ]] && grep -q '^Exec=chromium-browser .*--app=' "$f" && ! grep -q -- '--no-first-run' "$f" || continue
+  sed -i 's#^Exec=chromium-browser #Exec=chromium-browser --no-first-run #' "$f" && echo "fixed       $f"
+done
 
 # Session target: brings up graphical-session.target, which xdg-desktop-portal needs (started by hyprland.lua)
 link "$repo/config/systemd/user/nightdrive-session.target" "$HOME/.config/systemd/user/nightdrive-session.target"

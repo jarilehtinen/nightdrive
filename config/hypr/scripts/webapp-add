@@ -35,11 +35,13 @@ hostpath=$(echo "$url" | sed -E 's|^[a-z]+://||; s|[?#].*||')
 [[ $hostpath == */* ]] || hostpath+=/
 wmclass="chrome-${hostpath%%/*}_$(echo "/${hostpath#*/}" | tr / _)-Default"
 
+# --no-first-run: each web app has a Chromium profile of its own, so each start would be a first run, and Fedora's
+# /etc/chromium/master_preferences opens its first_run_tabs page in a window of its own then
 cat > "$apps/webapp-$slug.desktop" <<DESK
 [Desktop Entry]
 Type=Application
 Name=$name
-Exec=chromium-browser --disable-spell-checking --app=$url --user-data-dir=$HOME/.local/share/webapps/$slug
+Exec=chromium-browser --no-first-run --disable-spell-checking --app=$url --user-data-dir=$HOME/.local/share/webapps/$slug
 Icon=$icon
 StartupWMClass=$wmclass
 Categories=Network;
