@@ -267,6 +267,7 @@ which app is yours to choose (launcher › Settings › Keyboard Shortcuts).
 | ⌘ C / V / X · ⌘ S | Copy / paste / cut, in every app · save |
 | ⌘ W · ⌘ Q | Close (background apps are only hidden) · really quit |
 | ⌘ ⇧ F · ⌘ ⇧ T · ⌘ ⇧ J | The window: fullscreen · tile or float · split direction (⌘ ⇧ arrows move it) |
+| ⌥ Tab · ⌥ ⇧ Tab | The app's next · previous window |
 | ⌘ F · ⌘ T · ⌘ J | The app's own: find · new tab · downloads |
 | ⌘ 1…0 · ⌘ ⇧ 1…0 | Go to workspace · move the window there |
 | ⌘ D · ⌘ ⇧ D | Drawer: show / hide · put the window in it, or take it back out |

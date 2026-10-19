@@ -248,6 +248,32 @@ for _, dir in ipairs({ "left", "right", "up", "down" }) do
     hl.bind(mod .. " + SHIFT + " .. dir,     function() NIGHTDRIVE_SWAP(dir) end)   -- slides (hyprland.lua)
 end
 
+-- ⌥Tab / ⌥⇧Tab: the active app's next / previous window (same class), on any workspace (focus goes there), in the order
+-- they opened. Not the ones hidden in special:bg (⌘W on a background app): those were put away on purpose.
+local function cycle_app_windows(step)
+    local w = hl.get_active_window()
+    if not w then return end
+    local list = {}
+    for _, o in ipairs(hl.get_windows({ class = w.class })) do
+        if o.class == w.class and o.mapped and not (o.workspace and o.workspace.name == "special:bg") then
+            table.insert(list, o)
+        end
+    end
+    if #list < 2 then return end
+    table.sort(list, function (a, b) return a.stable_id < b.stable_id end)
+    for i, o in ipairs(list) do
+        if o.address == w.address then
+            local target = list[(i - 1 + step) % #list + 1]
+            hl.dispatch(hl.dsp.focus({ window = "address:" .. target.address }))
+            -- Focus alone leaves a floating window under the others: raise it too
+            hl.dispatch(hl.dsp.window.alter_zorder({ mode = "top", window = "address:" .. target.address }))
+            return
+        end
+    end
+end
+hl.bind("ALT + TAB",         function () cycle_app_windows(1) end)
+hl.bind("ALT + SHIFT + TAB", function () cycle_app_windows(-1) end)
+
 -- Workspaces ⌘1–⌘0, move window ⌘⇧1–⌘⇧0. With the drawer open ⌘1–⌘0 closes it first, otherwise it stays over the
 -- new workspace
 for i = 1, 10 do

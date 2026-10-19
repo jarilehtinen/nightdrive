@@ -36,6 +36,7 @@
   ⌘ ⇧ T              Tile or float the window; a floating one goes to the centre (Deck: tiled → floating at start size in the centre; moved → back to centre; already there → tiles)
   ⌘ ⇧ J              Toggle split direction (vertical/horizontal)
   ⌘ arrows           Move focus between windows
+  ⌥ Tab / ⌥ ⇧ Tab    Next / previous window of the same app (on any workspace)
   ⌘ ⇧ arrows         Move window
   ⌘ + mouse drag     Move window / right button: resize
   ⌘ ⌥ ← / →         Previous / next tab (any app: sends Ctrl+PageUp/PageDown)
