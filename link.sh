@@ -109,6 +109,9 @@ link "$repo/config/systemd/user/nightdrive-session.target" "$HOME/.config/system
 units=(nightdrive-update-check.service nightdrive-update-check.timer nightdrive-snippets.service)
 for u in "${units[@]}"; do link "$repo/config/systemd/user/$u" "$HOME/.config/systemd/user/$u"; done
 
+# ⌘Enter (terminal) and ⌘⌥Enter (Claude Code) open in ~/Projects, and kitty fails to start in a folder that doesn't exist
+mkdir -p "$HOME/Projects"
+
 # The nightdrive command (bin/nightdrive)
 mkdir -p "$HOME/.local/bin"
 for f in "$repo"/bin/*; do link "$f" "$HOME/.local/bin/$(basename "$f")"; done
