@@ -80,12 +80,9 @@ PanelWindow {
         Quickshell.execDetached(["bash", "-c", 'mkdir -p "$(dirname "$2")" && printf "%s\\n" "$1" > "$2.tmp" && mv "$2.tmp" "$2"',
                                  "_", JSON.stringify(n), prefsFile])
     }
-    property var wallList: []                 // Settings › Background: [{ path, thumb, name, group, own }] (hypr/scripts/wallpaper list)
-    property bool wallLoaded: false
-    property string wallCurrent: ""           // current wallpaper
     property int updates: 0                   // Update: new Nightdrive commits waiting (nightdrive update check, every 6 h)
-    property var themeList: []                // Settings › Theme › Color: [{ value, name, swatch, current }] (hypr/scripts/theme list)
-    readonly property bool grid: level === "background"   // wallpapers as a grid, other levels as a list
+    // Background's wallpapers as a grid once they're read (ThemeLevels.qml), other levels as a list
+    readonly property bool grid: level === "background" && themes.wallLoaded
     readonly property int gridCols: 2
     readonly property bool hasDeck: Plugins.has("deck")   // Deck (an optional part): the player row, Music, Ctrl+Space
     property var deckInfo: null               // Deck playback state (state.json): null = not playing / not running
@@ -100,8 +97,9 @@ PanelWindow {
     // (Settings › Launcher, Computer name, Notifications, Update channel), MusicLevels.qml (Music, with Deck), InstallLevels.qml
     // (Install's pages), ToolsLevels.qml (Clipboard, Emoji, Snippets),
     // AppearanceLevels.qml (Top bar, Screensaver), DisplayLevels.qml (Display, Battery), RemoveLevels.qml
-    // (Remove), PasswordLevels.qml (Passwords, with 1Password) and the private extension; they answer the same questions (items, activate, footer, entered). A new file goes in this list, not in each question's code
-    readonly property var exts: [sys, home, defs, akeys, behave, music, inst, tools, look, disp, rm, pw].concat(ext ? [ext] : [])
+    // (Remove), PasswordLevels.qml (Passwords, with 1Password), ThemeLevels.qml
+    // (Theme, Background) and the private extension; they answer the same questions (items, activate, footer, entered). A new file goes in this list, not in each question's code
+    readonly property var exts: [sys, home, defs, akeys, behave, music, inst, tools, look, disp, rm, pw, themes].concat(ext ? [ext] : [])
     function extOf(l) { return exts.find(e => e.levels.indexOf(l) >= 0) || null }
     readonly property bool extLevel: extOf(level) !== null
     readonly property int selIndex: list.currentIndex
@@ -109,7 +107,7 @@ PanelWindow {
     function search(target, text) { go(target); input.text = text }   // a level with its query typed (Default apps › Find more)
     readonly property var swCats: inst.swCats                          // Install › Software's categories (Default apps › Find more)
     function openCategory(key, name) { inst.openCategory(key, name) }
-    readonly property var parents: Object.assign({ install: "system", screenshot: "tools", theme: "settings", themecolor: "theme", background: "theme", startup: "settings" }, ...exts.map(e => e.parents))
+    readonly property var parents: Object.assign({ install: "system", screenshot: "tools", startup: "settings" }, ...exts.map(e => e.parents))
     // Search found nothing: hint below ⌘⌥⏎ (icons) → send the text to Claude
     readonly property bool noHit: (level === "root" || level === "apps") && query.trim() !== "" && results.length === 0
     // The selected row is an app: ⌃Enter shows it in Apps (the list with an empty query) or hides it from there.
@@ -264,13 +262,6 @@ PanelWindow {
                                               "Scale": "scaling resolution monitor screen retina hidpi zoom size bigger smaller",
                                               "Screen Mirroring": "airplay cast mirror apple tv share screen" })
     // Settings › Theme: sub-items (Color with its current value)
-    function themeItems() {
-        const cur = themeList.find(t => t.current)
-        return [
-            { kind: "nav", name: "Color", glyph: "palette", target: "themecolor", summary: cur ? cur.name.toLowerCase() : undefined },
-            { kind: "nav", name: "Background", glyph: "wallpaper", target: "background" }
-        ]
-    }
     // Settings › Display for the root search: the brightness slider row itself (←/→ work there too), the night light toggle
     // and Scale (opens Display)
     function displayItems() {
@@ -394,7 +385,7 @@ PanelWindow {
                 statics.screenshot.map(t => ({ item: Object.assign({}, t, { from: "Screenshot" }), text: t.name, extra: "screenshot capture screen" })),
                 // Settings items ("wallpaper" → Background, "wifi" → Wi-Fi) plus Theme and Top bar sub-items ("opacity")
                 statics.settings.filter(t => t.kind !== "header").map(t => ({ item: Object.assign({}, t, { from: "Settings" }), text: t.name, extra: "settings " + (settingsAliases[t.name] || "") })),
-                themeItems().map(t => ({ item: Object.assign({}, t, { from: "Theme", summary: undefined }), text: t.name, extra: "theme " + (settingsAliases[t.name] || "") })),
+                themes.themeItems().map(t => ({ item: Object.assign({}, t, { from: "Theme", summary: undefined }), text: t.name, extra: "theme " + (settingsAliases[t.name] || "") })),
                 look.topbarItems().map(t => ({ item: Object.assign({}, t, { from: "Top bar", summary: undefined }), text: t.name, extra: settingsAliases[t.name] || "" })),
                 // Display and Screensaver sub-items ("night" → Night light, "dim" → Brightness, "saver" → Start after)
                 displayItems().map(t => ({ item: Object.assign({}, t, { from: "Display" }), text: t.name, extra: "display " + (settingsAliases[t.name] || "") })),
@@ -433,17 +424,6 @@ PanelWindow {
             all = r.all                   // [{ item, text, extra }], filtered by the query below
             tail = r.tail || []           // rows after a search's hits
             short = r.short === true      // thousands of short names (Emoji): no fuzzy matching, the shortest first
-        } else if (level === "background") {
-            if (!wallLoaded) return [{ kind: "hint", name: "Loading backgrounds… (first time creates previews)" }]
-            // "Add new…" first: file picker (hypr/scripts/wallpaper add), images are copied to ~/Pictures/Wallpapers
-            all = [{ item: { kind: "walladd", name: "Add new…" }, text: "Add new", extra: "import file" }]
-                .concat(wallList.map(w => ({ item: Object.assign({ kind: "wall" }, w), text: w.name, extra: w.group })))
-        } else if (level === "theme") {
-            all = themeItems().map(t => ({ item: t, text: t.name, extra: settingsAliases[t.name] || "" }))
-        } else if (level === "themecolor") {
-            if (themeList.length === 0) return [{ kind: "hint", name: "Loading…" }]
-            all = themeList.map(t => ({ item: { kind: "themecolor", value: t.value, name: t.name, swatch: t.swatch,
-                                               summary: t.current ? "current" : (t.value === "violet" ? "default" : undefined) }, text: t.name }))
         } else if (level === "startup") {
             all = appEntries(q).map(a => {
                 const on = autostartIds.indexOf(appId(a.item)) >= 0
@@ -489,8 +469,6 @@ PanelWindow {
         if (target === "keys") keysProc.running = true     // re-read SHORTCUTS.md: changes show up immediately
         list.currentIndex = firstSelectable()
         if (target === "settings") behave.entered("settings")   // the computer name and channel on its rows
-        if (target === "background") wallProc.running = true
-        if (target === "theme" || target === "themecolor") themeProc.running = true
         if (target === "display") sys.entered("display")   // Screen Mirroring's rows there
         if (extOf(target)) extOf(target).entered(target)
     }
@@ -608,19 +586,6 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         }
         else if (item.kind === "stat" && item.copy !== undefined) sys.copyText(item.copy)   // Public IP, Local IP, Router: as ⌘C
         else if (item.kind === "stat") shake.restart()   // information only
-        else if (item.kind === "themecolor") {   // stays open: colors can be tried one after another, and recolor the launcher at once
-            keepSelection()
-            themeList = themeList.map(t => Object.assign({}, t, { current: t.value === item.value }))
-            Quickshell.execDetached([scripts + "/theme", "color", String(item.value)])
-        }
-        else if (item.kind === "walladd") {   // launcher closes while the picker is open; the script reopens Background
-            win.open = false
-            Quickshell.execDetached([scripts + "/wallpaper", "add"])
-        }
-        else if (item.kind === "wall") {      // launcher stays open: wallpapers can be tried one after another, Esc closes
-            wallCurrent = item.path
-            Quickshell.execDetached([scripts + "/wallpaper", "set", item.path])
-        }
         else if (exts.some(e => e.activate(item))) {}
         else if (item.kind === "menu") { win.open = false; win.openMenu(item.target) }
         else if (item.src && detail === null) showDetail(item)
@@ -655,21 +620,6 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         }
         if (start < end) input.remove(start, end)
     }
-    // ⌘⌫ in Background (bindings.lua → IPC deleteSelected): a second press moves your own image to the trash.
-    // Only your own images (~/Pictures/Wallpapers, `own` from hypr/scripts/wallpaper list); bundled ones can't be deleted.
-    function deleteWall() {
-        const item = results[list.currentIndex]
-        if (!item || item.kind !== "wall" || !item.own) { shake.restart(); return }
-        const key = "del:" + item.path
-        if (armed !== key) { armed = key; disarm.restart(); return }
-        armed = ""
-        if (wallCurrent === item.path) wallCurrent = ""
-        wallList = wallList.filter(w => w.path !== item.path)
-        if (list.currentIndex >= results.length) list.currentIndex = results.length - 1
-        Quickshell.execDetached([scripts + "/wallpaper", "remove", item.path])
-        wallReload.restart()
-    }
-    Timer { id: wallReload; interval: 600; onTriggered: wallProc.running = true }   // current wallpaper (the default, if the deleted one was in use)
 
     // The selection changes only when the mouse actually moves. Merely "mouse is over a row" isn't enough,
     // because a stationary cursor left under the launcher (or a scrolling list) would trigger it.
@@ -818,37 +768,13 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
     DisplayLevels { id: disp; launcher: win }
     RemoveLevels { id: rm; launcher: win }
     PasswordLevels { id: pw; launcher: win }
+    ThemeLevels { id: themes; launcher: win }
     Loader {
         id: extLoader
         source: win.extSource
         onLoaded: item.launcher = win
     }
     function esc(t) { return String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") }
-    // Settings › Background: wallpapers and their previews (the script creates missing previews the first time)
-    Sh {
-        id: wallProc
-        script: 's="$HOME/.config/hypr/scripts/wallpaper"; "$s" current; "$s" list'
-        onResult: text => {
-            const lines = text.split("\n").filter(l => l !== "")
-            win.wallCurrent = lines.length ? lines[0] : ""
-            win.wallList = lines.slice(1).map(l => l.split("\t")).filter(f => f.length >= 4)
-                .map(f => ({ path: f[0], thumb: f[1], name: f[2], group: f[3], own: f[4] === "1" }))
-            const first = !win.wallLoaded
-            win.wallLoaded = true
-            // On open, select the current wallpaper
-            if (first || win.query === "") win.selectWhere(r => r.path === win.wallCurrent)
-        }
-    }
-    // Settings › Theme › Color: themes and the current one; select the current one
-    Sh {
-        id: themeProc
-        command: [win.scripts + "/theme", "list"]
-        onResult: text => {
-            win.themeList = text.split("\n").map(l => l.split("\t")).filter(f => f.length >= 3)
-                .map(f => ({ value: f[0], name: f[1], swatch: f[2], current: f[3] === "current" }))
-            if (win.level === "themecolor" && win.query === "") win.selectWhere(r => r.value === (win.themeList.find(t => t.current) || {}).value)
-        }
-    }
     Sh {
         id: updatesProc
         script: 'cat "$HOME/.cache/nightdrive/updates" 2>/dev/null'
@@ -970,8 +896,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         // ⌘⌫ (bindings.lua): in Background removes your own wallpaper, elsewhere deletes the query to the cursor's left (like macOS)
         function deleteSelected(): void {
             if (!win.open) return
-            if (win.level === "background" && win.wallLoaded) win.deleteWall()
-            else if (win.extDelete()) {}
+            if (win.extDelete()) {}
             else win.deleteBack(false)
         }
         // ⌘Q (hypr/scripts/quit-app asks first): with the launcher open quits the selected app if it's running, otherwise
@@ -1128,13 +1053,12 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                         else if (ctrl && event.key === Qt.Key_Space) { if (win.hasDeck) win.deckPlayPress(); event.accepted = true }
                         // Delete: removes your own wallpaper in Background, the selected snippet in Snippets (empty search). ⌘⌫
                         // arrives as ⇧Home + Delete with the keyd plugin (plugins/keyd/app.conf), so it does the same
-                        else if (event.key === Qt.Key_Delete && win.level === "background" && win.wallLoaded) { win.deleteWall(); event.accepted = true }
                         else if (event.key === Qt.Key_Delete && win.extDelete()) event.accepted = true
                         // Backspace with an empty search goes back; Ctrl+⌫ (⌥⌫ with keyd: delete a word) doesn't
                         else if (event.key === Qt.Key_Backspace && !ctrl && text === "" && win.level !== "root") { win.back(); event.accepted = true }
-                        else if (win.grid && win.wallLoaded && (event.key === Qt.Key_Left || event.key === Qt.Key_Right)) {
+                        else if (win.grid && (event.key === Qt.Key_Left || event.key === Qt.Key_Right)) {
                             win.step(event.key === Qt.Key_Left ? -1 : 1); event.accepted = true
-                        } else if (win.grid && win.wallLoaded && (event.key === Qt.Key_Down || event.key === Qt.Key_Up)) {
+                        } else if (win.grid && (event.key === Qt.Key_Down || event.key === Qt.Key_Up)) {
                             const i = list.currentIndex + (event.key === Qt.Key_Down ? win.gridCols : -win.gridCols)
                             if (i >= 0 && i < win.results.length) list.currentIndex = i
                             else if (i < 0) win.playerFocused = win.hasDeck
@@ -1169,7 +1093,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                 id: list
                 width: parent.width
                 // On the grid level the list is hidden, but its currentIndex is still the selection (keys, Enter)
-                visible: (!win.grid || !win.wallLoaded) && win.detail === null
+                visible: !win.grid && win.detail === null
                 height: visible ? win.listHeight() : 0
                 model: win.results
                 clip: true
@@ -1741,7 +1665,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
             // Settings › Background: previews in two columns, name below; current wallpaper marked with ✓
             GridView {
                 id: wallGrid
-                visible: win.grid && win.wallLoaded
+                visible: win.grid
                 width: parent.width
                 readonly property int thumbH: Math.round((cellWidth - 12) * 390 / 600)
                 cellWidth: width / win.gridCols
@@ -1758,7 +1682,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                     required property var modelData
                     required property int index
                     readonly property bool current: !win.playerFocused && index === list.currentIndex
-                    readonly property bool active: modelData.path === win.wallCurrent
+                    readonly property bool active: modelData.path === themes.wallCurrent
                     width: wallGrid.cellWidth
                     height: wallGrid.cellHeight
                     Rectangle {

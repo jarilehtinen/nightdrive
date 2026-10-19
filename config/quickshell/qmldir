@@ -43,3 +43,4 @@ AppearanceLevels 1.0 AppearanceLevels.qml
 DisplayLevels 1.0 DisplayLevels.qml
 RemoveLevels 1.0 RemoveLevels.qml
 PasswordLevels 1.0 PasswordLevels.qml
+ThemeLevels 1.0 ThemeLevels.qml
