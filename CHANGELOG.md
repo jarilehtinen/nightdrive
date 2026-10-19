@@ -3,6 +3,15 @@
 What each release of Nightdrive changed, newest first. `nightdrive update` shows the new ones when it's done, and
 each is also the release's page on [GitHub](https://github.com/nightdrive-sh/nightdrive/releases).
 
+## 0.3.0 – 2026-10-19
+
+- **Ferry sends to the device you pick:** one of your phones or another computer, from the pill in Ferry's menu. Only
+  that device gets it. Another computer gets it straight away, and Send Clipboard puts it on that computer's clipboard.
+- **Ferry's menu and phone page are new:** what arrived on one card, and Aa (a text), Send Clipboard and + (files) below
+  it. Drag files over the menu to drop them on a device. Add Device is in the pill's list.
+- **Undo for windows:** ⌘⇧U opens the window you closed with ⌘W again, where it was.
+- File pickers open floating in the middle of the screen.
+
 ## 0.2.0 – 2026-10-19
 
 The first release tested on a real PC (Intel, NVIDIA RTX, a USB keyboard), with the fixes that came out of it.
