@@ -19,7 +19,7 @@ Rectangle {
 
     property var row: ({})
     property var n: null
-    readonly property var actions: n ? n.actions.filter(a => a.identifier !== "default") : []
+    readonly property var actions: n ? Notifs.buttons(n) : []
     // The preview's file (file:// URI and path), "" when there's none
     readonly property string fileUri: {
         const i = row.preview ? row.image || "" : ""

@@ -6,7 +6,7 @@ import Quickshell
 // own card, the same as the popups (NotificationCard.qml) and in the same place, so one is easy to find again.
 // Click = open the app, ×, right click or a two-finger swipe right = remove it, Clear = remove all (the cards slide
 // a little to the right and fade out one after another, NotificationCard.sweep()). A screenshot's preview drags out
-// as a file; the menu closes when it lands.
+// as a file; the menu closes when it lands. A notification still open has its app's buttons, as in the popup.
 // The power actions (lock, suspend, log out, reboot, shut down) live in the launcher (⌘Space › Power).
 Column {
     id: m
@@ -122,6 +122,8 @@ Column {
                     required property var modelData
                     required property int index
                     row: modelData
+                    // Its notification while the app keeps it open: the app's buttons answer from here too (Salli, Kiellä)
+                    n: Notifs.live[modelData.uid] || null
                     width: cards.width
                     enabled: !m.clearing
                     color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, m.bgOpacity)

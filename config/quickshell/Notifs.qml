@@ -190,14 +190,20 @@ Singleton {
     // Chromium sends every site's notification as its own (app name Chromium, desktop entry chromium-browser, its logo as
     // the app icon) and puts the site's address first in the body: "app.slack.com\n\nNew message". That address is all
     // that tells the webapps apart: Quickshell doesn't give the sender's process, whose --user-data-dir would.
+    function chromium(n) { return /^chromium/i.test(n.desktopEntry || "") }
     function site(n) {
-        if (!/^chromium/i.test(n.desktopEntry || "")) return ""
+        if (!chromium(n)) return ""
         const m = (n.body || "").match(/^([^\s\/]+)\n\n/)
         return m ? m[1] : ""
     }
+    // The buttons a card shows. Not "default" (the click on the card is that), nor Chromium's own Settings on every site's
+    // notification: its notification permissions page, beside a site's own buttons (Salli, Kiellä) only noise.
+    function buttons(n) {
+        return n.actions.filter(a => a.identifier !== "default" && !(a.identifier === "settings" && chromium(n)))
+    }
+    // The text without the site's line when a webapp's name says it already; a browser tab's keeps it (which site)
     function bodyOf(n) {
-        const at = site(n)
-        return at ? n.body.slice(at.length + 2) : n.body
+        return webapp(n) ? n.body.slice(site(n).length + 2) : n.body
     }
     // The webapp whose site sent it (webapp-add: Exec=chromium-browser … --app=https://<site>/…)
     function webapp(n) {
