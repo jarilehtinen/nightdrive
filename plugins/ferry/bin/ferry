@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 """Ferry: a mailbox between this computer and your phone, over Tailscale (experimental).
 
-    ferry send [FILE…|TEXT]       files, or a text; with nothing: what is piped in, or the clipboard
+    ferry send [FILE…|TEXT]       files, or a text; with nothing: what is piped in, or the clipboard (--to DEVICE: see below)
     ferry list                    what's in the box, numbered: what was received (1 is the newest), then what was sent
     ferry get [N]                 an item (1, the newest received, by default): a text printed, a file copied here
     ferry open | copy N           a file opened, a text to the clipboard
@@ -13,12 +13,15 @@
     ferry run                     the server itself (the service)
     ferry list --json             the box and Ferry's state, for the top bar's menu
     ferry qr --svg                the QR code as an SVG file (prints its path), for the menu
-    ferry add FILE…               leaves files (or a folder's files) for the phone, without a word (the menu's drop)
+    ferry add FILE…               sends files (or a folder's files) without a word (the menu's drop)
     ferry pick                    the same, files chosen in a file dialog (several at once); then the menu says "Sent"
-    ferry text TEXT               leaves a text for the phone
-    ferry send-clipboard          leaves the clipboard's text for the phone (a notification if it has none)
+    ferry text TEXT               sends a text
+    ferry send-clipboard          sends the clipboard's text (a notification if it has none); to a computer, onto its clipboard
+    ferry devices                 the owner's other devices: computers running Ferry and phones, the picked one marked
+    ferry target [DEVICE]         the device sends go to (the last one picked), or picks one
     ferry seen                    marks what came from the phone as seen (the bar's count goes)
     N is a number from `ferry list`, or an item's id (the menu uses those: numbers change as the box does).
+    send, add, pick, text and send-clipboard take --to DEVICE (its name in `ferry devices`) for one send, else the target.
 
 Either end leaves files or text in the box, and they wait there until the other end picks them up. The phone needs no
 app: a web page served by this script, which it can add to its Home Screen (a PWA with Web Push notifications). The
@@ -29,6 +32,12 @@ certificate (iOS writes to the clipboard and allows a PWA and Web Push only on H
 request is answered only for the Tailscale user who owns this machine (Tailscale-User-Login, which tailscale serve sets
 and a client can't). A custom header on every API call keeps other web pages on the phone from posting here (their
 cross-site request would need a CORS preflight, which isn't answered).
+
+Every send goes to one device. For a phone it waits in this computer's box, marked for that phone ("for"): only that
+phone's page lists it (the page asks every computer, and each answers with what is for the device asking) and only it
+gets the notification. For another computer it goes straight there, as the phone's page sends: it lands in that
+computer's box and menu, and Send Clipboard onto its clipboard. The server keeps the owner's computers that answer as
+Ferry in STATE/machines.json for the commands and the menu (`ferry devices`).
 
 Several computers: each runs its own Ferry, and the page shows them as one. It asks its own computer which of the owner's
 other machines answer at MOUNT (/api/machines), lists what all of them hold, and sends to the one picked above the form,
@@ -92,6 +101,8 @@ CHUNK = 1 << 20
 GROUP_NOTIFY = 20            # seconds: files from the phone within this time share one notification
 PUSH_CONTACT = "https://github.com/nightdrive-sh/nightdrive"   # the VAPID "sub": push services want a contact URL
 IDLE_AFTER = 60              # seconds without input before the desktop tells logind it's idle (hypr/hypridle.conf)
+MACHINES_EVERY = 300         # seconds between the server's looks for the owner's other computers running Ferry
+SENT_SHOWN = 5               # seconds the menu shows "Sent" for a send (STATE/sent.json), whoever sent it
 
 
 def downloads():
@@ -206,6 +217,7 @@ class Tailnet:
         self.hosts = set()      # the owner's machines' tailnet names (this one too)
         self.me = ""            # this machine's tailnet name
         self.machines = []      # the owner's other machines that are online and could run Ferry: their tailnet names
+        self.ids = set()        # the owner's other machines' short tailnet names, online or not
 
     def load(self, force=False):
         if not force and time.monotonic() - self.when < 60:
@@ -222,6 +234,8 @@ class Tailnet:
         self.machines = [p["DNSName"].rstrip(".") for p in (st.get("Peer") or {}).values()
                          if p.get("UserID") == uid and p.get("Online") and p.get("DNSName")
                          and p.get("OS") not in ("iOS", "android")]
+        self.ids = {p["DNSName"].split(".")[0] for p in (st.get("Peer") or {}).values()
+                    if p.get("UserID") == uid and p.get("DNSName")}
         names = {}
         for p in list((st.get("Peer") or {}).values()) + [me]:
             # The tailnet name: an iPhone's HostName is "localhost"
@@ -321,7 +335,7 @@ def unique(path):
 def public(item):
     """An item as the page and the menu see it (no paths for the page)."""
     d = {k: item[k] for k in ("id", "to", "kind", "time") if k in item}
-    for k in ("text", "name", "size", "type", "from", "seen"):
+    for k in ("text", "name", "size", "type", "from", "for", "seen"):
         if k in item:
             d[k] = item[k]
     return d
@@ -340,8 +354,9 @@ def file_paths(paths):
     return out
 
 
-def add_files(paths):
-    """Leaves files for the phone: a hard link when possible (no copy of a big video), a copy otherwise."""
+def add_files(paths, device=""):
+    """Leaves files in the box for a phone (device: its tailnet name; "" for any): a hard link when possible (no copy of
+    a big video), a copy otherwise."""
     files = file_paths(paths)
     if not files:
         return 1
@@ -349,6 +364,8 @@ def add_files(paths):
     for src in files:
         it = new_item(to="phone", kind="file", name=safe_name(os.path.basename(src)), size=os.path.getsize(src),
                       type=mimetypes.guess_type(src)[0] or "application/octet-stream")
+        if device:
+            it["for"] = device
         d = os.path.join(STATE, "files", it["id"])
         os.makedirs(d, exist_ok=True)
         it["path"] = os.path.join(d, it["name"])
@@ -360,19 +377,26 @@ def add_files(paths):
     with box(write=True) as items:
         items += added
     what = added[0]["name"] if len(added) == 1 else f"{len(added)} files"
-    push_all(alias(), what, item=added[0])   # iOS shows the title as "<title> from Ferry"
+    push_all(alias(), what, item=added[0], device=device)   # iOS shows the title as "<title> from Ferry"
     return 0
 
 
-def add_text(text):
+def add_text(text, device=""):
     if not text.strip():
         return 1
     text = text[:MAX_TEXT]
     it = new_item(to="phone", kind="text", text=text)
+    if device:
+        it["for"] = device
     with box(write=True) as items:
         items.append(it)
-    push_all(alias(), text[:180], item=it)
+    push_all(alias(), text[:180], item=it, device=device)
     return 0
+
+
+def for_device(item, device):
+    """Whether the page on device lists an item: what it sent, and what waits for it or for any phone."""
+    return item.get("to") != "phone" or not item.get("for") or item["for"] == device
 
 
 def find(item_id):
@@ -529,6 +553,11 @@ def targets(subs, relayed):
     return [s for s in subs if not (relayed and s.get("direct")) and (s.get("direct") or s.get("device") not in direct)]
 
 
+def recipients(subs, relayed, device=""):
+    """targets(), and of those only the named phone's when a send is for one device."""
+    return [s for s in targets(subs, relayed) if not device or s.get("device") == device]
+
+
 def subscription(sub, device):
     """The stored form of an api/subscribe body, or None when it isn't a push subscription."""
     if not (isinstance(sub, dict) and str(sub.get("endpoint", "")).startswith("https://") and
@@ -541,17 +570,18 @@ def subscription(sub, device):
     return entry
 
 
-def push_all(title, body, machine="", item=None):
+def push_all(title, body, machine="", item=None, device=""):
     """A notification on every subscribed phone, and through the relays on the phones that added another computer's
     page. machine: the address of the computer it is about ("" = this one), so a tap opens the page on it. item: the
-    item it is about. A subscription the push service no longer knows (404/410) goes."""
+    item it is about. device: only that phone (its tailnet name), "" for all. A subscription the push service no longer
+    knows (404/410) goes."""
     if not machine:
         own = url()
         for via in relays():
             if via != own:
-                threading.Thread(target=relay_push, args=(via, title, body, own), daemon=True).start()
+                threading.Thread(target=relay_push, args=(via, title, body, own, device), daemon=True).start()
     key = vapid_key()
-    subs = targets(subscriptions(), relayed=bool(machine)) if key else []
+    subs = recipients(subscriptions(), bool(machine), device) if key else []
     gone = []
     content = payload(title, body, machine, item)
     for sub in subs:
@@ -575,10 +605,11 @@ def push_all(title, body, machine="", item=None):
             t.join(10)
 
 
-def relay_push(via, title, body, own):
-    """Asks the computer at via to notify its phones about this one (through Tailscale: it knows who asks)."""
+def relay_push(via, title, body, own, device=""):
+    """Asks the computer at via to notify its phones (or the one named device) about this one (through Tailscale: it
+    knows who asks)."""
     threading.current_thread().name = "relay"
-    data = json.dumps({"title": title, "body": body, "machine": own}, ensure_ascii=False).encode()
+    data = json.dumps({"title": title, "body": body, "machine": own, "device": device}, ensure_ascii=False).encode()
     req = urllib.request.Request(via + "api/relay-push", data, method="POST",
                                  headers={"X-Ferry": "1", "Content-Type": "application/json"})
     try:
@@ -588,14 +619,34 @@ def relay_push(via, title, body, own):
 
 
 def probe(host):
-    """The address and name of Ferry on one of the owner's machines, or None (not running, asleep)."""
+    """Ferry on one of the owner's machines: its address, name, tailnet name (id) and seconds idle, or None (not running,
+    asleep)."""
     u = f"https://{host}{'' if HTTPS_PORT == 443 else f':{HTTPS_PORT}'}{MOUNT}/"
     try:
         req = urllib.request.Request(u + "api/ping", headers={"X-Ferry": "1"})
-        name = json.loads(urllib.request.urlopen(req, timeout=4).read()).get("computer")
-        return {"url": u, "name": name or host.split(".")[0]}
+        j = json.loads(urllib.request.urlopen(req, timeout=4).read())
+        return {"url": u, "name": j.get("computer") or host.split(".")[0], "id": host.split(".")[0], "idle": j.get("idle")}
     except (OSError, ValueError, AttributeError):
         return None
+
+
+def known_machines(change=None):
+    """The owner's computers that answered as Ferry ({id, name, url, idle, seen}), kept by the server for the commands
+    and the menu; one that stops answering stays, asleep, while Tailscale still lists it."""
+    path = os.path.join(STATE, "machines.json")
+    try:
+        with open(path) as f:
+            out = json.load(f)
+    except (OSError, ValueError):
+        out = []
+    if change:
+        change(out)
+        os.makedirs(STATE, mode=0o700, exist_ok=True)
+        tmp = path + ".tmp"
+        with open(tmp, "w") as f:
+            json.dump(out, f, ensure_ascii=False)
+        os.replace(tmp, path)
+    return out
 
 
 # --- The server -----------------------------------------------------------------------------------------------------
@@ -628,7 +679,13 @@ class Ferry:
                 t.join(6)
             found = sorted((r for r in results if r), key=lambda r: r["name"].lower())
             self.found = (time.monotonic(), found)
-        return [{"url": url(), "name": alias(), "self": True}] + found
+            now, ids = time.time(), {r["id"] for r in found}
+
+            def merge(known):
+                known[:] = [k for k in known if k.get("id") not in ids and k.get("id") in self.tailnet.ids] + \
+                           [dict(r, seen=now) for r in found]
+            known_machines(merge)
+        return [{"url": url(), "name": alias(), "self": True}] + [{"url": r["url"], "name": r["name"]} for r in found]
 
     def received_text(self, text, who, clip=False):
         with box(write=True) as items:
@@ -808,8 +865,9 @@ def handler(app):
                 except OSError:
                     self.send(404, "Not found")
             elif path == "/api/items":
+                who = self.who()
                 with box() as items:
-                    out = [public(i) for i in items]
+                    out = [public(i) for i in items if for_device(i, who)]
                 self.send(200, {"computer": alias(), "items": out, "keep": KEEP_DAYS, "idle": idle_for(),
                                 "push": b64u(point(app.key)) if app.key else None})
             elif path.startswith("/font/") and path[6:] in FONT_FILES:
@@ -819,7 +877,7 @@ def handler(app):
                 except OSError:
                     self.send(404, "Not found")   # the page falls back to the system font
             elif path == "/api/ping":
-                self.send(200, {"computer": alias()})
+                self.send(200, {"computer": alias(), "idle": idle_for()})
             elif path == "/api/machines":
                 self.send(200, {"machines": app.machines(), "push": b64u(point(app.key)) if app.key else None})
             elif path.startswith("/api/file/"):
@@ -908,7 +966,8 @@ def handler(app):
                     machine = str(msg.get("machine", ""))
                     if not app.tailnet.same_owner(machine):
                         return self.send(400, "Not a Ferry page of yours")
-                    push_all(str(msg.get("title", ""))[:200], str(msg.get("body", ""))[:300], machine)
+                    push_all(str(msg.get("title", ""))[:200], str(msg.get("body", ""))[:300], machine,
+                             device=str(msg.get("device", ""))[:100])
                     self.send(200, {"ok": True})
                 elif path == "/api/test-push":
                     if not app.key:
@@ -972,10 +1031,21 @@ def tidy():
         time.sleep(3600)
 
 
+def look_around(app):
+    """The owner's other computers running Ferry, found again now and then for `ferry devices` (machines.json)."""
+    while True:
+        try:
+            app.machines()
+        except Exception as e:   # a thread that dies would leave the list as it was for good
+            print(f"looking for the other computers failed: {e!r}", flush=True)
+        time.sleep(MACHINES_EVERY + 1)   # past Ferry.machines()'s minute, so it looks again
+
+
 def run():
     app = Ferry()
     server = Server(("127.0.0.1", PORT), handler(app))
     threading.Thread(target=tidy, daemon=True).start()
+    threading.Thread(target=look_around, args=(app,), daemon=True).start()
     print(f"Ferry on 127.0.0.1:{PORT}{'' if app.key else ' (no Web Push: python3-cryptography is missing)'}",
           flush=True)
     server.serve_forever()
@@ -1015,13 +1085,131 @@ def serve(on):
     return out.splitlines()[-1] if out else f"tailscale serve failed ({res.returncode})"
 
 
+def devices(st=None):
+    """The owner's other devices, computers first: {id (the short tailnet name), name, kind (computer, phone, tablet),
+    online, inUse (a computer in use when last asked)}. Computers are the ones the server found running Ferry
+    (machines.json), asleep while Tailscale says they're offline; phones and tablets come from Tailscale."""
+    st = st or tailscale_status()
+    me = st.get("Self") or {}
+    uid = me.get("UserID")
+    peers = {(p.get("DNSName") or "").split(".")[0]: p for p in (st.get("Peer") or {}).values()
+             if p.get("UserID") == uid and p.get("DNSName")}
+    out = []
+    for m in sorted(known_machines(), key=lambda m: m.get("name", "").lower()):
+        p = peers.get(m.get("id"))
+        if not p or p.get("OS") in ("iOS", "android"):
+            continue
+        online = bool(p.get("Online"))
+        out.append({"id": m["id"], "name": m.get("name") or m["id"], "kind": "computer", "online": online,
+                    "inUse": online and m.get("idle") == 0})
+    for pid, p in sorted(peers.items()):
+        if p.get("OS") in ("iOS", "android"):
+            tablet = "ipad" in (pid + (p.get("HostName") or "")).lower() or "tablet" in pid.lower()
+            out.append({"id": pid, "name": pid, "kind": "tablet" if tablet else "phone", "online": bool(p.get("Online")),
+                        "inUse": False})
+    return out
+
+
+def target(devs=None):
+    """The device sends go to: the one picked last (STATE/target) while it's still one of the owner's devices, else a
+    phone (one online first), else another computer; None when there's no other device."""
+    devs = devices() if devs is None else devs
+    try:
+        with open(os.path.join(STATE, "target")) as f:
+            picked = f.read().strip()
+    except OSError:
+        picked = ""
+    by_id = {d["id"]: d for d in devs}
+    if picked in by_id:
+        return by_id[picked]
+    phones = [d for d in devs if d["kind"] != "computer"]
+    return (sorted(phones, key=lambda d: not d["online"]) or devs or [None])[0]
+
+
+def set_target(device_id):
+    os.makedirs(STATE, mode=0o700, exist_ok=True)
+    with open(os.path.join(STATE, "target"), "w") as f:
+        f.write(device_id + "\n")
+
+
+def mark_sent(what, to):
+    """What was just sent and to whom, for the menu's "Sent" (it shows the newest for a few seconds)."""
+    os.makedirs(STATE, mode=0o700, exist_ok=True)
+    tmp = os.path.join(STATE, "sent.json.tmp")
+    with open(tmp, "w") as f:
+        json.dump({"time": time.time(), "what": what, "to": to}, f, ensure_ascii=False)
+    os.replace(tmp, os.path.join(STATE, "sent.json"))
+    refresh_bar()
+
+
+def last_sent():
+    try:
+        with open(os.path.join(STATE, "sent.json")) as f:
+            d = json.load(f)
+    except (OSError, ValueError):
+        return None
+    return d if time.time() - d.get("time", 0) < SENT_SHOWN else None
+
+
+def machine_url(device_id):
+    m = next((k for k in known_machines() if k.get("id") == device_id), None)
+    return m.get("url", "") if m else ""
+
+
+def post(u, data, headers):
+    req = urllib.request.Request(u, data, method="POST", headers=dict({"X-Ferry": "1"}, **headers))
+    with urllib.request.urlopen(req, timeout=30) as r:
+        return r.read()
+
+
+def deliver(dev, files=None, text=None, clip=False):
+    """Sends files or a text to one device (from devices()): into the box for a phone, straight to another computer.
+    Returns "" or why it failed."""
+    if files is not None:
+        files = file_paths(files)
+        if not files:
+            return "No files to send there"
+        what = os.path.basename(files[0]) if len(files) == 1 else f"{len(files)} files"
+    else:
+        if not (text or "").strip():
+            return "Nothing to send"
+        what = oneline(text, 60)
+    if dev["kind"] != "computer":
+        if files is not None:
+            add_files(files, dev["id"])
+        else:
+            add_text(text, dev["id"])
+    else:
+        base = machine_url(dev["id"])
+        if not base:
+            return f"{dev['name']} isn't running Ferry"
+        try:
+            if files is None:
+                post(base + "api/text", json.dumps({"text": text[:MAX_TEXT], "clip": clip}, ensure_ascii=False).encode(),
+                     {"Content-Type": "application/json"})
+            for path in files or []:
+                kind = mimetypes.guess_type(path)[0] or "application/octet-stream"
+                q = urllib.parse.urlencode({"name": os.path.basename(path), "type": kind})
+                with open(path, "rb") as f:
+                    post(base + "api/upload?" + q, f, {"Content-Type": "application/octet-stream",
+                                                       "Content-Length": str(os.path.getsize(path))})
+        except (OSError, ValueError) as e:
+            print(f"send to {base} failed: {e!r}", file=sys.stderr)
+            return f"{dev['name']} didn't answer: it's asleep, or Ferry is off there"
+    mark_sent(what, dev["name"])
+    return ""
+
+
 def listing():
     st = tailscale_status()
     with box() as items:
         out = [dict(public(i), path=i.get("path", "")) for i in items]
     subs = subscriptions() if os.path.exists(os.path.join(STATE, "push.json")) else []
+    devs = devices(st)
+    t = target(devs)
     return {"on": systemctl("is-active", "-q", SERVICE).returncode == 0, "tailscale": st.get("BackendState") == "Running",
-            "url": url(st), "serving": serving(), "push": len(subs), "items": out}
+            "url": url(st), "serving": serving(), "push": len(subs), "items": out, "devices": devs,
+            "target": t["id"] if t else "", "sent": last_sent()}
 
 
 def qr(svg):
@@ -1086,12 +1274,12 @@ def print_list():
         return
     width, pad, heading = shutil.get_terminal_size().columns, len(str(len(items))), ""
     for n, it in enumerate(items, 1):
-        h = "Received" if it.get("to") == "computer" else "Sent, waiting for the phone"
+        h = "Received" if it.get("to") == "computer" else "Sent, waiting to be picked up"
         if h != heading:
             print(("\n" if heading else "") + h)
             heading = h
         head = f"  {n:>{pad}}  {ago(it.get('time', 0)):<10}  "
-        who = f"  · {it['from']}" if it.get("from") else ""
+        who = f"  · {it['from']}" if it.get("from") else f"  · for {it['for']}" if it.get("for") else ""
         room = max(width - len(head) - len(who), 20)
         what = f"{it.get('name', '')}  {human(it.get('size', 0))}" if it.get("kind") == "file" else \
             '"' + oneline(it.get("text", ""), room - 2) + '"'
@@ -1120,7 +1308,7 @@ def get(it):
     return 0
 
 
-def send(args):
+def send(args, dev):
     """Files when every argument is one, a text otherwise; with no arguments, what is piped in or the clipboard."""
     if args in ([], ["-"]):
         piped = args == ["-"] or not sys.stdin.isatty()
@@ -1128,27 +1316,52 @@ def send(args):
         if not text.strip():
             print("Nothing to send: " + ("the input is empty" if piped else "the clipboard has no text"), file=sys.stderr)
             return 1
-        add_text(text)
-        print(f'Sent "{oneline(text, 60)}"', flush=True)
+        err, what = deliver(dev, text=text), f'"{oneline(text, 60)}"'
     elif any(os.path.exists(p) for p in args):
         missing = [p for p in args if not os.path.exists(p)]
         if missing:
             print(f"No such file: {missing[0]} (to send a text with a file's name, pipe it in)", file=sys.stderr)
             return 1
         files = file_paths(args)
-        if add_files(args):
-            print("No files to send there", file=sys.stderr)
-            return 1
-        size = human(sum(os.path.getsize(f) for f in files))
-        print(f"Sent {os.path.basename(files[0]) if len(files) == 1 else f'{len(files)} files'} ({size})", flush=True)
+        err = deliver(dev, files=args)
+        what = f"{os.path.basename(files[0]) if len(files) == 1 else f'{len(files)} files'}" + \
+            (f" ({human(sum(os.path.getsize(f) for f in files))})" if files else "")
     else:
         text = " ".join(args)
-        add_text(text)
-        print(f'Sent "{oneline(text, 60)}"', flush=True)
+        err, what = deliver(dev, text=text), f'"{oneline(text, 60)}"'
+    if err:
+        print(err, file=sys.stderr)
+        return 1
+    print(f"Sent {what} to {dev['name']}", flush=True)
     st = status()
-    if st != "on":      # off, or off with why and what turns it on
-        print(f"Ferry is {st}, so the phone can't pick it up yet" + ("" if "(" in st else ": ferry enable"), file=sys.stderr)
+    if st != "on" and dev["kind"] != "computer":      # off, or off with why and what turns it on
+        print(f"Ferry is {st}, so {dev['name']} can't pick it up yet" + ("" if "(" in st else ": ferry enable"),
+              file=sys.stderr)
     return 0
+
+
+def pick_device(args):
+    """--to DEVICE taken out of args: (the device, the rest), or (None, args) with the reason printed."""
+    want = ""
+    if "--to" in args:
+        i = args.index("--to")
+        if i + 1 >= len(args):
+            print("--to needs a device: see ferry devices", file=sys.stderr)
+            return None, args
+        want, args = args[i + 1], args[:i] + args[i + 2:]
+    devs = devices()
+    dev = next((d for d in devs if want in (d["id"], d["name"])), None) if want else target(devs)
+    if not dev:
+        print(f"No device {want}: see ferry devices" if want else
+              "No other device yet: add your phone with Add Device in Ferry's menu (or ferry qr)", file=sys.stderr)
+    return dev, args
+
+
+def failed(err):
+    """A send from the menu or a drop that didn't go: nobody sees stderr there."""
+    notify("Couldn't send", err)
+    print(err, file=sys.stderr)
+    return 1
 
 
 def clipboard():
@@ -1191,32 +1404,66 @@ def main():
         print(json.dumps(listing(), ensure_ascii=False))
     elif cmd == "list":
         print_list()
-    elif cmd == "send":
-        return send(a[1:])
+    elif cmd in ("send", "add", "pick", "text", "send-clipboard"):
+        dev, rest = pick_device(a[1:])
+        if not dev:
+            return 1 if cmd == "send" else failed("No other device yet: add one with Add Device in Ferry's menu")
+        if cmd == "send":
+            return send(rest, dev)
+        if cmd == "add":
+            if not rest:
+                return 1
+            err = deliver(dev, files=rest)
+            return failed(err) if err else 0
+        if cmd == "pick":
+            res = subprocess.run(["zenity", "--file-selection", "--multiple", "--separator=\n",
+                                  f"--title=Send to {dev['name']} with Ferry", "--filename=" + os.path.expanduser("~/")],
+                                 capture_output=True, text=True)
+            paths = [p for p in res.stdout.splitlines() if p]
+            if not paths:
+                return 1
+            err = deliver(dev, files=paths)
+            # The menu, which closed for the dialog, opens again: it shows what was just sent
+            subprocess.run(["qs", "ipc", "call", "menu", "toggle", "ferry"], capture_output=True)
+            return failed(err) if err else 0
+        if cmd == "text":
+            if not " ".join(rest).strip():
+                return 1
+            err = deliver(dev, text=" ".join(rest))
+            return failed(err) if err else 0
+        text = clipboard()
+        if not text.strip():
+            notify("The clipboard has no text", "Copy a text or a link first")
+            return 1
+        err = deliver(dev, text=text, clip=True)
+        return failed(err) if err else 0
+    elif cmd == "devices":
+        devs = devices()
+        t = target(devs)
+        for d in devs:
+            state = "in use" if d["inUse"] else "online" if d["online"] else \
+                "asleep" if d["kind"] == "computer" else "offline"
+            print(f"{'*' if t and d['id'] == t['id'] else ' '} {d['id']:<24} {d['kind']:<9} {state}" +
+                  (f"  ({d['name']})" if d["name"] != d["id"] else ""))
+        if not devs:
+            print("No other device yet: add your phone with Add Device in Ferry's menu (or ferry qr)", file=sys.stderr)
+    elif cmd == "target":
+        devs = devices()
+        if len(a) == 1:
+            t = target(devs)
+            print(t["id"] if t else "")
+            return 0 if t else 1
+        dev = next((d for d in devs if a[1] in (d["id"], d["name"])), None)
+        if not dev:
+            print(f"No device {a[1]}: see ferry devices", file=sys.stderr)
+            return 1
+        set_target(dev["id"])
     elif cmd == "get" and len(a) <= 2:
         it = item(a[1] if len(a) > 1 else "1")
         if not it or (len(a) == 1 and it.get("to") != "computer"):
             print("Nothing from the phone" if len(a) == 1 else f"No item {a[1]}: see ferry list", file=sys.stderr)
             return 1
         return get(it)
-    elif cmd == "add" and len(a) > 1:
-        return add_files(a[1:])
-    elif cmd == "pick":
-        res = subprocess.run(["zenity", "--file-selection", "--multiple", "--separator=\n", "--title=Send with Ferry",
-                              "--filename=" + os.path.expanduser("~/")], capture_output=True, text=True)
-        paths = [p for p in res.stdout.splitlines() if p]
-        if not paths:
-            return 1
-        if add_files(paths):
-            return 1
-        # The menu, which closed for the dialog, opens again: it shows what was just sent
-        subprocess.run(["qs", "ipc", "call", "menu", "toggle", "ferry"], capture_output=True)
-    elif cmd == "text" and len(a) > 1:
-        return add_text(" ".join(a[1:]))
-    elif cmd == "send-clipboard":
-        if add_text(clipboard()):
-            notify("The clipboard has no text", "Copy a text or a link first")
-            return 1
     elif cmd in ("copy", "open", "rm", "remove") and len(a) > 1:
         items = numbered()
         found = [item(r, items) for r in a[1:]]   # all first: numbers would change as items go

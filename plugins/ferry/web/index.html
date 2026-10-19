@@ -25,33 +25,24 @@
     --bg: #0b0b0d; --card: #16121b; --hover: #1f1528; --sel: #35253d; --border: #3a2f45;
     --text: #c9bdd3; --dim: #9486a3; --accent: #e0bff2; --primary: #c071eb;
     --danger: #f7768e; --ok: #9ece6a; --warning: #ff9e64;
+    --dock: 185px;             /* room under the list for the bar at the bottom (and its pill) */
     color-scheme: dark;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; background: var(--bg); color: var(--text); }
+  /* As in Ferry's iPhone app: a large title, Received on one card, and the ways to send in a bar at the bottom */
   body {
     font: 15px/1.45 "JetBrains Mono", ui-monospace, Menlo, monospace;
-    padding: calc(env(safe-area-inset-top) + 20px) calc(env(safe-area-inset-right) + 16px)
-             calc(env(safe-area-inset-bottom) + 24px) calc(env(safe-area-inset-left) + 16px);
+    padding: calc(env(safe-area-inset-top) + 18px) calc(env(safe-area-inset-right) + 16px)
+             calc(env(safe-area-inset-bottom) + var(--dock)) calc(env(safe-area-inset-left) + 16px);
     max-width: 640px; margin: 0 auto;
   }
-  header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
-  header img { width: 34px; height: 34px; border-radius: 8px; }
-  h1 { font-size: 22px; margin: 0; color: var(--accent); letter-spacing: .02em; }
-  .status { display: flex; align-items: center; gap: 8px; font-size: 15px; color: var(--dim); margin-left: auto; min-width: 0; }
-  /* Send to, beside Send's title (only with more than one computer): the one in use, by itself; a tap opens the
-     system's own picker over it for another, framed until that send */
-  .to { position: relative; display: inline-flex; align-items: center; gap: 7px; margin: -4px auto -4px 10px; padding: 5px 10px;
-        border-radius: 8px; background: var(--sel); font-size: 13px; font-weight: 500; }
-  .to.manual { box-shadow: 0 0 0 1.5px var(--primary); }
-  .to .dot { background: var(--ok); }
-  .to.away .dot { background: var(--danger); }
-  #toName { color: var(--accent); }
-  .to select { position: absolute; inset: 0; width: 100%; opacity: 0; font-size: 16px; }   /* 16 px: iOS doesn't zoom */
-  /* Clear: small and quiet beside a title; the first tap asks */
-  h2 button.clear { background: transparent; color: var(--dim); min-height: 0; padding: 2px 0; font-size: 12px; font-weight: 400;
-                    letter-spacing: 0; text-transform: none; }
-  h2 button.clear.armed { color: var(--danger); }
+  body:has(#compose:not([hidden])) { --dock: 295px; }
+  header { display: flex; align-items: center; gap: 12px; margin: 0 0 22px; }
+  /* The app icon's own shape: a rounded square (iOS's 22.5 %) */
+  header img { width: 44px; height: 44px; border-radius: 22.5%; box-shadow: 0 0 0 1px rgba(255, 255, 255, .06); }
+  h1 { font: 700 34px/1 -apple-system, system-ui, sans-serif; margin: 0; color: var(--accent); letter-spacing: -.01em; }
+  .status { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--dim); margin-left: auto; min-width: 0; }
   #statusText { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dim); flex: none; }
   .status.ok .dot { background: var(--ok); }
@@ -60,20 +51,18 @@
   @keyframes blink { 50% { opacity: .2; } }
   .spin .i { animation: spin 1s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .banner { background: #2a1520; color: var(--text); border-radius: 12px; padding: 12px 14px;
-            margin: 0 0 14px; font-size: 14px; }
+  .banner { background: #2a1520; color: var(--text); border-radius: 14px; padding: 12px 14px; margin: 0 0 14px; font-size: 14px; }
   .banner b { color: var(--danger); }
   .banner.info { background: var(--card); }
   .banner.info b { color: var(--accent); }
   .banner button { margin-top: 10px; }
   section { margin: 0 0 18px; }
-  h2 { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--primary);
-       margin: 18px 0 8px; display: flex; justify-content: space-between; }
-  h2 span { color: var(--dim); font-weight: 400; letter-spacing: 0; text-transform: none; }
-  textarea { width: 100%; min-height: 76px; resize: vertical; background: var(--card); color: var(--text);
-             border: 0; border-radius: 14px; padding: 12px 14px; font: inherit; font-size: 16px; }   /* 16 px: iOS doesn't zoom */
-  textarea:focus { outline: none; box-shadow: 0 0 0 2px var(--primary); }
-  .row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  h2 { font-size: 13px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: var(--primary);
+       margin: 0 6px 10px 10px; display: flex; justify-content: space-between; align-items: baseline; }
+  /* Clear: quiet beside the title; the first tap asks */
+  h2 button.clear { background: transparent; color: var(--dim); min-height: 0; padding: 2px 0; font-size: 15px; font-weight: 400;
+                    letter-spacing: 0; text-transform: none; }
+  h2 button.clear.armed { color: var(--danger); }
   button, .btn { appearance: none; border: 0; border-radius: 12px; padding: 0 18px; min-height: 50px; font: inherit;
                  font-size: 16px; font-weight: 500; background: var(--sel); color: var(--accent); cursor: pointer;
                  text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
@@ -84,59 +73,72 @@
   button:disabled { opacity: .45; }
   [hidden] { display: none !important; }   /* buttons are inline-flex, which would win over hidden */
   button.small, .btn.small { min-height: 44px; padding: 0 16px; font-size: 16px; }
-  /* One column (the phone): Send is always at the bottom of the screen, under a short Received list as well as a long
-     one that scrolls under it. The shadow fades the rows out above it. */
-  @media (max-width: 899px) {
-    body { padding-bottom: 0; min-height: 100dvh; display: flex; flex-direction: column; }
-    .live { flex: 1; display: flex; flex-direction: column; }
-    #send { position: sticky; bottom: 0; z-index: 1; background: var(--bg); margin: auto -16px 0;
-            padding: 2px 16px calc(env(safe-area-inset-bottom) + 12px); box-shadow: 0 -18px 18px -6px var(--bg); }
-    /* Typing: the keyboard covers the home indicator, so its space would only be a gap above the keyboard */
-    body:has(#text:focus) #send { padding-bottom: 12px; }
-    #send h2 { margin-top: 8px; }
-  }
-  @media (min-width: 900px) {
-    body { max-width: 1120px; padding-top: 64px; padding-left: 40px; padding-right: 40px; }
-    header { margin-bottom: 28px; gap: 16px; }
-    header img { width: 46px; height: 46px; border-radius: 11px; }
-    h1 { font-size: 30px; }
-    .status { font-size: 16px; }
-    .live { display: grid; grid-template-columns: 1fr 1fr; column-gap: 48px; align-items: start; }
-    #received { grid-column: 1; grid-row: 1 / span 2; }
-    #send { grid-column: 2; }
-    body { font-size: 16px; }
-    h2 { margin-top: 4px; font-size: 13px; }
-    .item .meta { font-size: 13px; }
-  }
-  @media (min-width: 700px) { button, .btn { min-height: 42px; font-size: 15px; } button.small, .btn.small { min-height: 36px; font-size: 14px; }
-                              .i { width: 18px; height: 18px; } }
-  .grow { flex: 1; justify-content: center; }
   input[type=file] { display: none; }
-  .progress { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; margin-bottom: 10px; display: none; }
-  .progress div { height: 100%; width: 0; background: var(--primary); transition: width .2s; }
-  /* Send's note and progress sit by its title: nothing below the buttons, so Send can sit right on the keyboard */
-  h2 .note { font-size: 12px; text-align: right; min-width: 0; overflow-wrap: anywhere; margin-left: 12px; }
-  .note.err { color: var(--danger); }
-  /* A card sits on a red strip; the bin shows at the end the swipe uncovers. Swiped far enough either way, it goes */
-  .swipe { position: relative; border-radius: 14px; overflow: hidden; margin-bottom: 8px; background: #3a1a26; }
+
+  /* Received: one card, a divider between the rows from the text on (not under the icon) */
+  .list { background: var(--card); border-radius: 22px; overflow: hidden; }
+  .swipe { position: relative; overflow: hidden; background: #3a1a26; }
+  .swipe + .swipe::before { content: ""; position: absolute; top: 0; left: 84px; right: 18px; height: 1px;
+                            background: rgba(58, 47, 69, .7); z-index: 1; }
   .swipe .bin { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; padding: 0 22px;
                 color: var(--danger); opacity: 0; transition: opacity .15s; }
   .swipe .bin.l { left: 0; } .swipe .bin.r { right: 0; }
   .swipe.left .bin.r, .swipe.right .bin.l { opacity: .5; }
   .swipe.armed.left .bin.r, .swipe.armed.right .bin.l { opacity: 1; }
-  .item { position: relative; background: var(--card); border-radius: 14px; padding: 12px 14px; touch-action: pan-y; }
+  .item { position: relative; display: flex; align-items: center; gap: 14px; padding: 12px 14px 12px 16px;
+          background: var(--card); touch-action: pan-y; cursor: pointer; }
   .item.new { background: var(--hover); }   /* not seen yet */
-  .item .top { display: flex; align-items: flex-start; gap: 14px; }
+  .item .lead { width: 54px; height: 54px; border-radius: 14px; background: var(--sel); color: var(--accent); flex: none;
+                display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  .item .lead img { width: 100%; height: 100%; object-fit: cover; }
+  .item .lead .i { width: 26px; height: 26px; stroke-width: 1.75; }
   .item .body { flex: 1; min-width: 0; }
-  .item .name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .item .text { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 7.2em; overflow: hidden; }
-  .item .meta { font-size: 12px; color: var(--dim); margin-top: 2px; }
-  .item .thumb { width: 64px; height: 64px; border-radius: 10px; object-fit: cover; background: var(--sel); flex: none; }
-  .item .kind { width: 64px; height: 64px; border-radius: 10px; background: var(--sel); color: var(--accent); flex: none;
-                display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
-  .item .row { margin-top: 10px; }   /* under the name, not under the preview */
-  .empty { color: var(--dim); font-size: 14px; padding: 4px 2px; }
-  .offline .live { opacity: .45; pointer-events: none; }
+  .item .title { font-size: 17px; color: var(--accent); letter-spacing: .04em; overflow: hidden; text-overflow: ellipsis;
+                 white-space: nowrap; }
+  .item .meta { font-size: 13px; color: var(--dim); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .item .act { width: 46px; height: 46px; min-height: 0; padding: 0; border-radius: 50%; flex: none; }
+  .item .act .i { width: 22px; height: 22px; }
+  .empty { color: var(--dim); font-size: 14px; padding: 18px 20px; }
+  .offline .live, .offline #dock { opacity: .45; pointer-events: none; }
+
+  /* The bar at the bottom: Aa, Send Clipboard and + under the computer it sends to. The list scrolls under it: the rows
+     fade out to black above the pill (a long fade, so they don't mix with it), and the buttons sit on black. */
+  #dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 2; pointer-events: none;
+          padding: 89px calc(env(safe-area-inset-right) + 16px) calc(env(safe-area-inset-bottom) + 14px)
+                   calc(env(safe-area-inset-left) + 16px);
+          background: linear-gradient(to bottom, rgba(11, 11, 13, 0), rgba(11, 11, 13, .35) 30px, rgba(11, 11, 13, .75) 63px, var(--bg) 86px); }
+  #dock > * { pointer-events: auto; max-width: 608px; margin-left: auto; margin-right: auto; }
+  /* Typing: the keyboard covers the home indicator, so its space would only be a gap above the keyboard */
+  body:has(#text:focus) #dock { padding-bottom: 12px; }
+  .noteline { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-bottom: 8px; }
+  .noteline:not(:has(.note:not(:empty))):not(:has(.progress[style*="block"])) { display: none; }
+  .note { font-size: 13px; color: var(--dim); text-align: center; overflow-wrap: anywhere; }
+  .note.err { color: var(--danger); }
+  .progress { width: 60%; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; display: none; }
+  .progress div { height: 100%; width: 0; background: var(--primary); transition: width .2s; }
+  #compose { margin-bottom: 10px; }
+  /* The page's own black, not the list's card colour: the box stands out from the rows behind it */
+  textarea { width: 100%; min-height: 96px; max-height: 30vh; resize: none; display: block; background: var(--bg); color: var(--text);
+             border: 1px solid var(--border); border-radius: 20px; padding: 14px 16px; font: inherit; font-size: 16px; }   /* 16 px: iOS doesn't zoom */
+  textarea:focus { outline: none; border-color: var(--primary); }
+  /* The computer it sends to; with several, a tap opens the system's own picker over it (framed until that send) */
+  .to { position: relative; display: flex; width: max-content; align-items: center; gap: 9px; margin-bottom: 12px !important;
+        padding: 8px 16px; border-radius: 999px; background: rgba(22, 18, 27, .92); border: 1px solid var(--border);
+        font-size: 15px; color: var(--accent); }
+  .to.manual { border-color: var(--primary); }
+  .to .dot { background: var(--ok); }
+  .to.away .dot { background: var(--danger); }
+  .to .more { color: var(--dim); font-size: 12px; }
+  .to select { position: absolute; inset: 0; width: 100%; opacity: 0; font-size: 16px; }   /* 16 px: iOS doesn't zoom */
+  .bar { display: flex; align-items: center; gap: 10px; }
+  .bar .round { width: 60px; height: 60px; min-height: 0; padding: 0; border-radius: 50%; flex: none;
+                background: var(--card); border: 1px solid var(--border); color: var(--accent); font-size: 22px; font-weight: 400; }
+  .bar .round.on { border-color: var(--primary); background: var(--sel); }
+  .bar .round .i { width: 26px; height: 26px; }
+  .bar .main { flex: 1; min-width: 0; height: 60px; padding: 0 14px; border-radius: 999px; font-size: 18px; font-weight: 600;
+               font-family: -apple-system, system-ui, sans-serif; white-space: nowrap; overflow: hidden; }
+  .bar .main .i { width: 24px; height: 24px; }
+  @media (min-width: 700px) { .bar .round { width: 54px; height: 54px; } .bar .main { height: 54px; font-size: 17px; } }
 </style>
 </head>
 <body>
@@ -151,6 +153,9 @@
   <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 15V3m9 12v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10l5 5l5-5"/></symbol>
   <symbol id="i-trash-2" viewBox="0 0 24 24"><path d="M10 11v6m4-6v6m5-11v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
   <symbol id="i-bell" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0m-10.47-5.674A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></symbol>
+  <symbol id="i-text" viewBox="0 0 24 24"><path d="M17 6.1H3M21 12.1H3M15.1 18H3"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></symbol>
   <symbol id="i-refresh-cw" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9a9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5m5 4a9 9 0 0 1-9 9a9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol>
 </svg>
 <header><img src="icon-180.png" alt=""><h1>Ferry</h1>
@@ -161,24 +166,23 @@
 <div class="live">
   <section id="received">
     <h2>Received <button class="clear" id="clearReceived" hidden>Clear</button></h2>
-    <div id="toPhone"></div>
+    <div id="toPhone" class="list"></div>
   </section>
+</div>
 
-  <section id="send">
-    <h2>Send <span class="to" id="to" hidden><span class="dot"></span><span id="toName"></span><span>▾</span>
-      <select id="toPick" aria-label="Send to"></select></span><span class="note" id="note"></span></h2>
-    <div class="progress" id="progress"><div></div></div>
+<div id="dock">
+  <div class="noteline"><div class="progress" id="progress"><div></div></div><span class="note" id="note"></span></div>
+  <div class="to" id="to"><span class="dot"></span><span id="toName"></span><span class="more" id="toMore" hidden>▾</span>
+    <select id="toPick" aria-label="Send to" hidden></select></div>
+  <div id="compose" hidden>
     <textarea id="text" placeholder="Text or link" autocomplete="off" autocapitalize="off"></textarea>
-    <div class="row">
-      <button class="primary grow" id="sendText" disabled><svg class="i"><use href="#i-send"/></svg>Send</button>
-      <button class="grow" id="sendClip"><svg class="i"><use href="#i-clipboard-paste"/></svg>Clipboard</button>
-    </div>
-    <div class="row">
-      <label class="btn grow" for="files"><svg class="i"><use href="#i-image-up"/></svg>Photos &amp; files</label>
-      <input type="file" id="files" multiple>
-    </div>
-  </section>
-
+  </div>
+  <div class="bar">
+    <button class="round" id="aa" aria-label="Write a text">Aa</button>
+    <button class="primary main" id="main"><svg class="i"><use href="#i-clipboard-paste"/></svg>Send Clipboard</button>
+    <label class="btn round" for="files" aria-label="Photos and files"><svg class="i"><use href="#i-plus"/></svg></label>
+    <input type="file" id="files" multiple>
+  </div>
 </div>
 
 <script>
@@ -339,10 +343,17 @@ async function copy(text, btn) {
     t.style.position = "fixed"; t.style.opacity = "0"
     document.body.append(t); t.select(); t.setSelectionRange(0, text.length)
     const ok = document.execCommand("copy"); t.remove()
-    if (!ok) { label(btn, "Can't copy"); return }
+    if (!ok) { note("Can't copy", true); return }
   }
-  label(btn, "Copied")
-  setTimeout(() => label(btn, "Copy"), 1500)
+  checkOn(btn)
+}
+// A round button says it worked with a check for a moment, in its icon's place
+function checkOn(btn) {
+  const use = btn.querySelector("use")
+  const icon0 = btn.dataset.icon || (btn.dataset.icon = use.getAttribute("href"))
+  use.setAttribute("href", "#i-check")
+  clearTimeout(btn.checkTimer)
+  btn.checkTimer = setTimeout(() => use.setAttribute("href", icon0), 1500)
 }
 
 function prefetch(it) {
@@ -386,31 +397,27 @@ function clearButton(btn, to) {
 }
 clearButton($("clearReceived"), "phone")
 
+// One row: the icon (a picture's own), the text or the file's name, its size, age and computer, and the round button
+// for what a tap anywhere on the row does: copy a text, save a file (the share sheet: Save Image, Save to Files, …)
 function card(it) {
   const fresh = !seenIds.has(it.id)
-  // With several computers: which one it came from
-  const meta = (many() ? nameOf(it.m) + " · " : "") + (it.kind === "file" ? size(it.size) + " · " : "") + ago(it.time)
-  let lead, main, actions = null
+  const meta = [it.kind === "file" ? size(it.size) : "", ago(it.time), nameOf(it.m)].filter(x => x).join(" · ")
+  let lead, title, act
   if (it.kind === "text") {
-    lead = el("div", { class: "kind" }, "TEXT")
-    main = el("div", { class: "text" }, it.text)
-    const b = el("button", { class: "primary small", onclick: () => copy(it.text, b) }, icon("copy"), "Copy")
-    actions = el("div", { class: "row" }, b)
-    if (/^https?:\/\/\S+$/.test(it.text.trim()))
-      actions.append(el("a", { class: "btn small", href: it.text.trim(), target: "_blank", rel: "noopener" }, icon("external-link"), "Open"))
+    lead = el("div", { class: "lead" }, icon("text"))
+    title = it.text.replace(/\s+/g, " ").trim()
+    act = el("button", { class: "act", "aria-label": "Copy" }, icon("copy"))
+    act.onclick = e => { e.stopPropagation(); copy(it.text, act) }
   } else {
-    const ext = (it.name.split(".").pop() || "").slice(0, 4).toUpperCase()
-    lead = isImage(it) && it.size < PREFETCH
-      ? el("img", { class: "thumb", src: it.m + "api/file/" + it.id, alt: "", loading: "lazy" })
-      : el("div", { class: "kind" }, ext || "FILE")
-    main = el("div", { class: "name" }, it.name)
+    lead = el("div", { class: "lead" }, isImage(it) && it.size < PREFETCH
+      ? el("img", { src: it.m + "api/file/" + it.id, alt: "", loading: "lazy" }) : icon("file"))
+    title = it.name
     prefetch(it)
-    const b = el("button", { class: "primary small", onclick: () => save(it, b) }, icon("download"), "Save")
-    actions = el("div", { class: "row" }, b,
-                 el("a", { class: "btn small", href: it.m + "api/file/" + it.id, target: "_blank" }, icon("external-link"), "Open"))
+    act = el("button", { class: "act", "aria-label": "Save" }, icon("download"))
+    act.onclick = e => { e.stopPropagation(); save(it, act) }
   }
-  const c = el("div", { class: "item" + (fresh ? " new" : "") },
-               el("div", { class: "top" }, lead, el("div", { class: "body" }, main, el("div", { class: "meta" }, meta), actions)))
+  const c = el("div", { class: "item" + (fresh ? " new" : ""), onclick: () => act.click() }, lead,
+               el("div", { class: "body" }, el("div", { class: "title" }, title), el("div", { class: "meta" }, meta)), act)
   const wrap = el("div", { class: "swipe" }, el("div", { class: "bin l" }, icon("trash-2")),
                   el("div", { class: "bin r" }, icon("trash-2")), c)
   swipeable(wrap, c, () => removeItem(it))
@@ -483,8 +490,13 @@ function used(m) {
   return i === 0 ? "in use" : i === Infinity ? "" : "used " + ago(Date.now() / 1000 - i) + " ago"
 }
 function drawTargets() {
-  $("to").hidden = !many()
-  if (!many()) { manual = null; target = HOME; return }
+  $("toPick").hidden = $("toMore").hidden = !many()
+  if (!many()) {
+    manual = null; target = HOME
+    $("to").className = "to" + (reachable({ url: HOME }) ? "" : " away")
+    $("toName").textContent = nameOf(HOME)
+    return
+  }
   // Used last first; a computer that doesn't say (an older Ferry) after those that do, this page's own first among them
   const order = [...machines].sort((a, b) => (idleOf(a) - idleOf(b)) || (b.url === HOME) - (a.url === HOME))
   if (manual && !machines.some(m => m.url === manual && reachable(m))) manual = null
@@ -500,19 +512,38 @@ $("toPick").onchange = () => { manual = $("toPick").value; drawTargets() }
 function sentTo() { manual = null; drawTargets() }
 const away = () => state[target] && state[target].ok === false
 
-$("text").addEventListener("input", () => $("sendText").disabled = !$("text").value.trim())
+// The big button sends the clipboard, or with Aa open the text typed above it
+const writing = () => !$("compose").hidden
+function drawMain() {
+  if ($("main").sentTimer) return   // "Sent" for a moment
+  $("main").querySelector("use").setAttribute("href", writing() ? "#i-send" : "#i-clipboard-paste")
+  label($("main"), writing() ? "Send" : "Send Clipboard")
+  $("main").disabled = writing() && !$("text").value.trim()
+  $("aa").classList.toggle("on", writing())
+}
+function compose(open) {
+  $("compose").hidden = !open
+  if (open) $("text").focus()
+  drawMain()
+}
+$("aa").onclick = () => compose(!writing())
+$("text").addEventListener("input", drawMain)
+$("text").addEventListener("keydown", e => { if (e.key === "Escape") compose(false) })
+$("main").onclick = async () => {
+  if (!writing()) return sendClipboard()
+  if (!$("text").value.trim()) return
+  if (await sendText($("text").value, $("main"))) { $("text").value = ""; compose(false) }
+}
 
-// Success shows in the button that sent: a check and "Sent" for a moment, as Copy says "Copied". The line under the
-// buttons is for progress and errors, and empties.
+// Success shows in the big button: a check and "Sent" for a moment. The line above the pill is for progress and
+// errors, and empties.
 const SENT_SHOWN = 1500   // ms
 function sentOn(btn) {
-  const use = btn.querySelector("use")
-  const icon0 = btn.dataset.icon || (btn.dataset.icon = use.getAttribute("href"))
-  const text0 = btn.dataset.label || (btn.dataset.label = btn.lastChild.textContent)
   note("")
-  use.setAttribute("href", "#i-check"); label(btn, "Sent")
+  btn.disabled = false
+  btn.querySelector("use").setAttribute("href", "#i-check"); label(btn, "Sent")
   clearTimeout(btn.sentTimer)
-  btn.sentTimer = setTimeout(() => { use.setAttribute("href", icon0); label(btn, text0) }, SENT_SHOWN)
+  btn.sentTimer = setTimeout(() => { btn.sentTimer = null; drawMain() }, SENT_SHOWN)
 }
 
 async function sendText(text, btn, clip = false) {
@@ -525,19 +556,11 @@ async function sendText(text, btn, clip = false) {
     return true
   } catch (e) { note("Not sent", true); return false }
 }
-$("sendText").onclick = async () => {
-  if (!$("text").value.trim()) return
-  // Disabled only once "Sent" has shown: a disabled button is dimmed
-  if (await sendText($("text").value, $("sendText"))) {
-    $("text").value = ""
-    setTimeout(() => $("sendText").disabled = !$("text").value.trim(), SENT_SHOWN)
-  }
-}
 // Reading the clipboard needs a tap: iOS shows a Paste button first. An image goes as a file, anything else as a text;
-// one read() for both, as each read would ask again. Where it can't (permission, older browsers), the text box takes a
+// one read() for both, as each read would ask again. Where it can't (permission, older browsers), Aa's text box takes a
 // paste just as well.
 const CLIP_IMAGE = { "image/png": "png", "image/jpeg": "jpg", "image/gif": "gif", "image/webp": "webp", "image/heic": "heic" }
-$("sendClip").onclick = async () => {
+async function sendClipboard() {
   let text = "", image = null, types = []
   try {
     if (navigator.clipboard.read) {
@@ -551,16 +574,16 @@ $("sendClip").onclick = async () => {
     } else text = await navigator.clipboard.readText()
   } catch (e) {
     note("Paste into the box instead", true)
-    $("text").focus()
+    compose(true)
     return
   }
   // clip: the computer puts it on its own clipboard too
-  if (image) sendFiles([image], $("sendClip"), true)
-  else if (text.trim()) sendText(text, $("sendClip"), true)
+  if (image) sendFiles([image], $("main"), true)
+  else if (text.trim()) sendText(text, $("main"), true)
   // Something the page can't send: say what, rather than "empty". Safari gives a page a copied image only as PNG
-  // (a screenshot): a photo from Photos (HEIC, JPEG) doesn't show at all, so "empty" points to Photos & files.
+  // (a screenshot): a photo from Photos (HEIC, JPEG) doesn't show at all, so "empty" points to +.
   else note(types.length ? "Can't send this from the clipboard (" + types.join(", ") + ")"
-                         : "Clipboard is empty. A photo goes with Photos & files.", true)
+                         : "Clipboard is empty. A photo goes with +.", true)
 }
 // "Clipboard 2026-10-19 11.02.37.png": the clipboard gives an image no name of its own
 function clipName(ext) {
@@ -571,7 +594,7 @@ function clipName(ext) {
 $("files").onchange = () => {
   const files = [...$("files").files]
   $("files").value = ""
-  if (files.length) sendFiles(files, $("files").labels[0])
+  if (files.length) sendFiles(files, $("main"))
 }
 async function sendFiles(files, btn, clip = false) {
   if (away()) { note("Can't reach " + nameOf(target), true); return }
@@ -696,6 +719,7 @@ document.addEventListener("visibilitychange", () => {
 })
 setStatus("wait", "…")
 drawTargets()
+drawMain()
 refresh()
 loadMachines()
 schedule()

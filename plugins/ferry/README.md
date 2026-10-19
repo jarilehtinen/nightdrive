@@ -6,18 +6,21 @@ A mailbox between your computers and your phone. Leave photos, files, text or a 
 
 ## On the computer
 
-- Drop files on the inbox icon in the top bar or in its menu, or press Send Clipboard.
-- The menu lists what your other devices sent: a click copies a text or opens a file, a file drags out into another app, and Clear empties the list (files stay in Downloads).
+- The menu lists what your other devices sent: a click on a row copies a text or opens a file (the round mark on the right says which), a file drags out into another app, and Clear empties the list (files stay in Downloads).
+- Below the list are the three ways to send, as in the phone's app: **Aa** types a text, **Send Clipboard** sends the clipboard, and **+** picks files. They go to the device in the pill above them: click it to pick another of your computers or phones (Ferry remembers the last one picked), or to add a device.
+- Drag files over the menu and the list turns into a tile for each device: drop them on the one they're for. Files dropped on the inbox icon in the top bar go to the picked device.
+- A send to a phone waits in the box until that phone picks it up, and only that phone gets the notification. A send to another computer goes straight there: it shows up in that computer's menu, and Send Clipboard puts it on that computer's clipboard. A computer that's asleep can't take one.
 - Files from the phone go to Downloads, and you get a notification when something arrives.
 - What the phone sends with Clipboard lands on the computer's clipboard too, ready to paste (an image also stays in Downloads).
 - Everything leaves the box after 7 days.
 
 ## On the phone
 
-Press Add Device in Ferry's menu, scan the QR code (or open the address) in the phone's browser and add the page to the Home Screen. Open Ferry from there and tap Turn on notifications.
+Pick Add Device in the pill's list in Ferry's menu, scan the QR code (or open the address) in the phone's browser and add the page to the Home Screen. Open Ferry from there and tap Turn on notifications.
 
-- Received has what your computers sent, ready to copy or save; Send takes text, the clipboard (a text, or an image such as a screenshot: iOS doesn't give a page a photo copied from Photos), photos and files.
-- With Ferry on several computers, the phone sees them all on one page and sends to the one you're using (the one with the latest key press or mouse move). Tap its name beside Send to pick another for one send.
+- Received has what your computers sent to this phone: tap a row to copy a text or save a file, or swipe it away.
+- The bar at the bottom sends: **Aa** for a text, **Send Clipboard** for the clipboard (a text, or an image such as a screenshot: iOS doesn't give a page a photo copied from Photos), and **+** for photos and files.
+- With Ferry on several computers, the phone sees them all on one page and sends to the one you're using (the one with the latest key press or mouse move). Tap its name above the bar to pick another for one send.
 
 If Ferry's menu says Tailscale needs permission, run these once:
 
@@ -32,7 +35,9 @@ The `ferry` command does the same, and `ferry help` lists all of it.
 
 | Command | What it does |
 | --- | --- |
-| `ferry send [file…]` | Sends files, or a text; with nothing, the clipboard |
+| `ferry send [file…]` | Sends files, or a text; with nothing, the clipboard. `--to DEVICE` for another device than the picked one |
+| `ferry devices` | Your other computers running Ferry and your phones, the picked one marked |
+| `ferry target [DEVICE]` | The device sends go to, or picks another |
 | `ferry list` | What's in the box, numbered |
 | `ferry get [n]` | An item from the phone (the newest without a number): a text printed, a file saved here |
 | `ferry open <n>` | Opens a file |
