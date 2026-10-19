@@ -57,8 +57,8 @@ you walk through the menus with the arrow keys.
 
 System › Install › Software in the launcher searches Fedora's packages and Flathub's apps at once, one row per app (Fedora's
 when both have it, Tab in the details takes Flathub's), with command-line tools below and the details before installing.
-Browse has Popular (top 100) and categories: Flathub's most installed apps that your machine can run (ARM or x86). Remove
-lists both.
+Browse has Popular (top 100) and categories: Flathub's most installed apps that your machine can run (ARM or x86). System ›
+Remove has Software (both) and Webapps, and its search looks in both.
 
 Everything beyond the core is an optional part you choose when installing, or later under System › Install: apps Nightdrive
 sets up (1Password, Deck, Home Assistant…), ready-made web apps with a keybinding, and plugins for desktop features. A part
@@ -92,7 +92,8 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
 - **Screensavers**: a synthwave sunset and a falling-characters rain, both drawn in the terminal, and a big clock whose
   digits slide up as the minutes change.
 - **Background apps**: ⌘W only hides chat apps and the music player, so they keep running. Their shortcut brings them straight back.
-- **Web apps**: turn any site into an app window from the launcher (System › Install › Webapp).
+- **Web apps**: turn any site into an app window from the launcher (System › Install › Webapp), and remove one in System ›
+  Remove › Webapps (its logins go with it).
 - **Default apps**: which app opens links, mail, folders, text, code, images, video, music, PDFs and calendar files, in the launcher
   (Settings › Default apps, or `nightdrive defaults`). Hyper B, F and E open the browser, Files and Email you chose.
 - **Keyboard Shortcuts**: which app Hyper + a letter or digit opens, in the launcher (Settings › Keyboard Shortcuts, or

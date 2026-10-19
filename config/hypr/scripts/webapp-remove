@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# Usage: webapp-remove SLUG     removes the web app that webapp-add made (webapp-SLUG.desktop)
+#        webapp-remove --list   the web apps: SLUG<TAB>name<TAB>icon<TAB>address (launcher › System › Remove)
+# Removing takes all of it: its windows close, and its desktop file, icon and Chromium profile (logins, cookies) go, as
+# do its line in the login apps and your Hyper keys for it. A ready-made one (plugins.txt: Slack, WhatsApp…) is then no
+# longer installed, and its key goes with it.
+set -euo pipefail
+apps="$HOME/.local/share/applications"
+icons="$HOME/.local/share/icons/webapps"
+profiles="$HOME/.local/share/webapps"
+scripts="$(dirname "$(realpath "$0")")"
+
+if [[ ${1:-} == --list ]]; then
+  for f in "$apps"/webapp-*.desktop; do
+    [[ -f $f ]] || continue
+    url=$(sed -n 's/^Exec=.*--app=\([^ ]*\).*/\1/p' "$f")
+    [[ -n $url ]] || continue
+    slug=${f##*/webapp-}; slug=${slug%.desktop}
+    printf '%s\t%s\t%s\t%s\n' "$slug" "$(sed -n 's/^Name=//p' "$f" | head -1)" "$(sed -n 's/^Icon=//p' "$f" | head -1)" "$url"
+  done
+  exit 0
+fi
+
+slug=${1:-}
+if [[ ! $slug =~ ^[a-z0-9-]+$ || ! -f $apps/webapp-$slug.desktop ]]; then
+  echo "No such web app: $slug" >&2; exit 1
+fi
+desktop=$apps/webapp-$slug.desktop
+profile=$profiles/$slug
+
+# Its windows first: Chromium writes into the profile while it runs
+if pkill -f -- "--user-data-dir=$profile( |$)"; then
+  for _ in $(seq 20); do pgrep -f -- "--user-data-dir=$profile( |$)" >/dev/null || break; sleep 0.25; done
+fi
+
+icon=$(sed -n 's/^Icon=//p' "$desktop" | head -1)
+[[ $icon == "$icons"/* ]] && rm -f "$icon"   # only the one webapp-add saved, not a theme icon
+rm -f "$desktop"
+rm -rf "$profile"
+
+# Login apps and Hyper keys that pointed to it
+autostart=$HOME/.local/state/nightdrive/autostart
+[[ -f $autostart ]] && sed -i "/^webapp-$slug\.desktop\$/d" "$autostart"
+keys=$HOME/.local/state/nightdrive/app-keys
+if [[ -f $keys ]]; then
+  for k in $(awk -F'\t' -v id="webapp-$slug.desktop" '$2 == id { print $1 }' "$keys"); do
+    "$scripts/app-keys" set "$k" default
+  done
+fi
+
+update-desktop-database "$apps" 2>/dev/null || true
+"$HOME/.config/fuzzel/sync-apps" >/dev/null 2>&1 || true
+# A ready-made one is a plugins.txt part: the list of installed parts (and the keys bound for them) follows
+"$HOME/.local/bin/nightdrive" plugins installed >/dev/null 2>&1 || true
+echo "Removed: $slug"

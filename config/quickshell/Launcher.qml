@@ -92,7 +92,8 @@ PanelWindow {
     property bool snipLoaded: false
     property string snipAuto: ""             // auto-expand: on | off | no-access (snippets status)
     property string snipTrigger: ""          // Snippets › Add / edit: the trigger being given a text
-    property var removeList: []               // Remove: user-installed packages
+    property var removeList: []               // Remove › Software: user-installed packages
+    property var webappList: []               // Remove › Webapps: the web apps (webapp-remove --list)
     property var detail: null                 // Install / Remove: the package row whose details are shown ({ name, summary, src, id, cmd, remove })
     property var detailInfo: null             // its details from pkg-info (null = still loading)
     readonly property int detailWidth: 860    // the card's width while showing them
@@ -174,7 +175,7 @@ PanelWindow {
     readonly property int selIndex: list.currentIndex
     function shakeNow() { shake.restart() }
     function search(target, text) { go(target); input.text = text }   // a level with its query typed (Default apps › Find more)
-    readonly property var parents: Object.assign({ launcherprefs: "settings", shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", battery: "settings", install: "system", remove: "system", emoji: "tools", snippets: "tools", snipkey: "snippets", sniptext: "snippets", screenshot: "tools", software: "install", swcat: "software", swsearch: "software", webapp: "install", recommended: "install", plugins: "install", webname: "webapp", webaddr: "webname", compname: "settings", channel: "settings", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", sounds: "settings", soundregular: "sounds", soundurgent: "sounds", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, sys.parents, home.parents, defs.parents, akeys.parents, ext ? ext.parents : {})
+    readonly property var parents: Object.assign({ launcherprefs: "settings", shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", battery: "settings", install: "system", remove: "system", removesw: "remove", removeweb: "remove", emoji: "tools", snippets: "tools", snipkey: "snippets", sniptext: "snippets", screenshot: "tools", software: "install", swcat: "software", swsearch: "software", webapp: "install", recommended: "install", plugins: "install", webname: "webapp", webaddr: "webname", compname: "settings", channel: "settings", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", sounds: "settings", soundregular: "sounds", soundurgent: "sounds", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, sys.parents, home.parents, defs.parents, akeys.parents, ext ? ext.parents : {})
     // Search found nothing: hint below ⌘⌥⏎ (icons) → send the text to Claude
     readonly property bool noHit: (level === "root" || level === "apps") && query.trim() !== "" && results.length === 0
     // The selected row is an app: ⌃Enter shows it in Apps (the list with an empty query) or hides it from there.
@@ -230,7 +231,7 @@ PanelWindow {
 
     readonly property var titles: Object.assign({ apps: "Apps", music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", musicsearch: "Music › Search", artist: "Music › " + artist.name, keys: "Keybindings", screenshot: "Tools › Screenshot", settings: "Settings", display: "Settings › Display", battery: "Settings › Battery", startup: "Settings › Startup", channel: "Settings › Update channel", screensaver: "Settings › Screensaver", saverafter: "Screensaver › Start after", screenoff: "Screensaver › Screen off after", saverstyle: "Screensaver › Style", sounds: "Settings › Notifications", soundregular: "Notifications › Regular sound", soundurgent: "Notifications › Urgent sound", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
                                      launcherprefs: "Settings › Launcher", compname: "Settings › Computer name", topbar: "Settings › Top bar", baropacity: "Top bar › Opacity", baricons: "Top bar › Icon colors", barhl: "Top bar › Highlight", baritems: "Top bar › Items",
-                                     system: "System", install: "System › Install", emoji: "Tools › Emoji", snippets: "Tools › Snippets", snipkey: "Snippets › Trigger", sniptext: "Snippets › “" + snipTrigger + "”", software: "Install › Software", swcat: "Software › " + swCat.name, swsearch: "Software › Search", webapp: "Install › Webapp", recommended: "Install › Recommended", plugins: "Install › Plugins", webname: "Install › Webapp › Name", webaddr: "Install › Webapp › Address", remove: "System › Remove", power: "Power", passwords: "Passwords", clipboard: "Clipboard",
+                                     system: "System", install: "System › Install", emoji: "Tools › Emoji", snippets: "Tools › Snippets", snipkey: "Snippets › Trigger", sniptext: "Snippets › “" + snipTrigger + "”", software: "Install › Software", swcat: "Software › " + swCat.name, swsearch: "Software › Search", webapp: "Install › Webapp", recommended: "Install › Recommended", plugins: "Install › Plugins", webname: "Install › Webapp › Name", webaddr: "Install › Webapp › Address", remove: "System › Remove", removesw: "Remove › Software", removeweb: "Remove › Webapps", power: "Power", passwords: "Passwords", clipboard: "Clipboard",
                                      tools: "Tools" }, sys.titles, home.titles, defs.titles, akeys.titles, ext ? ext.titles : {})
 
     // Reference at startup: the app list only loads on first reference
@@ -772,8 +773,18 @@ PanelWindow {
             all = statics.webapp.map(r => ({ item: r, text: r.name }))
                 .concat(ready.length ? [{ item: { kind: "header", name: "Ready-made" }, text: "" }] : [], ready)
         } else if (level === "remove") {
+            // Two kinds, Software and Webapps; a search looks in both, and the tag tells which a row is
+            if (q === "") return [{ kind: "nav", name: "Software", glyph: "package-minus", target: "removesw", summary: "dnf + Flatpak" },
+                                  { kind: "nav", name: "Webapps", glyph: "app-window", target: "removeweb",
+                                    summary: webappList.length ? String(webappList.length) : undefined }]
+            all = removeList.map(p => ({ item: Object.assign({}, p, { from: "Software" }), text: p.name, extra: p.summary }))
+                .concat(webappList.map(w => ({ item: Object.assign({}, w, { from: "Webapp" }), text: w.name, extra: w.summary + " webapp" })))
+        } else if (level === "removesw") {
             if (!removeLoaded) return [{ kind: "hint", name: "Loading packages…" }]
             all = removeList.map(p => ({ item: p, text: p.name, extra: p.summary }))
+        } else if (level === "removeweb") {
+            if (webappList.length === 0) return [{ kind: "hint", name: "No webapps (add one in System › Install › Webapp)" }]
+            all = webappList.map(w => ({ item: w, text: w.name, extra: w.summary }))
         } else {
             all = (statics[level] || []).map(r => ({ item: r, text: r.kind === "header" ? "" : r.name }))   // a search drops the headers
         }
@@ -815,7 +826,7 @@ PanelWindow {
         if (target === "keys") keysProc.running = true     // re-read SHORTCUTS.md: changes show up immediately
         list.currentIndex = firstSelectable()
         installResults = []
-        if (target === "remove") removeProc.running = true
+        if (target === "remove" || target === "removesw" || target === "removeweb") { removeProc.running = true; webappProc.running = true }
         if (target === "swcat") { swList = null; swProc.command = [scripts + "/pkg-search", "--list", swCat.key]; swProc.running = true }
         if (target === "plugins" || target === "recommended" || target === "webapp") pluginsProc.running = true
         if (target === "emoji" && !emojiLoaded) emojiProc.running = true
@@ -1655,6 +1666,18 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
                 .concat(apps.map(([id, name, desc]) => ({ kind: "action", name: name, summary: (desc || "") + "  ·  Flatpak", glyph: "package-minus",
                                                             src: "flatpak", id: id, remove: true, cmd: win.term('flatpak uninstall --user "$1"', id) })))
             win.removeLoaded = true
+        }
+    }
+    // Remove › Webapps: removing one takes its logins too (its Chromium profile), so Enter asks twice
+    Sh {
+        id: webappProc
+        command: [win.scripts + "/webapp-remove", "--list"]
+        onResult: text => {
+            win.webappList = text.split("\n").map(l => l.split("\t")).filter(f => f.length >= 4).map(([slug, name, icon, url]) => ({
+                kind: "action", name: name, iconFile: icon || undefined, summary: url.replace(/^[a-z]+:\/\//, "").replace(/\/.*$/, ""),
+                confirm: true, armHint: "Enter again: remove, logins too",
+                cmd: ["bash", "-c", 'out=$("$0" "$1" 2>&1) && notify-send -a Webapp "Webapp removed" "$2" || notify-send -u critical -a Webapp "Removing webapp failed" "$out"',
+                      win.scripts + "/webapp-remove", slug, name] }))
         }
     }
 
