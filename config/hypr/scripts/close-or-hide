@@ -1,12 +1,21 @@
 #!/bin/bash
 # ⌘W: closes the active window, except background apps (hypr/background-apps): those are hidden to special:bg and keep running.
 # A hidden window comes back with its shortcut (launch-or-focus brings it to the current workspace).
+# Only the app's main window (its oldest) is hidden; its other windows (1Password's Settings, dialogs) close as usual,
+# otherwise launch-or-focus would bring them back with the main window.
 # Deck keeps playing in the background (playback runs in the same process as the window); `q` in Deck really quits it.
 d=$HOME/.config/hypr
 keep=$(cat "$d/background-apps" "$d/background-apps.local" 2>/dev/null | grep -vE '^\s*(#|$)' | sed 's/^[^=]*= *//' | paste -sd'|')
 
-read -r class addr ws < <(hyprctl -j activewindow | jq -r '"\(.class // "") \(.address // "") \(.workspace.name // "")"')
+read -r class addr ws pid < <(hyprctl -j activewindow | jq -r '"\(.class // "") \(.address // "") \(.workspace.name // "") \(.pid // "")"')
+main=
 if [[ -n $addr && -n $keep && $class =~ ($keep) ]]; then
+  # The same class and process: Chromium's web apps share one process, and each of them has its own main window.
+  # stableId is hex: the shortest, then the smallest, is the oldest window.
+  main=$(hyprctl -j clients | jq -r --arg c "$class" --argjson pid "$pid" \
+    '[.[] | select(.class == $c and .pid == $pid)] | min_by([(.stableId | length), .stableId]) | .address')
+fi
+if [[ -n $main && $addr == "$main" ]]; then
   if [[ $ws == special:bg ]]; then
     # The window is on the background workspace, which has become visible (the app asked for focus): hide the whole workspace
     hyprctl dispatch 'hl.dsp.workspace.toggle_special("bg")' >/dev/null
