@@ -31,12 +31,13 @@ PanelWindow {
         Text {
             id: label
             anchors.centerIn: parent
-            // a letter (⌘C) stays a capital, and Hyper, a modifier with no symbol, is in capitals like the bar's tags
-            text: parent.glyph !== "" ? Icons.g(parent.glyph) : parent.key.length === 1 ? parent.key
+            // a letter (⌘C) and a function key (F3) stay capitals, and Hyper, a modifier with no symbol, is in capitals like
+            // the bar's tags
+            text: parent.glyph !== "" ? Icons.g(parent.glyph) : letter ? parent.key
                 : parent.key === "Hyper" ? "HYPER" : parent.key.toLowerCase()
             color: Theme.dim
             // a capital as big and heavy as the glyphs next to it (⌘ ⇧ V); a key name (esc) stays small
-            readonly property bool letter: parent.glyph === "" && parent.key.length === 1
+            readonly property bool letter: parent.glyph === "" && (parent.key.length === 1 || /^F\d+$/.test(parent.key))
             font { family: parent.glyph !== "" ? Icons.family : Theme.font; pixelSize: parent.glyph !== "" ? 12 : letter ? 14 : 11
                    weight: letter ? Font.Medium : Font.Normal }
         }
@@ -128,7 +129,7 @@ PanelWindow {
     readonly property var keyGlyphs: ({ Enter: "corner-down-left", Ctrl: "chevron-up", Shift: "arrow-big-up", Alt: "option", Cmd: "command",
                                         Up: "arrow-up", Down: "arrow-down", Left: "arrow-left", Right: "arrow-right",
                                         Backspace: "delete", Space: "space" })
-    readonly property var keySymbolNames: ({ "⌘": "Cmd", "⇧": "Shift", "⌥": "Alt", "⌃": "Ctrl" })   // SHORTCUTS.md symbols → keyGlyphs
+    readonly property var keySymbolNames: ({ "⌘": "Cmd", "⇧": "Shift", "⌥": "Alt", "⌃": "Ctrl", "⌫": "Backspace" })   // SHORTCUTS.md symbols → keyGlyphs
     readonly property var footerParts: footer === "" ? [] : footer.split(/\s+·\s+/).map(part => {
         const m = part.match(/^((?:Ctrl|Shift|Alt|Cmd|Enter|Esc|Tab|Space|Backspace|Up|Down|Left|Right)(?:\+(?:Ctrl|Shift|Alt|Cmd|Enter|Esc|Tab|Space|Backspace|Up|Down|Left|Right|[A-Z]))*)(?::\s*|\s+)(.*)$/)
         return m ? { keys: m[1].split("+"), text: m[2] } : { keys: [], text: part }
@@ -740,6 +741,24 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         return [name, sub.charAt(0).toUpperCase() + sub.slice(1)]
     }
 
+    // A keybinding's keys → what Keybindings shows: [{ caps: ["⌘", "⇧", "S"] }, { text: "/" }, …]. Each combination goes
+    // in a key frame like a row's shortcut; between alternatives (" / ") and around a range (" … ") the separator stays
+    // text, and so do the words after a combination's keys ("⌘ + drag", "Delete in Settings › Background").
+    function keyParts(keys) {
+        const key = (t, last) => /^[⌘⇧⌥⌃⌫A-Z0-9,.=\-]$/.test(t) || /^(Hyper|Ctrl|Alt|Shift|Cmd|Enter|Esc|Tab|Space|Delete|Home|End|F\d+)$/.test(t)
+            || (last && /^(←\/→|[←→↑↓])$/.test(t))   // an arrow only at the end: "⌘ Space → Tools" is a path
+        const out = []
+        keys.replace(/← \/ →/g, "←/→").split(/ (\/|…) /).forEach((seg, i) => {
+            if (i % 2) { out.push({ text: seg }); return }
+            const t = seg.split(/\s+/).filter(x => x !== "")
+            let n = 0
+            while (n < t.length && key(t[n], n === t.length - 1)) n++
+            if (n > 0) out.push({ caps: t.slice(0, n) })
+            if (n < t.length) out.push({ text: t.slice(n).join(" ") })
+        })
+        return out
+    }
+
     // SHORTCUTS.md → [{ name, sub, keys, section }], without the lines of optional parts that aren't installed (read again
     // when that list changes)
     Connections { target: Plugins; function onIdsChanged() { keysProc.running = true } }
@@ -1046,7 +1065,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                         readonly property bool subLine: !!row.modelData.sub
                         anchors {
                             left: row.noIcon ? parent.left : slot.right; leftMargin: 16
-                            right: shortcut.visible ? shortcut.left : trailing.left; rightMargin: (row.modelData.kind === "key" ? 36 : 12) + (dot.visible ? 19 : 0) + (badge.visible ? badge.implicitWidth + 10 : 0) + (note.visible ? note.implicitWidth + 10 : 0)   // keybindings get more room before the keys (description is elided with …)
+                            right: keyFrames.visible ? keyFrames.left : shortcut.visible ? shortcut.left : trailing.left; rightMargin: (row.modelData.kind === "key" ? 24 : 12) + (dot.visible ? 19 : 0) + (badge.visible ? badge.implicitWidth + 10 : 0) + (note.visible ? note.implicitWidth + 10 : 0)   // keybindings get more room before the keys (description is elided with …)
                             verticalCenter: parent.verticalCenter; verticalCenterOffset: twoLines ? (subLine ? -9 : -7) : 0
                         }
                         elide: Text.ElideRight
@@ -1123,6 +1142,41 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                             }
                         }
                     }
+                    Row {            // Keybindings: a key's combinations in key frames like a row's shortcut (keyParts)
+                        id: keyFrames
+                        visible: row.modelData.keys !== undefined
+                        anchors { right: parent.right; rightMargin: 16; verticalCenter: parent.verticalCenter }
+                        spacing: 6
+                        Repeater {
+                            model: keyFrames.visible ? win.keyParts(row.modelData.keys) : []
+                            Rectangle {
+                                id: part
+                                required property var modelData
+                                readonly property bool frame: modelData.caps !== undefined
+                                width: frame ? partCaps.implicitWidth + 14 : partText.implicitWidth; height: 24; radius: 6
+                                color: "transparent"
+                                border { width: part.frame ? 1 : 0; color: Theme.dim }
+                                Row {
+                                    id: partCaps
+                                    visible: part.frame
+                                    anchors.centerIn: parent
+                                    spacing: 4
+                                    Repeater {
+                                        model: part.frame ? part.modelData.caps.map(k => win.keySymbolNames[k] || k) : []
+                                        Keycap { required property string modelData; key: modelData }
+                                    }
+                                }
+                                Text {
+                                    id: partText
+                                    visible: !part.frame
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: part.frame ? "" : part.modelData.text
+                                    color: Theme.dim
+                                    font { family: Theme.font; pixelSize: win.fontSize - 5 }
+                                }
+                            }
+                        }
+                    }
                     Rectangle {      // row.switchOn: an on/off switch like the top bar menus' (MenuHeader), instead of "on"/"off"
                         id: rowSwitch
                         visible: row.modelData.switchOn !== undefined
@@ -1148,7 +1202,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                             || (!tag && row.modelData.keys === undefined && !(row.modelData.summary !== undefined && row.modelData.summary !== "" && !row.armedNow) && row.chevron)
                         text: row.modelData.trailGlyph !== undefined ? Icons.g(row.modelData.trailGlyph)      // Top bar › Items: ✓ / – (hidden)
                             : row.modelData.live !== undefined ? sys.liveText(row.modelData.live)   // updates without rebuilding the rows
-                            : tag ? row.modelData.from.toUpperCase() : row.modelData.keys !== undefined ? row.modelData.keys.replace(/\bHyper\b/g, "HYPER")   // as in the key frames (Keycap)
+                            : tag ? row.modelData.from.toUpperCase() : row.modelData.keys !== undefined ? ""   // keyFrames
                             : (row.modelData.summary !== undefined && row.modelData.summary !== "" && !row.armedNow ? row.modelData.summary
                             : (row.chevron ? Icons.g("chevron-right") : ""))
                         color: row.modelData.trailGlyph !== undefined ? (row.modelData.dimmed ? Theme.dim : row.current ? Theme.accent : Theme.text)
