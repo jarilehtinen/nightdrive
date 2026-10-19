@@ -3,10 +3,11 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Services.Pam
 
-// The lock at startup: with greetd's autologin (switch.sh autologin) Hyprland starts straight into the desktop session,
-// and this login screen covers it as an ext-session-lock, so the screen changes hands only once at boot (Plymouth →
-// Hyprland). hyprland.lua starts it first; once the lock is secure it starts the session (NightdriveLocked), and the
-// login apps after the password (NightdriveUnlocked: they may ask the keyring, which the password opens).
+// The lock at startup, and later the session's lock too (hypr/scripts/lock: idle, sleep, ⌃⌘L). With greetd's autologin
+// (switch.sh autologin) Hyprland starts straight into the desktop session, and this login screen covers it as an
+// ext-session-lock, so the screen changes hands only once at boot (Plymouth → Hyprland). hyprland.lua starts it first;
+// once the lock is secure it starts the session (NightdriveLocked), and the login apps after the password
+// (NightdriveUnlocked: they may ask the keyring, which the password opens). Both run once per login.
 // If this process dies while locked, Hyprland keeps the session locked (the "lockdead" screen).
 // Preview without locking: `nightdrive preview login` (checks the password, Esc closes).
 ShellRoot {
@@ -30,6 +31,7 @@ ShellRoot {
     function unlock() {
         if (preview) { root.endPreview(); return }
         lock.locked = false
+        Quickshell.execDetached(["hyprctl", "eval", "NightdriveCornersHidden(false)"])
         Quickshell.execDetached(["hyprctl", "eval", "NightdriveUnlocked()"])
         quit.start()
     }
@@ -51,7 +53,11 @@ ShellRoot {
     WlSessionLock {
         id: lock
         locked: !root.preview
-        onSecureChanged: if (secure) Quickshell.execDetached(["hyprctl", "eval", "NightdriveLocked()"])
+        // NightdriveLocked starts the session once, at boot; a later lock only hides the corners
+        onSecureChanged: if (secure) {
+            Quickshell.execDetached(["hyprctl", "eval", "NightdriveCornersHidden(true)"])
+            Quickshell.execDetached(["hyprctl", "eval", "NightdriveLocked()"])
+        }
 
         WlSessionLockSurface {
             color: "#1a1b26"

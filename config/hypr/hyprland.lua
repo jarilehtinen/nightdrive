@@ -198,11 +198,8 @@ hl.config({
         disable_hyprland_logo   = true,
         background_color        = 0xff1a1b26,   -- background colour until swaybg draws the wallpaper (softens the flash after login)
         focus_on_activate       = true,   -- apps may request focus: e.g. opening a link → Firefox comes to the front (switches workspace)
-        -- A lock that crashed (lock.qml, hyprlock) can be started again from a text console instead of only logging out
+        -- A lock that crashed (lock.qml) can be started again from a text console instead of only logging out
         allow_session_lock_restore = true,
-        -- How long a locked screen stays blank before Hyprland's "lock died" screen: hypr/scripts/relock restarts hyprlock
-        -- after sleep, and with a 4K background it takes over a second to take the lock again
-        lockdead_screen_delay = 3000,
     },
     -- Hyprland's own "updated to …" window after an update: Hyprland comes with `nightdrive update`, and the window
     -- (Hyprland's news, not in the desktop's look) is about Hyprland, not what changed in Nightdrive
@@ -408,7 +405,8 @@ local function night_shader(corners)
     end
     return p
 end
--- `nightdrive preview login` (greeter/lock.qml) hides them too while it shows, as the real login screen does:
+-- The lock (greeter/lock.qml, also after boot: hypr/scripts/lock) and `nightdrive preview login` hide them too while
+-- they show, as the real login screen does:
 -- hyprctl eval "NightdriveCornersHidden(true)"; a config reload brings them back
 local corners_hidden = false
 function NightdriveCornersHidden(on)
