@@ -135,6 +135,8 @@ calendar's grid, Ferry's drop zone and QR code are all fine).
   `Qt.resolvedUrl("bin/ferry")` without the `file://` (FerryMenu.qml's `ferry`).
 - `Divider` is the separator line; `Slider`, `BusyDots` and `Plugins.has("tailscale")` (is another plugin on?) are there
   too.
+- **A text field** needs the keyboard, which a menu doesn't have by default: `readonly property bool wantsKeyboard`
+  true while one shows (Ferry's Aa).
 
 The skeleton every menu has:
 

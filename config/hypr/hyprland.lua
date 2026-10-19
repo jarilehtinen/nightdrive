@@ -284,10 +284,11 @@ hl.window_rule({
     match = { class = "^(pavucontrol|org.pulseaudio.pavucontrol|blueman-manager|nm-connection-editor)$" },
     float = true,
 })
--- File picker (Settings › Background › Add new…)
+-- File picker (Settings › Background › Add new…, Ferry's +) and the apps' Open/Save dialogs: zenity 4 asks the portal,
+-- whose dialog is xdg-desktop-portal-gtk's window
 hl.window_rule({
     name  = "float-zenity",
-    match = { class = "^(zenity|org.gnome.Zenity)$" },
+    match = { class = "^(zenity|org.gnome.Zenity|xdg-desktop-portal-gtk)$" },
     float = true,
     size  = "1000 650",
     center = true,

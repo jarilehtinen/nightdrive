@@ -173,9 +173,11 @@ ShellRoot {
         exclusionMode: ExclusionMode.Ignore
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.namespace: "nightdrive-menu"   // hyprland.lua blurs behind a bare menu's translucent cards
-        // Keyboard focus only for the wifi menu (password field): with OnDemand a second click on the top bar
-        // was lost until the mouse was moved.
-        WlrLayershell.keyboardFocus: root.navMode && !root.viaSubmap ? WlrKeyboardFocus.Exclusive : (root.current === "wifi" ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None)
+        // Keyboard focus only for a text field: the wifi menu's password, or a menu that asks for it while it shows one
+        // (wantsKeyboard: Ferry's text). With OnDemand all the time a second click on the top bar was lost until the
+        // mouse was moved.
+        WlrLayershell.keyboardFocus: root.navMode && !root.viaSubmap ? WlrKeyboardFocus.Exclusive
+            : (root.current === "wifi" || (loader.item && loader.item.wantsKeyboard === true) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None)
 
         // A menu dragging a file out (FerryMenu, NotificationsMenu: dragging > 0) takes input only on its card meanwhile, so the drop reaches
         // the windows below

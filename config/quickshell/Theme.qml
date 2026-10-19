@@ -17,6 +17,7 @@ Singleton {
 
     readonly property color bg:      "#0b0b0d"                    // menu background
     readonly property color hover:   c.hover   || "#1f1528"       // row under the mouse
+    readonly property color card:    c.card    || "#16121b"       // a card inside a menu (Ferry's list)
     readonly property color sel:     c.sel     || "#35253d"       // selected/active row (same as the active workspace)
     readonly property color border:  c.border  || "#3a2f45"
     readonly property color text:    c.text    || "#c9bdd3"

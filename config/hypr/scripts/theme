@@ -21,6 +21,7 @@ BASE = {
     "accent":  "#e0bff2",   # selected text and icons
     "sel":     "#35253d",   # selected row
     "hover":   "#1f1528",   # row under the mouse
+    "card":    "#16121b",   # a card inside a menu (Ferry's list)
     "border":  "#3a2f45",
     "text":    "#c9bdd3",
     "muted":   "#aea3b5",   # notification and fuzzel text
