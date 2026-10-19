@@ -169,13 +169,14 @@ PanelWindow {
     // Levels from other files: SystemLevels.qml (Wi-Fi, Bluetooth, Sound, Tailscale), HomeLevels.qml (Home Assistant),
     // DefaultAppsLevels.qml (Settings › Default apps), AppKeyLevels.qml (Settings › Keyboard Shortcuts) and the private
     // extension; they answer
-    // the same questions (items, activate, footer, entered)
-    function extOf(l) { return sys.levels.indexOf(l) >= 0 ? sys : home.levels.indexOf(l) >= 0 ? home : defs.levels.indexOf(l) >= 0 ? defs : akeys.levels.indexOf(l) >= 0 ? akeys : ext !== null && ext.levels.indexOf(l) >= 0 ? ext : null }
+    // the same questions (items, activate, footer, entered). A new file goes in this list, not in each question's code
+    readonly property var exts: [sys, home, defs, akeys].concat(ext ? [ext] : [])
+    function extOf(l) { return exts.find(e => e.levels.indexOf(l) >= 0) || null }
     readonly property bool extLevel: extOf(level) !== null
     readonly property int selIndex: list.currentIndex
     function shakeNow() { shake.restart() }
     function search(target, text) { go(target); input.text = text }   // a level with its query typed (Default apps › Find more)
-    readonly property var parents: Object.assign({ launcherprefs: "settings", shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", battery: "settings", install: "system", remove: "system", removesw: "remove", removeweb: "remove", emoji: "tools", snippets: "tools", snipkey: "snippets", sniptext: "snippets", screenshot: "tools", software: "install", swcat: "software", swsearch: "software", webapp: "install", recommended: "install", plugins: "install", webname: "webapp", webaddr: "webname", compname: "settings", channel: "settings", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", sounds: "settings", notiftime: "sounds", soundregular: "sounds", soundurgent: "sounds", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, sys.parents, home.parents, defs.parents, akeys.parents, ext ? ext.parents : {})
+    readonly property var parents: Object.assign({ launcherprefs: "settings", shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", battery: "settings", install: "system", remove: "system", removesw: "remove", removeweb: "remove", emoji: "tools", snippets: "tools", snipkey: "snippets", sniptext: "snippets", screenshot: "tools", software: "install", swcat: "software", swsearch: "software", webapp: "install", recommended: "install", plugins: "install", webname: "webapp", webaddr: "webname", compname: "settings", channel: "settings", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", sounds: "settings", notiftime: "sounds", soundregular: "sounds", soundurgent: "sounds", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, ...exts.map(e => e.parents))
     // Search found nothing: hint below ⌘⌥⏎ (icons) → send the text to Claude
     readonly property bool noHit: (level === "root" || level === "apps") && query.trim() !== "" && results.length === 0
     // The selected row is an app: ⌃Enter shows it in Apps (the list with an empty query) or hides it from there.
@@ -232,7 +233,7 @@ PanelWindow {
     readonly property var titles: Object.assign({ apps: "Apps", music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", musicsearch: "Music › Search", artist: "Music › " + artist.name, keys: "Keybindings", screenshot: "Tools › Screenshot", settings: "Settings", display: "Settings › Display", battery: "Settings › Battery", startup: "Settings › Startup", channel: "Settings › Update channel", screensaver: "Settings › Screensaver", saverafter: "Screensaver › Start after", screenoff: "Screensaver › Screen off after", saverstyle: "Screensaver › Style", sounds: "Settings › Notifications", notiftime: "Notifications › Show for", soundregular: "Notifications › Regular sound", soundurgent: "Notifications › Urgent sound", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
                                      launcherprefs: "Settings › Launcher", compname: "Settings › Computer name", topbar: "Settings › Top bar", baropacity: "Top bar › Opacity", baricons: "Top bar › Icon colors", barhl: "Top bar › Highlight", baritems: "Top bar › Items",
                                      system: "System", install: "System › Install", emoji: "Tools › Emoji", snippets: "Tools › Snippets", snipkey: "Snippets › Trigger", sniptext: "Snippets › “" + snipTrigger + "”", software: "Install › Software", swcat: "Software › " + swCat.name, swsearch: "Software › Search", webapp: "Install › Webapp", recommended: "Install › Recommended", plugins: "Install › Plugins", webname: "Install › Webapp › Name", webaddr: "Install › Webapp › Address", remove: "System › Remove", removesw: "Remove › Software", removeweb: "Remove › Webapps", power: "Power", passwords: "Passwords", clipboard: "Clipboard",
-                                     tools: "Tools" }, sys.titles, home.titles, defs.titles, akeys.titles, ext ? ext.titles : {})
+                                     tools: "Tools" }, ...exts.map(e => e.titles))
 
     // Reference at startup: the app list only loads on first reference
     property var apps: DesktopEntries.applications.values
@@ -1070,11 +1071,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                 'out=$("$HOME/.config/hypr/scripts/webapp-add" "$1" "$2" 2>&1) && notify-send -a Webapp "Webapp added" "$1" || notify-send -u critical -a Webapp "Adding webapp failed" "$out"',
                 "_", webName, item.value])
         }
-        else if (sys.activate(item)) {}
-        else if (home.activate(item)) {}
-        else if (defs.activate(item)) {}
-        else if (akeys.activate(item)) {}
-        else if (ext && ext.activate(item)) {}
+        else if (exts.some(e => e.activate(item))) {}
         else if (item.kind === "pw") copyField(item, "password")
         else if (item.kind === "menu") { win.open = false; win.openMenu(item.target) }
         else if (item.src && detail === null) showDetail(item)
@@ -1208,7 +1205,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
 
     // Closing leaves the details right away (after the Behavior above has seen open = false), so the next open starts narrow
     onOpenChanged: if (!open) Qt.callLater(() => { if (!win.open) { win.detail = null; win.detailInfo = null } })
-    else { lastMouse = null; spotify = null; lastSel = ({}); if (ext) ext.opened(); home.opened(); Plugins.check(); go("root"); deckProc.running = hasDeck; musicProc.running = hasDeck; bgProc.running = true; bgAppsProc.running = true; autostartProc.running = true; updatesProc.running = true; brightProc.running = true; nightProc.running = true; sys.entered("display"); sys.soundRefresh(); input.forceActiveFocus() }
+    else { lastMouse = null; spotify = null; lastSel = ({}); exts.forEach(e => e.opened()); Plugins.check(); go("root"); deckProc.running = hasDeck; musicProc.running = hasDeck; bgProc.running = true; bgAppsProc.running = true; autostartProc.running = true; updatesProc.running = true; brightProc.running = true; nightProc.running = true; sys.entered("display"); sys.soundRefresh(); input.forceActiveFocus() }
     Component.onCompleted: keysProc.running = true
 
     Timer { id: disarm; interval: 4000; onTriggered: win.armed = "" }
@@ -1797,6 +1794,12 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
             win.open = false
             Quickshell.execDetached([win.scripts + "/terminal-or-claude", q])
             return "ok"
+        }
+        // rows: the open level's title, footer, selected index and rows as JSON, primitive fields only (automated testing)
+        function rows(): string {
+            const plain = r => { const o = {}; for (const k in r) if (r[k] === null || typeof r[k] !== "object" && typeof r[k] !== "function") o[k] = r[k]; return o }
+            return JSON.stringify({ level: win.level, title: win.titles[win.level] || "", footer: win.footer, sel: list.currentIndex,
+                                    rows: win.results.map(plain) })
         }
         // pick <index>: selects a row like Enter (automated testing)
         function pick(index: int): void { const r = win.results[index]; if (r) win.activate(r); else shake.restart() }

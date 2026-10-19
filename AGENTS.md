@@ -6,7 +6,8 @@ save valid, then check:
 - Quickshell: `qs log | tail` should show no QML errors.
 - Scripts: `bash -n` for shell, `ast.parse` for Python.
 
-Test over IPC (`qs ipc show`, e.g. `qs ipc call launcher openLevel settings`) and take screenshots with `grim`.
+Test over IPC (`qs ipc show`, e.g. `qs ipc call launcher openLevel settings`) and take screenshots with `grim`. `launcher rows`
+returns the open level's title, footer and rows as JSON: compare it before and after a change to the launcher.
 The user may be typing on this same desktop, and the launcher and menus take the keyboard: run `~/.local/bin/nightdrive
 agent-warn "the launcher"` before opening one (once per burst of tests) and open it only after it returns (~5 s countdown
 with sound). Use the full path: an agent's shell may not have `~/.local/bin` in its PATH, and if the command fails, don't
