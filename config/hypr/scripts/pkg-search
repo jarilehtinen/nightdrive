@@ -154,9 +154,19 @@ def main(q):
         apps[key] = {"name": name, "summary": desc, "src": "flatpak", "id": fid, "icon": flathub_icon(fid),
                      "installed": fid in installed_fp, "alt": None}
 
+    # An exact name first, then what has the words in its name or summary, the most installed first (Flathub's last month,
+    # software.json's top 1000: "browser" → Firefox, not GdaBrowser), then what Flathub matched elsewhere (its long
+    # description: "email" → a VPN), in the same order
+    with open(SOFTWARE) as fh:
+        installs = {appid(a["id"]): a["installs"] for a in json.load(fh)["apps"]}
+
+    def popularity(r):
+        return max(installs.get(appid(r["id"]), 0), installs.get(appid((r["alt"] or {}).get("id")), 0),
+                   installs.get(next((k for k, v in apps.items() if v is r), ""), 0))
+
     def rank(r):
         n = r["name"].lower()
-        return (not n.startswith(q), q not in n, len(n), n)
+        return (n != q, q not in n and q not in r["summary"].lower(), -popularity(r), not n.startswith(q), q not in n, len(n), n)
     return {"apps": sorted(apps.values(), key=rank)[:MAX_APPS], "tools": sorted(tools, key=rank)[:MAX_TOOLS]}
 
 

@@ -1211,7 +1211,9 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
     }
 
     // Software › Search: search while typing (300 ms delay), hypr/scripts/pkg-search: { apps, tools }
-    function sanitized() { return query.trim().toLowerCase().replace(/[^a-z0-9._+\-]/g, "") }
+    // Spaces stay (one between words): pkg-search looks for the words as a phrase, "image viewer" (without them nothing
+    // two-word was found: "documentviewer")
+    function sanitized() { return query.toLowerCase().replace(/[^a-z0-9._+\- ]/g, "").replace(/\s+/g, " ").trim() }
     function runSearch() {
         const q = sanitized()
         installQ = q
