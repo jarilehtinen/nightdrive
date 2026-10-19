@@ -90,7 +90,7 @@ INLINE = re.compile(r"^(image/(jpeg|png|gif|webp|heic|heif|avif)|video/|audio/|a
                              # scripts as the Ferry page)
 CHUNK = 1 << 20
 GROUP_NOTIFY = 20            # seconds: files from the phone within this time share one notification
-PUSH_CONTACT = "https://github.com/jarilehtinen/nightdrive"   # the VAPID "sub": push services want a contact URL
+PUSH_CONTACT = "https://github.com/nightdrive-sh/nightdrive"   # the VAPID "sub": push services want a contact URL
 IDLE_AFTER = 60              # seconds without input before the desktop tells logind it's idle (hypr/hypridle.conf)
 
 

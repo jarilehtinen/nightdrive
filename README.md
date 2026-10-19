@@ -157,7 +157,7 @@ after `--` too (`bash -s -- --with deck`). The same by hand:
 
 ```sh
 sudo dnf install -y git   # not in a fresh install
-git clone https://github.com/jarilehtinen/nightdrive.git ~/dotfiles
+git clone https://github.com/nightdrive-sh/nightdrive.git ~/dotfiles
 cd ~/dotfiles
 ./install.sh              # asks which optional parts to install, then: removes the KDE apps and services Nightdrive
                           # doesn't use (packages-remove.txt), system update, packages, fonts, the notch setting,
@@ -340,7 +340,7 @@ The full list is in [`config/hypr/SHORTCUTS.md`](config/hypr/SHORTCUTS.md).
 - **Known issues** that have a workaround but no fix in Nightdrive yet are in [docs/known-issues.md](docs/known-issues.md).
 - **Hyprland comes from Nightdrive's own COPR.** Fedora's own repositories have no Hyprland, so on every machine the
   installer takes the Hyprland packages from [`jarilehtinen/nightdrive`](https://copr.fedorainfracloud.org/coprs/jarilehtinen/nightdrive/)
-  (aarch64 and x86_64; specs in [nightdrive-packages](https://github.com/jarilehtinen/nightdrive-packages)) and limits
+  (aarch64 and x86_64; specs in [nightdrive-packages](https://github.com/nightdrive-sh/nightdrive-packages)) and limits
   that repository to them.
 - **Asahi specifics.** The notch area needs the `appledrm.show_notch=1` kernel argument, which the installer sets. The 16 KiB memory
   pages break a few Electron apps, but 1Password works.
@@ -354,9 +354,9 @@ Nightdrive is work in progress, and help of almost any kind moves it forward:
 - **Try it on your machine.** It's used daily on a MacBook Pro 14″ with M2 Max only. A report from a real PC (NVIDIA, AMD
   or Intel graphics) or any other Apple Silicon model is valuable (in Discussions), whether everything worked or something
   broke.
-- **Ask or share in [Discussions](https://github.com/jarilehtinen/nightdrive/discussions):** questions, ideas, how it runs
+- **Ask or share in [Discussions](https://github.com/nightdrive-sh/nightdrive/discussions):** questions, ideas, how it runs
   on your machine, or a screenshot of your setup.
-- **Open an [issue](https://github.com/jarilehtinen/nightdrive/issues)** for a bug or a rough edge. A screenshot or the output
+- **Open an [issue](https://github.com/nightdrive-sh/nightdrive/issues)** for a bug or a rough edge. A screenshot or the output
   of the failing command helps a lot.
 - **Send a pull request.** Keep it small and in the spirit of the rest: plain files, comments that explain *why*, and nothing
   personal (that goes in the git-ignored local slots, see [Make it yours](#make-it-yours)). [`AGENTS.md`](AGENTS.md) has the
@@ -365,7 +365,7 @@ Nightdrive is work in progress, and help of almost any kind moves it forward:
 - **Wallpaper artists welcome.** There's only so much time, and wallpapers are where I'd most love a hand. The ones in Nightdrive
   were made with ChatGPT image generation for now, and I'd much rather ship art by real artists. If you make synthwave
   art, or know someone who does, and would like to see it on Nightdrive desktops, say hello in
-  [Discussions](https://github.com/jarilehtinen/nightdrive/discussions).
+  [Discussions](https://github.com/nightdrive-sh/nightdrive/discussions).
 
 ## Credits
 

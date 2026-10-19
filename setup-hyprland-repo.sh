@@ -1,6 +1,6 @@
 #!/bin/bash
 # The dnf repo of the Hyprland stack: Nightdrive's own COPR jarilehtinen/nightdrive (aarch64 and x86_64, specs in
-# github.com/jarilehtinen/nightdrive-packages). Fedora's own repos have no Hyprland, and its Hyprland libraries are too
+# github.com/nightdrive-sh/nightdrive-packages). Fedora's own repos have no Hyprland, and its Hyprland libraries are too
 # old. includepkgs limits the COPR to the stack's packages, so it never replaces another Fedora package.
 # It replaces arcaneon/arcos, the COPR Nightdrive used until 19.10.2026, whose aarch64 builds fell behind: its repo goes,
 # and the next dnf upgrade moves the packages over (hyprland obsoletes hyprland-uwsm, hyprland-guiutils the Qt utilities).

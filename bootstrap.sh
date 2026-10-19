@@ -10,7 +10,7 @@
 # runs nothing, and no command can read the rest of the script as its input.
 set -euo pipefail
 
-REPO_URL=https://github.com/jarilehtinen/nightdrive.git
+REPO_URL=https://github.com/nightdrive-sh/nightdrive.git
 DIR=$HOME/dotfiles
 
 main() {
@@ -26,7 +26,9 @@ main() {
   if { : </dev/tty; } 2>/dev/null; then exec </dev/tty; fi
 
   if [[ -e $DIR ]]; then
-    if [[ $(git -C "$DIR" remote get-url origin 2>/dev/null) == *jarilehtinen/nightdrive* ]]; then
+    # A clone made before the repo moved to the nightdrive-sh organisation still has the old address.
+    local origin; origin=$(git -C "$DIR" remote get-url origin 2>/dev/null || true)
+    if [[ $origin == *nightdrive-sh/nightdrive* || $origin == *jarilehtinen/nightdrive* ]]; then
       echo "==> Using the Nightdrive clone already in $DIR ($(git -C "$DIR" branch --show-current))"
     else
       echo "$DIR is already there and isn't a Nightdrive clone: move it aside and run this again." >&2
