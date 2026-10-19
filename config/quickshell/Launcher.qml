@@ -175,7 +175,7 @@ PanelWindow {
     readonly property int selIndex: list.currentIndex
     function shakeNow() { shake.restart() }
     function search(target, text) { go(target); input.text = text }   // a level with its query typed (Default apps › Find more)
-    readonly property var parents: Object.assign({ launcherprefs: "settings", shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", battery: "settings", install: "system", remove: "system", removesw: "remove", removeweb: "remove", emoji: "tools", snippets: "tools", snipkey: "snippets", sniptext: "snippets", screenshot: "tools", software: "install", swcat: "software", swsearch: "software", webapp: "install", recommended: "install", plugins: "install", webname: "webapp", webaddr: "webname", compname: "settings", channel: "settings", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", sounds: "settings", soundregular: "sounds", soundurgent: "sounds", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, sys.parents, home.parents, defs.parents, akeys.parents, ext ? ext.parents : {})
+    readonly property var parents: Object.assign({ launcherprefs: "settings", shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", battery: "settings", install: "system", remove: "system", removesw: "remove", removeweb: "remove", emoji: "tools", snippets: "tools", snipkey: "snippets", sniptext: "snippets", screenshot: "tools", software: "install", swcat: "software", swsearch: "software", webapp: "install", recommended: "install", plugins: "install", webname: "webapp", webaddr: "webname", compname: "settings", channel: "settings", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", sounds: "settings", notiftime: "sounds", soundregular: "sounds", soundurgent: "sounds", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, sys.parents, home.parents, defs.parents, akeys.parents, ext ? ext.parents : {})
     // Search found nothing: hint below ⌘⌥⏎ (icons) → send the text to Claude
     readonly property bool noHit: (level === "root" || level === "apps") && query.trim() !== "" && results.length === 0
     // The selected row is an app: ⌃Enter shows it in Apps (the list with an empty query) or hides it from there.
@@ -229,7 +229,7 @@ PanelWindow {
     readonly property var deckLiked: deckOverride.liked !== undefined ? deckOverride.liked : (deckInfo ? deckInfo.liked : null)
     signal openMenu(string name)              // Settings: opens a Quickshell menu (wifi, bluetooth, ...)
 
-    readonly property var titles: Object.assign({ apps: "Apps", music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", musicsearch: "Music › Search", artist: "Music › " + artist.name, keys: "Keybindings", screenshot: "Tools › Screenshot", settings: "Settings", display: "Settings › Display", battery: "Settings › Battery", startup: "Settings › Startup", channel: "Settings › Update channel", screensaver: "Settings › Screensaver", saverafter: "Screensaver › Start after", screenoff: "Screensaver › Screen off after", saverstyle: "Screensaver › Style", sounds: "Settings › Notifications", soundregular: "Notifications › Regular sound", soundurgent: "Notifications › Urgent sound", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
+    readonly property var titles: Object.assign({ apps: "Apps", music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", musicsearch: "Music › Search", artist: "Music › " + artist.name, keys: "Keybindings", screenshot: "Tools › Screenshot", settings: "Settings", display: "Settings › Display", battery: "Settings › Battery", startup: "Settings › Startup", channel: "Settings › Update channel", screensaver: "Settings › Screensaver", saverafter: "Screensaver › Start after", screenoff: "Screensaver › Screen off after", saverstyle: "Screensaver › Style", sounds: "Settings › Notifications", notiftime: "Notifications › Show for", soundregular: "Notifications › Regular sound", soundurgent: "Notifications › Urgent sound", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
                                      launcherprefs: "Settings › Launcher", compname: "Settings › Computer name", topbar: "Settings › Top bar", baropacity: "Top bar › Opacity", baricons: "Top bar › Icon colors", barhl: "Top bar › Highlight", baritems: "Top bar › Items",
                                      system: "System", install: "System › Install", emoji: "Tools › Emoji", snippets: "Tools › Snippets", snipkey: "Snippets › Trigger", sniptext: "Snippets › “" + snipTrigger + "”", software: "Install › Software", swcat: "Software › " + swCat.name, swsearch: "Software › Search", webapp: "Install › Webapp", recommended: "Install › Recommended", plugins: "Install › Plugins", webname: "Install › Webapp › Name", webaddr: "Install › Webapp › Address", remove: "System › Remove", removesw: "Remove › Software", removeweb: "Remove › Webapps", power: "Power", passwords: "Passwords", clipboard: "Clipboard",
                                      tools: "Tools" }, sys.titles, home.titles, defs.titles, akeys.titles, ext ? ext.titles : {})
@@ -333,7 +333,7 @@ PanelWindow {
 
     readonly property var settingsAliases: ({ "Wi-Fi": "wifi wlan network internet", "Sound": "audio volume output speakers", "Battery": "power charge charging health cycles",
                                               "Display": "brightness night light warm scale scaling resolution monitor screen retina hidpi zoom size bigger smaller",
-                                              "Notifications": "notification sounds alert chime beep ping tone urgent critical",
+                                              "Notifications": "notification sounds alert chime beep ping tone urgent critical popup timeout seconds duration",
                                               "Tailscale": "vpn",
                                               "Default apps": "browser email mail files folders text editor images photos video music player pdf calendar open with",
                                               "Keyboard Shortcuts": "hyper caps lock keys keybindings hotkeys open app", "Theme": "appearance style look colors",
@@ -370,9 +370,16 @@ PanelWindow {
             { kind: "action", name: "Preview", glyph: "monitor-play", cmd: ["bash", "-c", "sleep 0.4; \"$HOME/.config/screensaver/start\""] }
         ]
     }
-    // Settings › Notifications: the two choices with their current sound
+    // Settings › Notifications › Show for: how long a popup stays (Notifs.timeout, read from its file)
+    readonly property var notifTimes: [2, 3, 4, 5, 7, 10, 15, 20, 30]
+    function setNotifTime(sec) {
+        Quickshell.execDetached(["bash", "-c", 'mkdir -p "$(dirname "$2")" && printf "%s\\n" "$1" > "$2.tmp" && mv "$2.tmp" "$2"',
+                                 "_", JSON.stringify({ seconds: sec }), Notifs.prefsFile])
+    }
+    // Settings › Notifications: how long they show, and the two choices with their current sound
     function soundsItems() {
         return [
+            { kind: "nav", name: "Show for", glyph: "timer", target: "notiftime", summary: Math.round(Notifs.timeout / 1000) + " s" },
             { kind: "nav", name: "Regular sound", glyph: "bell", target: "soundregular", summary: soundName("regular", soundRegular) },
             { kind: "nav", name: "Urgent sound", glyph: "bell-ring", target: "soundurgent", summary: soundName("urgent", soundUrgent) }
         ].concat(fumon === "on" || fumon === "off" ? [   // only where uwsm has fumon (up to 0.26)
@@ -689,6 +696,10 @@ PanelWindow {
             all = screensaverItems().map(t => ({ item: t, text: t.name }))
         } else if (level === "sounds") {
             all = soundsItems().map(t => ({ item: t, text: t.name }))
+        } else if (level === "notiftime") {
+            const cur = Math.round(Notifs.timeout / 1000)
+            return notifTimes.map(v => ({ kind: "notiftime", value: v, name: v + " seconds", glyph: v === cur ? "check" : "timer",
+                summary: v === cur ? "current" : (v * 1000 === Notifs.defaultTimeout ? "default" : undefined) }))
         } else if (level === "soundregular" || level === "soundurgent") {
             const which = level === "soundregular" ? "regular" : "urgent"
             const cur = which === "regular" ? soundRegular : soundUrgent
@@ -842,6 +853,7 @@ PanelWindow {
         if (target === "screensaver" || target === "saverafter" || target === "screenoff" || target === "saverstyle") idleProc.running = true
         if (target === "sounds" || target === "soundregular" || target === "soundurgent") soundsProc.running = true
         if (target === "sounds") fumonProc.running = true
+        if (target === "notiftime") Qt.callLater(() => selectWhere(r => r.summary === "current"))   // the cursor on the current time
         if (extOf(target)) extOf(target).entered(target)
         if (target === "passwords") { pwState = pwItems.length ? "ready" : "loading"; pwProc.running = true }
     }
@@ -983,6 +995,10 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         else if (item.kind === "stat" && item.copy !== undefined) sys.copyText(item.copy)   // Public IP, Local IP, Router: as ⌘C
         else if (item.kind === "brightness" || item.kind === "stat") shake.restart()   // brightness: ←/→ or the slider; stat: information only
         else if (item.kind === "lpref") { keepSelection(); setPref(item.key, !prefs[item.key]) }
+        else if (item.kind === "notiftime") {   // stays open, like the sounds: the check moves once Notifs has read the file
+            keepSelection()
+            setNotifTime(item.value)
+        }
         else if (item.kind === "fumon") {
             keepSelection()
             fumon = fumon === "on" ? "off" : "on"

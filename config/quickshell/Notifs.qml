@@ -28,7 +28,20 @@ import Quickshell.Wayland
 Singleton {
     id: s
 
-    readonly property int timeout: 5000       // ms a popup stays (hover keeps it)
+    // ms a popup stays (hover keeps it): launcher › Settings › Notifications › Show for, in
+    // ~/.local/state/nightdrive/notifications.json ({ "seconds": N }; missing = the default)
+    readonly property int defaultTimeout: 5000
+    readonly property string prefsFile: Quickshell.env("HOME") + "/.local/state/nightdrive/notifications.json"
+    property int timeout: defaultTimeout
+    FileView {
+        path: s.prefsFile; watchChanges: true; onFileChanged: reload(); printErrors: false
+        onLoaded: {
+            let v = {}
+            try { v = JSON.parse(text()) || {} } catch (e) {}
+            s.timeout = v.seconds > 0 ? v.seconds * 1000 : s.defaultTimeout
+        }
+        onLoadFailed: s.timeout = s.defaultTimeout
+    }
     readonly property int maxHistory: 50
     readonly property int maxPopups: 6
     readonly property int soundGap: 2000      // ms: an app's notifications closer together than this chime once
