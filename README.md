@@ -148,6 +148,14 @@ One of these, with the KDE edition of Fedora 44. The installer tells which machi
 On a fresh Fedora Asahi Remix 44 or Fedora 44 KDE, with a network connection:
 
 ```sh
+curl -fsSL https://nightdrive.sh/install | bash
+```
+
+That runs [`bootstrap.sh`](bootstrap.sh): it installs git, clones Nightdrive into `~/dotfiles` and starts its installer.
+`bash -s -- --dev` clones the dev channel instead of the stable one, and the installer's options in the table below go
+after `--` too (`bash -s -- --with deck`). The same by hand:
+
+```sh
 sudo dnf install -y git   # not in a fresh install
 git clone https://github.com/jarilehtinen/nightdrive.git ~/dotfiles
 cd ~/dotfiles
