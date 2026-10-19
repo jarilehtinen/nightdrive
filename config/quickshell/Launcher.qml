@@ -59,12 +59,9 @@ PanelWindow {
     property var keyList: []                  // [{ name, sub, keys, section }]
     property var keyIndex: ({})               // lower-case name → keys (shortcutFor)
     property string armed: ""                 // action awaiting confirmation
-    property var removeList: []               // Remove › Software: user-installed packages
-    property var webappList: []               // Remove › Webapps: the web apps (webapp-remove --list)
     property var detail: null                 // Install / Remove: the package row whose details are shown ({ name, summary, src, id, cmd, remove })
     property var detailInfo: null             // its details from pkg-info (null = still loading)
     readonly property int detailWidth: 860    // the card's width while showing them
-    property bool removeLoaded: false
     // Settings › Launcher: { fuzzy, shortcuts } in ~/.local/state/nightdrive/launcher.json (missing = on)
     property var prefs: ({ fuzzy: true, shortcuts: true })
     readonly property string prefsFile: Quickshell.env("HOME") + "/.local/state/nightdrive/launcher.json"
@@ -105,9 +102,9 @@ PanelWindow {
     // DefaultAppsLevels.qml (Settings › Default apps), AppKeyLevels.qml (Settings › Keyboard Shortcuts), BehaviourLevels.qml
     // (Settings › Launcher, Computer name, Notifications, Update channel), MusicLevels.qml (Music, with Deck), InstallLevels.qml
     // (Install's pages), ToolsLevels.qml (Clipboard, Emoji, Snippets),
-    // AppearanceLevels.qml (Top bar, Screensaver), DisplayLevels.qml (Display, Battery) and the private extension; they answer
-    // the same questions (items, activate, footer, entered). A new file goes in this list, not in each question's code
-    readonly property var exts: [sys, home, defs, akeys, behave, music, inst, tools, look, disp].concat(ext ? [ext] : [])
+    // AppearanceLevels.qml (Top bar, Screensaver), DisplayLevels.qml (Display, Battery), RemoveLevels.qml
+    // (Remove) and the private extension; they answer the same questions (items, activate, footer, entered). A new file goes in this list, not in each question's code
+    readonly property var exts: [sys, home, defs, akeys, behave, music, inst, tools, look, disp, rm].concat(ext ? [ext] : [])
     function extOf(l) { return exts.find(e => e.levels.indexOf(l) >= 0) || null }
     readonly property bool extLevel: extOf(level) !== null
     readonly property int selIndex: list.currentIndex
@@ -115,7 +112,7 @@ PanelWindow {
     function search(target, text) { go(target); input.text = text }   // a level with its query typed (Default apps › Find more)
     readonly property var swCats: inst.swCats                          // Install › Software's categories (Default apps › Find more)
     function openCategory(key, name) { inst.openCategory(key, name) }
-    readonly property var parents: Object.assign({ install: "system", remove: "system", removesw: "remove", removeweb: "remove", screenshot: "tools", theme: "settings", themecolor: "theme", background: "theme", startup: "settings" }, ...exts.map(e => e.parents))
+    readonly property var parents: Object.assign({ install: "system", screenshot: "tools", theme: "settings", themecolor: "theme", background: "theme", startup: "settings" }, ...exts.map(e => e.parents))
     // Search found nothing: hint below ⌘⌥⏎ (icons) → send the text to Claude
     readonly property bool noHit: (level === "root" || level === "apps") && query.trim() !== "" && results.length === 0
     // The selected row is an app: ⌃Enter shows it in Apps (the list with an empty query) or hides it from there.
@@ -156,7 +153,7 @@ PanelWindow {
     signal openMenu(string name)              // Settings: opens a Quickshell menu (wifi, bluetooth, ...)
 
     readonly property var titles: Object.assign({ apps: "Apps", keys: "Keybindings", screenshot: "Tools › Screenshot", settings: "Settings", startup: "Settings › Startup", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
-                                     system: "System", install: "System › Install", remove: "System › Remove", removesw: "Remove › Software", removeweb: "Remove › Webapps", power: "Power", passwords: "Passwords",
+                                     system: "System", install: "System › Install", power: "Power", passwords: "Passwords",
                                      tools: "Tools" }, ...exts.map(e => e.titles))
 
     // Reference at startup: the app list only loads on first reference
@@ -461,19 +458,6 @@ PanelWindow {
                 return Object.assign({}, a, { item: Object.assign({}, a.item, { summary: on ? (bgApps[a.item.name] !== undefined ? "at login, hidden" : "at login") : undefined }) })
             })
             if (q === "") return all.sort((a, b) => a.text.localeCompare(b.text)).map(x => x.item)   // a fixed order: toggling doesn't move rows
-        } else if (level === "remove") {
-            // Two kinds, Software and Webapps; a search looks in both, and the tag tells which a row is
-            if (q === "") return [{ kind: "nav", name: "Software", glyph: "package-minus", target: "removesw", summary: "dnf + Flatpak" },
-                                  { kind: "nav", name: "Webapps", glyph: "app-window", target: "removeweb",
-                                    summary: webappList.length ? String(webappList.length) : undefined }]
-            all = removeList.map(p => ({ item: Object.assign({}, p, { from: "Software" }), text: p.name, extra: p.summary }))
-                .concat(webappList.map(w => ({ item: Object.assign({}, w, { from: "Webapp" }), text: w.name, extra: w.summary + " webapp" })))
-        } else if (level === "removesw") {
-            if (!removeLoaded) return [{ kind: "hint", name: "Loading packages…" }]
-            all = removeList.map(p => ({ item: p, text: p.name, extra: p.summary }))
-        } else if (level === "removeweb") {
-            if (webappList.length === 0) return [{ kind: "hint", name: "No webapps (add one in System › Install › Webapp)" }]
-            all = webappList.map(w => ({ item: w, text: w.name, extra: w.summary }))
         } else {
             all = (statics[level] || []).map(r => ({ item: r, text: r.kind === "header" ? "" : r.name }))   // a search drops the headers
         }
@@ -512,7 +496,6 @@ PanelWindow {
         hiddenProc.running = true
         if (target === "keys") keysProc.running = true     // re-read SHORTCUTS.md: changes show up immediately
         list.currentIndex = firstSelectable()
-        if (target === "remove" || target === "removesw" || target === "removeweb") { removeProc.running = true; webappProc.running = true }
         if (target === "settings") behave.entered("settings")   // the computer name and channel on its rows
         if (target === "background") wallProc.running = true
         if (target === "theme" || target === "themecolor") themeProc.running = true
@@ -796,15 +779,6 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
     function installCmd(src, id) {
         return src === "flatpak" ? term('flatpak install --user flathub "$1"', id) : term('sudo dnf install "$1"', id)
     }
-    // dnf repoquery output ("name|summary" per line) → [{ name, summary }]
-    function parsePackages(text) {
-        const out = []
-        for (const line of text.split("\n")) {
-            const i = line.indexOf("|")
-            if (i >= 0) out.push({ name: line.slice(0, i), summary: line.slice(i + 1) })
-        }
-        return out
-    }
     // Install / Remove: a package's details (hypr/scripts/pkg-info). The results stay as they were behind them.
     function showDetail(item) {
         detail = item; detailInfo = null; armed = ""
@@ -869,6 +843,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
     ToolsLevels { id: tools; launcher: win }
     AppearanceLevels { id: look; launcher: win }
     DisplayLevels { id: disp; launcher: win }
+    RemoveLevels { id: rm; launcher: win }
     Loader {
         id: extLoader
         source: win.extSource
@@ -931,32 +906,6 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                 glyph: glyphs[it.category] || "key-round"
             })).sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
             win.pwState = "ready"
-        }
-    }
-    // Remove: packages the user installed, then the user's Flatpak apps (after a "--flatpak--" line, tab-separated)
-    Sh {
-        id: removeProc
-        script: 'dnf repoquery --userinstalled -q --queryformat "%{name}|%{summary}\\n" 2>/dev/null | sort -u; echo --flatpak--; flatpak list --app --user --columns=application,name,description 2>/dev/null'
-        onResult: text => {
-            const [dnf, fp] = text.split("--flatpak--\n")
-            const apps = (fp || "").split("\n").map(l => l.split("\t")).filter(f => f[1])
-            win.removeList = win.parsePackages(dnf).map(p => ({ kind: "action", name: p.name, summary: p.summary, glyph: "package-minus",
-                                                                 src: "dnf", id: p.name, remove: true, cmd: win.term('sudo dnf remove "$1"', p.name) }))
-                .concat(apps.map(([id, name, desc]) => ({ kind: "action", name: name, summary: (desc || "") + "  ·  Flatpak", glyph: "package-minus",
-                                                            src: "flatpak", id: id, remove: true, cmd: win.term('flatpak uninstall --user "$1"', id) })))
-            win.removeLoaded = true
-        }
-    }
-    // Remove › Webapps: removing one takes its logins too (its Chromium profile), so Enter asks twice
-    Sh {
-        id: webappProc
-        command: [win.scripts + "/webapp-remove", "--list"]
-        onResult: text => {
-            win.webappList = text.split("\n").map(l => l.split("\t")).filter(f => f.length >= 4).map(([slug, name, icon, url]) => ({
-                kind: "action", name: name, iconFile: icon || undefined, summary: url.replace(/^[a-z]+:\/\//, "").replace(/\/.*$/, ""),
-                confirm: true, armHint: "Enter again: remove, logins too",
-                cmd: ["bash", "-c", 'out=$("$0" "$1" 2>&1) && notify-send -a Webapp "Webapp removed" "$2" || notify-send -u critical -a Webapp "Removing webapp failed" "$out"',
-                      win.scripts + "/webapp-remove", slug, name] }))
         }
     }
 

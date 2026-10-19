@@ -41,3 +41,4 @@ InstallLevels 1.0 InstallLevels.qml
 ToolsLevels 1.0 ToolsLevels.qml
 AppearanceLevels 1.0 AppearanceLevels.qml
 DisplayLevels 1.0 DisplayLevels.qml
+RemoveLevels 1.0 RemoveLevels.qml
