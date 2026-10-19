@@ -36,3 +36,4 @@ LevelRing 1.0 LevelRing.qml
 BatteryBar 1.0 BatteryBar.qml
 AirPodsSettings 1.0 AirPodsSettings.qml
 BehaviourLevels 1.0 BehaviourLevels.qml
+MusicLevels 1.0 MusicLevels.qml

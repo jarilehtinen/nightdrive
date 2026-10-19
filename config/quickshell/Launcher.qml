@@ -100,9 +100,6 @@ PanelWindow {
     property string pwState: "idle"           // idle | loading | ready | error
     property string pwError: ""
     property var clipItems: []                // Clipboard: cliphist history
-    property var musicAlbums: []              // Music: Deck's shelf and Curated albums [{ uri, name, artist, year, list }]
-    property var spotify: null                // Music › Search: { query, artists, albums, error } (deck search --json)
-    property var artist: ({ id: "", name: "", albums: null })   // Music › Search › an artist's albums
     property bool clipLoaded: false
     property var wallList: []                 // Settings › Background: [{ path, thumb, name, group, own }] (hypr/scripts/wallpaper list)
     property bool wallLoaded: false
@@ -136,14 +133,15 @@ PanelWindow {
     readonly property var ext: extLoader.item
     // Levels from other files: SystemLevels.qml (Wi-Fi, Bluetooth, Sound, Tailscale), HomeLevels.qml (Home Assistant),
     // DefaultAppsLevels.qml (Settings › Default apps), AppKeyLevels.qml (Settings › Keyboard Shortcuts), BehaviourLevels.qml
-    // (Settings › Launcher, Computer name, Notifications, Update channel) and the private extension; they answer the same questions (items, activate, footer, entered). A new file goes in this list, not in each question's code
-    readonly property var exts: [sys, home, defs, akeys, behave].concat(ext ? [ext] : [])
+    // (Settings › Launcher, Computer name, Notifications, Update channel), MusicLevels.qml (Music, with Deck) and the private
+    // extension; they answer the same questions (items, activate, footer, entered). A new file goes in this list, not in each question's code
+    readonly property var exts: [sys, home, defs, akeys, behave, music].concat(ext ? [ext] : [])
     function extOf(l) { return exts.find(e => e.levels.indexOf(l) >= 0) || null }
     readonly property bool extLevel: extOf(level) !== null
     readonly property int selIndex: list.currentIndex
     function shakeNow() { shake.restart() }
     function search(target, text) { go(target); input.text = text }   // a level with its query typed (Default apps › Find more)
-    readonly property var parents: Object.assign({ shelf: "music", curated: "music", musicsearch: "music", artist: "musicsearch", display: "settings", battery: "settings", install: "system", remove: "system", removesw: "remove", removeweb: "remove", emoji: "tools", snippets: "tools", snipkey: "snippets", sniptext: "snippets", screenshot: "tools", software: "install", swcat: "software", swsearch: "software", webapp: "install", recommended: "install", plugins: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, ...exts.map(e => e.parents))
+    readonly property var parents: Object.assign({ display: "settings", battery: "settings", install: "system", remove: "system", removesw: "remove", removeweb: "remove", emoji: "tools", snippets: "tools", snipkey: "snippets", sniptext: "snippets", screenshot: "tools", software: "install", swcat: "software", swsearch: "software", webapp: "install", recommended: "install", plugins: "install", webname: "webapp", webaddr: "webname", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, ...exts.map(e => e.parents))
     // Search found nothing: hint below ⌘⌥⏎ (icons) → send the text to Claude
     readonly property bool noHit: (level === "root" || level === "apps") && query.trim() !== "" && results.length === 0
     // The selected row is an app: ⌃Enter shows it in Apps (the list with an empty query) or hides it from there.
@@ -165,7 +163,6 @@ PanelWindow {
         : level === "passwords" && pwState === "ready" ? "Enter: password  ·  Shift+Enter: username  ·  Ctrl+Enter: one-time code"
         : extOf(level) ? extOf(level).footer(level, query)   // not extLevel: it can lag a level change by one update
         : level === "clipboard" ? "Enter: paste  ·  Shift+Enter: copy only"
-        : level === "shelf" || level === "curated" ? "Enter: play in Deck"
         : level === "emoji" ? "Enter: paste  ·  Shift+Enter: copy only  ·  search in English or Finnish"
         : level === "snippets" && (results[list.currentIndex] || {}).kind === "snippet" ? "Enter: paste  ·  Shift+Enter: copy only  ·  Ctrl+Enter: edit  ·  Cmd+Backspace: remove"
         : level === "snippets" && (results[list.currentIndex] || {}).kind === "snipauto" ? (snipAuto === "off" ? "Enter: turn on in a terminal (asks for your password once)" : "Enter: turn off in a terminal")
@@ -193,7 +190,7 @@ PanelWindow {
     readonly property var deckLiked: deckOverride.liked !== undefined ? deckOverride.liked : (deckInfo ? deckInfo.liked : null)
     signal openMenu(string name)              // Settings: opens a Quickshell menu (wifi, bluetooth, ...)
 
-    readonly property var titles: Object.assign({ apps: "Apps", music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", musicsearch: "Music › Search", artist: "Music › " + artist.name, keys: "Keybindings", screenshot: "Tools › Screenshot", settings: "Settings", display: "Settings › Display", battery: "Settings › Battery", startup: "Settings › Startup", screensaver: "Settings › Screensaver", saverafter: "Screensaver › Start after", screenoff: "Screensaver › Screen off after", saverstyle: "Screensaver › Style", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
+    readonly property var titles: Object.assign({ apps: "Apps", keys: "Keybindings", screenshot: "Tools › Screenshot", settings: "Settings", display: "Settings › Display", battery: "Settings › Battery", startup: "Settings › Startup", screensaver: "Settings › Screensaver", saverafter: "Screensaver › Start after", screenoff: "Screensaver › Screen off after", saverstyle: "Screensaver › Style", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
                                      topbar: "Settings › Top bar", baropacity: "Top bar › Opacity", baricons: "Top bar › Icon colors", barhl: "Top bar › Highlight", baritems: "Top bar › Items",
                                      system: "System", install: "System › Install", emoji: "Tools › Emoji", snippets: "Tools › Snippets", snipkey: "Snippets › Trigger", sniptext: "Snippets › “" + snipTrigger + "”", software: "Install › Software", swcat: "Software › " + swCat.name, swsearch: "Software › Search", webapp: "Install › Webapp", recommended: "Install › Recommended", plugins: "Install › Plugins", webname: "Install › Webapp › Name", webaddr: "Install › Webapp › Address", remove: "System › Remove", removesw: "Remove › Software", removeweb: "Remove › Webapps", power: "Power", passwords: "Passwords", clipboard: "Clipboard",
                                      tools: "Tools" }, ...exts.map(e => e.titles))
@@ -493,9 +490,8 @@ PanelWindow {
                 appEntries(q).map(a => Object.assign({}, a, { item: Object.assign({}, a.item, { from: "Apps" }) })),
                 // Home Assistant's devices ("olohuone" → its lights): Enter turns one on/off right from the search
                 home.rootRows(),
-                // Deck's albums ("fm-84" → Atlas)
-                // (the MUSIC tag on the right instead of the year)
-                (hasDeck ? musicAlbums : []).map(a => ({ item: Object.assign(albumItem(a), { summary: undefined, from: "Music" }), text: a.name, extra: a.artist }))
+                // Deck's albums ("fm-84" → Atlas; MusicLevels.qml)
+                music.rootRows()
             ]) all = all.concat(src)
         } else if (level === "apps") {
             all = appEntries(q)
@@ -548,34 +544,6 @@ PanelWindow {
             const r = extOf(level).items(level, q)
             if (!r.all) return r          // ready-made rows (hints, etc.)
             all = r.all                   // [{ item, text, extra }], filtered by the query below
-        } else if (level === "music") {
-            const count = list => musicAlbums.filter(a => a.list === list).length
-            all = [{ kind: "nav", name: "Album Shelf", glyph: "library-big", target: "shelf", summary: String(count("shelf")) },
-                   { kind: "nav", name: "Curated", glyph: "sparkles", target: "curated", summary: String(count("curated")) },
-                   { kind: "nav", name: "Search Spotify", glyph: "search", target: "musicsearch", summary: "in Deck" }]
-                .map(r => ({ item: r, text: r.name }))
-        } else if (level === "musicsearch") {
-            // Results come from `deck search --json` a moment after typing stops; going back from an artist shows them again
-            const typed = query.trim()
-            const shown = typed !== "" ? typed : (spotify ? spotify.query : "")
-            if (shown === "") return hint("Type an artist or album")
-            const inDeck = { kind: "decksearch", name: "Open “" + shown + "” in Deck", glyph: "external-link", value: shown }
-            if (!spotify || spotify.query !== shown) return hint("Searching Spotify…")
-            if (spotify.error) return hint(spotify.error).concat([inDeck])
-            const artists = spotify.artists.slice(0, 4).map(a => ({ kind: "spotifyartist", name: a.name, glyph: "mic-vocal", id: a.id, chevron: true }))
-            const albums = spotify.albums.map(albumItem)
-            if (artists.length + albums.length === 0) return hint("Nothing found on Spotify").concat([inDeck])
-            return (artists.length ? [{ kind: "header", name: "Artists" }].concat(artists) : [])
-                .concat(albums.length ? [{ kind: "header", name: "Albums" }].concat(albums) : [], [inDeck])
-        } else if (level === "artist") {
-            if (artist.albums === null) return hint("Loading albums…")
-            if (artist.albums.length === 0) return hint("No albums found")
-            all = artist.albums.map(a => ({ item: albumItem(a, false), text: a.name, extra: String(a.year || "") }))
-        } else if (level === "shelf" || level === "curated") {
-            const albums = musicAlbums.filter(a => a.list === level)
-            if (albums.length === 0) return hint(level === "shelf" ? "The shelf is empty: add albums in Deck with a"
-                                                                  : "No Curated list yet: `deck curate` suggests albums based on what you play")
-            all = albums.map(a => ({ item: albumItem(a), text: a.name, extra: a.artist + " " + (a.year || "") }))
         } else if (level === "clipboard") {
             if (!clipLoaded) return [{ kind: "hint", name: "Loading clipboard history…" }]
             if (clipItems.length === 0) return [{ kind: "hint", name: "Clipboard history is empty" }]
@@ -900,14 +868,6 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
             else if (item.entry) item.entry.execute(); else Quickshell.execDetached(["gio", "launch", item.path])
         }
         else if (item.kind === "clip") clipPick(item, true)
-        else if (item.kind === "album") { win.open = false; Quickshell.execDetached([bin + "/deck-ctl", "play-album", item.uri]) }
-        else if (item.kind === "spotifyartist") {
-            artist = { id: item.id, name: item.name, albums: null }
-            artistProc.environment = { "ID": item.id }
-            artistProc.running = true
-            go("artist")
-        }
-        else if (item.kind === "decksearch") { win.open = false; Quickshell.execDetached([bin + "/deck-ctl", "search", item.value]) }
         else if (item.kind === "emoji") emojiPick(item, true)
         else if (item.kind === "stat" && item.copy !== undefined) sys.copyText(item.copy)   // Public IP, Local IP, Router: as ⌘C
         else if (item.kind === "brightness" || item.kind === "stat") shake.restart()   // brightness: ←/→ or the slider; stat: information only
@@ -1092,7 +1052,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
 
     // Closing leaves the details right away (after the Behavior above has seen open = false), so the next open starts narrow
     onOpenChanged: if (!open) Qt.callLater(() => { if (!win.open) { win.detail = null; win.detailInfo = null } })
-    else { lastMouse = null; spotify = null; lastSel = ({}); exts.forEach(e => e.opened()); Plugins.check(); go("root"); deckProc.running = hasDeck; musicProc.running = hasDeck; bgProc.running = true; bgAppsProc.running = true; autostartProc.running = true; updatesProc.running = true; brightProc.running = true; nightProc.running = true; sys.entered("display"); sys.soundRefresh(); input.forceActiveFocus() }
+    else { lastMouse = null; lastSel = ({}); exts.forEach(e => e.opened()); Plugins.check(); go("root"); deckProc.running = hasDeck; bgProc.running = true; bgAppsProc.running = true; autostartProc.running = true; updatesProc.running = true; brightProc.running = true; nightProc.running = true; sys.entered("display"); sys.soundRefresh(); input.forceActiveFocus() }
     Component.onCompleted: keysProc.running = true
 
     Timer { id: disarm; interval: 4000; onTriggered: win.armed = "" }
@@ -1168,7 +1128,6 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
     }
     onQueryChanged: {
         if (level === "swsearch") { armed = ""; searchDelay.restart() }
-        if (level === "musicsearch" && query.trim() !== "") spotifyDelay.restart()
     }
     Timer { id: searchDelay; interval: 300; onTriggered: win.runSearch() }
     Sh {
@@ -1266,55 +1225,13 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
     DefaultAppsLevels { id: defs; launcher: win }
     AppKeyLevels { id: akeys; launcher: win }
     BehaviourLevels { id: behave; launcher: win }
+    MusicLevels { id: music; launcher: win }
     Loader {
         id: extLoader
         source: win.extSource
         onLoaded: item.launcher = win
     }
-    // Music: Deck's shelf (sorted by artist and year, like in Deck) and the Curated list; read on every open
-    // An album row: the album's name with ARTIST below it (small, theme colour), the year on the right; an artist's own
-    // album list leaves the artist out
-    function albumItem(a, withArtist = true) {
-        return { kind: "album", name: a.name, artist: withArtist && a.artist ? a.artist : "", summary: a.year ? String(a.year) : "", glyph: "disc-3", uri: a.uri }
-    }
     function esc(t) { return String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") }
-    Sh {
-        id: musicProc
-        script: 'd="$HOME/.config/deck"; s=$(cat "$d/shelf.json" 2>/dev/null || echo "[]"); c=$(cat "$d/curated.json" 2>/dev/null || echo "{}")
-jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downcase), .year) | .[] | {uri, name, artist, year, list: "shelf"}),
-  ($c.albums // [] | .[] | {uri, name, artist, year, list: "curated"})]\''
-        onResult: text => { try { win.musicAlbums = JSON.parse(text) } catch (e) { win.musicAlbums = [] } }
-    }
-    // Music › Search: Spotify through Deck's own client (needs client_id in Deck's config.toml); one request after typing pauses
-    Timer { id: spotifyDelay; interval: 450; onTriggered: win.searchSpotify() }
-    function searchSpotify() {
-        const q = query.trim()
-        if (q.length < 2 || spotifyProc.running) return
-        spotifyProc.environment = { "Q": q }
-        spotifyProc.running = true
-    }
-    Sh {
-        id: spotifyProc
-        script: '"$HOME/.local/bin/deck" search --json "$Q"'
-        onResult: text => {
-            const q = spotifyProc.environment.Q
-            try {
-                if (spotifyProc.exitCode !== 0) throw new Error(text.trim().split("\n").pop() || "Search failed")
-                const r = JSON.parse(text)
-                win.spotify = { query: q, artists: r.artists || [], albums: r.albums || [], error: "" }
-            } catch (e) { win.spotify = { query: q, artists: [], albums: [], error: String(e.message || e).replace(/^deck: /, "") } }
-            if (win.level === "musicsearch" && win.query.trim() !== "" && win.query.trim() !== q) win.searchSpotify()   // typed on meanwhile
-        }
-    }
-    Sh {
-        id: artistProc
-        script: '"$HOME/.local/bin/deck" artist-albums --json "$ID"'
-        onResult: text => {
-            let albums = []
-            try { albums = JSON.parse(text) } catch (e) {}
-            if (win.artist.id === artistProc.environment.ID) win.artist = Object.assign({}, win.artist, { albums: albums })
-        }
-    }
     // Settings › Background: wallpapers and their previews (the script creates missing previews the first time)
     Sh {
         id: wallProc
