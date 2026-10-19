@@ -200,6 +200,9 @@ hl.config({
         focus_on_activate       = true,   -- apps may request focus: e.g. opening a link → Firefox comes to the front (switches workspace)
         -- A lock that crashed (lock.qml) can be started again from a text console instead of only logging out
         allow_session_lock_restore = true,
+        -- How long a locked screen stays blank before Hyprland's "lock died" screen: hypr/scripts/relock starts the lock
+        -- again after sleep, and the new one takes a moment to take over
+        lockdead_screen_delay = 3000,
     },
     -- Hyprland's own "updated to …" window after an update: Hyprland comes with `nightdrive update`, and the window
     -- (Hyprland's news, not in the desktop's look) is about Hyprland, not what changed in Nightdrive

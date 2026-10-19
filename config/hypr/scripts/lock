@@ -1,7 +1,7 @@
 #!/bin/bash
 # Locks the session with the login screen (greeter/lock.qml), the same lock as at boot: hypridle's lock_cmd (idle,
-# before sleep, ⌃⌘L through loginctl lock-session). hyprlock, used before, didn't come back from sleep on a PC: the
-# password field showed but took no keys, and Hyprland's "lock died" screen flashed around it.
+# before sleep, ⌃⌘L through loginctl lock-session), so the lock looks like the login screen. After sleep relock starts it
+# again (the keyboard doesn't come back to the old one on some machines).
 # A lock already up stays (idle and sleep both ask for one).
 pgrep -u "$USER" -f '[q]s -p .*/greeter/lock\.qml' >/dev/null && exit 0
 pam=login; [[ -e /etc/pam.d/nightdrive-lock ]] && pam=nightdrive-lock   # as hyprland.lua: it also opens the keyring
