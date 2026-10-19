@@ -1132,12 +1132,14 @@ def set_target(device_id):
         f.write(device_id + "\n")
 
 
-def mark_sent(what, to):
-    """What was just sent and to whom, for the menu's "Sent" (it shows the newest for a few seconds)."""
+def mark_sent(what, to, error=""):
+    """What was just sent and to whom, for the menu's "Sent" (it shows the newest for a few seconds), or why a send
+    didn't go (error), so the menu's button stops waiting."""
     os.makedirs(STATE, mode=0o700, exist_ok=True)
     tmp = os.path.join(STATE, "sent.json.tmp")
     with open(tmp, "w") as f:
-        json.dump({"time": time.time(), "what": what, "to": to}, f, ensure_ascii=False)
+        json.dump(dict({"time": time.time(), "what": what, "to": to}, **({"error": error} if error else {})), f,
+                  ensure_ascii=False)
     os.replace(tmp, os.path.join(STATE, "sent.json"))
     refresh_bar()
 
@@ -1360,6 +1362,7 @@ def pick_device(args):
 def failed(err):
     """A send from the menu or a drop that didn't go: nobody sees stderr there."""
     notify("Couldn't send", err)
+    mark_sent("", "", err)
     print(err, file=sys.stderr)
     return 1
 
@@ -1434,6 +1437,7 @@ def main():
         text = clipboard()
         if not text.strip():
             notify("The clipboard has no text", "Copy a text or a link first")
+            mark_sent("", "", "The clipboard has no text")
             return 1
         err = deliver(dev, text=text, clip=True)
         return failed(err) if err else 0

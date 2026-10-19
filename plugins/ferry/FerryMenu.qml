@@ -9,8 +9,8 @@ import qs
 // and Clear empties the list. Below it the three ways to send, as in the phone's app: Aa (a
 // text typed here), Send Clipboard and + (files from a dialog), to the device in the pill above them (the last one
 // picked; a click on it lists the devices, and Add Device). Files dragged over the menu turn the list into a tile per
-// device: the drop goes to the tile's device (a drop on the bar icon, or between the tiles, to the pill's). A moment's
-// "Sent" over the list says it went, whoever sent it (`ferry list --json`'s sent).
+// device: the drop goes to the tile's device (a drop on the bar icon, or between the tiles, to the pill's). The big
+// button says for a moment that a send went, whoever sent it (`ferry list --json`'s sent).
 Column {
     id: m
     width: parent ? parent.width : 360
@@ -37,6 +37,13 @@ Column {
     readonly property bool dropping: outerDrop.containsDrag || tileDrags > 0 || dropHold.running
     readonly property bool wantsKeyboard: mode === "write"   // shell.qml: the text field needs it
     readonly property int rowHeight: 56
+    // The big button says how every send went, its own and a drop's (here, on a tile or on the bar icon), a pick's (+)
+    // or `ferry send`'s: "Sent to …" for a moment once `ferry list` reports it (sent.json), "Not sent" when it failed
+    // (a notification says why). Its own send says "Sending…" until then, and gives up waiting after a while.
+    property real sendingSince: 0      // seconds: when the button sent, while waiting for it to show
+    property real shownSent: 0         // the sent.json time the button has shown
+    property bool justSent: false
+    property bool sendFailed: false    // the button's own send didn't go: "Not sent" for a moment
 
     function refresh() { listProc.running = true }
     function run(args) { Quickshell.execDetached([m.ferry].concat(args)); soon.restart() }
@@ -66,9 +73,15 @@ Column {
     function sendText() {
         const t = textEdit.text
         if (!t.trim() || !m.target) return
-        m.run(["text", "--to", m.target.id, t])
+        m.sendFrom(["text", "--to", m.target.id, t])
         textEdit.text = ""
         m.mode = "list"
+    }
+    function sendFrom(args) {
+        m.sendingSince = Date.now() / 1000 - 1
+        m.justSent = m.sendFailed = false
+        sendGiveUp.restart()
+        m.run(args)
     }
     function addDevice() {
         m.mode = "list"
@@ -76,7 +89,19 @@ Column {
         if (m.qr === "") qrProc.running = true
     }
     Component.onCompleted: refresh()
-    onStChanged: if (m.picked && st && st.target === m.picked) m.picked = ""
+    onStChanged: {
+        if (m.picked && st && st.target === m.picked) m.picked = ""
+        if (st && st.sent && st.sent.time !== m.shownSent && (!m.sendingSince || st.sent.time >= m.sendingSince)) {
+            m.shownSent = st.sent.time
+            m.sendingSince = 0
+            m.justSent = !st.sent.error
+            m.sendFailed = !!st.sent.error
+            sentFlash.restart()
+        }
+    }
+    Timer { id: sentFlash; interval: 2000; onTriggered: { m.justSent = false; m.sendFailed = false } }
+    Timer { id: sendGiveUp; interval: 15000; onTriggered: m.sendingSince = 0 }
+    Timer { interval: 500; repeat: true; running: m.sendingSince > 0; onTriggered: m.refresh() }   // to show "Sent" soon
     onModeChanged: if (mode === "write") Qt.callLater(() => textEdit.forceActiveFocus())   // once it shows
     Timer { interval: 2000; repeat: true; running: true; onTriggered: m.refresh() }
     Timer { id: soon; interval: 400; onTriggered: m.refresh() }
@@ -612,7 +637,7 @@ Column {
                 // In the text's place: Send (the text); otherwise Send Clipboard
                 Rectangle {
                     id: send
-                    readonly property bool usable: !!m.target && m.canTake(m.target) && (m.mode !== "write" || textEdit.text.trim() !== "")
+                    readonly property bool usable: !!m.target && m.canTake(m.target) && !m.sendingSince && (m.mode !== "write" || textEdit.text.trim() !== "")
                     property bool navSelected: false
                     readonly property bool navEnabled: usable
                     function navActivate() { sendArea.clicked(null) }
@@ -627,13 +652,14 @@ Column {
                         spacing: 9
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
-                            text: Icons.g(m.mode === "write" ? "send" : "clipboard-copy")
+                            text: Icons.g(m.justSent ? "check" : m.sendFailed ? "circle-x" : m.sendingSince ? "loader" : m.mode === "write" ? "send" : "clipboard-copy")
                             color: Theme.accent
                             font { family: Icons.family; pixelSize: 16 }
                         }
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
-                            text: m.mode === "write" ? "Send" : "Send Clipboard"
+                            text: m.justSent ? "Sent to " + (m.st && m.st.sent ? m.st.sent.to : "") : m.sendFailed ? "Not sent" : m.sendingSince ? "Sending…"
+                                : m.mode === "write" ? "Send" : "Send Clipboard"
                             color: Theme.accent
                             font { family: Theme.font; pixelSize: 13; weight: Font.Medium }
                         }
@@ -644,7 +670,7 @@ Column {
                         enabled: send.usable
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: if (m.mode === "write") m.sendText(); else m.run(["send-clipboard", "--to", m.target.id])
+                        onClicked: if (m.mode === "write") m.sendText(); else m.sendFrom(["send-clipboard", "--to", m.target.id])
                     }
                 }
                 // Files from a dialog: the menu closes for it and opens again with "Sent"
@@ -700,45 +726,6 @@ Column {
                     label: "Add Device…"
                     icon: "qr-code"
                     onClicked: m.addDevice()
-                }
-            }
-        }
-
-        // For a moment what was just sent, over the list: from here, the bar icon or `ferry send`
-        Rectangle {
-            visible: !!(m.st && m.st.sent) && !m.dropping
-            anchors { left: parent.left; right: parent.right; top: stack.top }
-            height: Math.max(64, pillWrap.y - stack.spacing)   // the list's part, down to the pill
-            radius: 14
-            color: Qt.rgba(Theme.sel.r, Theme.sel.g, Theme.sel.b, 0.95)
-            border { width: 1; color: Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.5) }
-            Column {
-                anchors.centerIn: parent
-                spacing: 6
-                Row {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    spacing: 8
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: Icons.g("circle-check")
-                        color: Theme.accent
-                        font { family: Icons.family; pixelSize: 16 }
-                    }
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.verticalCenterOffset: 1   // uppercase: no descenders
-                        text: "SENT TO " + (m.st && m.st.sent ? m.st.sent.to : "").toUpperCase()
-                        color: Theme.accent
-                        font { family: Theme.font; pixelSize: 11; letterSpacing: 1 }
-                    }
-                }
-                Text {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    width: Math.min(implicitWidth, body.width - 24)
-                    elide: Text.ElideMiddle
-                    text: m.st && m.st.sent ? m.st.sent.what : ""
-                    color: Theme.dim
-                    font { family: Theme.font; pixelSize: 11 }
                 }
             }
         }

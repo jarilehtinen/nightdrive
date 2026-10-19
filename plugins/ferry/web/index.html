@@ -556,7 +556,7 @@ const SENT_SHOWN = 1500   // ms
 function sentOn(btn) {
   note("")
   btn.disabled = false
-  btn.querySelector("use").setAttribute("href", "#i-check"); label(btn, "Sent")
+  btn.querySelector("use").setAttribute("href", "#i-check"); label(btn, "Sent to " + nameOf(target))   // as the app says
   clearTimeout(btn.sentTimer)
   btn.sentTimer = setTimeout(() => { btn.sentTimer = null; drawMain() }, SENT_SHOWN)
 }
