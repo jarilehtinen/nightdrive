@@ -5,7 +5,7 @@ Mac-style ⌘ shortcuts, one launcher for everything, a top bar of thoughtful li
 
 ![Nightdrive: Firefox, Deck playing FM-84 and the launcher on top](docs/screenshots/desktop.jpg)
 
-**Hi, I'm Jari Lehtinen.** I've used a Mac for over 20 years. Every year or so I've tried a Linux distro or two, but none of them quite
+**Hi, I'm [Jari Lehtinen](https://github.com/jarilehtinen).** I've used a Mac for over 20 years. Every year or so I've tried a Linux distro or two, but none of them quite
 stuck. Omarchy came closest, but I wanted something built entirely around my own preferences and the apps I actually use.
 In my day job as a web developer, user interfaces and ease of use are at the core of what I do, and that's what I wanted from
 my desktop too: ⌘ shortcuts, a launcher like Spotlight, a menu bar that just works, only faster and lighter.
