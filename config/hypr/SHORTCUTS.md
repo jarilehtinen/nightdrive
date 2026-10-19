@@ -12,7 +12,6 @@
   Hyper W            WhatsApp {whatsapp}
   Hyper S            Slack {slack}
   Hyper Y            YouTube {youtube}
-  Hyper C            VS Code {vscode}
   ⌘ Esc / F3         Notifications (history, do not disturb)
   ⌘ Ctrl L           Lock screen
   ⌘ ⇧ Space          Top bar by keyboard (←/→ menu, ↑/↓ row, Enter select, Esc close)

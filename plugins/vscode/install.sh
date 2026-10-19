@@ -1,7 +1,7 @@
 #!/bin/bash
 # VS Code (Microsoft's RPM repo, aarch64) + Wayland flags. Run as a regular user; sudo asks for the password.
 set -euo pipefail
-repo=$(cd "$(dirname "$0")" && pwd)
+here=$(cd "$(dirname "$0")" && pwd)
 
 # Verify the Microsoft key fingerprint before importing it
 key=$(mktemp); trap 'rm -f "$key"' EXIT
@@ -22,8 +22,8 @@ gpgkey=https://packages.microsoft.com/keys/microsoft.asc
 REPO
 sudo dnf install -y code
 
-# Wayland: sharp text and correct scaling (2.0)
+# Wayland: sharp text and correct scaling (2.0). link.sh keeps the link while VS Code is installed.
 mkdir -p "$HOME/.config"
-ln -sfn "$repo/config/code-flags.conf" "$HOME/.config/code-flags.conf"
-"$repo/config/fuzzel/sync-apps"
+ln -sfn "$here/code-flags.conf" "$HOME/.config/code-flags.conf"
+"$HOME/.config/fuzzel/sync-apps"
 echo "Done: run 'code' or find it in the launcher (⌘Space)."

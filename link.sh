@@ -58,7 +58,7 @@ if [[ $(cat "$xdph" 2>/dev/null) != "$want" ]]; then
 fi
 link "$repo/config/gtk-4.0/gtk.css" "$HOME/.config/gtk-4.0/gtk.css"   # Tokyo Night colours for libadwaita apps (Nautilus)
 link "$repo/config/gtk-3.0/gtk.css" "$HOME/.config/gtk-3.0/gtk.css"
-# Apostrophe is a Flatpak: it reads its own config dir (install.sh lets the sandbox read config/gtk-4.0)
+# Apostrophe is a Flatpak: it reads its own config dir (plugins/apostrophe/install.sh lets the sandbox read config/gtk-4.0)
 link "$repo/config/gtk-4.0/apostrophe.css" "$HOME/.var/app/org.gnome.gitlab.somas.Apostrophe/config/gtk-4.0/gtk.css"
 link "$repo/config/fontconfig/conf.d/10-nerd-font-symbols.conf" "$HOME/.config/fontconfig/conf.d/10-nerd-font-symbols.conf"
 
@@ -87,6 +87,9 @@ if [[ -f /etc/keyd/default.conf ]]; then
     echo "started     keyd-application-mapper"
   fi
 fi
+# VS Code plugin (plugins/vscode): its Wayland flags. The link from before the folder (config/code-flags.conf, 19.10.2026)
+# went with the dead links above.
+command -v code >/dev/null && link "$repo/plugins/vscode/code-flags.conf" "$HOME/.config/code-flags.conf"
 # Deck's desktop file from before its folder (18.10.2026) runs hypr/scripts/deck-open, now plugins/deck/bin (~/.local/bin)
 deck_desktop=$HOME/.local/share/applications/deck.desktop
 if [[ -f $deck_desktop ]] && grep -q '/\.config/hypr/scripts/deck-open' "$deck_desktop"; then

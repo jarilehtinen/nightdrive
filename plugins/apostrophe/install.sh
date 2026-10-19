@@ -1,7 +1,7 @@
 #!/bin/bash
 # Apostrophe (Markdown viewer and editor, Flathub, per user): the theme, and Markdown files open in it.
 set -euo pipefail
-repo=$(cd "$(dirname "$0")" && pwd)
+repo=$(cd "$(dirname "$0")/../.." && pwd)   # plugins/apostrophe
 id=org.gnome.gitlab.somas.Apostrophe
 
 flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo

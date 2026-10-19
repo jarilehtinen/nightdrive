@@ -1,0 +1,3 @@
+-- VS Code's key (plugins/README.md › Keys): its window, or VS Code started if it isn't running
+local p = ...
+hl.bind("MOD3 + C", hl.dsp.exec_cmd(p.scripts .. "/launch-or-focus '^(code|Code)$' code"))

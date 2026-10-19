@@ -86,7 +86,6 @@ local optional = {
     { "whatsapp",    "W", "'^chrome-web\\.whatsapp\\.com' gtk-launch webapp-whatsapp" },   -- WhatsApp webapp
     { "slack",       "S", "'^chrome-app\\.slack\\.com' gtk-launch webapp-slack" },         -- Slack webapp
     { "youtube",     "Y", "'^chrome-www\\.youtube\\.com' gtk-launch webapp-youtube" },     -- YouTube webapp
-    { "vscode",      "C", "'^(code|Code)$' code" },                                         -- VS Code
 }
 for _, o in ipairs(optional) do
     if plugins[o[1]] then hl.bind("MOD3 + " .. o[2], hl.dsp.exec_cmd(scripts .. "/launch-or-focus " .. o[3])) end

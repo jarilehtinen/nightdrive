@@ -443,7 +443,7 @@ plugin_install() {
     "webapp "*)
       "$scripts/webapp-add" "$name" "${inst#webapp }" && { "$repo/config/fuzzel/sync-apps" >/dev/null 2>&1 || true; } ;;
     *)
-      [[ -f $dir/${inst%% *} && ${inst%% *} != */* ]] && inst="./$inst"      # install-<name>.sh in the repo root, or a plugin folder's script
+      [[ -f $dir/${inst%% *} && ${inst%% *} != */* ]] && inst="./$inst"      # a plugin folder's script (install.sh)
       (cd "$dir" && bash -c "$inst") ;;
   esac
   rc=$?

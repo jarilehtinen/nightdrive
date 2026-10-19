@@ -1,2 +1,2 @@
 # Flatpak apps from Flathub, installed per user (no sudo), one app id per line. install.sh installs these, `nightdrive
-# update` adds new ones. Only what every install gets: optional ones (Apostrophe) are in plugins.txt.
+# update` adds new ones. Only what every install gets: optional ones (Apostrophe) are plugins.
