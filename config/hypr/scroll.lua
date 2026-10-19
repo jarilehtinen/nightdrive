@@ -8,7 +8,7 @@
 -- kitty uses its default touch_scroll_multiplier (1.0).
 local apps = {
     -- Firefox: the reference speed (fling momentum in firefox/user.js)
-    { name = "firefox",  class = "^(org.mozilla.firefox|firefox)$",                   touchpad = 0.4, mouse = 1.0 },
+    { name = "firefox",  class = "^(org.mozilla.firefox|firefox)$",                   touchpad = 0.45, mouse = 1.0 },
     -- Chromium browser and app windows (webapps): moves further per scroll event than Firefox
     { name = "chromium", class = "^(chromium|chromium-browser|chrome-.*-Default)$", touchpad = 0.2, mouse = 0.5 },
 }
