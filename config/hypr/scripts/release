@@ -4,11 +4,12 @@
 # It raises the plugins' versions (plugin-version bump), drafts the release's section of CHANGELOG.md from the commits
 # since the last release and opens it in the editor, checks that the website can build its docs from dev, and then, after
 # one question, commits, tags vX.Y.Z, moves main to it, pushes dev, main and the tag, and publishes the GitHub release
-# with the section as its notes. --notes FILE takes the notes from a file instead of the editor, --yes answers the
+# with the section as its notes. Last, the website's tools/publish.sh (if there is a checkout of it) waits for the
+# website's rebuild from the new main and publishes it on its server. --notes FILE takes the notes from a file instead of the editor, --yes answers the
 # question (both for an agent, with notes the maintainer has read). --dry-run only shows what it would do.
 set -euo pipefail
 
-WEBSITE=$HOME/Projects/nightdrive-website   # the website's checkout, for the docs check (skipped without it)
+WEBSITE=$HOME/Projects/nightdrive-website   # the website's checkout, for the docs check and publishing (skipped without it)
 
 repo=$(cd "$(dirname "$(readlink -f "$0")")/../../.." && pwd)
 changelog=$repo/CHANGELOG.md
@@ -73,6 +74,8 @@ if (( dry )); then
   echo "==> Plugins"; "$repo/config/hypr/scripts/plugin-version" bump --dry-run | sed 's/^/    /'
   echo "==> Commits"; g log --no-merges --reverse --format='    %h %s' "$range" | tail -40
   docs_check || echo "    fails: the release would stop here"
+  if [[ -x $WEBSITE/tools/publish.sh ]]; then echo "==> Website: published after its rebuild ($WEBSITE/tools/publish.sh)"
+  else echo "==> Website: not published from here (no $WEBSITE/tools/publish.sh)"; fi
   exit 0
 fi
 docs_check || die "The website can't build its docs from dev (see above)"
@@ -127,6 +130,7 @@ g add -- CHANGELOG.md plugins
 g commit -q -m "Release $new"
 g tag -a "v$new" -m "Nightdrive $new"
 # One push for all three: either origin has the whole release or none of it (main moves only forward, checked above)
+pushed=$(date -u +%FT%TZ)   # the website's rebuild starts after this (publish.sh --since)
 if ! g push -q --atomic origin HEAD:refs/heads/dev HEAD:refs/heads/main "refs/tags/v$new"; then
   echo "The push failed: the release is committed and tagged here only. Push it with" >&2
   echo "  git -C $repo push --atomic origin dev:dev dev:main v$new" >&2
@@ -138,3 +142,7 @@ if g rev-parse -q --verify refs/heads/main >/dev/null && g merge-base --is-ances
 gh release create "v$new" -R "$slug" --title "Nightdrive $new" --notes-file "$tmp/body" --verify-tag >/dev/null \
   || { echo "Pushed, but the GitHub release wasn't made: gh release create v$new -R $slug --title 'Nightdrive $new' --notes-from-tag" >&2; exit 1; }
 echo "Nightdrive $new is out: https://github.com/$slug/releases/tag/v$new"
+# The website rebuilds its pages from the new main by itself; publishing them on its server is the maintainer's step
+if [[ -x $WEBSITE/tools/publish.sh ]]; then
+  "$WEBSITE/tools/publish.sh" --since "$pushed" || echo "The website isn't published (see above): $WEBSITE/tools/publish.sh" >&2
+fi

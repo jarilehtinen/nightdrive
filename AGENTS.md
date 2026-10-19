@@ -32,8 +32,9 @@ check` (exit 1 with the findings) and `nightdrive sandbox shot NAME`, `ipc …` 
   cherry-picks, so `main` is always an earlier point of `dev` and a release has nothing to conflict with.
 - A release, and pushing, are the user's decisions: don't do either unasked. `nightdrive release [patch|minor|major]`
   makes one from `dev`: the plugins' versions (`plugins bump`, plugins/README.md › Versions), the notes as a new section
-  of `CHANGELOG.md`, the website's docs check, then the commit, the tag `vX.Y.Z`, `main` moved to it, the push and the
-  GitHub release. `--dry-run` shows what it would do.
+  of `CHANGELOG.md`, the website's docs check, then the commit, the tag `vX.Y.Z`, `main` moved to it, the push, the
+  GitHub release and, once the website has rebuilt, its publishing (its `tools/publish.sh`). `--dry-run` shows what it
+  would do.
 - Release notes are for users, in plain words: what they can now do, what works better, what they need to do. Never
   the commit messages as such. Write them from the commits (`--dry-run` lists them), let the user read them, then
   `nightdrive release … --notes FILE --yes`.
