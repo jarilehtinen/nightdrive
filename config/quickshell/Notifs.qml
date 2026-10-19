@@ -187,9 +187,42 @@ Singleton {
         }
     }
 
+    // Chromium sends every site's notification as its own (app name Chromium, desktop entry chromium-browser, its logo as
+    // the app icon) and puts the site's address first in the body: "app.slack.com\n\nNew message". That address is all
+    // that tells the webapps apart: Quickshell doesn't give the sender's process, whose --user-data-dir would.
+    function site(n) {
+        if (!/^chromium/i.test(n.desktopEntry || "")) return ""
+        const m = (n.body || "").match(/^([^\s\/]+)\n\n/)
+        return m ? m[1] : ""
+    }
+    function bodyOf(n) {
+        const at = site(n)
+        return at ? n.body.slice(at.length + 2) : n.body
+    }
+    // The webapp whose site sent it (webapp-add: Exec=chromium-browser … --app=https://<site>/…)
+    function webapp(n) {
+        const host = site(n).toLowerCase().replace(/^www\./, "")
+        if (!host) return null
+        return DesktopEntries.applications.values.find(e => {
+            const m = (e.execString || "").match(/--app=[a-z]+:\/\/([^\/\s?#]+)/i)
+            return !!m && m[1].toLowerCase().replace(/^www\./, "") === host
+        }) || null
+    }
+
+    // The app a notification is about, where the sender's own name would mislead. A webapp's: its name, icon and window
+    // (the site's line leaves the text; a site without a webapp, a browser tab, stays Chromium's).
     // nm-applet calls itself "NetworkManager Applet" and sends a signal-strength picture: shown as Wi-Fi with its glyph, or
     // as Network when it isn't about Wi-Fi (a cable, VPN; untested so far)
     function relabel(row, n) {
+        const web = webapp(n)
+        if (web) {
+            row.app = web.name
+            row.icon = web.icon || row.icon
+            row.entry = web.id
+            row.wmclass = web.startupClass
+            row.body = bodyOf(n)
+            return
+        }
         if (!/^(networkmanager applet|nm-applet)$/i.test(n.appName || "")) return
         const wifi = /wireless|signal|wifi/i.test(n.appIcon || "") || /wi-?fi/i.test(n.summary + " " + n.body)
         row.app = wifi ? "Wi-Fi" : "Network"
@@ -197,13 +230,14 @@ Singleton {
     }
 
     property var lastChime: ({})              // app → time of its last sound
-    // The focused window belongs to the notification's app: its class is the app's name or (the last part of) its desktop id
-    // (firefox ↔ org.mozilla.firefox, Slack ↔ com.slack.Slack)
+    // The focused window belongs to the notification's app: its class is the app's name, (the last part of) its desktop id
+    // (firefox ↔ org.mozilla.firefox, Slack ↔ com.slack.Slack) or its StartupWMClass (webapps: chrome-<site>-Default)
     function isApp(appId, row) {
         const cls = (appId || "").toLowerCase()
         if (cls === "") return false
         const id = (row.entry || "").replace(/\.desktop$/, "").toLowerCase()
         return cls === (row.app || "").toLowerCase() || (id !== "" && (cls === id || cls === id.split(".").pop()))
+            || cls === (row.wmclass || "").toLowerCase()
     }
     function appFocused(row) {
         const t = ToplevelManager.activeToplevel
@@ -256,6 +290,7 @@ Singleton {
                 // A picture to show under the text, not as a square (screenshots: hypr/scripts/screenshot)
                 preview: !!n.image && !named && hints.category === "x-nightdrive.preview",
                 entry: n.desktopEntry || (e ? e.id : ""),
+                wmclass: e ? e.startupClass : "",
                 time: same ? prev.time : Date.now(),
                 critical: n.urgency === NotificationUrgency.Critical,
                 tag: "",
@@ -297,7 +332,7 @@ Singleton {
     }
     // The notification menu: a row's app comes up; × forgets a row (and its popup, if it's still shown)
     function openApp(row) {
-        Quickshell.execDetached([Quickshell.env("HOME") + "/.config/hypr/scripts/focus-app", row.app, row.entry])
+        Quickshell.execDetached([Quickshell.env("HOME") + "/.config/hypr/scripts/focus-app", row.app, row.entry, row.wmclass || ""])
     }
     function forget(uid) {
         if (live[uid]) live[uid].dismiss()

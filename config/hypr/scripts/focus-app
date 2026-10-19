@@ -1,12 +1,14 @@
 #!/bin/bash
-# focus-app <app name> [desktop-entry]
+# focus-app <app name> [desktop-entry] [window class]
 # Clicking a row in the notification centre: focuses the app's window (class matches the name or desktop entry as a whole word, e.g. firefox -> org.mozilla.firefox; case-insensitive);
 # if there is no window, launches the app from its desktop entry (if given).
-app=${1:-}; entry=${2:-}
+# The window class (the entry's StartupWMClass) is for the windows named after neither, webapps: chrome-<site>-Default.
+app=${1:-}; entry=${2:-}; class=${3:-}
 [[ -z $app ]] && exit 0
 esc() { printf '%s' "$1" | sed -e 's/[][\.^$*+?(){}|]/\\&/g'; }
 pat="(?i)(^|[._-])($(esc "$app")"
 [[ -n $entry ]] && pat+="|$(esc "$entry")"
+[[ -n $class ]] && pat+="|$(esc "$class")"
 pat+=")([._-]|\$)"
 addr=$(hyprctl -j clients | jq -r --arg re "$pat" '[.[] | select((.class | test($re)) or (.initialClass | test($re)))] | first | .address // empty')
 if [[ -n $addr ]]; then

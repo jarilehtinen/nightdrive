@@ -226,7 +226,7 @@ Rectangle {
                     maximumLineCount: 6
                     elide: Text.ElideRight
                     textFormat: Text.PlainText
-                    text: (card.n ? card.n.body : card.row.body).replace(/<[^>]*>/g, "")
+                    text: (card.n ? Notifs.bodyOf(card.n) : card.row.body).replace(/<[^>]*>/g, "")
                     color: Theme.muted
                     font { family: Theme.font; pointSize: 8.875 }   // ≈ 11.8 px
                 }

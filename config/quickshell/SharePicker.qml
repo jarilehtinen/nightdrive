@@ -33,9 +33,9 @@ PanelWindow {
     // The app's icon by its window class: StartupWMClass first (webapps: chrome-<site>-Default), then the .desktop id,
     // then Quickshell's guess; "" = the generic window glyph
     // A Chromium webapp's window on Wayland is named after its address, not --class:
-    // --app=https://app.slack.com/client/T0 → chrome-app.slack.com__client_T0-default (lowercase)
+    // --app=https://app.slack.com/client/T0 → chrome-app.slack.com__client_T0-default (lowercase); without the port
     function webappClass(d) {
-        const m = (d.execString || "").match(/--app=https?:\/\/([^\/\s]+)(\/\S*)?/)
+        const m = (d.execString || "").match(/--app=https?:\/\/([^\/\s:]+)(?::\d+)?(\/\S*)?/)
         return m ? ("chrome-" + m[1] + "_" + (m[2] || "/").replace(/\//g, "_") + "-default").toLowerCase() : ""
     }
     function iconFor(cls) {

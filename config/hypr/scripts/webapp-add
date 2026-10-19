@@ -1,7 +1,40 @@
 #!/usr/bin/env bash
 # Usage: webapp-add "Name" https://address [icon-file-or-name]
+#        webapp-add --fix-classes
 # Creates a .desktop file that opens the page as a standalone Chromium app window.
+# --fix-classes sets every webapp's StartupWMClass to the class Chromium gives its window (setup-user.sh, so at each
+# update): webapps made before this script had webapp-<slug>, from the --class that Chromium ignores. The class is
+# what finds the app's window: notifications (Notifs.qml), the launcher, Share.
 set -euo pipefail
+
+apps="$HOME/.local/share/applications"
+
+# Chromium on Wayland ignores --class: an app window's class is chrome-<host>_<path with / as _>-Default
+# (https://app.slack.com/client -> chrome-app.slack.com__client-Default), without a port (http://ha.local:8123 ->
+# chrome-ha.local__-Default). StartupWMClass must match it.
+wmclass() {
+  local hostpath
+  hostpath=$(echo "$1" | sed -E 's|^[a-z]+://||; s|^([^/:]+):[0-9]+|\1|; s|[?#].*||')
+  [[ $hostpath == */* ]] || hostpath+=/
+  echo "chrome-${hostpath%%/*}_$(echo "/${hostpath#*/}" | tr / _)-Default"
+}
+
+if [[ ${1:-} == --fix-classes ]]; then
+  for f in "$apps"/webapp-*.desktop; do
+    [[ -f $f ]] || continue
+    url=$(sed -nE 's/^Exec=.*--app=([^ ]+).*/\1/p' "$f")
+    [[ -n $url ]] || continue
+    want=$(wmclass "$url")
+    grep -qxF "StartupWMClass=$want" "$f" && continue
+    if grep -q '^StartupWMClass=' "$f"; then
+      sed -i "s|^StartupWMClass=.*|StartupWMClass=$want|" "$f"
+    else
+      echo "StartupWMClass=$want" >> "$f"
+    fi
+    echo "Fixed: $(basename "$f") ($want)"
+  done
+  exit 0
+fi
 
 name="${1:-}"; url="${2:-}"; icon="${3:-}"
 if [[ -z $name || -z $url ]]; then
@@ -11,7 +44,6 @@ fi
 [[ $url =~ ^[a-z]+:// ]] || url="https://$url"
 
 slug=$(echo "$name" | tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9-')
-apps="$HOME/.local/share/applications"
 icons="$HOME/.local/share/icons/webapps"
 mkdir -p "$apps" "$icons"
 
@@ -29,12 +61,6 @@ else
   fi
 fi
 
-# Chromium on Wayland ignores --class: an app window's class is chrome-<host>_<path with / as _>-Default
-# (https://app.slack.com/client -> chrome-app.slack.com__client-Default). StartupWMClass must match it.
-hostpath=$(echo "$url" | sed -E 's|^[a-z]+://||; s|[?#].*||')
-[[ $hostpath == */* ]] || hostpath+=/
-wmclass="chrome-${hostpath%%/*}_$(echo "/${hostpath#*/}" | tr / _)-Default"
-
 # --no-first-run: each web app has a Chromium profile of its own, so each start would be a first run, and Fedora's
 # /etc/chromium/master_preferences opens its first_run_tabs page in a window of its own then
 cat > "$apps/webapp-$slug.desktop" <<DESK
@@ -43,7 +69,7 @@ Type=Application
 Name=$name
 Exec=chromium-browser --no-first-run --disable-spell-checking --app=$url --user-data-dir=$HOME/.local/share/webapps/$slug
 Icon=$icon
-StartupWMClass=$wmclass
+StartupWMClass=$(wmclass "$url")
 Categories=Network;
 DESK
 

@@ -93,7 +93,7 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
   digits slide up as the minutes change.
 - **Background apps**: ⌘W only hides chat apps and the music player, so they keep running. Their shortcut brings them straight back.
 - **Web apps**: turn any site into an app window from the launcher (System › Install › Webapp), and remove one in System ›
-  Remove › Webapps (its logins go with it).
+  Remove › Webapps (its logins go with it). Their notifications come with the web app's own name and icon, not Chromium's.
 - **Default apps**: which app opens links, mail, folders, text, code, images, video, music, PDFs and calendar files, in the launcher
   (Settings › Default apps, or `nightdrive defaults`). Hyper B, F and E open the browser, Files and Email you chose.
 - **Keyboard Shortcuts**: which app Hyper + a letter or digit opens, in the launcher (Settings › Keyboard Shortcuts, or
