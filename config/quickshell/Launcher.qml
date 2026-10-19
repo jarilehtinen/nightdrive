@@ -89,14 +89,6 @@ PanelWindow {
     property var wallList: []                 // Settings › Background: [{ path, thumb, name, group, own }] (hypr/scripts/wallpaper list)
     property bool wallLoaded: false
     property string wallCurrent: ""           // current wallpaper
-    property int idleSaver: -1                // Settings › Screensaver: minutes until the screensaver / screen off, 0 = never,
-    property int idleOff: -1                  // -1 = not read yet (hypr/scripts/idle)
-    property string idleStyle: ""             // which screensaver: random | saver | rain | clock
-    readonly property var saverStyles: [["random", "Random", "shuffle"], ["saver", "Synthwave", "sunset"], ["rain", "Rain", "cloud-rain"], ["clock", "Clock", "clock"]]
-    property int barOpacity: -1               // Settings › Top bar opacity: current value (hypr/scripts/bar-style), -1 = not read yet
-    property string barIcons: ""              // Settings › Top bar icons: light | dark
-    property int barIconOp: -1                // icon and text opacity
-    property string barHl: ""                 // Settings › Top bar › Highlight: theme | white | black
     property int updates: 0                   // Update: new Nightdrive commits waiting (nightdrive update check, every 6 h)
     property var displays: null               // Settings › Display: [{ name, desc, scale, opts: [{ value, size }] }] (hypr/scripts/display list)
     property real bright: -1                  // Settings › Display › Brightness: 0..1 (brightnessctl), -1 = no backlight (a VM) or not read yet
@@ -119,8 +111,9 @@ PanelWindow {
     // Levels from other files: SystemLevels.qml (Wi-Fi, Bluetooth, Sound, Tailscale), HomeLevels.qml (Home Assistant),
     // DefaultAppsLevels.qml (Settings › Default apps), AppKeyLevels.qml (Settings › Keyboard Shortcuts), BehaviourLevels.qml
     // (Settings › Launcher, Computer name, Notifications, Update channel), MusicLevels.qml (Music, with Deck), InstallLevels.qml
-    // (Install's pages), ToolsLevels.qml (Clipboard, Emoji, Snippets) and the private extension; they answer the same questions (items, activate, footer, entered). A new file goes in this list, not in each question's code
-    readonly property var exts: [sys, home, defs, akeys, behave, music, inst, tools].concat(ext ? [ext] : [])
+    // (Install's pages), ToolsLevels.qml (Clipboard, Emoji, Snippets),
+    // AppearanceLevels.qml (Top bar, Screensaver) and the private extension; they answer the same questions (items, activate, footer, entered). A new file goes in this list, not in each question's code
+    readonly property var exts: [sys, home, defs, akeys, behave, music, inst, tools, look].concat(ext ? [ext] : [])
     function extOf(l) { return exts.find(e => e.levels.indexOf(l) >= 0) || null }
     readonly property bool extLevel: extOf(level) !== null
     readonly property int selIndex: list.currentIndex
@@ -128,7 +121,7 @@ PanelWindow {
     function search(target, text) { go(target); input.text = text }   // a level with its query typed (Default apps › Find more)
     readonly property var swCats: inst.swCats                          // Install › Software's categories (Default apps › Find more)
     function openCategory(key, name) { inst.openCategory(key, name) }
-    readonly property var parents: Object.assign({ display: "settings", battery: "settings", install: "system", remove: "system", removesw: "remove", removeweb: "remove", screenshot: "tools", theme: "settings", themecolor: "theme", background: "theme", topbar: "settings", startup: "settings", screensaver: "settings", saverafter: "screensaver", screenoff: "screensaver", saverstyle: "screensaver", baropacity: "topbar", baricons: "topbar", barhl: "topbar", baritems: "topbar" }, ...exts.map(e => e.parents))
+    readonly property var parents: Object.assign({ display: "settings", battery: "settings", install: "system", remove: "system", removesw: "remove", removeweb: "remove", screenshot: "tools", theme: "settings", themecolor: "theme", background: "theme", startup: "settings" }, ...exts.map(e => e.parents))
     // Search found nothing: hint below ⌘⌥⏎ (icons) → send the text to Claude
     readonly property bool noHit: (level === "root" || level === "apps") && query.trim() !== "" && results.length === 0
     // The selected row is an app: ⌃Enter shows it in Apps (the list with an empty query) or hides it from there.
@@ -146,7 +139,6 @@ PanelWindow {
         : (results[list.currentIndex] || {}).kind === "mirrordev" ? sys.footer(level, query)
         : (results[list.currentIndex] || {}).kind === "haent" ? home.footer(level, query)
         : (results[list.currentIndex] || {}).kind === "nightlight" ? "Enter: night light on/off"
-        : level === "baritems" ? "Enter: show / hide  ·  Ctrl+Up+Down: reorder"
         : level === "passwords" && pwState === "ready" ? "Enter: password  ·  Shift+Enter: username  ·  Ctrl+Enter: one-time code"
         : extOf(level) ? extOf(level).footer(level, query)   // not extLevel: it can lag a level change by one update
         : ""
@@ -169,8 +161,7 @@ PanelWindow {
     readonly property var deckLiked: deckOverride.liked !== undefined ? deckOverride.liked : (deckInfo ? deckInfo.liked : null)
     signal openMenu(string name)              // Settings: opens a Quickshell menu (wifi, bluetooth, ...)
 
-    readonly property var titles: Object.assign({ apps: "Apps", keys: "Keybindings", screenshot: "Tools › Screenshot", settings: "Settings", display: "Settings › Display", battery: "Settings › Battery", startup: "Settings › Startup", screensaver: "Settings › Screensaver", saverafter: "Screensaver › Start after", screenoff: "Screensaver › Screen off after", saverstyle: "Screensaver › Style", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
-                                     topbar: "Settings › Top bar", baropacity: "Top bar › Opacity", baricons: "Top bar › Icon colors", barhl: "Top bar › Highlight", baritems: "Top bar › Items",
+    readonly property var titles: Object.assign({ apps: "Apps", keys: "Keybindings", screenshot: "Tools › Screenshot", settings: "Settings", display: "Settings › Display", battery: "Settings › Battery", startup: "Settings › Startup", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
                                      system: "System", install: "System › Install", remove: "System › Remove", removesw: "Remove › Software", removeweb: "Remove › Webapps", power: "Power", passwords: "Passwords",
                                      tools: "Tools" }, ...exts.map(e => e.titles))
 
@@ -293,16 +284,6 @@ PanelWindow {
             { kind: "nav", name: "Background", glyph: "wallpaper", target: "background" }
         ]
     }
-    // Settings › Screensaver: the two idle times with their current values, and a preview
-    function minutes(m) { return m < 0 ? undefined : m === 0 ? "never" : m + " min" }
-    function screensaverItems() {
-        return [
-            { kind: "nav", name: "Style", glyph: "sparkles", target: "saverstyle", summary: (saverStyles.find(t => t[0] === idleStyle) || [])[1] },
-            { kind: "nav", name: "Start after", glyph: "timer", target: "saverafter", summary: minutes(idleSaver) },
-            { kind: "nav", name: "Screen off after", glyph: "monitor-off", target: "screenoff", summary: minutes(idleOff) },
-            { kind: "action", name: "Preview", glyph: "monitor-play", cmd: ["bash", "-c", "sleep 0.4; \"$HOME/.config/screensaver/start\""] }
-        ]
-    }
     // Settings › Display for the root search: the brightness slider row itself (←/→ work there too), the night light toggle
     // and Scale (opens Display)
     function displayItems() {
@@ -310,18 +291,6 @@ PanelWindow {
             .concat([{ kind: "nightlight", name: "Night light", glyph: "moon" },
                      { kind: "nav", name: "Scale", glyph: "monitor", target: "display" }],
                     sys.mirrorAvail ? [{ kind: "nav", name: "Screen Mirroring", glyph: "screen-share", target: "display" }] : [])
-    }
-    // Settings › Top bar: sub-items with their current values
-    function topbarItems() {
-        return [
-            { kind: "nav", name: "Opacity", glyph: "panel-top", target: "baropacity", summary: barOpacity >= 0 ? barOpacity + "%" : undefined },
-            { kind: "nav", name: "Icon colors", glyph: "contrast", target: "baricons",
-              summary: barIcons !== "" ? (barIcons === "dark" ? "black" : "white") + " " + barIconOp + "%" : undefined },
-            { kind: "nav", name: "Highlight", glyph: "highlighter", target: "barhl",
-              summary: barHl === "theme" ? "theme color" : (barHl || undefined) },
-            { kind: "nav", name: "Items", glyph: "layout-list", target: "baritems",
-              summary: TopBar.modules.length + " of " + TopBar.allModules.length + " shown" }
-        ]
     }
     readonly property var installAliases: ({ "Software": "package dnf rpm flatpak flathub app apps program store",
                                              "Webapp": "web app website site pwa url slack teams whatsapp youtube",
@@ -439,7 +408,7 @@ PanelWindow {
                 // Settings items ("wallpaper" → Background, "wifi" → Wi-Fi) plus Theme and Top bar sub-items ("opacity")
                 statics.settings.filter(t => t.kind !== "header").map(t => ({ item: Object.assign({}, t, { from: "Settings" }), text: t.name, extra: "settings " + (settingsAliases[t.name] || "") })),
                 themeItems().map(t => ({ item: Object.assign({}, t, { from: "Theme", summary: undefined }), text: t.name, extra: "theme " + (settingsAliases[t.name] || "") })),
-                topbarItems().map(t => ({ item: Object.assign({}, t, { from: "Top bar", summary: undefined }), text: t.name, extra: settingsAliases[t.name] || "" })),
+                look.topbarItems().map(t => ({ item: Object.assign({}, t, { from: "Top bar", summary: undefined }), text: t.name, extra: settingsAliases[t.name] || "" })),
                 // Display and Screensaver sub-items ("night" → Night light, "dim" → Brightness, "saver" → Start after)
                 displayItems().map(t => ({ item: Object.assign({}, t, { from: "Display" }), text: t.name, extra: "display " + (settingsAliases[t.name] || "") })),
                 // Screen Mirroring's receivers ("mirror", "airplay", "olohuone"): Enter starts mirroring right from the search
@@ -449,7 +418,7 @@ PanelWindow {
                 sys.sinks.filter(d => d.airplay).map(d => ({ item: { kind: "sounddev", id: d.id, name: d.name, glyph: "speaker", from: "Sound",
                                                                      trailGlyph: d.current ? "check" : undefined },
                                                              text: d.name, extra: "airplay sound audio output speaker" })),
-                screensaverItems().map(t => ({ item: Object.assign({}, t, { from: "Screensaver", summary: undefined }), text: t.name, extra: "screensaver idle lock" })),
+                look.screensaverItems().map(t => ({ item: Object.assign({}, t, { from: "Screensaver", summary: undefined }), text: t.name, extra: "screensaver idle lock" })),
                 // System's items ("upd" → Update, "cpu" → Status)
                 statics.system.map(t => ({ item: Object.assign({}, t, { from: "System", summary: undefined }), text: t.name, extra: t.extra || "" })),
                 // Install's sub-items ("flatpak", "webapp", "flathub" → Flatpak)
@@ -482,12 +451,6 @@ PanelWindow {
             // "Add new…" first: file picker (hypr/scripts/wallpaper add), images are copied to ~/Pictures/Wallpapers
             all = [{ item: { kind: "walladd", name: "Add new…" }, text: "Add new", extra: "import file" }]
                 .concat(wallList.map(w => ({ item: Object.assign({ kind: "wall" }, w), text: w.name, extra: w.group })))
-        } else if (level === "baropacity") {
-            // Number in the query → exactly that value; otherwise 100–0 in steps of ten. Current one marked.
-            const n = parseInt(query.trim(), 10)
-            const vals = /^\d+$/.test(query.trim()) && n <= 100 ? [n] : [100, 90, 80, 70, 60, 50, 40, 30, 20, 10, 0]
-            return vals.map(v => ({ kind: "baropacity", value: v, name: v + "%", glyph: v === barOpacity ? "check" : "panel-top",
-                                    summary: v === barOpacity ? "current" : (v === 100 ? "opaque" : v === 0 ? "transparent" : undefined) }))
         } else if (level === "display") {
             // Two sections: Brightness (a slider row, when there is a backlight) and Scale
             if (displays === null) return hint("Loading…")
@@ -533,38 +496,6 @@ PanelWindow {
             if (themeList.length === 0) return [{ kind: "hint", name: "Loading…" }]
             all = themeList.map(t => ({ item: { kind: "themecolor", value: t.value, name: t.name, swatch: t.swatch,
                                                summary: t.current ? "current" : (t.value === "violet" ? "default" : undefined) }, text: t.name }))
-        } else if (level === "screensaver") {
-            all = screensaverItems().map(t => ({ item: t, text: t.name }))
-        } else if (level === "saverstyle") {
-            return saverStyles.map(t => ({ kind: "idlestyle", value: t[0], name: t[1], glyph: t[0] === idleStyle ? "check" : t[2],
-                                           summary: t[0] === idleStyle ? "current" : (t[0] === "random" ? "default" : undefined) }))
-        } else if (level === "saverafter" || level === "screenoff") {
-            const cur = level === "saverafter" ? idleSaver : idleOff
-            const vals = level === "saverafter" ? [2, 5, 10, 15, 20, 30, 60, 0] : [5, 10, 15, 20, 30, 45, 60, 0]
-            return vals.map(v => ({ kind: level === "saverafter" ? "idlesaver" : "idleoff", value: v, name: minutes(v),
-                                    glyph: v === cur ? "check" : (level === "saverafter" ? "timer" : "monitor-off"), summary: v === cur ? "current" : undefined }))
-        } else if (level === "topbar") {
-            all = topbarItems().map(t => ({ item: t, text: t.name, extra: settingsAliases[t.name] || "" }))
-        } else if (level === "baritems") {
-            // What the bar shows, in its order (left to right); Enter turns one on or off
-            all = TopBar.allModules.map(m => {
-                const on = TopBar.hidden.indexOf(m.name) < 0
-                return { item: { kind: "baritem", value: m.name, name: TopBar.moduleLabel(m), glyph: TopBar.moduleGlyph(m),
-                                 trailGlyph: on ? "check" : "minus", dimmed: !on }, text: TopBar.moduleLabel(m), extra: m.name }
-            })
-            if (q === "") return all.map(x => x.item)      // a fixed order: toggling doesn't move rows
-        } else if (level === "barhl") {
-            return [["theme", "Theme color"], ["white", "White"], ["black", "Black"]].map(h => ({
-                kind: "barhl", value: h[0], name: h[1], glyph: barHl === h[0] ? "check" : "highlighter",
-                summary: barHl === h[0] ? "current" : (h[0] === "theme" ? "default" : undefined) }))
-        } else if (level === "baricons") {
-            const ops = [100, 90, 85, 80, 70, 60, 50]
-            return [{ kind: "header", name: "Color" },
-                    { kind: "baricons", value: "light", name: "White", glyph: barIcons === "light" ? "check" : "sun", summary: barIcons === "light" ? "current" : undefined },
-                    { kind: "baricons", value: "dark", name: "Black", glyph: barIcons === "dark" ? "check" : "moon", summary: barIcons === "dark" ? "current" : undefined },
-                    { kind: "header", name: "Opacity" }]
-                .concat(ops.map(v => ({ kind: "bariconop", value: v, name: v + "%", glyph: v === barIconOp ? "check" : "contrast",
-                                        summary: v === barIconOp ? "current" : undefined })))
         } else if (level === "passwords") {
             if (pwState === "loading" && pwItems.length === 0) return [{ kind: "hint", name: "Waiting for 1Password… (unlock it if prompted; Esc closes this menu)" }]
             if (pwState === "error") return pwError.split("\n").filter(l => l.trim() !== "").slice(0, 4).map(l => ({ kind: "hint", name: l }))
@@ -629,11 +560,9 @@ PanelWindow {
         if (target === "remove" || target === "removesw" || target === "removeweb") { removeProc.running = true; webappProc.running = true }
         if (target === "settings") behave.entered("settings")   // the computer name and channel on its rows
         if (target === "background") wallProc.running = true
-        if (target === "topbar" || target === "baropacity" || target === "baricons" || target === "barhl") barProc.running = true
         if (target === "theme" || target === "themecolor") themeProc.running = true
         if (target === "display") { displayProc.running = true; brightProc.running = true; nightProc.running = true; sys.entered("display") }
         if (target === "battery") { battProc.running = true; battDetailProc.running = true }
-        if (target === "screensaver" || target === "saverafter" || target === "screenoff" || target === "saverstyle") idleProc.running = true
         if (extOf(target)) extOf(target).entered(target)
         if (target === "passwords") { pwState = pwItems.length ? "ready" : "loading"; pwProc.running = true }
     }
@@ -686,17 +615,6 @@ PanelWindow {
         onResult: text => { win.runningClasses = text.split("\n").filter(l => l !== "" && !l.startsWith("__")).map(l => l.toLowerCase()) }
     }
     Timer { interval: 1500; repeat: true; running: win.open; onTriggered: bgProc.running = true }
-    // Settings rows applied live: kind → [script, verb, property that holds the current value ("" = themecolor, which marks themeList)]
-    readonly property var live: ({
-        baropacity: ["bar-style", "opacity", "barOpacity"],
-        idlesaver: ["idle", "saver", "idleSaver"],
-        idleoff: ["idle", "off", "idleOff"],
-        idlestyle: ["idle", "style", "idleStyle"],
-        baricons: ["bar-style", "icons", "barIcons"],
-        bariconop: ["bar-style", "icon-opacity", "barIconOp"],
-        barhl: ["bar-style", "highlight", "barHl"],
-        themecolor: ["theme", "color", ""]
-    })
     // ⌃Enter on an app: the choice goes to ~/.local/state/nightdrive/apps.json ({"shown": [ids], "hidden": [ids]}), then sync-apps
     // updates the overrides (fuzzel/sync-apps) and the list follows
     function appId(item) {
@@ -772,13 +690,10 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
             displays = displays.map(d => d.name === item.output ? Object.assign({}, d, { scale: item.value }) : d)
             Quickshell.execDetached([scripts + "/display", "scale", item.output, String(item.value)])
         }
-        else if (item.kind === "baritem") { keepSelection(); TopBar.setHidden(item.value, TopBar.hidden.indexOf(item.value) < 0) }
-        else if (live[item.kind]) {           // stays open: values can be tried one after another (theme colors recolor the launcher immediately)
-            const [script, verb, prop] = live[item.kind]
+        else if (item.kind === "themecolor") {   // stays open: colors can be tried one after another, and recolor the launcher at once
             keepSelection()
-            if (prop) win[prop] = item.value
-            else themeList = themeList.map(t => Object.assign({}, t, { current: t.value === item.value }))
-            Quickshell.execDetached([scripts + "/" + script, verb, String(item.value)])
+            themeList = themeList.map(t => Object.assign({}, t, { current: t.value === item.value }))
+            Quickshell.execDetached([scripts + "/theme", "color", String(item.value)])
         }
         else if (item.kind === "walladd") {   // launcher closes while the picker is open; the script reopens Background
             win.open = false
@@ -823,9 +738,11 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         armed = ""
         target.shiftActivate(item)
     }
-    // Ctrl+Enter and ⌘⌫ / Delete on an extension level, if its file has them (ctrlActivate, deleteSelected); true = done
+    // Ctrl+Enter, ⌘⌫ / Delete and Ctrl+Up/Down on an extension level, if its file has them (ctrlActivate, deleteSelected,
+    // moveSelected); true = done
     function extCtrl(item) { const t = extOf(level); return !!(t && t.ctrlActivate && t.ctrlActivate(item)) }
     function extDelete() { const t = extOf(level); return !!(t && t.deleteSelected && t.deleteSelected()) }
+    function extMove(dir) { const t = extOf(level); return !!(t && t.moveSelected && t.moveSelected(dir)) }   // Ctrl+Up/Down
     // ⌘⌫ / ⌥⌫ in the query: a selection goes first, otherwise to the line start (word = only the word before the cursor)
     function deleteBack(word) {
         if (input.selectedText !== "") { input.remove(input.selectionStart, input.selectionEnd); return }
@@ -1006,6 +923,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
     MusicLevels { id: music; launcher: win }
     InstallLevels { id: inst; launcher: win }
     ToolsLevels { id: tools; launcher: win }
+    AppearanceLevels { id: look; launcher: win }
     Loader {
         id: extLoader
         source: win.extSource
@@ -1119,35 +1037,6 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         const p = Math.round(bright * 100)
         const n = dir > 0 ? (Math.floor(p / brightStep) + 1) * brightStep : (p % brightStep === 0 ? p - brightStep : Math.floor(p / brightStep) * brightStep)
         setBright(Math.max(0, Math.min(100, n)) / 100)
-    }
-    // Settings › Screensaver: current idle times; select the current one
-    Sh {
-        id: idleProc
-        script: 's="$HOME/.config/hypr/scripts/idle"; "$s" saver; "$s" off; "$s" style'
-        onResult: text => {
-            const f = text.trim().split("\n")
-            win.idleSaver = parseInt(f[0], 10)
-            win.idleOff = parseInt(f[1], 10)
-            win.idleStyle = f[2] || ""
-            if (win.level === "saverstyle" && win.query === "") win.selectWhere(r => r.value === win.idleStyle)
-            if ((win.level === "saverafter" || win.level === "screenoff") && win.query === "")
-                win.selectWhere(r => r.value === (win.level === "saverafter" ? win.idleSaver : win.idleOff))
-        }
-    }
-    // Settings › Top bar opacity / icons: current values; select the current one
-    Sh {
-        id: barProc
-        script: 's="$HOME/.config/hypr/scripts/bar-style"; "$s" opacity; "$s" icons; "$s" icon-opacity; "$s" highlight'
-        onResult: text => {
-            const f = text.trim().split("\n")
-            win.barOpacity = parseInt(f[0], 10)
-            win.barIcons = f[1] || ""
-            win.barIconOp = parseInt(f[2], 10)
-            win.barHl = f[3] || ""
-            if (win.level === "baropacity" && win.query === "") win.selectWhere(r => r.value === win.barOpacity)
-            if (win.level === "barhl" && win.query === "") win.selectWhere(r => r.value === win.barHl)
-            if (win.level === "baricons" && win.query === "") win.selectWhere(r => r.value === win.barIcons)
-        }
     }
     // Passwords: op item list (requires the 1Password app and CLI integration: Settings › Developer › Integrate with 1Password CLI)
     Sh {
@@ -1486,12 +1375,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                             if (i >= 0 && i < win.results.length) list.currentIndex = i
                             else if (i < 0) win.playerFocused = win.hasDeck
                             event.accepted = true
-                        } else if (win.level === "baritems" && ctrl && (event.key === Qt.Key_Up || event.key === Qt.Key_Down)) {
-                            const cur = win.results[list.currentIndex]     // Items: the selected module moves, the selection with it
-                            if (cur && cur.kind === "baritem" && win.query === "") {
-                                const j = TopBar.move(cur.value, event.key === Qt.Key_Up ? -1 : 1)
-                                Qt.callLater(() => { list.currentIndex = j })
-                            } else shake.restart()
+                        } else if (win.extLevel && ctrl && (event.key === Qt.Key_Up || event.key === Qt.Key_Down) && win.extMove(event.key === Qt.Key_Up ? -1 : 1)) {
                             event.accepted = true
                         } else if ((event.key === Qt.Key_Left || event.key === Qt.Key_Right) && (win.results[list.currentIndex] || {}).kind === "brightness") {
                             win.stepBright(event.key === Qt.Key_Left ? -1 : 1); event.accepted = true
