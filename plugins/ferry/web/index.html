@@ -83,6 +83,17 @@
   button:disabled { opacity: .45; }
   [hidden] { display: none !important; }   /* buttons are inline-flex, which would win over hidden */
   button.small, .btn.small { min-height: 44px; padding: 0 16px; font-size: 16px; }
+  /* One column (the phone): Send is always at the bottom of the screen, under a short Received list as well as a long
+     one that scrolls under it. The shadow fades the rows out above it. */
+  @media (max-width: 899px) {
+    body { padding-bottom: 0; min-height: 100dvh; display: flex; flex-direction: column; }
+    .live { flex: 1; display: flex; flex-direction: column; }
+    #send { position: sticky; bottom: 0; z-index: 1; background: var(--bg); margin: auto -16px 0;
+            padding: 2px 16px calc(env(safe-area-inset-bottom) + 12px); box-shadow: 0 -18px 18px -6px var(--bg); }
+    /* Typing: the keyboard covers the home indicator, so its space would only be a gap above the keyboard */
+    body:has(#text:focus) #send { padding-bottom: 12px; }
+    #send h2 { margin-top: 8px; }
+  }
   @media (min-width: 900px) {
     body { max-width: 1120px; padding-top: 64px; padding-left: 40px; padding-right: 40px; }
     header { margin-bottom: 28px; gap: 16px; }
@@ -100,9 +111,10 @@
                               .i { width: 18px; height: 18px; } }
   .grow { flex: 1; justify-content: center; }
   input[type=file] { display: none; }
-  .progress { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; margin-top: 10px; display: none; }
+  .progress { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; margin-bottom: 10px; display: none; }
   .progress div { height: 100%; width: 0; background: var(--primary); transition: width .2s; }
-  .note { font-size: 13px; color: var(--dim); margin-top: 6px; min-height: 18px; }
+  /* Send's note and progress sit by its title: nothing below the buttons, so Send can sit right on the keyboard */
+  h2 .note { font-size: 12px; text-align: right; min-width: 0; overflow-wrap: anywhere; margin-left: 12px; }
   .note.err { color: var(--danger); }
   /* A card sits on a red strip; the bin shows at the end the swipe uncovers. Swiped far enough either way, it goes */
   .swipe { position: relative; border-radius: 14px; overflow: hidden; margin-bottom: 8px; background: #3a1a26; }
@@ -152,7 +164,8 @@
   </section>
 
   <section id="send">
-    <h2>Send</h2>
+    <h2>Send <span class="note" id="note"></span></h2>
+    <div class="progress" id="progress"><div></div></div>
     <div class="targets" id="targets" hidden></div>
     <textarea id="text" placeholder="Text or link" autocomplete="off" autocapitalize="off"></textarea>
     <div class="row">
@@ -163,8 +176,6 @@
       <label class="btn grow" for="files"><svg class="i"><use href="#i-image-up"/></svg>Photos &amp; files</label>
       <input type="file" id="files" multiple>
     </div>
-    <div class="progress" id="progress"><div></div></div>
-    <div class="note" id="note"></div>
   </section>
 
 </div>
