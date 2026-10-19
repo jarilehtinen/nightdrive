@@ -59,8 +59,7 @@ PanelWindow {
     property var keyList: []                  // [{ name, sub, keys, section }]
     property var keyIndex: ({})               // lower-case name → keys (shortcutFor)
     property string armed: ""                 // action awaiting confirmation
-    property var detail: null                 // Install / Remove: the package row whose details are shown ({ name, summary, src, id, cmd, remove })
-    property var detailInfo: null             // its details from pkg-info (null = still loading)
+    readonly property var detail: details.item   // Install / Remove: the row whose details are shown (DetailCard.qml), null = none
     readonly property int detailWidth: 860    // the card's width while showing them
     // Settings › Launcher: { fuzzy, shortcuts } in ~/.local/state/nightdrive/launcher.json (missing = on)
     property var prefs: ({ fuzzy: true, shortcuts: true })
@@ -113,11 +112,7 @@ PanelWindow {
     // The selected row is an app: ⌃Enter shows it in Apps (the list with an empty query) or hides it from there.
     // "Hide", not "remove": removing sounded like uninstalling.
     readonly property var selApp: { const c = results[list.currentIndex]; return (level === "apps" || level === "root") && c && c.kind === "app" ? c : null }
-    readonly property string footer: detail !== null ? (detail.remove ? "Enter: remove" : detail.rerun ? (detailInfo && detailInfo.installed ? "Enter: run the installer again" : "Enter: install in a terminal")
-                                                        : detailInfo && detailInfo.installed ? "Already installed" : "Enter: install")
-                                                       + (detail.alt ? "  ·  Tab: get it from " + (detail.alt.src === "flatpak" ? "Flathub" : "Fedora") : "")
-                                                       + (detail.src === "plugin" && detailInfo && detailInfo.installed ? "  ·  Tab: turn " + (detailInfo.off ? "on" : "off") : "")
-                                                       + "  ·  Esc: back"
+    readonly property string footer: detail !== null ? details.footer
         : selApp ? "Enter: open  ·  Ctrl+Enter: " + (selApp.shown ? "hide from Apps" : "show in Apps")
                                               + "  ·  Alt+Enter: " + (autostartIds.indexOf(appId(selApp)) >= 0 ? "don’t start at login" : "start at login")
         : level === "startup" ? "Enter: start at login on/off  ·  background apps start hidden"
@@ -464,7 +459,7 @@ PanelWindow {
         const cur = results[list.currentIndex]
         if (cur && cur.name && target !== level && (parents[target] || "root") === level)   // going down one level
             lastSel[level] = { kind: cur.kind, name: cur.name }
-        level = target; input.text = ""; query = ""; armed = ""; playerFocused = false; detail = null; detailInfo = null
+        level = target; input.text = ""; query = ""; armed = ""; playerFocused = false; details.close()
         hiddenProc.running = true
         if (target === "keys") keysProc.running = true     // re-read SHORTCUTS.md: changes show up immediately
         list.currentIndex = firstSelectable()
@@ -588,7 +583,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         else if (item.kind === "stat") shake.restart()   // information only
         else if (exts.some(e => e.activate(item))) {}
         else if (item.kind === "menu") { win.open = false; win.openMenu(item.target) }
-        else if (item.src && detail === null) showDetail(item)
+        else if (item.src && detail === null) details.show(item)
         else if (item.kind === "action") {
             if (item.confirm && armed !== item.name) { armed = item.name; disarm.restart(); return }
             armed = ""; win.open = false
@@ -645,7 +640,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
     function selectFirst() { list.currentIndex = firstSelectable() }
     function selectWhere(pred) { const i = results.findIndex(pred); if (i >= 0) list.currentIndex = i }
     function back() {
-        if (detail !== null) { detail = null; detailInfo = null; return }
+        if (detail !== null) { details.close(); return }
         if (level === "root") { win.open = false; return }
         go(parents[level] || "root")
         const sel = lastSel[level]
@@ -654,7 +649,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
     }
 
     // Closing leaves the details right away (after the Behavior above has seen open = false), so the next open starts narrow
-    onOpenChanged: if (!open) Qt.callLater(() => { if (!win.open) { win.detail = null; win.detailInfo = null } })
+    onOpenChanged: if (!open) Qt.callLater(() => { if (!win.open) details.close() })
     else { lastMouse = null; lastSel = ({}); exts.forEach(e => e.opened()); Plugins.check(); go("root"); deckProc.running = hasDeck; bgProc.running = true; bgAppsProc.running = true; autostartProc.running = true; updatesProc.running = true; sys.entered("display"); sys.soundRefresh(); input.forceActiveFocus() }
     Component.onCompleted: keysProc.running = true
 
@@ -701,60 +696,6 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
     // Install › Software's rows and a details card's Tab (the other source)
     function installCmd(src, id) {
         return src === "flatpak" ? term('flatpak install --user flathub "$1"', id) : term('sudo dnf install "$1"', id)
-    }
-    // Install / Remove: a package's details (hypr/scripts/pkg-info). The results stay as they were behind them.
-    function showDetail(item) {
-        detail = item; detailInfo = null; armed = ""
-        detailView.contentY = 0
-        if (!detailProc.running) runDetail()          // otherwise the running one notices it's stale and starts again
-    }
-    function runDetail() {
-        detailProc.forId = detail.src + ":" + detail.id
-        detailProc.command = detail.src === "plugin" ? [scripts + "/plugin-info", detail.id] : [scripts + "/pkg-info", detail.src, detail.id]
-        detailProc.running = true
-    }
-    // Enter in the details: installs / removes in a terminal (an installed package can't be installed again, a plugin's
-    // installer can run again)
-    function detailConfirm() {
-        if (!detail.remove && !detail.rerun && detailInfo && detailInfo.installed) { shake.restart(); return }
-        win.open = false
-        Quickshell.execDetached(detail.cmd)
-    }
-    // Tab in the details: the same app from the other source (Fedora ↔ Flathub); on a plugin's page, turns it off or on
-    function detailSwitch() {
-        if (detail.src === "plugin") { pluginToggle(); return }
-        const a = detail.alt
-        if (!a) { shake.restart(); return }
-        showDetail(Object.assign({}, detail, { src: a.src, id: a.id, alt: { src: detail.src, id: detail.id }, cmd: installCmd(a.src, a.id) }))
-    }
-    function detailScroll(dy) {
-        detailView.contentY = Math.max(0, Math.min(detailView.contentHeight - detailView.height, detailView.contentY + dy))
-    }
-    // A plugin's switch (its page): `nightdrive plugins off|on`, which hides it from the desktop and stops its services, or
-    // brings them back. The switch moves at once; the page and the list are read again when it's done.
-    function pluginToggle() {
-        if (!detailInfo || !detailInfo.installed || toggleProc.running) { shake.restart(); return }
-        toggleProc.command = [Quickshell.env("HOME") + "/.local/bin/nightdrive", "plugins", detailInfo.off ? "on" : "off", detail.id]
-        detailInfo = Object.assign({}, detailInfo, { off: !detailInfo.off })
-        toggleProc.running = true
-    }
-    Sh {
-        id: toggleProc
-        onResult: {
-            if (detailProc.running) detailProc.forId = ""      // the running one read the old state: it starts again
-            else if (win.detail !== null) win.runDetail()
-            inst.reloadPlugins()
-        }
-    }
-    Sh {
-        id: detailProc
-        property string forId: ""
-        onResult: text => {
-            if (win.detail === null) return
-            if (win.detail.src + ":" + win.detail.id !== forId) { win.runDetail(); return }
-            try { win.detailInfo = JSON.parse(text) }
-            catch (e) { win.detailInfo = { name: win.detail.name, summary: win.detail.summary, installed: false, icon: "", screenshot: "", paragraphs: [], fields: [["Details", "not available"]] } }
-        }
     }
     SystemLevels { id: sys; launcher: win }
     HomeLevels { id: home; launcher: win }
@@ -892,7 +833,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         // pick <index>: selects a row like Enter (automated testing)
         function pick(index: int): void { const r = win.results[index]; if (r) win.activate(r); else shake.restart() }
         // detailTab: Tab in a package's or plugin's details, e.g. a plugin's on/off switch (automated testing)
-        function detailTab(): void { if (win.detail !== null) win.detailSwitch(); else shake.restart() }
+        function detailTab(): void { if (win.detail !== null) details.switchSource(); else shake.restart() }
         // ⌘⌫ (bindings.lua): in Background removes your own wallpaper, elsewhere deletes the query to the cursor's left (like macOS)
         function deleteSelected(): void {
             if (!win.open) return
@@ -912,8 +853,8 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         }
         // ⌥⌫: deletes the word to the cursor's left (Hyprland's binding takes the key, so the launcher does it here)
         function deleteWord(): void { if (win.open) win.deleteBack(true) }
-        function stepUp(): void { win.detail !== null ? win.detailScroll(-win.rowHeight) : win.step(-1) }
-        function stepDown(): void { win.detail !== null ? win.detailScroll(win.rowHeight) : win.playerFocused ? (win.playerFocused = false) : win.step(1) }
+        function stepUp(): void { win.detail !== null ? details.scroll(-win.rowHeight) : win.step(-1) }
+        function stepDown(): void { win.detail !== null ? details.scroll(win.rowHeight) : win.playerFocused ? (win.playerFocused = false) : win.step(1) }
         function back(): void { win.back() }
     }
 
@@ -1026,7 +967,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                     font { family: Theme.font; pixelSize: win.fontSize + 2; weight: win.fontWeight }
                     focus: true
                     clip: true
-                    onTextChanged: { if (win.detail !== null) { win.detail = null; win.detailInfo = null }   // a new search (IPC setQuery)
+                    onTextChanged: { if (win.detail !== null) details.close()   // a new search (IPC setQuery)
                                      win.query = text; win.armed = ""; win.playerFocused = false; list.currentIndex = win.firstSelectable() }
                     Keys.onPressed: event => {
                         const ctrl = event.modifiers & Qt.ControlModifier
@@ -1039,12 +980,12 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                         }
                         if (win.detail !== null) {         // details: Enter installs / removes, arrows scroll, typing does nothing
                             if (event.key === Qt.Key_Escape || event.key === Qt.Key_Backspace) win.back()
-                            else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) win.detailConfirm()
-                            else if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) win.detailSwitch()
-                            else if (event.key === Qt.Key_Down || (ctrl && (event.key === Qt.Key_N || event.key === Qt.Key_J))) win.detailScroll(win.rowHeight)
-                            else if (event.key === Qt.Key_Up || (ctrl && (event.key === Qt.Key_P || event.key === Qt.Key_K))) win.detailScroll(-win.rowHeight)
-                            else if (event.key === Qt.Key_PageDown || event.key === Qt.Key_Space) win.detailScroll(detailView.height - win.rowHeight)
-                            else if (event.key === Qt.Key_PageUp) win.detailScroll(-(detailView.height - win.rowHeight))
+                            else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) details.confirm()
+                            else if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) details.switchSource()
+                            else if (event.key === Qt.Key_Down || (ctrl && (event.key === Qt.Key_N || event.key === Qt.Key_J))) details.scroll(win.rowHeight)
+                            else if (event.key === Qt.Key_Up || (ctrl && (event.key === Qt.Key_P || event.key === Qt.Key_K))) details.scroll(-win.rowHeight)
+                            else if (event.key === Qt.Key_PageDown || event.key === Qt.Key_Space) details.scroll(details.height - win.rowHeight)
+                            else if (event.key === Qt.Key_PageUp) details.scroll(-(details.height - win.rowHeight))
                             event.accepted = true
                             return
                         }
@@ -1356,311 +1297,8 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                 }
             }
 
-            // Install / Remove: a package's details. Header (icon, name, summary, button), facts, screenshot, description.
-            Flickable {
-                id: detailView
-                readonly property var info: win.detailInfo
-                readonly property var pkg: win.detail || ({})
-                visible: win.detail !== null
-                width: parent.width
-                height: visible ? Math.min(contentHeight, win.maxRows * win.rowHeight + 60) : 0
-                contentHeight: detailCol.implicitHeight
-                clip: true
-                boundsBehavior: Flickable.StopAtBounds
-                TouchScroll { view: detailView; step: win.rowHeight }
-
-                Column {
-                    id: detailCol
-                    width: detailView.width
-                    spacing: 18
-                    topPadding: 4
-                    bottomPadding: 6
-
-                    Item {      // header
-                        width: parent.width
-                        height: Math.max(72, headText.implicitHeight)
-                        Item {
-                            id: headIcon
-                            width: 64; height: 64
-                            anchors { left: parent.left; leftMargin: 10; verticalCenter: parent.verticalCenter }
-                            Image {
-                                id: headImg
-                                anchors.fill: parent
-                                source: detailView.info && detailView.info.icon ? "file://" + detailView.info.icon
-                                      : detailView.pkg.iconFile ? "file://" + detailView.pkg.iconFile : ""
-                                sourceSize: Qt.size(128, 128)
-                                fillMode: Image.PreserveAspectFit
-                            }
-                            Text {
-                                anchors.centerIn: parent
-                                visible: headImg.status !== Image.Ready
-                                text: Icons.g(detailView.pkg.glyph || "package")
-                                color: Theme.primary
-                                font { family: Icons.family; pixelSize: 44 }
-                            }
-                        }
-                        Column {
-                            id: headText
-                            anchors { left: headIcon.right; leftMargin: 20; right: onSwitch.visible ? onSwitch.left : button.left; rightMargin: 20; verticalCenter: parent.verticalCenter }
-                            spacing: 4
-                            Text {
-                                width: parent.width
-                                elide: Text.ElideRight
-                                textFormat: Text.PlainText
-                                text: detailView.info ? detailView.info.name : (detailView.pkg.name || "")
-                                color: Theme.accent
-                                font { family: Theme.font; pixelSize: win.fontSize + 7; weight: Font.Normal }
-                            }
-                            Text {
-                                width: parent.width
-                                wrapMode: Text.Wrap
-                                maximumLineCount: 2
-                                elide: Text.ElideRight
-                                textFormat: Text.PlainText
-                                text: win.keySpaced(detailView.info && detailView.info.summary ? detailView.info.summary : (detailView.pkg.summary || detailView.pkg.sub || ""))
-                                color: Theme.dim
-                                font { family: Theme.font; pixelSize: win.fontSize - 2; weight: win.fontWeight }
-                            }
-                        }
-                        Item {      // an installed plugin's on/off switch (= Tab), like a launcher row's
-                            id: onSwitch
-                            readonly property bool on: detailView.info !== null && !detailView.info.off
-                            visible: detailView.pkg.src === "plugin" && detailView.info !== null && detailView.info.installed
-                            anchors { right: button.left; rightMargin: 18; verticalCenter: parent.verticalCenter }
-                            width: switchRow.implicitWidth; height: 40
-                            Row {
-                                id: switchRow
-                                anchors.verticalCenter: parent.verticalCenter
-                                spacing: 10
-                                Text {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: onSwitch.on ? "On" : "Off"
-                                    color: onSwitch.on ? Theme.text : Theme.dim
-                                    font { family: Theme.font; pixelSize: win.fontSize - 1; weight: win.fontWeight }
-                                }
-                                Rectangle {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    width: 34; height: 20; radius: 10
-                                    color: onSwitch.on ? Theme.accent : Theme.border
-                                    Rectangle {
-                                        width: 14; height: 14; radius: 7; y: 3
-                                        x: onSwitch.on ? 17 : 3
-                                        color: onSwitch.on ? Theme.bg : Theme.text
-                                        Behavior on x { NumberAnimation { duration: 120 } }
-                                    }
-                                }
-                            }
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: win.pluginToggle()
-                            }
-                        }
-                        Rectangle {      // Install / Remove / Run again (= Enter); grey when already installed
-                            id: button
-                            readonly property bool installed: !detailView.pkg.remove && detailView.info !== null && detailView.info.installed
-                            readonly property bool again: installed && !!detailView.pkg.rerun
-                            readonly property bool off: installed && !again
-                            anchors { right: parent.right; rightMargin: 6; verticalCenter: parent.verticalCenter }
-                            width: buttonRow.implicitWidth + 32
-                            height: 40
-                            radius: 10
-                            color: off ? "transparent" : buttonArea.containsMouse ? Theme.primary : Theme.sel
-                            border.width: off ? 1 : 0
-                            border.color: Theme.border
-                            Row {
-                                id: buttonRow
-                                anchors.centerIn: parent
-                                spacing: 8
-                                Text {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: Icons.g(button.off ? "check" : button.again ? "rotate-cw" : detailView.pkg.remove ? "trash-2" : "download")
-                                    color: button.off ? Theme.dim : buttonArea.containsMouse ? Theme.bg : Theme.accent
-                                    font { family: Icons.family; pixelSize: 17 }
-                                }
-                                Text {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: button.off ? "Installed" : button.again ? "Run again" : detailView.pkg.remove ? "Remove" : "Install"
-                                    color: button.off ? Theme.dim : buttonArea.containsMouse ? Theme.bg : Theme.accent
-                                    font { family: Theme.font; pixelSize: win.fontSize - 1; weight: Font.Normal }
-                                }
-                            }
-                            MouseArea {
-                                id: buttonArea
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: button.off ? Qt.ArrowCursor : Qt.PointingHandCursor
-                                onClicked: win.detailConfirm()
-                            }
-                        }
-                    }
-
-                    Rectangle { width: parent.width; height: 1; color: Theme.border }
-
-                    Text {
-                        visible: detailView.info === null
-                        leftPadding: 10
-                        text: "Loading details…"
-                        color: Theme.dim
-                        font { family: Theme.font; pixelSize: win.fontSize - 3; weight: win.fontWeight }
-                    }
-
-                    Grid {      // facts: label on the left, value on the right; the homepage opens in the browser
-                        id: facts
-                        visible: detailView.info !== null
-                        x: 10
-                        width: parent.width - 20
-                        columns: 2
-                        columnSpacing: 20
-                        rowSpacing: 7
-                        readonly property int labelWidth: 120
-                        Repeater {
-                            model: detailView.info ? detailView.info.fields.reduce((a, f) => a.concat([{ label: true, t: f[0] }, { label: false, t: f[1], link: f[0] === "Homepage" }]), []) : []
-                            Text {
-                                id: fact
-                                required property var modelData
-                                width: modelData.label ? facts.labelWidth : facts.width - facts.labelWidth - facts.columnSpacing
-                                wrapMode: modelData.label ? Text.NoWrap : Text.WrapAtWordBoundaryOrAnywhere
-                                textFormat: Text.PlainText
-                                text: modelData.label ? modelData.t.toUpperCase() : modelData.t
-                                color: modelData.label ? Theme.primary : modelData.link ? (linkArea.containsMouse ? Theme.accent : Theme.text) : Theme.text
-                                font {
-                                    family: Theme.font; pixelSize: modelData.label ? win.fontSize - 6 : win.fontSize - 3
-                                    weight: win.fontWeight; letterSpacing: modelData.label ? 1 : 0; underline: !!modelData.link && linkArea.containsMouse
-                                }
-                                topPadding: modelData.label ? 3 : 0
-                                MouseArea {
-                                    id: linkArea
-                                    enabled: !!fact.modelData.link
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                                    onClicked: { win.open = false; Quickshell.execDetached(["xdg-open", fact.modelData.t]) }
-                                }
-                            }
-                        }
-                    }
-
-                    ClippingRectangle {      // screenshot (from the internet; left out until it has loaded)
-                        id: shotFrame
-                        readonly property real ratio: shotImg.implicitWidth > 0 ? shotImg.implicitHeight / shotImg.implicitWidth : 0
-                        visible: shotImg.status === Image.Ready
-                        height: visible ? Math.min(360, parent.width * ratio) : 0
-                        width: ratio > 0 ? Math.min(parent.width, height / ratio) : 0
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        radius: 8
-                        color: "transparent"
-                        Image {
-                            id: shotImg
-                            anchors.fill: parent
-                            source: detailView.info && detailView.info.screenshot ? detailView.info.screenshot : ""
-                            asynchronous: true
-                            fillMode: Image.PreserveAspectFit
-                        }
-                    }
-
-                    Column {      // description
-                        visible: detailView.info !== null && detailView.info.paragraphs.length > 0
-                        x: 10
-                        width: parent.width - 20
-                        spacing: 10
-                        Repeater {
-                            // A paragraph is a string, a README's code block, { code: [line] }, or a ## heading, { heading } (plugin-info)
-                            model: detailView.info ? detailView.info.paragraphs : []
-                            Item {
-                                id: para
-                                required property var modelData
-                                readonly property bool isCode: typeof modelData === "object" && modelData !== null && modelData.code !== undefined
-                                readonly property bool isHeading: typeof modelData === "object" && modelData !== null && modelData.heading !== undefined
-                                width: parent.width
-                                height: isCode ? codeBox.height : isHeading ? headText.y + headText.height : paraText.height
-                                // A heading: a section title, as in the menus (MenuSection), a little apart from the text above
-                                Text {
-                                    id: headText
-                                    visible: para.isHeading
-                                    y: 8
-                                    width: parent.width
-                                    elide: Text.ElideRight
-                                    text: para.isHeading ? String(para.modelData.heading).toUpperCase() : ""
-                                    color: Theme.primary
-                                    font { family: Theme.font; pixelSize: win.fontSize - 5; weight: Font.Medium; letterSpacing: 1.2 }
-                                }
-                                Text {
-                                    id: paraText
-                                    visible: !para.isCode && !para.isHeading
-                                    width: parent.width
-                                    wrapMode: Text.Wrap
-                                    textFormat: Text.PlainText
-                                    lineHeight: 1.15
-                                    text: para.isCode || para.isHeading ? "" : win.keySpaced(String(para.modelData))
-                                    color: Theme.text
-                                    font { family: Theme.font; pixelSize: win.fontSize - 3; weight: win.fontWeight }
-                                }
-                                // A code block: a line each, in a box. A "command   # comment" line has the comment
-                                // dimmed beside it, the comments in a column, so a command isn't wrapped in the middle;
-                                // without room for both, the comment goes under its command
-                                Rectangle {
-                                    id: codeBox
-                                    visible: para.isCode
-                                    width: parent.width
-                                    height: visible ? codeCol.height + 2 * pad : 0
-                                    radius: 8
-                                    color: Theme.hover
-                                    readonly property int pad: 10
-                                    readonly property var lines: para.isCode ? Array.from(para.modelData.code, l => {
-                                        const m = /^(.*?\S)\s{2,}(#\s.*)$/.exec(l)
-                                        return m ? { cmd: m[1], note: m[2] } : { cmd: String(l), note: "" }
-                                    }) : []
-                                    readonly property real gap: codeFm.advanceWidth("  ")
-                                    readonly property real cmdWidth: Math.max(0, ...lines.filter(l => l.note).map(l => codeFm.advanceWidth(l.cmd)))
-                                    // beside: the commands and at least 24 characters of comment fit side by side
-                                    readonly property bool beside: cmdWidth + gap + codeFm.advanceWidth("m".repeat(24)) <= codeCol.width
-                                    FontMetrics { id: codeFm; font: codeSample.font }
-                                    Text { id: codeSample; visible: false; font { family: Theme.font; pixelSize: win.fontSize - 4; weight: win.fontWeight } }
-                                    Column {
-                                        id: codeCol
-                                        x: codeBox.pad
-                                        y: codeBox.pad
-                                        width: codeBox.width - 2 * codeBox.pad
-                                        spacing: 3
-                                        Repeater {
-                                            model: codeBox.lines
-                                            Item {
-                                                id: codeLine
-                                                required property var modelData
-                                                width: codeCol.width
-                                                height: codeBox.beside ? Math.max(cmdText.height, noteText.height)
-                                                                       : cmdText.height + (noteText.visible ? noteText.height : 0)
-                                                Text {
-                                                    id: cmdText
-                                                    width: codeBox.beside && codeLine.modelData.note ? codeBox.cmdWidth + 1 : parent.width
-                                                    wrapMode: Text.Wrap
-                                                    textFormat: Text.PlainText
-                                                    text: codeLine.modelData.cmd
-                                                    color: Theme.accent
-                                                    font: codeSample.font
-                                                }
-                                                Text {
-                                                    id: noteText
-                                                    visible: codeLine.modelData.note !== ""
-                                                    x: codeBox.beside ? codeBox.cmdWidth + codeBox.gap : codeBox.gap
-                                                    y: codeBox.beside ? 0 : cmdText.height
-                                                    width: parent.width - x
-                                                    wrapMode: Text.Wrap
-                                                    textFormat: Text.PlainText
-                                                    text: codeLine.modelData.note
-                                                    color: Theme.dim
-                                                    font: codeSample.font
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            // Install / Remove: a package's or plugin's details (DetailCard.qml), in place of the list
+            DetailCard { id: details; launcher: win; width: parent.width; onPluginToggled: inst.reloadPlugins() }
 
             // Settings › Background: previews in two columns, name below; current wallpaper marked with ✓
             GridView {

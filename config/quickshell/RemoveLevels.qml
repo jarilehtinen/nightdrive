@@ -2,8 +2,8 @@ import QtQuick
 import Quickshell
 
 // The launcher's System › Remove: Software (the packages you installed with dnf, and your Flatpak apps) and Webapps.
-// A search on Remove itself looks in both, and the tag tells which a row is. Enter on a package opens Launcher.qml's
-// details card (src, remove: Enter there removes it in a terminal); a webapp asks twice, as its logins go with it.
+// A search on Remove itself looks in both, and the tag tells which a row is. Enter on a package opens its details
+// (DetailCard.qml; src and remove: Enter there removes it in a terminal); a webapp asks twice, as its logins go with it.
 // Launcher.qml asks it like DefaultAppsLevels (levels, titles, parents, items, activate, footer, entered).
 Item {
     id: r

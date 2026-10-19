@@ -3,8 +3,8 @@ import Quickshell
 import Quickshell.Io
 
 // The launcher's System › Install pages: Software (Search, and Browse's categories), Webapp (your own, by name and
-// address, and the ready-made ones), Recommended and Plugins. Install itself is a static list in Launcher.qml, and so is
-// the details card that Enter on a package or plugin row opens (showDetail: Remove uses it too).
+// address, and the ready-made ones), Recommended and Plugins. Install itself is a static list in Launcher.qml. Enter on a
+// package or plugin row opens its details (DetailCard.qml, as Remove's rows do).
 // Install › Software: Fedora's packages and Flathub's apps in one search (hypr/scripts/pkg-search): apps first, one row per
 // app (Fedora's if both have it), then command-line tools. Software itself has Search and Browse: Popular and the
 // categories, lists from data/software.json (hypr/scripts/software-catalog) for this machine's architecture.
