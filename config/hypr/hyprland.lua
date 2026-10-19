@@ -201,6 +201,11 @@ hl.config({
         -- A lock that crashed (lock.qml, hyprlock) can be started again from a text console instead of only logging out
         allow_session_lock_restore = true,
     },
+    -- Hyprland's own "updated to …" window after an update: Hyprland comes with `nightdrive update`, and the window
+    -- (Hyprland's news, not in the desktop's look) is about Hyprland, not what changed in Nightdrive
+    ecosystem = {
+        no_update_news = true,
+    },
 })
 
 -----------------------
