@@ -15,7 +15,7 @@ A mailbox between your computers and your phone. Leave photos, files, text or a 
 
 Press Add Device in Ferry's menu, scan the QR code (or open the address) in the phone's browser and add the page to the Home Screen. Open Ferry from there and tap Turn on notifications.
 
-- Received has what your computers sent, ready to copy or save; Send takes text, the clipboard, photos and files.
+- Received has what your computers sent, ready to copy or save; Send takes text, the clipboard (a text, or an image such as a screenshot: iOS doesn't give a page a photo copied from Photos), photos and files.
 - With Ferry on several computers, the phone sees them all on one page and picks where each send goes.
 
 If Ferry's menu says Tailscale needs permission, run these once:

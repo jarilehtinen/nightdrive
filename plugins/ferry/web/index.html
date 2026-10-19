@@ -129,6 +129,7 @@
 <body>
 <!-- Lucide icons (lucide.dev, ISC licence) used by the buttons: <svg class="i"><use href="#i-NAME"/></svg> -->
 <svg width="0" height="0" style="position:absolute" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol>
   <symbol id="i-send" viewBox="0 0 24 24"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11zm7.318-19.539l-10.94 10.939"/></symbol>
   <symbol id="i-clipboard-paste" viewBox="0 0 24 24"><path d="M11 14h10M16 4h2a2 2 0 0 1 2 2v1.344M17 18l4-4l-4-4"/><path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 1.793-1.113"/><rect width="8" height="4" x="8" y="2" rx="1"/></symbol>
   <symbol id="i-image-up" viewBox="0 0 24 24"><path d="M10.3 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10l-3.1-3.1a2 2 0 0 0-2.814.014L6 21"/><path d="m14 19.5l3-3l3 3M17 22v-5.5"/><circle cx="9" cy="9" r="2"/></symbol>
@@ -474,35 +475,76 @@ const away = () => state[target] && state[target].ok === false
 
 $("text").addEventListener("input", () => $("sendText").disabled = !$("text").value.trim())
 
-async function sendText(text) {
+// Success shows in the button that sent: a check and "Sent" for a moment, as Copy says "Copied". The line under the
+// buttons is for progress and errors, and empties.
+const SENT_SHOWN = 1500   // ms
+function sentOn(btn) {
+  const use = btn.querySelector("use")
+  const icon0 = btn.dataset.icon || (btn.dataset.icon = use.getAttribute("href"))
+  const text0 = btn.dataset.label || (btn.dataset.label = btn.lastChild.textContent)
+  note("")
+  use.setAttribute("href", "#i-check"); label(btn, "Sent")
+  clearTimeout(btn.sentTimer)
+  btn.sentTimer = setTimeout(() => { use.setAttribute("href", icon0); label(btn, text0) }, SENT_SHOWN)
+}
+
+async function sendText(text, btn) {
   if (away()) { note("Can't reach " + nameOf(target), true); return false }
   try {
     await api(target, "api/text", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) })
-    note("Sent" + (many() ? " to " + nameOf(target) : ""))
+    sentOn(btn)
     refresh()
     return true
   } catch (e) { note("Not sent", true); return false }
 }
 $("sendText").onclick = async () => {
-  if (await sendText($("text").value)) { $("text").value = ""; $("sendText").disabled = true }
+  if (!$("text").value.trim()) return
+  // Disabled only once "Sent" has shown: a disabled button is dimmed
+  if (await sendText($("text").value, $("sendText"))) {
+    $("text").value = ""
+    setTimeout(() => $("sendText").disabled = !$("text").value.trim(), SENT_SHOWN)
+  }
 }
-// Reading the clipboard needs a tap: iOS shows a Paste button first. Where it can't (permission, older browsers),
-// the text box takes a paste just as well.
+// Reading the clipboard needs a tap: iOS shows a Paste button first. An image goes as a file, anything else as a text;
+// one read() for both, as each read would ask again. Where it can't (permission, older browsers), the text box takes a
+// paste just as well.
+const CLIP_IMAGE = { "image/png": "png", "image/jpeg": "jpg", "image/gif": "gif", "image/webp": "webp", "image/heic": "heic" }
 $("sendClip").onclick = async () => {
-  let text = ""
-  try { text = await navigator.clipboard.readText() } catch (e) {
+  let text = "", image = null, types = []
+  try {
+    if (navigator.clipboard.read) {
+      for (const item of await navigator.clipboard.read()) {
+        types.push(...item.types)
+        const type = item.types.find(t => t in CLIP_IMAGE)
+        if (type) { image = new File([await item.getType(type)], clipName(CLIP_IMAGE[type]), { type }); break }
+        const tt = item.types.find(t => t === "text/plain" || t === "text/uri-list")
+        if (tt && !text) text = await (await item.getType(tt)).text()
+      }
+    } else text = await navigator.clipboard.readText()
+  } catch (e) {
     note("Paste into the box instead", true)
     $("text").focus()
     return
   }
-  if (!text.trim()) { note("Clipboard is empty", true); return }
-  sendText(text)
+  if (image) sendFiles([image], $("sendClip"))
+  else if (text.trim()) sendText(text, $("sendClip"))
+  // Something the page can't send: say what, rather than "empty". Safari gives a page a copied image only as PNG
+  // (a screenshot): a photo from Photos (HEIC, JPEG) doesn't show at all, so "empty" points to Photos & files.
+  else note(types.length ? "Can't send this from the clipboard (" + types.join(", ") + ")"
+                         : "Clipboard is empty. A photo goes with Photos & files.", true)
+}
+// "Clipboard 2026-10-19 11.02.37.png": the clipboard gives an image no name of its own
+function clipName(ext) {
+  const d = new Date(), p = n => String(n).padStart(2, "0")
+  return `Clipboard ${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}.${p(d.getMinutes())}.${p(d.getSeconds())}.${ext}`
 }
 
-$("files").onchange = async () => {
+$("files").onchange = () => {
   const files = [...$("files").files]
   $("files").value = ""
-  if (!files.length) return
+  if (files.length) sendFiles(files, $("files").labels[0])
+}
+async function sendFiles(files, btn) {
   if (away()) { note("Can't reach " + nameOf(target), true); return }
   const to = target
   const bar = $("progress"), fill = bar.firstElementChild
@@ -522,7 +564,7 @@ $("files").onchange = async () => {
     }
   }
   bar.style.display = "none"; fill.style.width = "0"
-  note("Sent" + (many() ? " to " + nameOf(to) : ""))
+  sentOn(btn)
   refresh()
 }
 

@@ -1,6 +1,6 @@
 // Ferry's service worker: the page opens from its cache when the computer can't be reached (asleep, Tailscale off), so
 // the page can say so instead of Safari's error, and it shows the Web Push notifications (bin/ferry push_all).
-const CACHE = "ferry-16"
+const CACHE = "ferry-20"
 const SHELL = ["./", "manifest.webmanifest", "icon-180.png", "icon-192.png", "icon.svg"]
 const WAIT = 4000   // ms the network gets before the cached page is shown
 
