@@ -80,9 +80,6 @@ PanelWindow {
         Quickshell.execDetached(["bash", "-c", 'mkdir -p "$(dirname "$2")" && printf "%s\\n" "$1" > "$2.tmp" && mv "$2.tmp" "$2"',
                                  "_", JSON.stringify(n), prefsFile])
     }
-    property var pwItems: []                  // Passwords: 1Password items (op item list)
-    property string pwState: "idle"           // idle | loading | ready | error
-    property string pwError: ""
     property var wallList: []                 // Settings › Background: [{ path, thumb, name, group, own }] (hypr/scripts/wallpaper list)
     property bool wallLoaded: false
     property string wallCurrent: ""           // current wallpaper
@@ -103,8 +100,8 @@ PanelWindow {
     // (Settings › Launcher, Computer name, Notifications, Update channel), MusicLevels.qml (Music, with Deck), InstallLevels.qml
     // (Install's pages), ToolsLevels.qml (Clipboard, Emoji, Snippets),
     // AppearanceLevels.qml (Top bar, Screensaver), DisplayLevels.qml (Display, Battery), RemoveLevels.qml
-    // (Remove) and the private extension; they answer the same questions (items, activate, footer, entered). A new file goes in this list, not in each question's code
-    readonly property var exts: [sys, home, defs, akeys, behave, music, inst, tools, look, disp, rm].concat(ext ? [ext] : [])
+    // (Remove), PasswordLevels.qml (Passwords, with 1Password) and the private extension; they answer the same questions (items, activate, footer, entered). A new file goes in this list, not in each question's code
+    readonly property var exts: [sys, home, defs, akeys, behave, music, inst, tools, look, disp, rm, pw].concat(ext ? [ext] : [])
     function extOf(l) { return exts.find(e => e.levels.indexOf(l) >= 0) || null }
     readonly property bool extLevel: extOf(level) !== null
     readonly property int selIndex: list.currentIndex
@@ -130,7 +127,6 @@ PanelWindow {
         : (results[list.currentIndex] || {}).kind === "mirrordev" ? sys.footer(level, query)
         : (results[list.currentIndex] || {}).kind === "haent" ? home.footer(level, query)
         : (results[list.currentIndex] || {}).kind === "nightlight" ? "Enter: night light on/off"
-        : level === "passwords" && pwState === "ready" ? "Enter: password  ·  Shift+Enter: username  ·  Ctrl+Enter: one-time code"
         : extOf(level) ? extOf(level).footer(level, query)   // not extLevel: it can lag a level change by one update
         : ""
     // The footer as key caps: "Ctrl+Enter: show in Apps  ·  Esc: back" → [{ keys: ["Ctrl", "Enter"], text: "show in Apps" }, ...].
@@ -153,7 +149,7 @@ PanelWindow {
     signal openMenu(string name)              // Settings: opens a Quickshell menu (wifi, bluetooth, ...)
 
     readonly property var titles: Object.assign({ apps: "Apps", keys: "Keybindings", screenshot: "Tools › Screenshot", settings: "Settings", startup: "Settings › Startup", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
-                                     system: "System", install: "System › Install", power: "Power", passwords: "Passwords",
+                                     system: "System", install: "System › Install", power: "Power",
                                      tools: "Tools" }, ...exts.map(e => e.titles))
 
     // Reference at startup: the app list only loads on first reference
@@ -448,10 +444,6 @@ PanelWindow {
             if (themeList.length === 0) return [{ kind: "hint", name: "Loading…" }]
             all = themeList.map(t => ({ item: { kind: "themecolor", value: t.value, name: t.name, swatch: t.swatch,
                                                summary: t.current ? "current" : (t.value === "violet" ? "default" : undefined) }, text: t.name }))
-        } else if (level === "passwords") {
-            if (pwState === "loading" && pwItems.length === 0) return [{ kind: "hint", name: "Waiting for 1Password… (unlock it if prompted; Esc closes this menu)" }]
-            if (pwState === "error") return pwError.split("\n").filter(l => l.trim() !== "").slice(0, 4).map(l => ({ kind: "hint", name: l }))
-            all = pwItems.map(p => ({ item: p, text: p.name, extra: p.summary + " " + p.urls }))
         } else if (level === "startup") {
             all = appEntries(q).map(a => {
                 const on = autostartIds.indexOf(appId(a.item)) >= 0
@@ -501,7 +493,6 @@ PanelWindow {
         if (target === "theme" || target === "themecolor") themeProc.running = true
         if (target === "display") sys.entered("display")   // Screen Mirroring's rows there
         if (extOf(target)) extOf(target).entered(target)
-        if (target === "passwords") { pwState = pwItems.length ? "ready" : "loading"; pwProc.running = true }
     }
     // Background apps (⌘W hides them to special:bg, ⌘Q quits): app name -> window class regex, from hypr/background-apps(.local),
     // the same list close-or-hide uses. An open app (also a hidden one) gets a green dot at the right end of its row.
@@ -631,7 +622,6 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
             Quickshell.execDetached([scripts + "/wallpaper", "set", item.path])
         }
         else if (exts.some(e => e.activate(item))) {}
-        else if (item.kind === "pw") copyField(item, "password")
         else if (item.kind === "menu") { win.open = false; win.openMenu(item.target) }
         else if (item.src && detail === null) showDetail(item)
         else if (item.kind === "action") {
@@ -639,23 +629,6 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
             armed = ""; win.open = false
             Quickshell.execDetached(item.cmd)
         }
-    }
-    // Passwords: field → [message when missing, message when copied, secret (1 = sensitive + cleared after 45 s), op item get options...]
-    readonly property var pwFields: ({
-        password: ["No password field in this item", "Password copied", "1", "--fields", "label=password", "--reveal"],
-        otp: ["No one-time password in this item", "One-time code copied", "1", "--otp"],
-        username: ["No username in this item", "Username copied", "0", "--fields", "label=username"]
-    })
-    // Copies the field to the clipboard. Secrets are marked as sensitive (cliphist doesn't store them in history) and cleared after 45 s.
-    function copyField(item, field) {
-        if (!item || item.kind !== "pw") return
-        win.open = false
-        const script = 'id=$1 missing=$2 copied=$3 secret=$4; shift 4; ' +
-            'v=$(op item get "$id" "$@" 2>/dev/null); [ -z "$v" ] && { notify-send -u critical "1Password" "$missing"; exit; }; ' +
-            'if [ "$secret" = 1 ]; then printf %s "$v" | wl-copy --sensitive; notify-send -e -t 4000 "1Password" "$copied. Clears in 45 s"; sleep 45; ' +
-            '[ "$(wl-paste -n 2>/dev/null)" = "$v" ] && wl-copy --clear; ' +
-            'else printf %s "$v" | wl-copy; notify-send -e -t 3000 "1Password" "$copied"; fi'
-        Quickshell.execDetached(["bash", "-c", script, "_", item.id].concat(pwFields[field] || pwFields.username))
     }
     // Shift+Enter on an extension row; rows with armKey need a second press to confirm
     // (a file that arms its rows itself, armsItself, gets them as they are: Snippets' armKey is for ⌘⌫)
@@ -844,6 +817,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
     AppearanceLevels { id: look; launcher: win }
     DisplayLevels { id: disp; launcher: win }
     RemoveLevels { id: rm; launcher: win }
+    PasswordLevels { id: pw; launcher: win }
     Loader {
         id: extLoader
         source: win.extSource
@@ -881,33 +855,6 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         onResult: text => { win.updates = parseInt(text, 10) || 0 }
     }
     function mirrorRows() { return sys.mirrorRows() }   // DisplayLevels: Screen Mirroring's rows under Display
-    // Passwords: op item list (requires the 1Password app and CLI integration: Settings › Developer › Integrate with 1Password CLI)
-    Sh {
-        id: pwProc
-        script: 'op item list --format json 2>&1'
-        onResult: text => {
-            let arr = null
-            try { arr = JSON.parse(text) } catch (e) {}
-            if (!Array.isArray(arr) || pwProc.exitCode !== 0) {
-                const msg = text.trim().replace(/^\[ERROR\]\s*\d{4}\/\d\d\d\d?\/?\d* ?\d\d:\d\d:\d\d\s*/gm, "").split("\n")[0]
-                const connect = /account|sign|integrat|connect|not found|no such/i.test(text)
-                win.pwError = connect
-                    ? "1Password CLI isn't connected.\nStart 1Password (⌘P) and unlock it, then open\nSettings › Developer › “Integrate with 1Password CLI”."
-                    : (msg || "1Password CLI returned nothing")
-                win.pwState = "error"
-                return
-            }
-            const glyphs = { LOGIN: "key-round", PASSWORD: "lock-keyhole", SECURE_NOTE: "sticky-note", CREDIT_CARD: "credit-card",
-                             IDENTITY: "user-round", API_CREDENTIAL: "terminal", SERVER: "server", WIRELESS_ROUTER: "wifi" }
-            win.pwItems = arr.map(it => ({
-                kind: "pw", id: it.id, name: it.title || "(untitled)",
-                summary: it.additional_information || "",
-                urls: (it.urls || []).map(u => u.href || "").join(" "),
-                glyph: glyphs[it.category] || "key-round"
-            })).sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
-            win.pwState = "ready"
-        }
-    }
 
     // overrides marked by sync-apps → ids of hidden apps
     Sh {
@@ -1206,9 +1153,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                             win.step(-1); event.accepted = true
                         } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                             const cur = win.results[list.currentIndex]
-                            if (win.level === "passwords" && cur && cur.kind === "pw" && (event.modifiers & Qt.ShiftModifier)) win.copyField(cur, "username")
-                            else if (win.level === "passwords" && cur && cur.kind === "pw" && ctrl) win.copyField(cur, "otp")
-                            else if (win.selApp && ctrl) win.togglePin(cur)
+                            if (win.selApp && ctrl) win.togglePin(cur)
                             else if (win.selApp && (event.modifiers & Qt.AltModifier)) win.toggleAutostart(cur)
                             else if (win.extLevel && cur && (event.modifiers & Qt.ShiftModifier)) win.extShift(cur)
                             else if (win.extLevel && cur && ctrl && win.extCtrl(cur)) {}
