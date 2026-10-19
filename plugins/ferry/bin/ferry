@@ -83,6 +83,7 @@ ICON = os.path.realpath(os.path.join(WEB, "icon-192.png"))   # the app icon the 
 KEEP_DAYS = 7                # an item leaves the box after this many days
 MAX_FILE = 4 << 30           # bytes per file from the phone
 MAX_TEXT = 1 << 20           # bytes of text
+PUSH_PAYLOAD = 2600          # bytes of a notification: Ferry's push relay takes 2800 encrypted (APNs' 4 KB as base64)
 MIN_FREE = 2 << 30           # bytes left free on the disk: an upload that would go below this is refused
 INLINE = re.compile(r"^(image/(jpeg|png|gif|webp|heic|heif|avif)|video/|audio/|application/pdf$|text/plain$)")
                              # shown in the browser; any other file is a download (an HTML or SVG file would run its
@@ -359,7 +360,7 @@ def add_files(paths):
     with box(write=True) as items:
         items += added
     what = added[0]["name"] if len(added) == 1 else f"{len(added)} files"
-    push_all(alias(), what)   # iOS shows the title as "<title> from Ferry"
+    push_all(alias(), what, item=added[0])   # iOS shows the title as "<title> from Ferry"
     return 0
 
 
@@ -367,9 +368,10 @@ def add_text(text):
     if not text.strip():
         return 1
     text = text[:MAX_TEXT]
+    it = new_item(to="phone", kind="text", text=text)
     with box(write=True) as items:
-        items.append(new_item(to="phone", kind="text", text=text))
-    push_all(alias(), text[:180])
+        items.append(it)
+    push_all(alias(), text[:180], item=it)
     return 0
 
 
@@ -496,22 +498,62 @@ def relays(change=None):
         return out
 
 
-def push_all(title, body, machine=""):
+def payload(title, body, machine="", item=None):
+    """A notification's content: what the page's service worker shows, and for the iPhone app also the item, so a tap
+    opens it and copies a text. The whole text goes along when it fits, never a cut one (the app fetches a long one);
+    title and body are cut by characters, so the JSON and its UTF-8 stay whole."""
+    d = {"title": title[:200], "body": body[:300], "machine": machine}
+    if item:
+        d.update(id=item["id"], kind=item["kind"])
+    out = json.dumps(d, ensure_ascii=False).encode()
+    if item and item["kind"] == "text":
+        whole = json.dumps(dict(d, text=item.get("text", "")), ensure_ascii=False).encode()
+        if len(whole) <= PUSH_PAYLOAD:
+            return whole
+    while len(out) > PUSH_PAYLOAD:   # only a name or title far longer than any real one gets here
+        d["body"] = d["body"][:len(d["body"]) // 2]
+        d["title"] = d["title"][:len(d["title"]) // 2]
+        out = json.dumps(d, ensure_ascii=False).encode()
+    return out
+
+
+def targets(subs, relayed):
+    """The subscriptions a notification goes to. The iPhone app subscribes "direct" on every computer: it hears about each
+    computer's own items from that computer, so one passed on by another computer (relayed, api/relay-push) isn't for
+    it, and the same phone's PWA subscription stays quiet beside it. A device named "your phone" (its tailnet name
+    unknown) could be anyone's, so it replaces nothing."""
+    direct = {s.get("device") for s in subs if s.get("direct") and s.get("device") != "your phone"}
+    return [s for s in subs if not (relayed and s.get("direct")) and (s.get("direct") or s.get("device") not in direct)]
+
+
+def subscription(sub, device):
+    """The stored form of an api/subscribe body, or None when it isn't a push subscription."""
+    if not (isinstance(sub, dict) and str(sub.get("endpoint", "")).startswith("https://") and
+            (sub.get("keys") or {}).get("p256dh") and (sub.get("keys") or {}).get("auth")):
+        return None
+    entry = {"endpoint": sub["endpoint"], "keys": {"p256dh": sub["keys"]["p256dh"], "auth": sub["keys"]["auth"]},
+             "device": device, "time": time.time()}
+    if sub.get("direct") is True:
+        entry["direct"] = True
+    return entry
+
+
+def push_all(title, body, machine="", item=None):
     """A notification on every subscribed phone, and through the relays on the phones that added another computer's
-    page. machine: the address of the computer it is about ("" = this one), so a tap opens the page on it. A
-    subscription the push service no longer knows (404/410) goes."""
+    page. machine: the address of the computer it is about ("" = this one), so a tap opens the page on it. item: the
+    item it is about. A subscription the push service no longer knows (404/410) goes."""
     if not machine:
         own = url()
         for via in relays():
             if via != own:
                 threading.Thread(target=relay_push, args=(via, title, body, own), daemon=True).start()
     key = vapid_key()
-    subs = subscriptions() if key else []
+    subs = targets(subscriptions(), relayed=bool(machine)) if key else []
     gone = []
-    payload = json.dumps({"title": title, "body": body, "machine": machine}, ensure_ascii=False).encode()[:3000]
+    content = payload(title, body, machine, item)
     for sub in subs:
         try:
-            data = encrypt(payload, sub["keys"]["p256dh"], sub["keys"]["auth"])
+            data = encrypt(content, sub["keys"]["p256dh"], sub["keys"]["auth"])
             req = urllib.request.Request(sub["endpoint"], data, method="POST", headers={
                 "Authorization": vapid_auth(key, sub["endpoint"]), "TTL": str(KEEP_DAYS * 86400),
                 "Content-Encoding": "aes128gcm", "Content-Type": "application/octet-stream", "Urgency": "high"})
@@ -840,12 +882,9 @@ def handler(app):
                     refresh_bar()
                     self.send(200, {"ok": True})
                 elif path == "/api/subscribe":
-                    sub = json.loads(self.read_body(8192) or b"{}")
-                    if not (str(sub.get("endpoint", "")).startswith("https://") and
-                            (sub.get("keys") or {}).get("p256dh") and (sub.get("keys") or {}).get("auth")):
+                    entry = subscription(json.loads(self.read_body(8192) or b"{}"), self.who())
+                    if not entry:
                         return self.send(400, "Not a push subscription")
-                    entry = {"endpoint": sub["endpoint"], "keys": {"p256dh": sub["keys"]["p256dh"],
-                             "auth": sub["keys"]["auth"]}, "device": self.who(), "time": time.time()}
                     subscriptions(lambda s: s.__setitem__(
                         slice(None), [x for x in s if x["endpoint"] != entry["endpoint"]] + [entry]))
                     self.send(200, {"ok": True})
