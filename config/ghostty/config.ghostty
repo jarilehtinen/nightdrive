@@ -1,0 +1,81 @@
+# Ghostty – the same look and Mac-style keys (⌘ = super) as kitty (kitty/kitty.conf). Install it from the launcher:
+# System › Install › Software › Terminals. Your own settings: local.ghostty next to this file (git-ignored).
+
+# --- Font ---
+font-family = JetBrains Mono
+font-style = Thin
+font-style-bold = SemiBold
+font-size = 9.5
+# The thin face draws thinner and dimmer than in kitty without it
+font-thicken = true
+
+# --- Appearance ---
+window-padding-x = 10
+window-padding-y = 10
+confirm-close-surface = false
+cursor-style = block
+cursor-style-blink = false
+# The shell integration would turn the cursor into a bar at the prompt
+shell-integration-features = no-cursor
+
+# --- Clipboard: ⌘C / ⌘V (Ctrl+Shift+C/V works too) ---
+keybind = super+c=copy_to_clipboard
+keybind = super+v=paste_from_clipboard
+# Hyprland sends ⌘C/⌘V as Ctrl+Insert / Shift+Insert
+keybind = ctrl+insert=copy_to_clipboard
+keybind = shift+insert=paste_from_clipboard
+
+# --- Other Mac habits ---
+keybind = super+n=new_window
+keybind = super+k=clear_screen
+keybind = super+equal=increase_font_size:1
+keybind = super+plus=increase_font_size:1
+keybind = super+minus=decrease_font_size:1
+keybind = super+digit_0=reset_font_size
+
+# Option+arrows jump over a word like in iTerm
+keybind = alt+left=esc:b
+keybind = alt+right=esc:f
+# Ctrl+⌫ deletes the previous word like in other apps (^W); also what ⌥⌫ arrives as when keyd remaps it
+keybind = ctrl+backspace=text:\x17
+# ⌘⌥← / ⌘⌥→ (Hyprland sends Ctrl+PageUp/Down) switch tabs
+keybind = ctrl+page_up=previous_tab
+keybind = ctrl+page_down=next_tab
+
+# --- Tokyo Night (Omarchy's default theme), as in kitty ---
+background = #1a1b26
+foreground = #c0caf5
+selection-background = #33467c
+selection-foreground = #c0caf5
+cursor-color = #c0caf5
+cursor-text = #1a1b26
+palette = 0=#15161e
+palette = 1=#f7768e
+palette = 2=#9ece6a
+palette = 3=#e0af68
+palette = 4=#7aa2f7
+palette = 5=#bb9af7
+palette = 6=#7dcfff
+palette = 7=#a9b1d6
+palette = 8=#414868
+palette = 9=#f7768e
+palette = 10=#9ece6a
+palette = 11=#e0af68
+palette = 12=#7aa2f7
+palette = 13=#bb9af7
+palette = 14=#7dcfff
+palette = 15=#c0caf5
+
+# Transparency
+background-opacity = 0.97
+
+# --- Links ---
+# Ctrl+click opens a link in the browser (Ghostty's default); ⌘+click is Hyprland's for moving windows
+
+# --- Selection ---
+# Selected text is copied to the clipboard immediately (as in kitty). In programs that grab the mouse (e.g. Claude
+# Code, tmux, vim), select while holding Shift.
+copy-on-select = clipboard
+
+# Your own settings last, so they win (the ? : no error when there is none)
+config-file = ?local.ghostty
