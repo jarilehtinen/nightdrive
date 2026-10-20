@@ -10,16 +10,31 @@
 # LAUNCH_HIDDEN=1 (autostart's background apps): only launch, leave the new window where it opens (special:bg).
 pattern=$1; shift
 hidden=$LAUNCH_HIDDEN; unset LAUNCH_HIDDEN   # not passed on to the app
+REDRAW_WAIT=0.15   # seconds for an app to redraw at the new screen's scale (show)
 find_win() { hyprctl -j clients | jq -r --arg re "$pattern" '[.[] | select(.class | test($re))] | sort_by(.focusHistoryID) | first | "\(.address // "") \(.workspace.name // "")"'; }
 show() {  # $1 = address, $2 = workspace
+  local cmds=() target mon bgmon a floating
   if [[ $2 == special:bg ]]; then
-    local target a
-    target=$(hyprctl -j monitors | jq -r '[.[] | select(.focused)] | first | if .specialWorkspace.name == "special:drawer" then "\"special:drawer\"" else .activeWorkspace.id end')
-    for a in $(hyprctl -j clients | jq -r --arg re "$pattern" '.[] | select((.class | test($re)) and .workspace.name == "special:bg") | .address'); do
-      hyprctl dispatch "hl.dsp.window.move({ workspace = $target, window = \"address:$a\" })" >/dev/null
-    done
+    read -r target mon < <(hyprctl -j monitors | jq -r '[.[] | select(.focused)] | first | "\(if .specialWorkspace.name == "special:drawer" then "\"special:drawer\"" else .activeWorkspace.id end) \(.name)"')
+    # The screens have different scales (2 and 1.5): a window coming from the other screen is first shown as its old
+    # frame stretched, until the app redraws. Moving special:bg (still hidden) to this screen first lets it redraw unseen.
+    bgmon=$(hyprctl -j workspaces | jq -r '.[] | select(.name == "special:bg") | .monitor')
+    if [[ -n $bgmon && $bgmon != "$mon" ]]; then
+      hyprctl dispatch "hl.dsp.workspace.move({ workspace = \"special:bg\", monitor = \"$mon\" })" >/dev/null
+      sleep "$REDRAW_WAIT"
+    fi
+    while read -r a floating; do
+      cmds+=("dispatch hl.dsp.window.move({ workspace = $target, window = \"address:$a\" })")
+      # A floating window keeps its offset from the corner of the screen it was hidden on, so a window centred on the
+      # laptop lands up and left on a bigger screen, and the other way round off to the bottom right. Its monitor in
+      # special:bg is that workspace's, not the one it came from, so it can't tell: always centre it on the new screen.
+      [[ $floating == true ]] && cmds+=("dispatch hl.dsp.window.center({ window = \"address:$a\" })")
+    done < <(hyprctl -j clients | jq -r --arg re "$pattern" '.[] | select((.class | test($re)) and .workspace.name == "special:bg") | "\(.address) \(.floating)"')
   fi
-  hyprctl dispatch "hl.dsp.focus({ window = \"address:$1\" })" >/dev/null
+  cmds+=("dispatch hl.dsp.focus({ window = \"address:$1\" })")
+  # One batch, so the move and the centring land in the same frame: one by one, the window flashes at its old spot first
+  local IFS=';'
+  hyprctl --batch "${cmds[*]}" >/dev/null
 }
 read -r addr wsname < <(find_win)
 if [[ -n $addr ]]; then
