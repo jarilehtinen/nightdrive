@@ -19,6 +19,7 @@
 
 ## Copy and paste (in every app)
   ⌘ C / ⌘ V / ⌘ X    Copy / paste / cut
+  ⌘ V                In the terminal, a picture too (a screenshot into Claude Code)
   ⌘ Z / ⌘ ⇧ Z        Undo / redo (not in the terminal)
   ⌘ A                Select all (not in the terminal)
   ⌘ S                Save (not in the terminal)

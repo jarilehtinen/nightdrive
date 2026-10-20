@@ -1,0 +1,9 @@
+#!/bin/bash
+# ⌘V in a terminal (bindings.lua): a picture on the clipboard goes in as Ctrl+V, the key with which Claude Code and other
+# terminal programs read it from the clipboard themselves; text as Shift+Insert, which the terminal pastes. Shift+Insert
+# alone pastes nothing when the clipboard holds only a picture (a ⌘⇧S screenshot).
+if wl-paste --list-types 2>/dev/null | grep -q '^image/'; then
+  hyprctl dispatch 'hl.dsp.send_shortcut({ mods = "CTRL", key = "V" })' >/dev/null
+else
+  hyprctl dispatch 'hl.dsp.send_shortcut({ mods = "SHIFT", key = "Insert" })' >/dev/null
+fi

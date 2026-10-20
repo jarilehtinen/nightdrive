@@ -133,7 +133,15 @@ hl.bind(mod .. " + SHIFT + K",     hl.dsp.exec_cmd(scripts .. "/terminal --class
 
 -- Universal copy/paste/cut ⌘C/⌘V/⌘X in every app (the Omarchy way)
 hl.bind(mod .. " + C", hl.dsp.send_shortcut({ mods = "CTRL",  key = "Insert" }))
-hl.bind(mod .. " + V", hl.dsp.send_shortcut({ mods = "SHIFT", key = "Insert" }))
+-- In a terminal, a picture on the clipboard goes in as Ctrl+V (scripts/paste): asked there, not here, so that reading the
+-- clipboard doesn't hold up Hyprland
+hl.bind(mod .. " + V", function ()
+    if NIGHTDRIVE_IS_TERMINAL(hl.get_active_window()) then
+        hl.dispatch(hl.dsp.exec_cmd(scripts .. "/paste"))
+    else
+        hl.dispatch(hl.dsp.send_shortcut({ mods = "SHIFT", key = "Insert" }))
+    end
+end)
 hl.bind(mod .. " + X", hl.dsp.send_shortcut({ mods = "CTRL",  key = "X" }))
 
 -- The apps' own keys, sent as Ctrl+…: undo / redo / select all / save / reload / reload without the cache / find / new tab /
