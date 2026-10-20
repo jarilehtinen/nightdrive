@@ -2,16 +2,26 @@
 # After sleep (hypridle's after_sleep_cmd): the lock that was up before it doesn't get the keyboard back. Hyprland adds
 # the keyboards again on resume, and the lock's surface keeps none: the password field shows but takes no keys until
 # it is clicked (and one started just before the sleep didn't draw at all). Seen on a PC with an NVIDIA card and a USB
-# keyboard, with hyprlock and with the login screen alike. A new lock takes the lock over (allow_session_lock_restore
-# in hyprland.lua) within misc:lockdead_screen_delay there, so Hyprland's "lock died" screen doesn't show. Steps go to
-# the journal (journalctl -t relock).
+# keyboard, with hyprlock and with the login screen alike. So a new lock is started and the old one closed.
+# The order matters: Hyprland shows its "lock died" screen at once when no lock client is left, but with
+# allow_session_lock_restore (hyprland.lua) a new lock takes the lock over while the old one is still up. So the new
+# one starts first, and the old one goes once it has loaded. Until it has drawn, the screen is black
+# (lockdead_screen_delay = 0 there: with a delay, Hyprland draws the desktop under it meanwhile).
+# Steps go to the journal (journalctl -t relock).
 lock='[q]s -p .*/greeter/lock\.qml'
 pgrep -u "$USER" -f "$lock" >/dev/null || exit 0
 sleep 1   # the keyboards come back a moment after the resume
-pgrep -u "$USER" -f "$lock" >/dev/null || { logger -t relock "unlocked meanwhile"; exit 0; }
-logger -t relock "restarting the lock"
-pkill -9 -u "$USER" -f "$lock"
-# The new one only gets the lock once the old one is gone
-for _ in $(seq 50); do pgrep -u "$USER" -f "$lock" >/dev/null || break; sleep 0.05; done
-logger -t relock "old lock gone, starting a new one"
-exec "$HOME/.config/hypr/scripts/lock"
+old=$(pgrep -u "$USER" -f "$lock") || { logger -t relock "unlocked meanwhile"; exit 0; }
+logger -t relock "starting a new lock"
+setsid -f "$HOME/.config/hypr/scripts/lock" --replace >/dev/null 2>&1
+# Loaded = it has asked for the lock; give it a moment more to draw. If it doesn't come up, the old one stays.
+for _ in $(seq 50); do
+  new=$(pgrep -u "$USER" -f "$lock" | grep -vxF "$old" | head -1)
+  [[ -n $new ]] && grep -q 'Configuration Loaded' "${XDG_RUNTIME_DIR:-/run/user/$UID}/quickshell/by-pid/$new/log.log" 2>/dev/null && break
+  new=
+  sleep 0.1
+done
+[[ -n $new ]] || { logger -t relock "the new lock didn't load, keeping the old one"; exit 0; }
+sleep 0.3
+kill -9 $old
+logger -t relock "new lock up, old one closed"
