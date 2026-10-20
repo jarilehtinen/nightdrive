@@ -56,7 +56,7 @@ if [[ $(cat "$xdph" 2>/dev/null) != "$want" ]]; then
   printf '%s\n' "$want" > "$xdph"; echo "wrote       $xdph"
   systemctl --user try-restart xdg-desktop-portal-hyprland >/dev/null 2>&1 || true
 fi
-link "$repo/config/gtk-4.0/gtk.css" "$HOME/.config/gtk-4.0/gtk.css"   # Tokyo Night colours for libadwaita apps (Nautilus)
+link "$repo/config/gtk-4.0/gtk.css" "$HOME/.config/gtk-4.0/gtk.css"   # GTK 4 / libadwaita apps (Nautilus) in the theme's colours
 link "$repo/config/gtk-3.0/gtk.css" "$HOME/.config/gtk-3.0/gtk.css"
 # Apostrophe is a Flatpak: it reads its own config dir (plugins/apostrophe/install.sh lets the sandbox read config/gtk-4.0)
 link "$repo/config/gtk-4.0/apostrophe.css" "$HOME/.var/app/org.gnome.gitlab.somas.Apostrophe/config/gtk-4.0/gtk.css"

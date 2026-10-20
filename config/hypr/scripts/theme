@@ -4,7 +4,8 @@
   theme color [name]   prints / sets the theme and applies it
   theme list           "key<TAB>name<TAB>main colour hex<TAB>current?" for the launcher
   theme apply          writes ~/.cache/nightdrive/: theme.json (Quickshell), notify-icons, fuzzel.ini, hyprlock.conf,
-                       and the top bar's bar.json via bar-style (Hyprland autostart runs it before Quickshell)
+                       gtk-colors.css (imported by config/gtk-*/gtk.css), and the top bar's bar.json via bar-style
+                       (Hyprland autostart runs it before Quickshell)
 
 Shades are derived from the original violet: each role keeps its lightness and saturation, only the hue changes.
 So Violet produces exactly the original colours. The login screen (/etc/greetd) stays violet.
@@ -30,6 +31,8 @@ BASE = {
     "deep":    "#5c247b",   # top bar highlights (black icons)
 }
 BASE_HUE = 279
+# Colours the theme doesn't change (Theme.qml): the menus' background and the state colours, for the GTK windows
+FIXED = {"bg": "#0b0b0d", "danger": "#f7768e", "warning": "#e0af68", "ok": "#9ece6a"}
 
 # name → (display name, hue in degrees, saturation multiplier)
 THEMES = {
@@ -95,11 +98,24 @@ def apply():
           f"text={hx['muted']}ff\ninput={hx['muted']}ff\nprompt={hx['primary']}ff\nmatch={hx['primary']}ff\nselection={hx['sel']}ff\n"
           f"selection-text={hx['accent']}ff\nselection-match={hx['primary']}ff\nborder={hx['primary']}ff\n")
     write(f"{OUT}/hyprlock.conf", f"# written by theme\n$primary = rgb({hx['primary']})\n$accent = rgb({hx['accent']})\n")
+    # GTK 3 and 4 windows (file picker, Sushi, Loupe…): named colours only; the rules that use them are in the repo's
+    # gtk.css files, so switching themes doesn't change a tracked file. GTK reads it when an app starts.
+    write(f"{OUT}/gtk-colors.css", "/* written by theme */\n"
+          + "".join(f"@define-color nd_{k} {v};\n" for k, v in {**FIXED, **p}.items()))
 
 
 def reload():
     run = lambda *c: subprocess.run(c, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     run(f"{HOME}/.config/hypr/scripts/bar-style", "apply")       # top bar colours (the bar watches the file)
+    # The file picker's portal keeps running and reads gtk.css only when it starts: restart it (D-Bus starts it
+    # again on the next Open dialog), unless a picker is open right now
+    out = subprocess.run(["hyprctl", "clients", "-j"], capture_output=True, text=True).stdout
+    try:
+        busy = any(c.get("class") == "xdg-desktop-portal-gtk" for c in json.loads(out))
+    except ValueError:
+        busy = True
+    if not busy:
+        run("systemctl", "--user", "try-restart", "xdg-desktop-portal-gtk")
 
 
 args = sys.argv[1:]

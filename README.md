@@ -89,6 +89,7 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
   "airplay"), with sound. Google Cast works from Chromium (⋮ › Cast…). Sharing the screen, for these and video calls, asks
   in a themed window: the whole screen or one window.
 - **Themes**: seven colours that change the whole desktop at once, two synthwave wallpapers and your own (Settings › Theme).
+  GTK windows such as the file picker and Files follow the colour too: an app already open shows it once reopened.
 - **Screensavers**: a synthwave sunset and a falling-characters rain, both drawn in the terminal, and a big clock whose
   digits slide up as the minutes change.
 - **Background apps**: ⌘W only hides chat apps and the music player, so they keep running. Their shortcut brings them straight back.
@@ -342,7 +343,7 @@ The full list is in [`config/hypr/SHORTCUTS.md`](config/hypr/SHORTCUTS.md).
 - The menus use ordinary command-line tools such as `wpctl`, `nmcli`, `bluetoothctl`, `upower`, `tailscale`, `cliphist` and `dnf`.
   There are no daemons of their own.
 - The theme script (`config/hypr/scripts/theme`) derives every shade from one colour. It writes a small file for Quickshell,
-  fuzzel and hyprlock, then reloads them.
+  fuzzel, hyprlock and GTK (`config/gtk-*/gtk.css` imports it), then reloads them.
 - Deck writes its playing state to a small JSON file. The bar, the music menu and the launcher read that file.
 
 ## Good to know
