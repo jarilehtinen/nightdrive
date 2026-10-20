@@ -17,4 +17,5 @@ config/topbar/status.local
 config/fuzzel/apps-allow.local.txt
 config/ghostty/local.ghostty
 config/alacritty/local.toml
+config/foot/local.ini
 config/easyeffects/headphones.local.tsv

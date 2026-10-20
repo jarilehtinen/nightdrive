@@ -34,9 +34,11 @@ for l in "$HOME"/.config/* "$HOME"/.config/{systemd/user,keyd,alsa,voxtype,gtk-3
   fi
 done
 
-for d in hypr topbar fuzzel kitty ghostty alacritty quickshell screensaver greeter; do   # greeter: the lock at startup (greeter/lock.qml) and the preview
+for d in hypr topbar fuzzel kitty ghostty alacritty foot quickshell screensaver greeter; do   # greeter: the lock at startup (greeter/lock.qml) and the preview
   link "$repo/config/$d" "$HOME/.config/$d"
 done
+# foot's config includes your local.ini and won't start without one
+[[ -e $repo/config/foot/local.ini ]] || : > "$repo/config/foot/local.ini"
 # Waybar drew the top bar until 13.10.2026; its config is gone from the repo (a leftover config/waybar only holds
 # the old generated bar.css and your local.css), so the link goes
 [[ -L $HOME/.config/waybar && $(readlink "$HOME/.config/waybar") == "$repo/config/waybar" ]] && rm "$HOME/.config/waybar" && echo "removed     $HOME/.config/waybar"
