@@ -1,8 +1,8 @@
 import QtQuick
 import Quickshell
 
-// The launcher's Settings › Display (brightness, night light, Screen Mirroring's rows from SystemLevels.qml, and each
-// output's scales) and Battery (charge and state, then the details, as in the top bar's battery menu).
+// The launcher's Settings › Display (brightness, night light, Screen Mirroring's rows from SystemLevels.qml, where the
+// laptop's screen is next to an external one, and each output's scales) and Battery (charge and state, then the details, as in the top bar's battery menu).
 // The brightness row is a slider that Launcher.qml draws (bright, setBright) and ←/→ steps (stepBright), also in the root
 // search; Launcher.qml's displayItems() puts it there.
 // Launcher.qml asks it like DefaultAppsLevels (levels, titles, parents, items, activate, footer, entered).
@@ -11,6 +11,7 @@ Item {
     property var launcher: null
 
     property var displays: null               // [{ name, desc, scale, opts: [{ value, size }] }] (hypr/scripts/display list)
+    property string side: ""                  // the laptop's screen: left | right | above | below | auto (display side)
     property real bright: -1                  // Brightness: 0..1 (brightnessctl), -1 = no backlight (a VM) or not read yet
     property real pendingBright: -1           // the slider's value waiting to be applied (throttled, like in BatteryMenu)
     property string night: ""                 // Night light: on | off (hypr/scripts/nightlight status)
@@ -29,7 +30,7 @@ Item {
     // On every open: the root search has the brightness and night light rows too
     function opened() { brightProc.running = true; nightProc.running = true }
     function entered(level) {
-        if (level === "display") { displayProc.running = true; brightProc.running = true; nightProc.running = true }
+        if (level === "display") { displayProc.running = true; sideProc.running = true; brightProc.running = true; nightProc.running = true }
         if (level === "battery") { battProc.running = true; battDetailProc.running = true }
     }
     function shiftActivate(it) {}
@@ -47,6 +48,18 @@ Item {
             }
             // Scales the panel divides evenly, shown as the resulting desktop size ("looks like" in macOS); current one marked
             out.push(...l.mirrorRows())   // Screen Mirroring (AirPlay; SystemLevels.qml), empty without doubletake
+            // Where the laptop's own screen is, so the pointer crosses where the screens meet: only with both on.
+            // eDP is the connector of a laptop's panel (BUILTIN_DISPLAY in hyprland.lua)
+            if (side !== "" && displays.length > 1 && displays.some(d => /^eDP-/.test(d.name))) {
+                out.push({ kind: "header", name: "Laptop screen" })
+                for (const [v, label, glyph] of [["below", "Below the display", "arrow-down"], ["above", "Above the display", "arrow-up"],
+                                                 ["left", "Left of the display", "arrow-left"], ["right", "Right of the display", "arrow-right"],
+                                                 ["auto", "Automatic", "monitor"]]) {
+                    const cur = side === v
+                    out.push({ kind: "side", value: v, name: label, glyph: cur ? "check" : glyph,
+                               summary: cur ? "current" : v === "auto" ? "side by side" : undefined })
+                }
+            }
             for (const d of displays) {
                 out.push({ kind: "header", name: "Scale" + (displays.length > 1 ? " · " + d.name + (d.desc !== "-" ? "  " + d.desc : "") : "") })
                 for (const o of d.opts) {
@@ -90,6 +103,12 @@ Item {
             Quickshell.execDetached([scripts + "/nightlight", night])
             return true
         }
+        if (it.kind === "side") {         // stays open like the scale rows; Hyprland reloads with the new arrangement
+            l.keepSelection()
+            side = it.value
+            Quickshell.execDetached([scripts + "/display", "side", it.value])
+            return true
+        }
         if (it.kind === "scale") {        // stays open like the theme rows; Hyprland reloads with the new scale
             l.keepSelection()
             displays = displays.map(d => d.name === it.output ? Object.assign({}, d, { scale: it.value }) : d)
@@ -127,6 +146,11 @@ Item {
                 opts: f.slice(3).map(o => { const [v, size] = o.split(":"); return { value: parseFloat(v), size: size.replace("×", " × ") } }) }))
             if (first && p.launcher.level === "display" && p.launcher.query === "") p.launcher.selectFirst()   // was the Loading… hint
         }
+    }
+    Sh {
+        id: sideProc
+        script: '"$HOME/.config/hypr/scripts/display" side'
+        onResult: text => { p.launcher.keepSelection(); p.side = text.trim() }
     }
     // Brightness: read on entering and every 2 s while there (the brightness keys also work then),
     // not while the slider is held or a value is waiting to be applied

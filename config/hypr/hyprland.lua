@@ -32,15 +32,49 @@ hl.monitor({
     position = "auto",
     scale    = MONITOR_SCALE,
 })
--- Scales chosen in the launcher (Settings › Display, hypr/scripts/display): "<output> <scale>" per line.
--- A named output's rule wins over the "" rules above and in local.lua.
-local scales = io.open(HOME .. "/.local/state/nightdrive/display")
-if scales then
-    for line in scales:lines() do
+-- Chosen in the launcher (Settings › Display, hypr/scripts/display): "<output> <scale>" per line, and "builtin <side>"
+-- for where the laptop's own screen is next to the external one. A named output's rule wins over the "" rules above and
+-- in local.lua.
+local scales, builtinSide = {}, nil
+local state = io.open(HOME .. "/.local/state/nightdrive/display")
+if state then
+    for line in state:lines() do
         local output, scale = line:match("^(%S+)%s+([%d.]+)$")
-        if output then hl.monitor({ output = output, mode = "preferred", position = "auto", scale = tonumber(scale) }) end
+        if output then scales[output] = tonumber(scale) end
+        builtinSide = line:match("^builtin%s+(%a+)$") or builtinSide
     end
-    scales:close()
+    state:close()
+end
+-- The side: the external screen at 0,0 and the laptop's centred along its edge, in layout pixels (after the scale), so the
+-- pointer crosses where the screens really meet. Without one, or alone, Hyprland places them itself (auto: side by side).
+local positions = {}
+do
+    local builtin, ext
+    for _, m in ipairs(hl.get_monitors()) do
+        if m.name == BUILTIN_DISPLAY then builtin = m elseif not ext then ext = m end
+    end
+    if builtinSide and builtin and ext then
+        local function size(m)
+            local s = scales[m.name] or m.scale
+            local w, h = math.floor(m.width / s + 0.5), math.floor(m.height / s + 0.5)
+            if m.transform % 2 == 1 then return h, w end   -- turned 90° or 270°
+            return w, h
+        end
+        local ew, eh = size(ext)
+        local bw, bh = size(builtin)
+        local at = ({ left  = { -bw, (eh - bh) // 2 }, right = { ew, (eh - bh) // 2 },
+                      above = { (ew - bw) // 2, -bh }, below = { (ew - bw) // 2, eh } })[builtinSide]
+        if at then
+            positions[ext.name] = { m = ext, pos = "0x0" }
+            positions[builtin.name] = { m = builtin, pos = at[1] .. "x" .. at[2] }
+        end
+    end
+end
+for output, scale in pairs(scales) do
+    if not positions[output] then hl.monitor({ output = output, mode = "preferred", position = "auto", scale = scale }) end
+end
+for output, p in pairs(positions) do
+    hl.monitor({ output = output, mode = "preferred", position = p.pos, scale = scales[output] or p.m.scale })
 end
 -- Lid closed with an external display (logind: docked, so it doesn't suspend): the built-in screen is turned off, so the
 -- windows, workspaces and the pointer move to the external one instead of staying under the lid. scripts/lid follows
