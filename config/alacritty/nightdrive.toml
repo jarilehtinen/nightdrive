@@ -1,0 +1,89 @@
+# Alacritty – the same look and Mac-style keys (⌘ = super) as kitty (kitty/kitty.conf). Install it from the launcher:
+# System › Install › Software › Terminals. Alacritty has no tabs: ⌘⌥← / ⌘⌥→ do nothing here.
+
+# --- Font ---
+[font]
+size = 9.5
+# Light, not kitty's Thin: Alacritty draws the thin face thinner and dimmer, and has nothing to thicken it
+normal = { family = "JetBrains Mono", style = "Light" }
+bold = { family = "JetBrains Mono", style = "SemiBold" }
+
+# --- Appearance ---
+[window]
+padding = { x = 10, y = 10 }
+opacity = 0.97
+
+[cursor]
+style = { shape = "Block", blinking = "Never" }
+
+[bell]
+duration = 0
+
+# --- Tokyo Night (Omarchy's default theme), as in kitty ---
+[colors.primary]
+background = "#1a1b26"
+foreground = "#c0caf5"
+
+[colors.selection]
+background = "#33467c"
+text = "#c0caf5"
+
+[colors.cursor]
+cursor = "#c0caf5"
+text = "#1a1b26"
+
+[colors.normal]
+black = "#15161e"
+red = "#f7768e"
+green = "#9ece6a"
+yellow = "#e0af68"
+blue = "#7aa2f7"
+magenta = "#bb9af7"
+cyan = "#7dcfff"
+white = "#a9b1d6"
+
+[colors.bright]
+black = "#414868"
+red = "#f7768e"
+green = "#9ece6a"
+yellow = "#e0af68"
+blue = "#7aa2f7"
+magenta = "#bb9af7"
+cyan = "#7dcfff"
+white = "#c0caf5"
+
+# --- Selection ---
+# Selected text is copied to the clipboard immediately (as in kitty). In programs that grab the mouse (e.g. Claude
+# Code, tmux, vim), select while holding Shift.
+[selection]
+save_to_clipboard = true
+
+# --- Links ---
+# Ctrl+click opens a link in the browser, as in kitty; ⌘+click is Hyprland's for moving windows
+[[hints.enabled]]
+regex = "(https?://|file:|mailto:|ftp://)[^\u0000-\u001F\u007F-\u009F<>\"\\s{-}\\^⟨⟩`\\\\]+"
+command = "xdg-open"
+post_processing = true
+mouse = { enabled = true, mods = "Control" }
+
+[keyboard]
+bindings = [
+  # --- Clipboard: ⌘C / ⌘V (Ctrl+Shift+C/V works too) ---
+  { key = "C", mods = "Super", action = "Copy" },
+  { key = "V", mods = "Super", action = "Paste" },
+  # Hyprland sends ⌘C/⌘V as Ctrl+Insert / Shift+Insert
+  { key = "Insert", mods = "Control", action = "Copy" },
+  { key = "Insert", mods = "Shift", action = "Paste" },
+  # --- Other Mac habits ---
+  { key = "N", mods = "Super", action = "CreateNewWindow" },
+  { key = "K", mods = "Super", chars = "\u000c" },
+  { key = "Equals", mods = "Super", action = "IncreaseFontSize" },
+  { key = "Plus", mods = "Super", action = "IncreaseFontSize" },
+  { key = "Minus", mods = "Super", action = "DecreaseFontSize" },
+  { key = "Key0", mods = "Super", action = "ResetFontSize" },
+  # Option+arrows jump over a word like in iTerm
+  { key = "Left", mods = "Alt", chars = "\u001bb" },
+  { key = "Right", mods = "Alt", chars = "\u001bf" },
+  # Ctrl+⌫ deletes the previous word like in other apps (^W); also what ⌥⌫ arrives as when keyd remaps it
+  { key = "Back", mods = "Control", chars = "\u0017" },
+]

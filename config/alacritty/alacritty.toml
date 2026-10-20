@@ -1,0 +1,4 @@
+# Alacritty: Nightdrive's settings (nightdrive.toml), then yours (local.toml next to this file, git-ignored).
+# This file only imports them: settings written here would win over both, and of the imports the later one wins.
+[general]
+import = ["~/.config/alacritty/nightdrive.toml", "~/.config/alacritty/local.toml"]

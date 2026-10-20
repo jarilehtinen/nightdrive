@@ -334,7 +334,7 @@ The full list is in [`config/hypr/SHORTCUTS.md`](config/hypr/SHORTCUTS.md).
   | `config/hypr/background-apps.local`, `reopen-commands.local`, `SHORTCUTS.local.md` | more background apps, more programs ⌘⇧U starts again, your own entries in the shortcut list |
   | `config/quickshell/local/` | `<Name>Menu.qml` bar menus, and `LauncherExtension.qml` for your own launcher levels |
   | `config/fuzzel/apps-allow.local.txt` | more apps shown in the launcher |
-  | `config/ghostty/local.ghostty` | your own Ghostty settings (font, size, keys), over Nightdrive's |
+  | `config/ghostty/local.ghostty`, `config/alacritty/local.toml` | your own Ghostty and Alacritty settings (font, size, keys), over Nightdrive's |
   | `config/topbar/local.modules.jsonc`, `status.local`, `local.adjust.conf` | your own bar modules (at the left end of the icons), their status and icon sizes |
 
 ## How it fits together
