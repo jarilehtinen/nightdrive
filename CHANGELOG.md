@@ -3,6 +3,39 @@
 What each release of Nightdrive changed, newest first. `nightdrive update` shows the new ones when it's done, and
 each is also the release's page on [GitHub](https://github.com/nightdrive-sh/nightdrive/releases).
 
+## 0.4.0 – 2026-10-20
+
+Better with an external display, more terminals to choose from, and a safer headphone jack.
+
+- **An external display works like a second screen should.** Workspaces 1–9 are on the external display and the
+  laptop's screen has one of its own (⌘0, a laptop icon in the bar). With the lid closed only the external display is
+  used. Settings › Display › Laptop screen sets which side of the display the laptop is on, so the pointer crosses
+  where the screens really meet. The bar on the screen without the focus dims its workspace, so you see where the
+  keyboard goes.
+- **Choose your terminal:** Install › Software › Terminals has Ghostty, Alacritty and foot next to kitty, each with
+  Nightdrive's look and keys. Default apps sets which one ⌘Enter opens.
+- **Headphone jack:** when something is plugged in, a notification asks whether it's headphones or speakers, and each
+  keeps its own volume. Until you answer, the jack plays at most at 25 %, so headphones don't blast at the speakers'
+  volume.
+- **Low battery warning** at 10 % and 5 %.
+- **⌘V pastes a picture in the terminal too**, e.g. a ⌘⇧S screenshot into Claude Code.
+- **File pickers, Nautilus and other GTK windows** use the desktop's colours.
+- **Crash reports to Claude** (Settings › Notifications, off by default): when a program crashes, a notification
+  offers Ask Claude, which opens Claude Code to find out why, or Mute for that program.
+- **Locking goes straight to the password prompt.** The logo and sounds are only at boot.
+- **Fixes:**
+  - Bluetooth: pairing a keyboard shows the passkey it asks for, a long device list scrolls, and device names show
+    without stray colour codes.
+  - Login screen: the prompt and startup sound are on one screen, and the prompt shows again under the lock.
+  - Deck, 1Password and other background apps open centred on the screen you're on, and the drawer opens on the
+    right screen.
+  - Notifications: buttons with long text wrap, and photos are the right way up.
+  - Software search no longer hangs on dnf's key prompt.
+  - The screen's rounded top corners start under the bar at every scale.
+- **Plugins:** Ferry's menu shows its name at the top, and a long list fades out under the device picker. Ferry shows a
+  received image in its notification, and a phone sees a computer wake within seconds. AirPlay Receiver keeps working
+  when screens change.
+
 ## 0.3.0 – 2026-10-19
 
 - **Ferry sends to the device you pick:** one of your phones or another computer, from the pill in Ferry's menu. Only
