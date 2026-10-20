@@ -32,9 +32,11 @@ Item {
     // logo and prompt, the others the wallpaper. The startup sound plays once, from the view that is main at the start;
     // the others run their intro unseen, so a view that becomes main later shows its prompt straight away.
     property bool main: true
+    // false: the prompt straight away, without the logo typing itself in or the sounds (a lock later in the session)
+    property bool intro: true
     onMainChanged: if (main) input.forceActiveFocus()
 
-    function beep(name) { if (view.main) Quickshell.execDetached(["pw-play", "--volume", "0.7", view.sounds + name + ".wav"]) }
+    function beep(name) { if (view.main && view.intro) Quickshell.execDetached(["pw-play", "--volume", "0.7", view.sounds + name + ".wav"]) }
     // The startup sound as the screen appears (it swells in slowly while the logo's cursor waits), a PC's power-on beep
     // as the prompt is printed
     onPromptShownChanged: if (promptShown) beep("prompt")
@@ -60,7 +62,11 @@ Item {
         stdout: SplitParser { onRead: view.soundStarted = true }
     }
     Timer { interval: 4500; running: !view.soundStarted; onTriggered: view.soundStarted = true }
-    Component.onCompleted: if (view.main) startupSound.running = true; else view.soundStarted = true
+    Component.onCompleted: {
+        if (view.main && view.intro) startupSound.running = true
+        else view.soundStarted = true
+        if (!view.intro) { logo.finish(); view.promptShown = true }
+    }
 
     // Gives the keyboard back to the field after busy (a disabled TextInput loses its focus)
     onBusyChanged: if (!busy) input.forceActiveFocus()

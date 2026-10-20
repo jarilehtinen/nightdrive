@@ -17,6 +17,8 @@ ShellRoot {
     readonly property bool preview: Quickshell.env("NIGHTDRIVE_LOCK_PREVIEW") === "1"
     // /etc/pam.d/nightdrive-lock (switch.sh autologin) also opens the keyring; hyprland.lua passes it when it exists, as
     // a missing service would fall back to PAM's "other", which refuses every password
+    // A lock later in the session (hypr/scripts/lock): straight to the prompt, the intro is for the boot
+    readonly property bool quick: Quickshell.env("NIGHTDRIVE_LOCK_QUICK") === "1"
     readonly property string pamService: Quickshell.env("NIGHTDRIVE_LOCK_PAM") || "login"
 
     // The screen with the prompt: the focused monitor, where the keyboard goes; the first screen before Hyprland's state has
@@ -74,6 +76,7 @@ ShellRoot {
             LoginView {
                 anchors.fill: parent
                 main: surface.screen !== null && surface.screen.name === root.promptScreen
+                intro: !root.quick
                 busy: root.busy
                 message: root.message
                 onTyping: root.message = ""
