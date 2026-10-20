@@ -649,6 +649,39 @@ def known_machines(change=None):
     return out
 
 
+class Found:
+    """The owner's other machines running Ferry, from the ones Tailscale has online. A machine is asked whether it runs
+    Ferry when it comes online, again after a minute, and after 10 s if it didn't answer as Ferry (it may have come
+    online before its Ferry started). One that goes offline leaves the list at once, and nothing is sent to it: a phone
+    asks for this list every 10 s while one of its computers sleeps, instead of trying the sleeping one itself, which
+    jammed the phone's Tailscale."""
+    AGAIN, MISSED_AGAIN = 60, 10
+
+    def __init__(self, probe=probe, clock=time.monotonic):
+        self.probe, self.clock = probe, clock
+        self.probed = {}    # host: (when, probe()'s answer or None)
+        self.asked = []     # the hosts the last get() asked: only then is there news for known_machines
+
+    def get(self, online):
+        now = self.clock()
+        due = [h for h in online if h not in self.probed
+               or now - self.probed[h][0] > (self.AGAIN if self.probed[h][1] else self.MISSED_AGAIN)]
+        self.asked = due
+        results = [None] * len(due)
+
+        def one(i, h):
+            results[i] = self.probe(h)
+        threads = [threading.Thread(target=one, args=(i, h), daemon=True) for i, h in enumerate(due)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(6)
+        probed = {h: v for h, v in self.probed.items() if h in online}
+        probed.update((h, (now, r)) for h, r in zip(due, results))
+        self.probed = probed
+        return sorted((r for _, r in probed.values() if r), key=lambda r: r["name"].lower())
+
+
 # --- The server -----------------------------------------------------------------------------------------------------
 STATIC = {"/manifest.webmanifest": "application/manifest+json", "/sw.js": "text/javascript",
           "/icon.svg": "image/svg+xml", "/icon-180.png": "image/png", "/icon-192.png": "image/png",
@@ -661,24 +694,13 @@ class Ferry:
         self.key = vapid_key(create=True)
         self.recent = (0.0, [], "")      # (when, file paths, notification id): files from the phone in one notification
         self.lock = threading.Lock()
-        self.found = (0.0, [])           # (when, [{url, name}]): the owner's other machines running Ferry
+        self.found = Found()             # the owner's other machines running Ferry
 
     def machines(self):
-        """This computer and the owner's other machines that answer as Ferry, found again after a minute."""
-        when, found = self.found
-        if time.monotonic() - when > 60:
-            self.tailnet.load(force=True)
-            results = [None] * len(self.tailnet.machines)
-
-            def one(i, h):
-                results[i] = probe(h)
-            threads = [threading.Thread(target=one, args=(i, h), daemon=True) for i, h in enumerate(self.tailnet.machines)]
-            for t in threads:
-                t.start()
-            for t in threads:
-                t.join(6)
-            found = sorted((r for r in results if r), key=lambda r: r["name"].lower())
-            self.found = (time.monotonic(), found)
+        """This computer and the owner's other machines that answer as Ferry, as Tailscale has them online now."""
+        self.tailnet.load(force=True)
+        found = self.found.get(self.tailnet.machines)
+        if self.found.asked:
             now, ids = time.time(), {r["id"] for r in found}
 
             def merge(known):
