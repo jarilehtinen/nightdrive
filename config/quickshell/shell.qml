@@ -40,6 +40,25 @@ ShellRoot {
     function submap(name) { Quickshell.execDetached(["hyprctl", "dispatch", 'hl.dsp.submap("' + name + '")']) }
     Component.onCompleted: submap("reset")      // safety net: in case the previous session was left in the submap
 
+    // A reload on save or a restart only shows as the bar redrawing (an open menu closes), easy to miss: a short silent
+    // popup says it happened. Not at login: qs's PID (the parent of this Process, not of an execDetached one) kept in the
+    // runtime dir tells a reload (same PID) from a restart (another) from the session's first start (none). The sleep gives
+    // a restarted qs time to own the notification service again.
+    Sh {
+        running: true
+        command: ["bash", "-c", `
+            prev=$(cat "$1" 2>/dev/null); echo "$PPID" > "$1"
+            [ -n "$prev" ] || exit 0
+            [ "$prev" = "$PPID" ] && msg="The top bar reloaded" || msg="The top bar restarted"
+            sleep 1; notify-send -e -u low -a Quickshell "$msg"`, "_", Quickshell.env("XDG_RUNTIME_DIR") + "/nightdrive-qs.pid"]
+    }
+    Connections {
+        target: Quickshell
+        function onReloadFailed(error) {
+            Quickshell.execDetached(["notify-send", "-e", "-a", "Quickshell", "The top bar didn't reload", error.split("\n")[0]])
+        }
+    }
+
     onCurrentChanged: {
         navItem = null
         if (current === "") { navMode = false; viaSubmap = false }
