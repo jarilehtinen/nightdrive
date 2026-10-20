@@ -12,6 +12,7 @@ local MONITOR_SCALE = 2.0
 local KB_LAYOUT     = "fi"
 local KB_VARIANT    = "mac"
 local BUILTIN_DISPLAY = "eDP-1"   -- a laptop's own screen (a desktop has none: the rule below then does nothing)
+local BAR_HEIGHT    = 37      -- the top bar in logical px (Theme.barHeight in quickshell/Theme.qml): the top corners start under it
 
 local HOME = os.getenv("HOME")
 
@@ -522,11 +523,37 @@ function NightdriveCornersHidden(on)
     corners_hidden = on
     update_corners()
 end
+-- The top corners start at the bar's bottom edge, which in physical pixels depends on each screen's scale. One shader
+-- draws every screen and knows only which one (wl_output = the monitor's id), so the copy in use gets a height per screen.
+local function per_screen(path)
+    if path == "" then return path end
+    local f = io.open(path)
+    if not f then return path end
+    local src = f:read("a")
+    f:close()
+    local expr = src:match("const float TOP = ([%d.]+);")
+    if not expr then return path end
+    for _, m in ipairs(hl.get_monitors()) do
+        expr = string.format("(wl_output == %d ? %.1f : %s)", m.id, math.floor(BAR_HEIGHT * m.scale + 0.5), expr)
+    end
+    src = src:gsub("const float TOP = [%d.]+;", "uniform int wl_output;\n#define TOP " .. expr)
+    local p = HOME .. "/.cache/hypr/" .. path:match("([^/]+)%.frag$") .. "-screens.frag"
+    local g = io.open(p)
+    local old = g and g:read("a")
+    if g then g:close() end
+    if old ~= src then
+        local w = io.open(p .. ".tmp", "w")
+        if not w then return path end
+        w:write(src); w:close()
+        os.rename(p .. ".tmp", p)                 -- whole, never half-written while Hyprland compiles it
+    end
+    return p
+end
 update_corners = function()
     local ws = hl.get_active_workspace()
     local fullscreen = ws ~= nil and ws.has_fullscreen and ws.fullscreen_mode == 2
     local corners = not fullscreen and not session_locked() and not corners_hidden and not (NIGHTDRIVE and NIGHTDRIVE.corners == false)   -- local.lua can turn the rounding off
-    hl.config({ decoration = { screen_shader = night and night_shader(corners) or (corners and corner_shader or "") } })
+    hl.config({ decoration = { screen_shader = per_screen(night and night_shader(corners) or (corners and corner_shader or "")) } })
 end
 hl.on("window.fullscreen", update_corners)
 hl.on("workspace.active",  update_corners)
