@@ -27,7 +27,7 @@ Rectangle {
     }
     readonly property string filePath: fileUri ? decodeURIComponent(fileUri.slice(7)) : ""
     // The buttons: the preview's copies first, then the app's actions
-    readonly property var buttons: (filePath ? [{ text: "Copy image", icon: "image", copy: "image" }, { text: "Copy path", icon: "folder", copy: "path" }] : [])
+    readonly property var buttons: (filePath ? [{ text: "Copy image", copy: "image" }, { text: "Copy path", copy: "path" }] : [])
         .concat(actions.map(a => ({ text: a.text, action: a })))
     readonly property bool hovered: hover.hovered || shotDrag.active   // a drag of the preview keeps a popup up too
     readonly property bool dragging: shot.Drag.active   // the preview is being dragged out (the menu lets the drop through)
@@ -240,6 +240,7 @@ Rectangle {
                 color: "transparent"
                 Image {
                     id: picImg
+                    autoTransform: true
                     anchors.fill: parent
                     source: card.row.image || ""
                     sourceSize: Qt.size(card.imageSize * 2, card.imageSize * 2)
@@ -308,6 +309,8 @@ Rectangle {
                 border { width: 1; color: Qt.rgba(1, 1, 1, 0.08) }
                 Image {
                     id: shotImg
+                    // A phone's photo is stored sideways, its turn in EXIF: Qt applies it only when asked
+                    autoTransform: true
                     anchors.fill: parent
                     source: card.row.preview ? card.row.image : ""
                     sourceSize.width: 600
@@ -319,7 +322,9 @@ Rectangle {
 
         // The preview's copy buttons and the app's other actions
         Item { width: 1; height: card.buttons.length ? 10 : 0 }
-        Row {
+        // A Flow: the buttons that don't fit (a preview's two and the app's own) go on a second line
+        Flow {
+            width: parent.width
             visible: card.buttons.length > 0
             spacing: 8
             Repeater {
@@ -327,32 +332,19 @@ Rectangle {
                 Rectangle {
                     id: btn
                     required property var modelData
-                    property bool copied: false        // "Copied" and a check for a moment after a copy button
-                    readonly property string icon: copied ? "check" : modelData.icon || ""   // the copy buttons' glyph
+                    property bool copied: false        // "Copied" for a moment after a copy button
+                    // Text only, no glyphs: the apps' actions come as bare labels, so every button looks the same.
                     // The label's width also while it says "Copied"
-                    width: (icon ? btnIcon.implicitWidth + 5 : 0) + label.advanceWidth + 20; height: 26
+                    width: label.advanceWidth + 20; height: 26
                     TextMetrics { id: label; font: btnText.font; text: btn.modelData.text }
                     radius: 7
                     color: btnArea.containsMouse ? Theme.sel : Qt.rgba(1, 1, 1, 0.06)
-                    Row {
+                    Text {
+                        id: btnText
                         anchors.centerIn: parent
-                        spacing: 5
-                        Text {
-                            id: btnIcon
-                            anchors.verticalCenter: parent.verticalCenter
-                            visible: btn.icon !== ""
-                            text: btn.icon ? Icons.g(btn.icon) : ""
-                            color: btnText.color
-                            opacity: btnArea.containsMouse ? 1 : 0.55   // quieter than the label
-                            font { family: Icons.family; pixelSize: 12 }
-                        }
-                        Text {
-                            id: btnText
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: btn.copied ? "Copied" : btn.modelData.text
-                            color: btnArea.containsMouse ? Theme.accent : Theme.text
-                            font { family: Theme.font; pixelSize: 11 }
-                        }
+                        text: btn.copied ? "Copied" : btn.modelData.text
+                        color: btnArea.containsMouse ? Theme.accent : Theme.text
+                        font { family: Theme.font; pixelSize: 11 }
                     }
                     MouseArea {
                         id: btnArea
