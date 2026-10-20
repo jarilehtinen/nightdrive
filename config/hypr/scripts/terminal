@@ -1,0 +1,40 @@
+#!/bin/bash
+# Opens the terminal chosen in launcher › Settings › Default apps (nightdrive terminal; kitty unless changed). Every part of
+# Nightdrive that opens a terminal comes here: ⌘Enter, the floating windows of an update or an install, Deck…
+#
+#   terminal [--dir DIR] [--class CLASS] [--hold] [-- COMMAND ARGS…]
+#
+# The choice is ~/.config/xdg-terminals.list (hypr/scripts/default-apps writes it), read by xdg-terminal-exec, which knows
+# each terminal's own flags from its desktop entry (X-TerminalArgAppId…): GIO's apps that run in a terminal use it too.
+# --class is the window's class (Wayland app id), for the window rules in hyprland.lua (floating-tui, floating-help).
+# Ghostty only takes a GTK application id, with a dot: it gets sh.nightdrive.CLASS, which the rules match too.
+DIR=; CLASS=; HOLD=
+while (( $# )); do
+  case $1 in
+    --dir) DIR=$2; shift 2 ;;
+    --class) CLASS=$2; shift 2 ;;
+    --hold) HOLD=1; shift ;;
+    --) shift; break ;;
+    *) break ;;
+  esac
+done
+[[ -n $DIR && ! -d $DIR ]] && DIR=$HOME   # kitty wouldn't start at all in a folder that doesn't exist
+
+if command -v xdg-terminal-exec >/dev/null; then
+  id=$(xdg-terminal-exec --print-id 2>/dev/null)
+  [[ -n $CLASS && $id == *ghostty* ]] && CLASS=sh.nightdrive.$CLASS
+  args=()
+  [[ -n $DIR ]] && args+=("--dir=$DIR")
+  [[ -n $CLASS ]] && args+=("--app-id=$CLASS")
+  [[ -n $HOLD ]] && args+=(--hold)
+  # cd too: a terminal whose entry has no X-TerminalArgDir still starts in the folder it was started in
+  [[ -n $DIR ]] && cd "$DIR"
+  exec xdg-terminal-exec "${args[@]}" -- "$@"
+fi
+
+# Without xdg-terminal-exec (not installed yet): kitty, as before there was a choice
+args=()
+[[ -n $DIR ]] && args+=(--directory "$DIR")
+[[ -n $CLASS ]] && args+=(--class "$CLASS")
+[[ -n $HOLD ]] && args+=(--hold)
+exec kitty "${args[@]}" "$@"

@@ -1,7 +1,7 @@
 # Apps that ⌘W only hides (to the special:bg workspace) so they keep running; their shortcut or the launcher brings them back.
 # Format: name in the launcher = window class regex (see `hyprctl clients`). Read by hypr/scripts/close-or-hide and the launcher.
 # Personal additions go to background-apps.local (same format, not in the repo).
-Deck = ^deck$
+Deck = ^(sh\.nightdrive\.)?deck$
 WhatsApp = ^chrome-web\.whatsapp\.com
 Telegram = ^org\.telegram\.desktop$
 Slack = ^chrome-app\.slack\.com

@@ -97,8 +97,9 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
   same folder, with Claude Code in the same conversation. Press again for the one before it.
 - **Web apps**: turn any site into an app window from the launcher (System › Install › Webapp), and remove one in System ›
   Remove › Webapps (its logins go with it). Their notifications come with the web app's own name and icon, not Chromium's.
-- **Default apps**: which app opens links, mail, folders, text, code, images, video, music, PDFs and calendar files, in the launcher
-  (Settings › Default apps, or `nightdrive defaults`). Hyper B, F and E open the browser, Files and Email you chose.
+- **Default apps**: which app opens links, mail, folders, text, code, images, video, music, PDFs and calendar files, and
+  which terminal ⌘Enter opens, in the launcher (Settings › Default apps, or `nightdrive defaults`). Hyper B, F and E open
+  the browser, Files and Email you chose.
 - **Keyboard Shortcuts**: which app Hyper + a letter or digit opens, in the launcher (Settings › Keyboard Shortcuts, or
   `~/.config/hypr/scripts/app-keys`). Your choice replaces a default, Nightdrive's or a plugin's, and the key list shows
   it. The other shortcuts are in the config files ([Make it yours](#make-it-yours)).
@@ -114,7 +115,7 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
 |---|---|---|
 | Window manager | [Hyprland](https://hypr.land) | Lua config, Mac-style keybindings, rounded screen corners |
 | Bar, menus, launcher | [Quickshell](https://quickshell.org) | one themed shell for the top bar, its menus, launcher, OSD and shelf |
-| Terminal | [kitty](https://sw.kovidgoyal.net/kitty/) | ⌘Enter, opens in `~/Projects`; Mac copy and paste |
+| Terminal | [kitty](https://sw.kovidgoyal.net/kitty/) | ⌘Enter, opens in `~/Projects`; Mac copy and paste. Another terminal (Ghostty, foot, Alacritty, WezTerm) in Settings › Default apps: it opens everywhere kitty did, with its own settings and colours |
 | Browser | Firefox | tabs below the address bar, themed UI |
 | Mail (optional) | Thunderbird | themed, with a minimal toolbar ([details](docs/thunderbird.md)) |
 | Music (optional) | [Deck](plugins/deck/README.md) (Spotify in the terminal, needs Spotify Premium) | bar icon, music menu, player row in the launcher, media keys |

@@ -30,6 +30,7 @@ usage() {
   row "topbar date [STYLE]"      "The clock's date order: auto, dmy, mdy or iso"
   row "snippets [COMMAND]"       "Text snippets: list, set, remove, status, enable, disable"
   row "defaults [set KIND APP]"  "Default apps (browser, email, files…), e.g. nightdrive defaults set pdf org.gnome.Papers"
+  row "terminal [-- COMMAND]"    "Open the terminal chosen in Default apps (--dir DIR, --class CLASS, --hold)"
   section "Plugins"
   row "plugins [list]"           "Optional parts, and which are installed, on or off"
   row "plugins install NAME"     "Install one, e.g. nightdrive plugins install deck"
@@ -195,7 +196,7 @@ check() {
     (( total == 1 )) && what="1 new change" || what="$total new changes"
     action=$(notify-send -a Nightdrive -h string:x-dunst-stack-tag:update -A update=Update "Nightdrive update" "$what waiting" 2>/dev/null)
     # systemd-run: its own unit, so the terminal outlives this oneshot service (whose processes systemd ends)
-    [[ $action == update ]] && systemd-run --user --collect -q kitty --class floating-tui -e bash -c \
+    [[ $action == update ]] && systemd-run --user --collect -q "$repo/config/hypr/scripts/terminal" --class floating-tui -- bash -c \
       '"$1" update; echo; read -rp "Done. Press Enter to close…"' _ "$repo/bin/nightdrive"
   fi
 }
@@ -652,6 +653,7 @@ case ${1:-} in
   platform|software-catalog|snippets) exec "$scripts/$1" "${@:2}" ;;
   theme|display|wallpaper|bar-style) exec "$scripts/$1" "${@:2}" ;;    # the desktop's own scripts (hypr/scripts)
   defaults) exec "$scripts/default-apps" "${@:2}" ;;                   # launcher › Settings › Default apps
+  terminal) exec "$scripts/terminal" "${@:2}" ;;                       # the terminal chosen there
   ""|help|-h|--help) usage ;;
   *) usage >&2; exit 1 ;;
 esac

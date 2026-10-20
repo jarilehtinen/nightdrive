@@ -4,13 +4,12 @@
 -- suppress_event) blocks that and the window would stay behind the main window or hidden in special:bg: so the open one
 -- is brought up here. Its main window is the oldest (as in hypr/scripts/close-or-hide).
 local p = ...
-local TERMINAL_CLASSES = { ["kitty"] = true, ["floating-tui"] = true, ["floating-help"] = true, ["deck"] = true }
 local function is_onepassword(class)
     return class == "com.onepassword.OnePassword" or class:match("^1[pP]assword$") ~= nil
 end
 hl.bind(p.mod .. " + comma", function ()
     local w = hl.get_active_window()
-    if w and TERMINAL_CLASSES[w.class] then return end
+    if NIGHTDRIVE_IS_TERMINAL(w) then return end   -- the core's bindings.lua
     if w and is_onepassword(w.class) then
         local main, other
         for _, o in ipairs(hl.get_windows()) do

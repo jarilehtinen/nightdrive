@@ -5,12 +5,21 @@
 ---------------------
 ---- PROGRAMS ----
 ---------------------
-local terminal    = "kitty --directory " .. os.getenv("HOME") .. "/Projects"
 local scripts     = os.getenv("HOME") .. "/.config/hypr/scripts"
+-- The terminal chosen in Default apps (kitty unless changed): scripts/terminal
+local terminal    = scripts .. "/terminal --dir " .. os.getenv("HOME") .. "/Projects"
 -- The default apps (launcher › Settings › Default apps, nightdrive defaults): a new choice is used at the next press
 local browser     = scripts .. "/default-apps open browser"
 local fileManager = scripts .. "/default-apps open files"
 local email       = scripts .. "/default-apps open email --focus"   -- one mail window: brought up when it's open
+-- A terminal's window (the keys below that would do something else there; plugins' too): the terminals' own classes, and
+-- the ones scripts/terminal gives its windows (Ghostty's with a sh.nightdrive. prefix)
+TERMINAL_CLASSES = { ["kitty"] = true, ["foot"] = true, ["footclient"] = true, ["Alacritty"] = true,
+                     ["com.mitchellh.ghostty"] = true, ["org.wezfurlong.wezterm"] = true,
+                     ["floating-tui"] = true, ["floating-help"] = true, ["deck"] = true }
+function NIGHTDRIVE_IS_TERMINAL(w)
+    return w ~= nil and TERMINAL_CLASSES[(w.class:gsub("^sh%.nightdrive%.", ""))] == true
+end
 
 -- Installed optional parts (plugins.txt, plugins/): a part's keys are bound only when it is there. `nightdrive plugins
 -- installed` writes the list and reloads Hyprland when it changes (an installer from launcher › Install › Plugins).
@@ -120,7 +129,7 @@ hl.bind(mod .. " + SHIFT + S",   hl.dsp.exec_cmd(scripts .. "/screenshot clip"))
 hl.bind(mod .. " + ALT + S",     hl.dsp.exec_cmd(scripts .. "/screenshot winclip"))   -- window screenshot to clipboard
 hl.bind(mod .. " + ALT + SHIFT + S", hl.dsp.exec_cmd(scripts .. "/screenshot fullclip"))   -- whole screen to clipboard
 hl.bind(mod .. " + SHIFT + SPACE", hl.dsp.exec_cmd("qs ipc call menu nav"))   -- top bar via keyboard: ←/→ menu, ↑/↓ row, Enter, Esc
-hl.bind(mod .. " + SHIFT + K",     hl.dsp.exec_cmd("kitty --class floating-help -e sh -c '" .. scripts .. "/shortcuts | less'"))   -- SHORTCUTS.md for the installed parts
+hl.bind(mod .. " + SHIFT + K",     hl.dsp.exec_cmd(scripts .. "/terminal --class floating-help -- sh -c '" .. scripts .. "/shortcuts | less'"))   -- SHORTCUTS.md for the installed parts
 
 -- Universal copy/paste/cut ⌘C/⌘V/⌘X in every app (the Omarchy way)
 hl.bind(mod .. " + C", hl.dsp.send_shortcut({ mods = "CTRL",  key = "Insert" }))
@@ -128,16 +137,15 @@ hl.bind(mod .. " + V", hl.dsp.send_shortcut({ mods = "SHIFT", key = "Insert" }))
 hl.bind(mod .. " + X", hl.dsp.send_shortcut({ mods = "CTRL",  key = "X" }))
 
 -- The apps' own keys, sent as Ctrl+…: undo / redo / select all / save / reload / reload without the cache / find / new tab /
--- downloads (⌘Z / ⌘⇧Z / ⌘A / ⌘S / ⌘R / ⌘⇧R / ⌘F / ⌘T / ⌘J). Not in terminals (kitty and its floating windows): there
+-- downloads (⌘Z / ⌘⇧Z / ⌘A / ⌘S / ⌘R / ⌘⇧R / ⌘F / ⌘T / ⌘J). Not in terminals (any of them, and their floating windows): there
 -- Ctrl+Z would suspend the running program, Ctrl+A jumps to the start of the line, Ctrl+S freezes the output (XOFF),
 -- Ctrl+R searches the shell's history and Ctrl+J is Enter
-local TERMINAL_CLASSES = { ["kitty"] = true, ["floating-tui"] = true, ["floating-help"] = true, ["deck"] = true }
 for _, k in ipairs({ { "", "Z" }, { " SHIFT", "Z" }, { "", "A" }, { "", "S" }, { "", "R" }, { " SHIFT", "R" },
                      { "", "F" }, { "", "T" }, { "", "J" } }) do
     local shift, key = k[1], k[2]
     hl.bind(mod .. (shift ~= "" and " +" .. shift or "") .. " + " .. key, function ()
         local w = hl.get_active_window()
-        if w and TERMINAL_CLASSES[w.class] then return end
+        if NIGHTDRIVE_IS_TERMINAL(w) then return end
         hl.dispatch(hl.dsp.send_shortcut({ mods = "CTRL" .. shift, key = key }))
     end)
 end
@@ -179,7 +187,7 @@ end
 for _, key in ipairs({ "left", "right" }) do
     hl.bind(mod .. " + CTRL + " .. key, function ()
         local w = hl.get_active_window()
-        if w and (TERMINAL_CLASSES[w.class] or w.class == "org.gnome.gitlab.somas.Apostrophe") then return end
+        if w and (NIGHTDRIVE_IS_TERMINAL(w) or w.class == "org.gnome.gitlab.somas.Apostrophe") then return end
         hl.dispatch(hl.dsp.send_shortcut({ mods = "ALT", key = key }))
     end)
 end
@@ -224,7 +232,7 @@ local function tame_float(w)
 end
 local function deck_toggle_float()
     local w = hl.get_active_window()
-    if w and w.class == "deck" and DECK_SIZE then
+    if w and w.class:gsub("^sh%.nightdrive%.", "") == "deck" and DECK_SIZE then
         if not w.floating then
             hl.dispatch(hl.dsp.window.float({ action = "toggle" }))
             deck_reset(w)

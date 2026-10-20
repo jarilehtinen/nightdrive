@@ -7,7 +7,7 @@ floating one at its old place and size. Each press opens the one closed before i
   reopen                  opens the last one again
 
 The program starts anew, so a window comes back as it starts, not as it was:
-- A terminal (kitty) opens in the same folder. What ran in it starts again only when it's in hypr/reopen-commands
+- A terminal opens in the same folder (the one chosen in Default apps). What ran in it starts again only when it's in hypr/reopen-commands
   (+ .local): editors and the like, never just anything (rm, a build). Claude Code resumes the same conversation.
 - A browser window, while the browser still has others open: the browser's own key for a closed window, tabs and all.
 - Any other app: its command line, so a file it had open opens too, or its desktop entry when the command line can't
@@ -25,7 +25,8 @@ SCRIPTS = os.path.dirname(os.path.realpath(__file__))
 MAX_KEPT = 10
 WAIT = 20           # seconds to wait for the window: a big app can take a while to start
 WAIT_BROWSER = 4    # the browser's key opens nothing when the window had one tab: it comes back as a tab instead
-TERMINAL = "kitty"
+# The terminals' own window classes (a shell in each window; not foot's server, whose windows share one process)
+TERMINALS = {"kitty", "foot", "Alacritty", "com.mitchellh.ghostty", "org.wezfurlong.wezterm"}
 # Terminals in a window of their own class (kitty's floating-tui, floating-help…) are the desktop's popups, opened from a
 # menu with a command of their own (an update): never run again
 TERMINAL_EXES = {"kitty", "foot", "alacritty", "wezterm-gui", "ghostty"}
@@ -132,8 +133,8 @@ def claude_again(pid, args):
 
 
 def terminal(pid):
-    """kitty runs a shell, or a program straight (⌘⌥Enter's Claude). With tabs or splits, the one running Claude, or
-    the newest."""
+    """A terminal runs a shell, or a program straight (⌘⌥Enter's Claude). With tabs or splits, the one running Claude,
+    or the newest."""
     found = []
     for kid in children(pid):
         comm, f = stat(kid)
@@ -188,7 +189,7 @@ def save(address=None):
              "floating": bool(w.get("floating")), "x": x, "y": y, "w": sw, "h": sh,
              "fullscreen": bool(w.get("fullscreen")), "closed": int(time.time())}
     others = [c for c in hypr("clients") or [] if c.get("pid") == pid and c.get("address") != w["address"]]
-    if cls == TERMINAL:
+    if cls in TERMINALS:
         if w.get("xwayland") or not own_process(pid):
             return
         t = terminal(pid)
@@ -279,7 +280,8 @@ def reopen():
     else:
         if "terminal" in e:
             t = e["terminal"]
-            cmd = [TERMINAL, "--directory", t["cwd"]] + (["--hold"] if t["run"] and t["shell"] else []) + (t["run"] or [])
+            cmd = [SCRIPTS + "/terminal", "--dir", t["cwd"]] + (["--hold"] if t["run"] and t["shell"] else []) + \
+                  ["--"] + (t["run"] or [])
             folder = t["cwd"]
         elif e.get("cmd"):
             cmd, folder = e["cmd"], e.get("cwd")

@@ -42,6 +42,8 @@ echo "==> Default apps: images open in Loupe (instead of the browser); Markdown 
 # Only while images are unchosen: this runs at every update, and would undo a choice in Settings › Default apps (the same
 # script, which writes ~/.config/mimeapps.list itself: no xdg-mime, which from Plasma (install.sh) went to Qt5's qtpaths)
 "$repo/config/hypr/scripts/default-apps" set images org.gnome.Loupe.desktop --if-unset
+# The terminal: kitty (Nightdrive's settings and colours) until another is chosen; unset, xdg-terminal-exec would pick any
+"$repo/config/hypr/scripts/default-apps" set terminal kitty.desktop --if-unset
 
 echo "==> Webapps: the window class Chromium gives them (their notifications, the launcher and Share find the window)"
 "$repo/config/hypr/scripts/webapp-add" --fix-classes

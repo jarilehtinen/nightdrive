@@ -383,7 +383,7 @@ hl.window_rule({
 })
 hl.window_rule({
     name  = "float-tui",
-    match = { class = "^floating-tui$" },
+    match = { class = "^(sh\\.nightdrive\\.)?floating-tui$" },   -- Ghostty's prefix: scripts/terminal
     float = true,
     size  = "700 500",
 })
@@ -396,7 +396,7 @@ hl.window_rule({
 })
 hl.window_rule({
     name  = "float-help",
-    match = { class = "^floating-help$" },
+    match = { class = "^(sh\\.nightdrive\\.)?floating-help$" },
     float = true,
     size  = "900 750",
 })

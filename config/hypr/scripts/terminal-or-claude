@@ -4,6 +4,7 @@
 projects="$HOME/Projects"
 # clear inherited CLAUDE* variables so the new Claude doesn't think it's a child session
 for v in $(compgen -e | grep '^CLAUDE'); do unset "$v"; done
-[ $# -gt 0 ] && exec kitty --directory "$projects" "$HOME/.local/bin/claude" -- "$1"
+term="$HOME/.config/hypr/scripts/terminal"   # the terminal chosen in Default apps
+[ $# -gt 0 ] && exec "$term" --dir "$projects" -- "$HOME/.local/bin/claude" -- "$1"
 [ "$(qs ipc call launcher askClaude 2>/dev/null)" = "ok" ] && exit 0
-exec kitty --directory "$projects" "$HOME/.local/bin/claude"
+exec "$term" --dir "$projects" -- "$HOME/.local/bin/claude"

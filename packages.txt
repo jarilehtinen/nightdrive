@@ -1,6 +1,8 @@
 # Fedora packages (from the official repos). Hyprland packages come from a COPR repo, see install.sh. Optional apps
 # (Tailscale, Thunderbird…) are plugins: plugins.txt and plugins/.
 kitty
+# Opens the terminal chosen in Default apps (hypr/scripts/terminal)
+xdg-terminal-exec
 firefox
 quickshell
 fuzzel

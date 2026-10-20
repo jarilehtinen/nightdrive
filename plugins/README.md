@@ -384,7 +384,7 @@ author=@you
 ```jsonc
 // Disk's top bar module: the free space on /, from ./status; a click opens DiskMenu.qml, a right click ncdu
 { "interval": 60, "after": "system", "size": 16, "label": "Disk (free space)", "glyph": "hard-drive",
-  "right": "kitty --class floating-tui -e ncdu ~" }
+  "right": "~/.config/hypr/scripts/terminal --class floating-tui -- ncdu ~" }
 ```
 
 `status` (executable: `chmod +x status`)
@@ -457,7 +457,8 @@ Column {
         icon: "folder-search"
         action: true
         label: "What takes up the space"
-        onClicked: { Quickshell.execDetached(["kitty", "--class", "floating-tui", "-e", "ncdu", Quickshell.env("HOME")]); m.close() }
+        onClicked: { Quickshell.execDetached([Quickshell.env("HOME") + "/.config/hypr/scripts/terminal", "--class", "floating-tui",
+                                              "--", "ncdu", Quickshell.env("HOME")]); m.close() }
     }
 }
 ```

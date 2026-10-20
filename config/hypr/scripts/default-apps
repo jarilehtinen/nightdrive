@@ -11,6 +11,8 @@
 A choice is written to ~/.config/mimeapps.list for every type of the kind. Left unwritten, the default can come from
 whatever registers the type last (mimeinfo.cache): that is how aerc's copy in ~/.local/share/applications took over
 mailto links (19.10.2026).
+The terminal has no type: its choice is ~/.config/xdg-terminals.list, read by xdg-terminal-exec (hypr/scripts/terminal,
+and GIO for the apps that run in a terminal).
 """
 import glob, json, os, re, subprocess, sys
 
@@ -18,6 +20,7 @@ HOME = os.path.expanduser("~")
 MIMEAPPS = os.environ.get("XDG_CONFIG_HOME", HOME + "/.config") + "/mimeapps.list"
 MANAGED = "# managed by fuzzel/sync-apps"   # its copies hide an app from the launcher: not a reason to leave it out here
 SCRIPTS = os.path.dirname(os.path.realpath(__file__))
+TERMINALS = os.environ.get("XDG_CONFIG_HOME", HOME + "/.config") + "/xdg-terminals.list"
 
 # key, name, glyph, where Install › Software has more (a search, or cat:<category> where its most installed are the right
 # ones: the categories are broad, PDF readers are in Utilities, and the search matches the words as one phrase), types
@@ -36,6 +39,7 @@ KINDS = [
     ("text", "Text editor", "file-pen-line", "text editor", ["text/plain"], ["TextEditor"]),
     # Without its own default, source code opens in the text editor (its types are text/plain's): Markdown's in Apostrophe
     ("code", "Code editor", "code", "code", CODE, ["TextEditor", "IDE"]),
+    ("terminal", "Terminal", "square-terminal", "terminal", [], ["TerminalEmulator"]),
     ("images", "Images", "image", "image viewer",
      ["image/png", "image/jpeg", "image/gif", "image/webp", "image/bmp", "image/tiff", "image/svg+xml", "image/avif",
       "image/heic"], []),
@@ -114,13 +118,27 @@ def current(mime):
         return ""
 
 
+def current_terminal():
+    """The terminal xdg-terminal-exec opens: the first one of the list that is installed, or one it picks itself."""
+    try:
+        return subprocess.run(["xdg-terminal-exec", "--print-id"], capture_output=True, text=True,
+                              timeout=5).stdout.strip().split(":")[0]
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+
+
+def current_of(kind):
+    return current_terminal() if kind[0] == "terminal" else current(kind[4][0])
+
+
 def kinds():
     apps = entries()
     out = []
-    for key, name, glyph, more, types, cats in KINDS:
-        cur = current(types[0])
+    for kind in KINDS:
+        key, name, glyph, more, types, cats = kind
+        cur = current_of(kind)
         offer = sorted((app_info(i, k) for i, k in apps.items()
-                        if usable(k) and (types[0] in k.get("MimeType", "").split(";")
+                        if usable(k) and (types and types[0] in k.get("MimeType", "").split(";")
                                           or set(cats) & set(k.get("Categories", "").split(";")))),
                        key=lambda a: a["name"].lower())
         if cur and cur in apps and all(a["id"] != cur for a in offer):   # the current one even when it isn't offered
@@ -183,6 +201,9 @@ def set_default(kind, app_id, if_unset=False):
     if k is None: sys.exit(f"Unknown kind: {kind} ({', '.join(k[0] for k in KINDS)})")
     if not app_id.endswith(".desktop"): app_id += ".desktop"
     if app_id not in entries(): sys.exit(f"No such app: {app_id}")
+    if kind == "terminal":
+        set_terminal(app_id, if_unset)
+        return
     types = k[4]
     lines = read_mimeapps()
     if if_unset and chosen(lines, types): return
@@ -199,10 +220,27 @@ def set_default(kind, app_id, if_unset=False):
     os.replace(tmp, MIMEAPPS)
 
 
+def set_terminal(app_id, if_unset=False):
+    """The terminal first in xdg-terminals.list; the others listed stay after it (the next one when it's uninstalled)."""
+    try:
+        lines = [l.strip() for l in open(TERMINALS, encoding="utf-8") if l.strip()]
+    except FileNotFoundError:
+        lines = []
+    if if_unset and any(not l.startswith("#") for l in lines): return
+    lines = [app_id] + [l for l in lines if l != app_id]
+    os.makedirs(os.path.dirname(TERMINALS), exist_ok=True)
+    tmp = TERMINALS + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
+    os.replace(tmp, TERMINALS)
+
+
 def open_kind(kind, focus=False):
     k = next((k for k in KINDS if k[0] == kind), None)
     if k is None: sys.exit(f"Unknown kind: {kind}")
-    app_id = current(k[4][0])
+    if kind == "terminal":
+        os.execv(SCRIPTS + "/terminal", [SCRIPTS + "/terminal"])
+    app_id = current_of(k)
     apps = entries()
     if app_id not in apps:
         subprocess.run(["notify-send", "-a", "Default apps", f"No {k[1].lower()} app",

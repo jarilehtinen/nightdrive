@@ -147,7 +147,7 @@ PanelWindow {
 
     // Terminal window that runs a command and waits for Enter (sudo asks for the password here)
     function term(script, arg) {
-        return ["kitty", "--class", "floating-tui", "-e", "bash", "-c",
+        return [scripts + "/terminal", "--class", "floating-tui", "--", "bash", "-c",
                 script + "; echo; read -rp 'Done. Press Enter to close…'", "_", arg || ""]
     }
     function shot(mode) { return ["bash", "-c", "sleep 0.4; \"$HOME/.config/hypr/scripts/screenshot\" \"$1\"", "_", mode] }
@@ -236,7 +236,7 @@ PanelWindow {
                                               "Display": "brightness night light warm scale scaling resolution monitor screen retina hidpi zoom size bigger smaller",
                                               "Notifications": "notification sounds alert chime beep ping tone urgent critical popup timeout seconds duration",
                                               "Tailscale": "vpn",
-                                              "Default apps": "browser email mail files folders text editor images photos video music player pdf calendar open with",
+                                              "Default apps": "browser email mail files folders text editor terminal images photos video music player pdf calendar open with",
                                               "Keyboard Shortcuts": "hyper caps lock keys keybindings hotkeys open app", "Theme": "appearance style look colors",
                                               "Color": "theme accent violet purple blue teal green amber rose graphite gray",
                                               "Background": "wallpaper desktop image picture",
@@ -574,6 +574,9 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
             // Background app: bring the hidden window back (no second instance)
             if (item.entry && bgApps[item.name] !== undefined)
                 Quickshell.execDetached([scripts + "/launch-or-focus", bgApps[item.name], "gtk-launch", item.entry.id + ".desktop"])
+            // An app that runs in a terminal (htop, aerc) in the chosen one: execute() would start it without any
+            else if (item.entry && item.entry.runInTerminal)
+                Quickshell.execDetached([scripts + "/terminal", "--"].concat(item.entry.command))
             else if (item.entry) item.entry.execute(); else Quickshell.execDetached(["gio", "launch", item.path])
         }
         else if (item.kind === "stat" && item.copy !== undefined) sys.copyText(item.copy)   // Public IP, Local IP, Router: as ⌘C
