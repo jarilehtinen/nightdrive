@@ -1,9 +1,27 @@
 #!/bin/bash
 # dictate <start|stop>: F5 (speech to text). If the mic is muted, don't start recording; show a "MIC MUTED" toast instead.
+# dictate daemon: started at login (hyprland.lua) with the best Parakeet model that is installed.
 # dictate <fn-down|fn-up>: Fn held. Starts only after 0.3 s so that Fn combos (Fn+arrows, Fn+Backspace …) don't trigger dictation.
 vt="$HOME/.local/bin/voxtype-onnx"
 run=${XDG_RUNTIME_DIR:-/tmp}
+models="$HOME/.local/share/voxtype/models"
+# The full model gets English names and sentence breaks clearly better than int8 (0.3 s slower), but it's an extra
+# 2.4 GB download (docs/dictation.md), so config.toml keeps int8 and this picks the full one when it's there.
+FULL_MODEL=parakeet-tdt-0.6b-v3
+# Your own cleanup of the text before it's typed (not in the repo, docs/dictation.md): text in on stdin, out on stdout
+POST_PROCESS="$HOME/.config/voxtype/post-process"
 case $1 in
+  daemon)
+    # Both go into a copy of the config: the daemon ignores --model, and Voxtype's config has no include
+    conf="$HOME/.config/voxtype/config.toml"
+    if [[ -d $models/$FULL_MODEL || -x $POST_PROCESS ]]; then
+      {
+        if [[ -d $models/$FULL_MODEL ]]; then sed "s/^model = \"$FULL_MODEL-int8\"/model = \"$FULL_MODEL\"/" "$conf"; else cat "$conf"; fi
+        if [[ -x $POST_PROCESS ]]; then printf '\n[output.post_process]\ncommand = "%s"\ntimeout_ms = 2000\n' "$POST_PROCESS"; fi
+      } > "$run/voxtype-config.toml"
+      exec "$vt" -c "$run/voxtype-config.toml" daemon
+    fi
+    exec "$vt" daemon ;;
   fn-down)
     touch "$run/dictate-fn"
     ( sleep 0.3; [[ -e $run/dictate-fn ]] && { touch "$run/dictate-fn-active"; "$0" start; } ) & ;;

@@ -13,13 +13,22 @@ Voxtype is installed by hand:
    - PC: the `linux-x86_64` files, `onnx-avx2` for `voxtype-onnx` (`onnx-avx512` if `grep avx512f /proc/cpuinfo` finds it).
    - Leave out `voxtype-osd-gtk4`: without it the card is the Quickshell one below, which fits the desktop.
 2. Download the model: `voxtype-onnx setup --download --model parakeet-tdt-0.6b-v3-int8` (into `~/.local/share/voxtype/models`).
+   For better accuracy, also download the full one (`--model parakeet-tdt-0.6b-v3`, 2.4 GB): it gets English names and
+   sentence breaks clearly better, about 0.3 s slower for 20 s of speech. The daemon uses it whenever it's there.
 3. Install the OSD's QML: `voxtype setup quickshell --source <voxtype repo>/quickshell`. `link.sh` then replaces its
    `OsdSurface.qml` with the one in `config/voxtype/` (card at the top centre, no dimming).
 4. `sudo dnf install wtype` so the text can be typed into windows (without it, it goes to the clipboard).
 5. Log out and in: Hyprland starts the daemon at login.
 
 The settings are in `config/voxtype/config.toml`, which `link.sh` links into `~/.config/voxtype/`. `hypr/scripts/dictate`
-handles the keys and the muted-mic check. The mic is the MacBook's own on a Mac, and the default one elsewhere.
+starts the daemon with the best model installed, and handles the keys and the muted-mic check. The mic is the MacBook's
+own on a Mac, and the default one elsewhere.
+
+## Your own corrections
+
+An executable `~/.config/voxtype/post-process` (not in the repo) gets each dictation on stdin before it's typed and returns
+the text to type on stdout, e.g. a script that puts product names right (Hyperland → Hyprland). Voxtype's own
+`[text] replacements` match whole words only, so an inflected form slips past them. It's picked up at the next login.
 
 ## A key on a PC
 
