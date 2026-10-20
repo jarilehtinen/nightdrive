@@ -19,6 +19,7 @@ FEDORA_ICONS = "/usr/share/swcatalog/icons/fedora/64x64"
 HERE = os.path.dirname(os.path.realpath(__file__))
 SOFTWARE = os.path.join(HERE, "../../quickshell/data/software.json")
 MAX_APPS, MAX_TOOLS = 25, 20
+DNF_TIMEOUT = 60                                  # seconds: a metadata refresh on a slow line takes a while
 # Packages nobody installs by hand: libraries, development files, language modules, debug data
 NOT_TOOLS = re.compile(r"(^lib|-(devel|libs?|doc|docs|static|debuginfo|debugsource|tests?|common|data|headers|javadoc)$"
                        r"|^(perl|python3|rust|golang|ghc|texlive|mingw\d*|R|php|nodejs|ocaml|lua|ruby|rubygem)-)")
@@ -104,10 +105,13 @@ def listing(key):
 
 
 def main(q):
-    # The slow ones in parallel: dnf's and Flathub's search, and what's installed
+    # The slow ones in parallel: dnf's and Flathub's search, and what's installed. No stdin: dnf asks on it whether to
+    # import a new repo's signing key ("Is this ok [y/N]") and would wait for an answer that never comes (the launcher
+    # stays at "Searching…"); with none it gets a no, and still searches the other repos.
     dnf = subprocess.Popen(["dnf", "repoquery", "--available", "-q", "--latest-limit=1",
-                            "--queryformat", "%{name}|%{summary}\n", f"*{q}*"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
-    fp = subprocess.Popen(["flatpak", "search", "--columns=application,name,description,remotes", q],
+                            "--queryformat", "%{name}|%{summary}\n", f"*{q}*"], stdin=subprocess.DEVNULL,
+                           stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+    fp = subprocess.Popen(["flatpak", "search", "--columns=application,name,description,remotes", q], stdin=subprocess.DEVNULL,
                           stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
     rpms = subprocess.Popen(["rpm", "-qa", "--qf", "%{NAME}\n"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
     fpl = subprocess.Popen(["flatpak", "list", "--app", "--user", "--columns=application"],
@@ -115,7 +119,12 @@ def main(q):
     cat = catalog()
 
     found = {}                                    # dnf: name → summary
-    for line in dnf.communicate()[0].splitlines():
+    try:
+        out = dnf.communicate(timeout=DNF_TIMEOUT)[0]
+    except subprocess.TimeoutExpired:             # e.g. a slow mirror: Flathub's and the catalog's matches still show
+        dnf.kill()
+        out = ""
+    for line in out.splitlines():
         name, _, summary = line.partition("|")
         if name:
             found.setdefault(name, summary)
