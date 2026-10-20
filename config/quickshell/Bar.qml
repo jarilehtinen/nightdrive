@@ -39,6 +39,8 @@ Variants {
         WlrLayershell.namespace: "nightdrive-bar"
         readonly property real dpr: modelData.devicePixelRatio || 1
         readonly property int laptopWorkspace: 10   // hyprland.lua: LAPTOP_WORKSPACE
+        readonly property bool focused: Quickshell.screens.length < 2 || !Hyprland.focusedMonitor
+                                        || Hyprland.focusedMonitor.name === modelData.name
         function modules() { const out = []; for (let i = 0; i < rep.count; i++) out.push(rep.itemAt(i)); return out }
 
         // Workspaces 1–5 always, others while they exist; the screen's active one highlighted, empty ones dimmed.
@@ -66,7 +68,9 @@ Variants {
                     readonly property color fg: active ? TopBar.c("hlFg") : hw && hw.toplevels.values.length > 0 ? TopBar.c("dim") : TopBar.c("off")
                     width: (laptop ? icon.implicitWidth : num.implicitWidth) + 20; height: 27; radius: 8
                     color: active ? TopBar.c("wsBg") : "transparent"
-                    opacity: active && drawer.open ? 0.5 : 1   // the drawer is over it
+                    // Half while the drawer is over it, and on a screen without the focus (with more than one screen):
+                    // the bright one shows where the keyboard goes
+                    opacity: active && (drawer.open || !win.focused) ? 0.5 : 1
                     BarText {
                         id: num
                         visible: !ws.laptop
