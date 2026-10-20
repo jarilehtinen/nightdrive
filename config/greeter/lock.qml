@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
+import Quickshell.Hyprland
 import Quickshell.Services.Pam
 
 // The lock at startup, and later the session's lock too (hypr/scripts/lock: idle, sleep, ⌃⌘L). With greetd's autologin
@@ -60,9 +61,14 @@ ShellRoot {
         }
 
         WlSessionLockSurface {
+            id: surface
             color: "#1a1b26"
             LoginView {
                 anchors.fill: parent
+                // The prompt on the focused monitor, where the keyboard goes; before Hyprland's state has arrived, the
+                // first screen
+                main: Hyprland.focusedMonitor ? Hyprland.monitorFor(surface.screen) === Hyprland.focusedMonitor
+                                              : surface.screen === Quickshell.screens[0]
                 busy: root.busy
                 message: root.message
                 onTyping: root.message = ""

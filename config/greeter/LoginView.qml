@@ -28,8 +28,13 @@ Item {
     readonly property int promptSize: 20
     readonly property real cell: 0.6 * promptSize      // a character cell of the monospaced font
     property bool promptShown: false
+    // Under the lock every screen has a view, but the keyboard goes to one (the focused monitor): only that one shows the
+    // logo and prompt, the others the wallpaper. The startup sound plays once, from the view that is main at the start;
+    // the others run their intro unseen, so a view that becomes main later shows its prompt straight away.
+    property bool main: true
+    onMainChanged: if (main) input.forceActiveFocus()
 
-    function beep(name) { Quickshell.execDetached(["pw-play", "--volume", "0.7", view.sounds + name + ".wav"]) }
+    function beep(name) { if (view.main) Quickshell.execDetached(["pw-play", "--volume", "0.7", view.sounds + name + ".wav"]) }
     // The startup sound as the screen appears (it swells in slowly while the logo's cursor waits), a PC's power-on beep
     // as the prompt is printed
     onPromptShownChanged: if (promptShown) beep("prompt")
@@ -39,7 +44,7 @@ Item {
     // which come after the raw outputs. The logo is timed to the sound, so it starts typing as the sound starts.
     property bool soundStarted: false
     Process {
-        running: true
+        id: startupSound
         command: ["sh", "-c", `
             i=0
             while [ $i -lt 40 ]; do
@@ -55,6 +60,7 @@ Item {
         stdout: SplitParser { onRead: view.soundStarted = true }
     }
     Timer { interval: 4500; running: !view.soundStarted; onTriggered: view.soundStarted = true }
+    Component.onCompleted: if (view.main) startupSound.running = true; else view.soundStarted = true
 
     // Gives the keyboard back to the field after busy (a disabled TextInput loses its focus)
     onBusyChanged: if (!busy) input.forceActiveFocus()
@@ -74,6 +80,7 @@ Item {
     // the line below it, with the cursor after it ("***█" centred as a whole).
     Item {
         id: stage
+        visible: view.main
         anchors.centerIn: parent
         width: parent.width
         height: logo.height + 34 + promptBlock.height
