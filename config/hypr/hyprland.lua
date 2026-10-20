@@ -51,9 +51,49 @@ local lid = io.open((os.getenv("XDG_RUNTIME_DIR") or "") .. "/nightdrive-lid")
 if lid then lidClosed = lid:read("*l") == "closed"; lid:close() else lidClosed = login1("LidClosed") end
 if lidClosed and login1("Docked") then hl.monitor({ output = BUILTIN_DISPLAY, disabled = true }) end
 
--- Workspace 1 is on the laptop's own screen and an external display takes the next free one, whatever order they come
--- up in at boot (an HDMI display that drops out for a moment at boot left the MacBook on 3)
-hl.workspace_rule({ workspace = "1", monitor = BUILTIN_DISPLAY, default = true })
+-- Workspaces with an external display (like GNOME's "workspaces on the primary display only"): the laptop's own screen
+-- has one workspace, LAPTOP_WORKSPACE (⌘0, a laptop icon in the bar), and 1–9 are on the external display. Alone, the
+-- laptop's screen has them all, from 1 (an HDMI display that dropped out for a moment at boot left the MacBook on 3).
+-- The rules follow the screens at each reload; NightdriveArrangeWorkspaces moves the workspaces that already exist.
+LAPTOP_WORKSPACE = 10
+local function screens()
+    local builtin, ext
+    for _, m in ipairs(hl.get_monitors()) do
+        if m.name == BUILTIN_DISPLAY then builtin = m elseif not ext then ext = m end
+    end
+    return builtin, ext
+end
+do
+    local builtin, ext = screens()
+    if builtin and ext then
+        hl.workspace_rule({ workspace = tostring(LAPTOP_WORKSPACE), monitor = BUILTIN_DISPLAY, default = true })
+        for i = 1, 9 do hl.workspace_rule({ workspace = tostring(i), monitor = ext.name, default = i == 1 }) end
+    else
+        hl.workspace_rule({ workspace = "1", monitor = BUILTIN_DISPLAY, default = true })
+    end
+end
+function NightdriveArrangeWorkspaces()
+    local builtin, ext = screens()
+    if not (builtin and ext) then return end
+    local was = hl.get_active_workspace()
+    -- The laptop's workspace on its screen first, so moving the others away leaves no gap there to fill
+    local lw = hl.get_workspace(LAPTOP_WORKSPACE)
+    if lw and lw.monitor and lw.monitor.name ~= BUILTIN_DISPLAY then
+        hl.dispatch(hl.dsp.workspace.move({ workspace = LAPTOP_WORKSPACE, monitor = BUILTIN_DISPLAY }))
+    end
+    if not (builtin.active_workspace and builtin.active_workspace.id == LAPTOP_WORKSPACE) then
+        hl.dispatch(hl.dsp.focus({ workspace = LAPTOP_WORKSPACE }))
+    end
+    for _, w in ipairs(hl.get_workspaces()) do
+        if w.id >= 1 and w.id <= 9 and w.monitor and w.monitor.name == BUILTIN_DISPLAY then
+            hl.dispatch(hl.dsp.workspace.move({ workspace = w.id, monitor = ext.name }))
+        end
+    end
+    if was and was.id >= 1 and was.id <= 9 then hl.dispatch(hl.dsp.focus({ workspace = was.id })) end
+end
+-- A screen that comes or goes: the rules again (reload), then the workspaces
+hl.on("monitor.added",   function () hl.exec_cmd("hyprctl reload && hyprctl eval 'NightdriveArrangeWorkspaces()'") end)
+hl.on("monitor.removed", function () hl.exec_cmd("hyprctl reload") end)
 
 -------------------
 ---- AUTOSTART ----

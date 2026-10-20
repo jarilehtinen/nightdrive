@@ -38,10 +38,12 @@ Variants {
         WlrLayershell.layer: WlrLayer.Top
         WlrLayershell.namespace: "nightdrive-bar"
         readonly property real dpr: modelData.devicePixelRatio || 1
+        readonly property int laptopWorkspace: 10   // hyprland.lua: LAPTOP_WORKSPACE
         function modules() { const out = []; for (let i = 0; i < rep.count; i++) out.push(rep.itemAt(i)); return out }
 
         // Workspaces 1–5 always, others while they exist; the screen's active one highlighted, empty ones dimmed.
-        // Number size: the `workspaces` row in adjust.conf.
+        // The laptop's own workspace (hyprland.lua: LAPTOP_WORKSPACE, ⌘0) is a laptop icon after them, there while an
+        // external display is connected or while it exists; the laptop's screen then shows only it. Number size: the `workspaces` row in adjust.conf.
         Row {
             x: 10; anchors.verticalCenter: parent.verticalCenter
             spacing: 4
@@ -49,6 +51,10 @@ Variants {
                 model: {
                     const ids = [1, 2, 3, 4, 5]
                     for (const w of Hyprland.workspaces.values) if (w.id > 0 && ids.indexOf(w.id) < 0) ids.push(w.id)
+                    const docked = Quickshell.screens.length > 1 && Quickshell.screens.some(s => s.name.startsWith("eDP"))
+                    // The laptop's screen then has only its own workspace: 1–9 are the external display's
+                    if (docked && win.modelData.name.startsWith("eDP")) return [win.laptopWorkspace]
+                    if (docked && ids.indexOf(win.laptopWorkspace) < 0) ids.push(win.laptopWorkspace)
                     return ids.sort((a, b) => a - b)
                 }
                 Rectangle {
@@ -56,16 +62,27 @@ Variants {
                     required property int modelData
                     readonly property var hw: Hyprland.workspaces.values.find(w => w.id === modelData) || null
                     readonly property bool active: { const m = Hyprland.monitorFor(win.modelData); return !!m && !!m.activeWorkspace && m.activeWorkspace.id === modelData }
-                    width: num.implicitWidth + 20; height: 27; radius: 8
+                    readonly property bool laptop: modelData === win.laptopWorkspace
+                    readonly property color fg: active ? TopBar.c("hlFg") : hw && hw.toplevels.values.length > 0 ? TopBar.c("dim") : TopBar.c("off")
+                    width: (laptop ? icon.implicitWidth : num.implicitWidth) + 20; height: 27; radius: 8
                     color: active ? TopBar.c("wsBg") : "transparent"
                     opacity: active && drawer.open ? 0.5 : 1   // the drawer is over it
                     BarText {
                         id: num
+                        visible: !ws.laptop
                         element: "workspaces"
                         dpr: win.dpr
                         x: Math.round((parent.width - implicitWidth) / 2 * win.dpr) / win.dpr
                         text: ws.modelData
-                        color: ws.active ? TopBar.c("hlFg") : ws.hw && ws.hw.toplevels.values.length > 0 ? TopBar.c("dim") : TopBar.c("off")
+                        color: ws.fg
+                    }
+                    Text {
+                        id: icon
+                        visible: ws.laptop
+                        anchors.centerIn: parent
+                        text: Icons.g("laptop")
+                        color: ws.fg
+                        font { family: Icons.family; pixelSize: Math.round(num.sz.size * 1.1) }
                     }
                     MouseArea {
                         anchors.fill: parent

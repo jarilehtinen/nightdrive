@@ -45,7 +45,7 @@
   ⌥ ← / →           Move by word (⇧ selects)
 
 ## Workspaces (like macOS Spaces)
-  ⌘ 1 … ⌘ 0          Go to workspace
+  ⌘ 1 … ⌘ 0          Go to workspace (⌘ 0: the laptop's own screen, with an external display)
   ⌘ ⇧ 1 … ⌘ ⇧ 0      Move window to workspace
   ⌘ Tab / ⌘ ⇧ Tab    Next / previous workspace
   3-finger swipe     Switch workspace

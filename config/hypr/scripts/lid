@@ -18,6 +18,8 @@ apply() {
   hyprctl reload >/dev/null
   sleep 1
   [[ $state == closed && $ws =~ ^[0-9]+$ ]] && hyprctl dispatch "hl.dsp.focus({ workspace = $ws })" >/dev/null
+  # Back on: the laptop's workspace to its screen, 1–9 to the external one (hyprland.lua)
+  [[ $state == open ]] && hyprctl eval 'NightdriveArrangeWorkspaces()' >/dev/null
   log "monitors: $(hyprctl monitors all | grep -E '^Monitor|disabled' | tr -d '\t' | tr '\n' ' ')"
   # The external display moves and Hyprland redraws only part of it (its default background, the desktop shifted
   # right): a screen capture to nowhere makes it draw every screen whole
