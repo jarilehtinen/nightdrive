@@ -65,6 +65,9 @@ Item {
         ].concat(fumon === "on" || fumon === "off" ? [   // only where uwsm has fumon (up to 0.26)
             { kind: "fumon", name: "Failed service alerts", glyph: "triangle-alert", switchOn: fumon === "on",
               sub: "FUMonitor’s “Failed unit detected” and “Unit recovered”" }] : [])
+        .concat(crashReports !== "" ? [   // hypr/scripts/crash-report
+            { kind: "crashreports", name: "Crash reports to Claude", glyph: "bug", switchOn: crashReports === "on",
+              sub: "When an app crashes: a notification, and Ask Claude finds out why" }] : [])
     }
     // ⇧Enter on a sound: plays it without choosing it ("None" has nothing to play)
     function listenSound(it) {
@@ -84,6 +87,13 @@ Item {
                 l.selectWhere(r => r.value === (l.level === "soundregular" ? b.soundRegular : b.soundUrgent))
         }
     }
+    // Settings › Notifications: whether crash reports are on
+    property string crashReports: ""
+    Sh {
+        id: crashReportsProc
+        command: [b.scripts + "/crash-report", "status"]
+        onResult: text => { b.crashReports = text.trim() }
+    }
     // Settings › Notifications: whether FUMonitor runs (its row shows only where uwsm has it)
     Sh {
         id: fumonProc
@@ -93,7 +103,7 @@ Item {
 
     function footer(level, query) {
         const cur = launcher.results[launcher.selIndex] || {}
-        if (level === "launcherprefs" || cur.kind === "fumon") return "Enter: on/off"
+        if (level === "launcherprefs" || cur.kind === "fumon" || cur.kind === "crashreports") return "Enter: on/off"
         if (cur.kind === "sound") return "Enter: choose  ·  Shift+Enter: listen"
         if (level === "compname" && query.trim() !== "") return "Enter: rename (asks for your password)"
         return ""
@@ -103,7 +113,7 @@ Item {
         if (level === "settings" || level === "compname") compNameProc.running = true
         if (level === "settings" || level === "channel") channelProc.running = true
         if (level === "sounds" || level === "soundregular" || level === "soundurgent") soundsProc.running = true
-        if (level === "sounds") fumonProc.running = true
+        if (level === "sounds") { fumonProc.running = true; crashReportsProc.running = true }
         if (level === "notiftime") Qt.callLater(() => launcher.selectWhere(r => r.summary === "current"))   // the cursor on the current time
     }
     function shiftActivate(it) { if (it.kind === "sound") listenSound(it) }
@@ -150,6 +160,12 @@ Item {
         if (it.kind === "notiftime") {   // stays open, like the sounds: the check moves once Notifs has read the file
             l.keepSelection()
             setNotifTime(it.value)
+            return true
+        }
+        if (it.kind === "crashreports") {
+            l.keepSelection()
+            crashReports = crashReports === "on" ? "off" : "on"
+            Quickshell.execDetached([scripts + "/crash-report", crashReports])
             return true
         }
         if (it.kind === "fumon") {

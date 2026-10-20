@@ -1,0 +1,13 @@
+# Crash reports to Claude (hypr/scripts/crash-report). Off until turned on in launcher › Settings › Notifications.
+[Unit]
+Description=Nightdrive crash reports
+PartOf=nightdrive-session.target
+After=nightdrive-session.target
+
+[Service]
+ExecStart=%h/.config/hypr/scripts/crash-report watch
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=nightdrive-session.target

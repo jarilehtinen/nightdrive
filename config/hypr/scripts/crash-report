@@ -1,0 +1,145 @@
+#!/usr/bin/env python3
+# Crash reports to Claude (launcher › Settings › Notifications, off by default): when one of your programs crashes
+# (systemd-coredump keeps its core), a notification with Ask Claude, which opens Claude Code to find out why
+# (coredumpctl, a backtrace with gdb), and Mute, which leaves that program's crashes out from then on.
+#   crash-report status      on | off
+#   crash-report on|off      starts or stops the watcher (nightdrive-crash-reports.service) and keeps it so
+#   crash-report watch       the watcher itself: follows the journal's coredump messages
+#   crash-report ask PID     opens Claude Code about that crash (also: the notification's Ask Claude)
+#   crash-report mute NAME   no more notifications for NAME (the process name, as in coredumpctl list); unmute NAME
+import json
+import os
+import subprocess
+import sys
+import threading
+import time
+
+UNIT = "nightdrive-crash-reports.service"
+COREDUMP_MESSAGE = "fc2e22bc6ee647b6b90729ab34a250b1"   # systemd-coredump's "Process … dumped core"
+MUTED_FILE = os.path.expanduser("~/.local/state/nightdrive/crash-reports-muted")
+# Muted from the start: UxPlay's waylandsink crashes at every screen change and comes back by itself (docs/known-issues.md)
+DEFAULT_MUTED = {"uxplay"}
+QUIET_SECONDS = 60   # one notification per program in this time: a crash loop doesn't fill the screen
+HERE = os.path.dirname(os.path.realpath(__file__))
+REPO = os.path.realpath(os.path.join(HERE, "..", "..", ".."))
+
+
+def systemctl(*args):
+    return subprocess.run(["systemctl", "--user", *args], capture_output=True, text=True)
+
+
+def muted():
+    names = set(DEFAULT_MUTED)
+    try:
+        with open(MUTED_FILE) as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith("-"):
+                    names.discard(line[1:])   # "-uxplay": a default unmuted
+                elif line:
+                    names.add(line)
+    except FileNotFoundError:
+        pass
+    return names
+
+
+def set_muted(name, on):
+    lines = []
+    try:
+        with open(MUTED_FILE) as f:
+            lines = [l.strip() for l in f if l.strip() not in (name, "-" + name)]
+    except FileNotFoundError:
+        pass
+    if on and name not in DEFAULT_MUTED:
+        lines.append(name)
+    if not on and name in DEFAULT_MUTED:
+        lines.append("-" + name)
+    os.makedirs(os.path.dirname(MUTED_FILE), exist_ok=True)
+    with open(MUTED_FILE, "w") as f:
+        f.write("".join(l + "\n" for l in lines))
+
+
+def crash(pid):
+    """The journal's coredump entry for PID (the newest), or None."""
+    out = subprocess.run(["journalctl", "-o", "json", "-n", "1", "--no-pager", "MESSAGE_ID=" + COREDUMP_MESSAGE,
+                          "COREDUMP_PID=" + str(pid)], capture_output=True, text=True).stdout.strip()
+    return json.loads(out.splitlines()[-1]) if out else None
+
+
+def ask(pid):
+    c = crash(pid) or {}
+    name = c.get("COREDUMP_COMM", "a program")
+    when = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(int(c.get("COREDUMP_TIMESTAMP", "0")) / 1e6))
+    unit = c.get("COREDUMP_USER_UNIT") or c.get("COREDUMP_UNIT", "")
+    prompt = (
+        f"{name} crashed ({c.get('COREDUMP_SIGNAL_NAME', 'a signal')}) at {when}: PID {pid}, "
+        f"{c.get('COREDUMP_EXE', '')}, command line `{c.get('COREDUMP_CMDLINE', '')}`"
+        + (f", unit {unit}" if unit else "") + ".\n\n"
+        f"Find out why: `coredumpctl info {pid}`, the journal around that time, and a backtrace with "
+        f"`coredumpctl debug {pid} --debugger=gdb -A \"-batch -ex 'thread apply all bt'\"` (if gdb isn't installed, "
+        f"say so: `sudo dnf install gdb`). This desktop is Nightdrive, its config is in {REPO}.\n\n"
+        "Tell me in plain words what crashed and why, whether it comes from Nightdrive's config or is a bug in the "
+        "program (a known one?), and what I can do. Don't change anything before asking."
+    )
+    # kitty's own messages (e.g. "[PARSE ERROR] Unknown OSC escape code") would go to the watcher's journal
+    subprocess.Popen([os.path.join(HERE, "terminal-or-claude"), prompt], start_new_session=True,
+                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def notify(c):
+    name = c.get("COREDUMP_COMM", "?")
+    pid = c.get("COREDUMP_PID", "")
+    sig = c.get("COREDUMP_SIGNAL_NAME", "")
+    exe = c.get("COREDUMP_EXE", "")
+    p = subprocess.run(["notify-send", "-a", "Crash reports", "-i", "dialog-warning", "--wait",
+                        "-A", "ask=Ask Claude", "-A", "mute=Mute " + name,
+                        f"{name} crashed", f"{exe} ({sig})"], capture_output=True, text=True)
+    action = p.stdout.strip()
+    if action == "ask":
+        ask(pid)
+    elif action == "mute":
+        set_muted(name, True)
+
+
+def watch():
+    me = str(os.getuid())
+    last = {}
+    j = subprocess.Popen(["journalctl", "-f", "-n", "0", "-o", "json", "MESSAGE_ID=" + COREDUMP_MESSAGE],
+                         stdout=subprocess.PIPE, text=True)
+    for line in j.stdout:
+        try:
+            c = json.loads(line)
+        except ValueError:
+            continue
+        name = c.get("COREDUMP_COMM", "")
+        if c.get("COREDUMP_UID") != me or name in muted():
+            continue
+        now = time.monotonic()
+        if now - last.get(name, -QUIET_SECONDS) < QUIET_SECONDS:
+            continue
+        last[name] = now
+        threading.Thread(target=notify, args=(c,), daemon=True).start()
+
+
+def main():
+    cmd = sys.argv[1] if len(sys.argv) > 1 else ""
+    arg = sys.argv[2] if len(sys.argv) > 2 else ""
+    if cmd == "status":
+        print("on" if systemctl("is-enabled", UNIT).stdout.strip() == "enabled" else "off")
+    elif cmd == "on":
+        systemctl("enable", "--now", UNIT)
+    elif cmd == "off":
+        systemctl("disable", "--now", UNIT)
+    elif cmd == "watch":
+        watch()
+    elif cmd == "ask" and arg:
+        ask(arg)
+    elif cmd in ("mute", "unmute") and arg:
+        set_muted(arg, cmd == "mute")
+    else:
+        with open(__file__) as f:
+            print("".join(l[2:] for l in f.readlines()[4:10]), end="")
+        sys.exit(1)
+
+
+main()

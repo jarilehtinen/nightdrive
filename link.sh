@@ -105,8 +105,10 @@ done
 # Session target: brings up graphical-session.target, which xdg-desktop-portal needs (started by hyprland.lua)
 link "$repo/config/systemd/user/nightdrive-session.target" "$HOME/.config/systemd/user/nightdrive-session.target"
 # Update check: every 6 h a fetch, and a notification when new commits are waiting (nightdrive update check).
-# Snippets: linked only, started when turned on (nightdrive snippets enable). The plugin folders' units are linked below.
-units=(nightdrive-update-check.service nightdrive-update-check.timer nightdrive-snippets.service)
+# Snippets and crash reports: linked only, started when turned on (nightdrive snippets enable; launcher › Settings ›
+# Notifications). The plugin folders' units are linked below.
+units=(nightdrive-update-check.service nightdrive-update-check.timer nightdrive-snippets.service
+       nightdrive-crash-reports.service)
 for u in "${units[@]}"; do link "$repo/config/systemd/user/$u" "$HOME/.config/systemd/user/$u"; done
 
 # ⌘Enter (terminal) and ⌘⌥Enter (Claude Code) open in ~/Projects, and kitty fails to start in a folder that doesn't exist
