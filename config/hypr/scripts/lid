@@ -1,0 +1,43 @@
+#!/bin/bash
+# The lid with an external display (hyprland.lua turns the built-in screen off while it's closed and docked).
+#   lid watch            follows logind's LidClosed (started with the session); applies each change
+#   lid closed | open    applies one by hand (testing)
+# logind, not Hyprland's switch binds: Hyprland sent a "lid open" ~3 s after every close, with the lid still closed.
+# Each step goes to the journal (journalctl -t nightdrive-lid).
+log() { logger -t nightdrive-lid "$*"; }
+
+apply() {
+  local state=$1 ws
+  # The built-in screen's workspace: its windows move to the external display with the lid closed, but that one stays
+  # on its own workspace, so it switches to this one if its own is empty
+  ws=$(hyprctl monitors -j | python3 -c 'import json,sys; print(next((m["activeWorkspace"]["id"] for m in json.load(sys.stdin) if m["name"].startswith("eDP")), ""))')
+  ext=$(hyprctl monitors -j | python3 -c 'import json,sys; print(next((m["activeWorkspace"]["id"] for m in json.load(sys.stdin) if not m["name"].startswith("eDP")), ""))')
+  [[ -n $ext ]] && hyprctl workspaces -j | python3 -c 'import json,sys; sys.exit(0 if any(w["id"] == '"$ext"' and w["windows"] == 0 for w in json.load(sys.stdin)) else 1)' || ws=""
+  echo "$state" > "$XDG_RUNTIME_DIR/nightdrive-lid"
+  log "lid $state (built-in screen on workspace ${ws:-none})"
+  hyprctl reload >/dev/null
+  sleep 1
+  [[ $state == closed && $ws =~ ^[0-9]+$ ]] && hyprctl dispatch "hl.dsp.focus({ workspace = $ws })" >/dev/null
+  log "monitors: $(hyprctl monitors all | grep -E '^Monitor|disabled' | tr -d '\t' | tr '\n' ' ')"
+  # The external display moves and Hyprland redraws only part of it (its default background, the desktop shifted
+  # right): a screen capture to nowhere makes it draw every screen whole
+  grim - >/dev/null
+}
+
+case $1 in
+  closed|open) apply "$1" ;;
+  watch)
+    exec 9>"$XDG_RUNTIME_DIR/nightdrive-lid.lock"
+    flock -n 9 || exit 0   # one watcher per session
+    now=open
+    busctl get-property org.freedesktop.login1 /org/freedesktop/login1 org.freedesktop.login1.Manager LidClosed \
+      | grep -q true && now=closed
+    # The state at the start (a file from an earlier session in this login may say otherwise)
+    [[ $(cat "$XDG_RUNTIME_DIR/nightdrive-lid" 2>/dev/null) == "$now" ]] || apply "$now"
+    gdbus monitor --system --dest org.freedesktop.login1 --object-path /org/freedesktop/login1 \
+      | grep --line-buffered -oE "'LidClosed': <(true|false)>" \
+      | while read -r line; do
+          [[ $line == *true* ]] && apply closed || apply open
+        done ;;
+  *) echo "usage: lid watch | closed | open" >&2; exit 1 ;;
+esac

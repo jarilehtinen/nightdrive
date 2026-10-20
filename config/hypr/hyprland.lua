@@ -34,6 +34,23 @@ if scales then
     end
     scales:close()
 end
+-- Lid closed with an external display (logind: docked, so it doesn't suspend): the built-in screen is turned off, so the
+-- windows, workspaces and the pointer move to the external one instead of staying under the lid. scripts/lid follows
+-- logind's LidClosed and reloads the config, which reads the state again.
+local function login1(prop)
+    local p = io.popen("busctl get-property org.freedesktop.login1 /org/freedesktop/login1 org.freedesktop.login1.Manager "
+                       .. prop .. " 2>/dev/null")
+    if not p then return false end
+    local out = p:read("*a") or ""
+    p:close()
+    return out:match("true") ~= nil
+end
+-- The lid: as scripts/lid last saw it, and logind's before it has started
+local lidClosed
+local lid = io.open((os.getenv("XDG_RUNTIME_DIR") or "") .. "/nightdrive-lid")
+if lid then lidClosed = lid:read("*l") == "closed"; lid:close() else lidClosed = login1("LidClosed") end
+if lidClosed and login1("Docked") then hl.monitor({ output = BUILTIN_DISPLAY, disabled = true }) end
+
 -- Workspace 1 is on the laptop's own screen and an external display takes the next free one, whatever order they come
 -- up in at boot (an HDMI display that drops out for a moment at boot left the MacBook on 3)
 hl.workspace_rule({ workspace = "1", monitor = BUILTIN_DISPLAY, default = true })
@@ -81,6 +98,7 @@ function NightdriveLocked()
     hl.exec_cmd("gnome-keyring-daemon --start --components=secrets,pkcs11")
     -- graphical-session.target for xdg-desktop-portal (config/systemd/user); restart: fresh environment after a re-login
     hl.exec_cmd("systemctl --user restart nightdrive-session.target")
+    hl.exec_cmd(HOME .. "/.config/hypr/scripts/lid watch")   -- the lid with an external display (DISPLAY above)
     -- Theme colours (~/.cache/nightdrive, hypr/scripts/theme) first: Quickshell (the top bar, its menus and the notifications)
     -- reads them on startup
     hl.exec_cmd("sh -c '\"$HOME/.config/hypr/scripts/theme\" apply; exec qs'")
