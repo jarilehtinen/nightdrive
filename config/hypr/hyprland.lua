@@ -15,6 +15,14 @@ local BUILTIN_DISPLAY = "eDP-1"   -- a laptop's own screen (a desktop has none: 
 
 local HOME = os.getenv("HOME")
 
+-- Each load of this config (a reload, a screen that comes or goes, the lid) leaves its time here: Hyprland announces the
+-- screens again, which crashes GStreamer's waylandsink in UxPlay, and its restart loop doesn't count those crashes
+-- (plugins/airplay-receiver/bin/airplay-receiver)
+do
+    local f = io.open((os.getenv("XDG_RUNTIME_DIR") or "/tmp") .. "/nightdrive-hypr-loaded", "w")
+    if f then f:close() end
+end
+
 ------------------
 ---- DISPLAY ----
 ------------------

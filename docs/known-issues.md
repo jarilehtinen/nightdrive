@@ -123,3 +123,19 @@ never. It doesn't use the Wayland way (the GlobalShortcuts portal): `hyprctl glo
 **A fix for everyone could be:** 1Password supporting the GlobalShortcuts portal (xdg-desktop-portal-hyprland has it). Running
 1Password under XWayland and passing the key to it with Hyprland's `pass` might work, but it's untested and an XWayland
 window can look blurry on a scaled screen.
+
+## iPhone mirroring stops when a screen comes or goes (AirPlay Receiver)
+
+**Seen:** MacBook (Apple Silicon), Fedora Asahi Remix 44, UxPlay 1.73.7, GStreamer 1.28.8. Found 2026-10-20.
+
+**Symptom:** a mirrored iPhone, iPad or Mac screen disappears when the lid is closed or opened with an external display,
+when the display is plugged in or out, or on `hyprctl reload`. The receiver itself is back within a second.
+
+**Cause:** Hyprland announces the screens again, and GStreamer's `waylandsink` in UxPlay crashes (SIGSEGV, in
+`gstwldisplay`'s `output_done`), even with nothing on screen. `coredumpctl list uxplay` shows one crash for each.
+
+**Workaround:** start mirroring again from the phone. The receiver restarts UxPlay by itself and doesn't count a crash
+right after a screen change (or config reload) towards its limit of five crashes in a minute, so it stays on.
+
+**A fix for everyone could be:** a fix in GStreamer's `waylandsink`; a report there needs a backtrace (`gdb` with
+`coredumpctl debug`).
