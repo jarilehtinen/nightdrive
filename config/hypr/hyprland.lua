@@ -189,6 +189,7 @@ function NightdriveLocked()
     hl.exec_cmd(HOME .. "/.config/hypr/scripts/idle start")   -- hypridle with the screensaver and screen-off times (launcher › Settings › Screensaver)
     hl.exec_cmd("easyeffects --service-mode -w")   -- headphone EQ in the background (presets: config/easyeffects, picked from the headphone icon in the top bar)
     hl.exec_cmd(HOME .. "/.config/hypr/scripts/bt-audio-follow")   -- Bluetooth headphones become the output when they connect
+    hl.exec_cmd(HOME .. "/.config/hypr/scripts/jack-volume")   -- headphones or speakers in the jack: a volume for each, starts quiet
     hl.exec_cmd(HOME .. "/.config/hypr/scripts/headphones-ctl")   -- Sony / AirPods: listening mode in the headphones menu, AirPods ear detection
     -- reset-failed: the previous session's agent crash-loops after logout (Restart=on-failure) and hits the start limit
     hl.exec_cmd("sh -c 'systemctl --user reset-failed hyprpolkitagent; systemctl --user restart hyprpolkitagent'")

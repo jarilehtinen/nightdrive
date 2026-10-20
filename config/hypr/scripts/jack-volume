@@ -1,0 +1,88 @@
+#!/bin/bash
+# The headphone jack can't tell headphones from speakers, so one remembered volume served both: speakers last played loud
+# made the next headphones blast, and the other way round. This asks what was plugged in (a notification: Headphones /
+# Speakers) and keeps a volume for each, in $state/<kind>.
+# Until you answer the jack plays at most at SAFE; it is also turned down to that on unplugging, so WirePlumber's own
+# restore on the next plug starts quiet too. A re-plug within REPLUG_MIN minutes is taken as the same device: no question.
+# Started by hyprland.lua; listens to PipeWire (pactl subscribe) in the background. One instance only (flock).
+exec 9>"${XDG_RUNTIME_DIR:-/tmp}/jack-volume.lock"
+flock -n 9 || exit 0
+SAFE=25          # percent
+REPLUG_MIN=5
+state=~/.local/state/nightdrive/jack   # current: the kind plugged in now (empty = not known); last: the one before
+mkdir -p "$state"
+
+# in / out, or nothing on a machine without a headphones port
+jack() {
+  local line
+  line=$(pactl list cards 2>/dev/null | grep -m1 '(type: Headphones') || return
+  [[ $line == *"not available"* ]] && echo out || echo in
+}
+# The sink playing through the headphones port (Asahi: a sink of its own; a PC: the analog sink, its port switched)
+hp_sink() { pactl list sinks 2>/dev/null | awk '/^\tName:/ { n = $2 } /Active Port:.*[Hh]eadphones/ { print n; exit }'; }
+volume() { pactl get-sink-volume "$1" 2>/dev/null | grep -oP '\d+(?=%)' | sort -n | tail -1; }
+at_most_safe() { local v; v=$(volume "$1"); [[ -n $v ]] && (( v > SAFE )) && pactl set-sink-volume "$1" "$SAFE%"; }
+restore() { [[ -s $state/$2 ]] && pactl set-sink-volume "$1" "$(cat "$state/$2")%"; }
+close_ask() {
+  [[ -s $state/ask ]] && gdbus call --session --dest org.freedesktop.Notifications --object-path /org/freedesktop/Notifications \
+    --method org.freedesktop.Notifications.CloseNotification "$(cat "$state/ask")" >/dev/null 2>&1
+  rm -f "$state/ask"
+}
+
+# Asked in the background, so volume changes are still followed meanwhile. plug: this plug's number, so an answer given
+# after the jack was pulled (or plugged again) does nothing.
+ask() {
+  local plug=$1 sink=$2 id kind
+  { read -r id; echo "$id" >"$state/ask"; read -r kind; } < <(notify-send -a Sound -p -t 0 \
+      -A headphones=Headphones -A speakers=Speakers \
+      "What's in the headphone jack?" "It plays at $SAFE % until you pick, then at the volume it had last time." 2>/dev/null)
+  rm -f "$state/ask"
+  [[ $kind == headphones || $kind == speakers ]] || return
+  [[ $(cat "$state/plug" 2>/dev/null) == "$plug" ]] || return
+  echo "$kind" >"$state/current"
+  restore "$sink" "$kind"
+}
+
+plugged_in() {
+  local sink last i plug
+  for i in {1..20}; do sink=$(hp_sink); [[ -n $sink ]] && break; sleep 0.1; done   # WirePlumber switches the port first
+  [[ -n $sink ]] || return
+  plug=$(( $(cat "$state/plug" 2>/dev/null || echo 0) + 1 )); echo "$plug" >"$state/plug"
+  last=$(cat "$state/last" 2>/dev/null)
+  if [[ -n $last && -n $(find "$state/last" -mmin -"$REPLUG_MIN" 2>/dev/null) ]]; then
+    echo "$last" >"$state/current"
+    restore "$sink" "$last"
+  else
+    at_most_safe "$sink"
+    ask "$plug" "$sink" &
+  fi
+}
+
+unplugged() {
+  local sink
+  [[ -s $state/current ]] && cp "$state/current" "$state/last"   # its mtime: when it was pulled out
+  : >"$state/current"
+  echo $(( $(cat "$state/plug" 2>/dev/null || echo 0) + 1 )) >"$state/plug"
+  close_ask
+  sink=$(hp_sink)   # still on the headphones port only where it is a sink of its own: never turn the speakers down
+  [[ -n $sink ]] && at_most_safe "$sink"
+}
+
+was=$(jack)
+[[ $was == in ]] || : >"$state/current"   # plugged in at login: the same device as before, presumably
+pactl subscribe | while read -r line; do
+  case $line in
+    "Event 'change' on card #"*)
+      now=$(jack)
+      [[ $now == "$was" ]] && continue
+      was=$now
+      if [[ $now == in ]]; then plugged_in; else unplugged; fi ;;
+    "Event 'change' on sink #"*)
+      kind=$(cat "$state/current" 2>/dev/null)
+      [[ $was == in && -n $kind ]] || continue
+      sink=$(hp_sink)
+      [[ -n $sink && $(pactl list sinks short | awk -v id="${line##*#}" '$1 == id { print $2 }') == "$sink" ]] || continue
+      v=$(volume "$sink")
+      [[ -n $v && $v != "$(cat "$state/$kind" 2>/dev/null)" ]] && echo "$v" >"$state/$kind" ;;
+  esac
+done
