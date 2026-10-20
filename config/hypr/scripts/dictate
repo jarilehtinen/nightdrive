@@ -12,6 +12,12 @@ FULL_MODEL=parakeet-tdt-0.6b-v3
 POST_PROCESS="$HOME/.config/voxtype/post-process"
 case $1 in
   daemon)
+    # A daemon that is killed (pkill, an update) leaves its OSD running: each restart added one more Quickshell. The
+    # new daemon starts its own, so close those whose daemon is gone.
+    for p in $(pgrep -u "$USER" -f '[q]s -p .*/voxtype/quickshell'); do
+      parent=$(ps -o ppid= -p "$p" | tr -d ' ')
+      [[ $(ps -o comm= -p "${parent:-1}") == voxtype* ]] || kill "$p"
+    done
     # Both go into a copy of the config: the daemon ignores --model, and Voxtype's config has no include
     conf="$HOME/.config/voxtype/config.toml"
     if [[ -d $models/$FULL_MODEL || -x $POST_PROCESS ]]; then
