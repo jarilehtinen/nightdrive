@@ -37,6 +37,8 @@ Column {
     readonly property bool dropping: outerDrop.containsDrag || tileDrags > 0 || dropHold.running
     readonly property bool wantsKeyboard: mode === "write"   // shell.qml: the text field needs it
     readonly property int rowHeight: 56
+    readonly property int listLift: 30   // how far the pill comes up over a long list
+    readonly property int listFade: 64   // the fade at the bottom of a long list
     // The big button says how every send went, its own and a drop's (here, on a tile or on the bar icon), a pick's (+)
     // or `ferry send`'s: "Sent to …" for a moment once `ferry list` reports it (sent.json), "Not sent" when it failed
     // (a notification says why). Its own send says "Sending…" until then, and gives up waiting after a while.
@@ -272,12 +274,21 @@ Column {
         }
     }
 
-    // Clear: what the other devices sent here leaves the box (files stay in Downloads)
+    // The plugin's name as in the other menus. Clear: what the other devices sent here leaves the box (files stay in
+    // Downloads)
     MenuHeader {
         width: parent.width
-        title: m.dropping ? "Send to" : "Received"
+        title: "Ferry"
         action: !m.dropping && m.received.length ? "Clear" : ""
         onActionClicked: m.run(["clear", "received"])
+    }
+
+    // Files dragged over turn the menu into device tiles: say what a drop does. The list of what arrived needs no title.
+    MenuSection {
+        visible: m.dropping
+        title: "Send to"
+        topPadding: 0
+        color: Theme.dim
     }
 
     // Why the other devices can't get here, if they can't
@@ -358,147 +369,170 @@ Column {
             }
 
             // ---- the list: what the other devices sent ----
-            Rectangle {
+            // A long one runs on under the pill: the box takes m.listLift less room in the column than the card
+            Item {
+                id: listBox
+                readonly property bool scrolls: list.height > m.rowHeight * 6.5
                 visible: !m.dropping && m.received.length > 0
                 width: parent.width
-                height: flick.height + 8
-                radius: 14
-                color: Theme.card
-
-                Flickable {
-                    id: flick
-                    y: 4
+                height: listCard.height - (scrolls ? m.listLift : 0)
+                Rectangle {
+                    id: listCard
                     width: parent.width
-                    height: Math.min(list.height, m.rowHeight * 6.5)   // half a row shows there's more
-                    contentHeight: list.height
-                    interactive: contentHeight > height
-                    boundsBehavior: Flickable.StopAtBounds
-                    clip: true
+                    height: flick.height + 8
+                    radius: 14
+                    color: Theme.card
 
-                    Column {
-                        id: list
-                        width: flick.width
-                        Repeater {
-                            model: m.received
-                            // One item: a click does what the round mark says (copies a text, opens a file); a file
-                            // can be dragged into another app
-                            delegate: Item {
-                                id: r
-                                required property var modelData
-                                required property int index
-                                readonly property bool isFile: modelData.kind === "file"
-                                readonly property bool isImage: isFile && /^image\//.test(modelData.type || "")
-                                // A picture only for what Qt reads (HEIC from an iPhone keeps the icon)
-                                readonly property bool hasThumb: /^image\/(png|jpeg|gif|webp|bmp)$/.test(modelData.type || "")
-                                readonly property bool lit: rowArea.containsMouse || navSelected
-                                property bool navSelected: false
-                                function navActivate() { m.act(r.modelData) }
-                                width: list.width
-                                height: m.rowHeight
+                    Flickable {
+                        id: flick
+                        y: 4
+                        width: parent.width
+                        height: listBox.scrolls ? m.rowHeight * 6.5 : list.height
+                        contentHeight: list.height
+                        // Room after the last row to scroll it out from under the fade
+                        bottomMargin: listBox.scrolls ? m.listFade - 4 : 0
+                        interactive: listBox.scrolls
+                        boundsBehavior: Flickable.StopAtBounds
+                        clip: true
 
-                                // The divider starts at the text, as in the phone's app
-                                Rectangle {
-                                    visible: r.index > 0
-                                    anchors { left: parent.left; leftMargin: 62; right: parent.right; rightMargin: 12 }
-                                    height: 1
-                                    color: Qt.rgba(Theme.border.r, Theme.border.g, Theme.border.b, 0.6)
-                                }
-                                Rectangle {
-                                    id: rowBg
-                                    anchors { fill: parent; leftMargin: 4; rightMargin: 4 }
-                                    radius: 10
-                                    color: r.lit ? Theme.hover : "transparent"
-                                    border { width: r.navSelected ? 1 : 0; color: Theme.primary }
-                                }
-                                // The file itself under the cursor while it's dragged out (the row stays)
-                                Item {
-                                    id: dragSource
-                                    anchors.fill: parent
-                                    Drag.active: rowArea.drag.active
-                                    Drag.hotSpot: Qt.point(30, height / 2)
-                                    Drag.dragType: Drag.Automatic
-                                    Drag.supportedActions: Qt.CopyAction
-                                    Drag.mimeData: ({ "text/uri-list": "file://" + encodeURI(r.modelData.path || "") + "\r\n" })
-                                    Drag.onActiveChanged: m.dragging += Drag.active ? 1 : -1
-                                    Drag.onDragFinished: m.close()
-                                }
-                                Item { id: dragDummy; visible: false }   // drag.target: the row stays, its image follows
+                        Column {
+                            id: list
+                            width: flick.width
+                            Repeater {
+                                model: m.received
+                                // One item: a click does what the round mark says (copies a text, opens a file); a file
+                                // can be dragged into another app
+                                delegate: Item {
+                                    id: r
+                                    required property var modelData
+                                    required property int index
+                                    readonly property bool isFile: modelData.kind === "file"
+                                    readonly property bool isImage: isFile && /^image\//.test(modelData.type || "")
+                                    // A picture only for what Qt reads (HEIC from an iPhone keeps the icon)
+                                    readonly property bool hasThumb: /^image\/(png|jpeg|gif|webp|bmp)$/.test(modelData.type || "")
+                                    readonly property bool lit: rowArea.containsMouse || navSelected
+                                    property bool navSelected: false
+                                    function navActivate() { m.act(r.modelData) }
+                                    width: list.width
+                                    height: m.rowHeight
 
-                                Rectangle {
-                                    id: tile
-                                    anchors { left: parent.left; leftMargin: 12; verticalCenter: parent.verticalCenter }
-                                    width: 40; height: 40; radius: 10
-                                    color: Theme.sel
-                                    Text {
-                                        visible: !thumb.visible
-                                        anchors.centerIn: parent
-                                        text: Icons.g(!r.isFile ? "text" : r.isImage ? "image" : "file")
-                                        color: Theme.accent
-                                        font { family: Icons.family; pixelSize: 19 }
+                                    // The divider starts at the text, as in the phone's app
+                                    Rectangle {
+                                        visible: r.index > 0
+                                        anchors { left: parent.left; leftMargin: 62; right: parent.right; rightMargin: 12 }
+                                        height: 1
+                                        color: Qt.rgba(Theme.border.r, Theme.border.g, Theme.border.b, 0.6)
                                     }
-                                    // An image's own picture
-                                    ClippingRectangle {
-                                        id: thumb
-                                        visible: r.hasThumb && thumbImg.status === Image.Ready
-                                        anchors.fill: parent
+                                    Rectangle {
+                                        id: rowBg
+                                        anchors { fill: parent; leftMargin: 4; rightMargin: 4 }
                                         radius: 10
-                                        color: "transparent"
-                                        Image {
-                                            id: thumbImg
-                                            // A phone's photo is stored sideways, its turn in EXIF: Qt applies it only when asked
-                                            autoTransform: true
+                                        color: r.lit ? Theme.hover : "transparent"
+                                        border { width: r.navSelected ? 1 : 0; color: Theme.primary }
+                                    }
+                                    // The file itself under the cursor while it's dragged out (the row stays)
+                                    Item {
+                                        id: dragSource
+                                        anchors.fill: parent
+                                        Drag.active: rowArea.drag.active
+                                        Drag.hotSpot: Qt.point(30, height / 2)
+                                        Drag.dragType: Drag.Automatic
+                                        Drag.supportedActions: Qt.CopyAction
+                                        Drag.mimeData: ({ "text/uri-list": "file://" + encodeURI(r.modelData.path || "") + "\r\n" })
+                                        Drag.onActiveChanged: m.dragging += Drag.active ? 1 : -1
+                                        Drag.onDragFinished: m.close()
+                                    }
+                                    Item { id: dragDummy; visible: false }   // drag.target: the row stays, its image follows
+
+                                    Rectangle {
+                                        id: tile
+                                        anchors { left: parent.left; leftMargin: 12; verticalCenter: parent.verticalCenter }
+                                        width: 40; height: 40; radius: 10
+                                        color: Theme.sel
+                                        Text {
+                                            visible: !thumb.visible
+                                            anchors.centerIn: parent
+                                            text: Icons.g(!r.isFile ? "text" : r.isImage ? "image" : "file")
+                                            color: Theme.accent
+                                            font { family: Icons.family; pixelSize: 19 }
+                                        }
+                                        // An image's own picture
+                                        ClippingRectangle {
+                                            id: thumb
+                                            visible: r.hasThumb && thumbImg.status === Image.Ready
                                             anchors.fill: parent
-                                            source: r.hasThumb && r.modelData.path ? "file://" + r.modelData.path : ""
-                                            sourceSize: Qt.size(80, 80)
-                                            fillMode: Image.PreserveAspectCrop
-                                            asynchronous: true
+                                            radius: 10
+                                            color: "transparent"
+                                            Image {
+                                                id: thumbImg
+                                                // A phone's photo is stored sideways, its turn in EXIF: Qt applies it only when asked
+                                                autoTransform: true
+                                                anchors.fill: parent
+                                                source: r.hasThumb && r.modelData.path ? "file://" + r.modelData.path : ""
+                                                sourceSize: Qt.size(80, 80)
+                                                fillMode: Image.PreserveAspectCrop
+                                                asynchronous: true
+                                            }
+                                        }
+                                    }
+                                    Column {
+                                        anchors { left: tile.right; leftMargin: 12; right: mark.left; rightMargin: 10; verticalCenter: parent.verticalCenter }
+                                        spacing: 4
+                                        Text {
+                                            width: parent.width
+                                            elide: Text.ElideRight
+                                            text: r.isFile ? r.modelData.name : r.modelData.text.replace(/\s+/g, " ").trim()
+                                            color: Theme.accent
+                                            font { family: Theme.font; pixelSize: 13; letterSpacing: 0.3 }
+                                        }
+                                        Text {
+                                            width: parent.width
+                                            elide: Text.ElideRight
+                                            text: m.flash === r.modelData.id ? "copied"
+                                                : [r.isFile ? m.size(r.modelData.size || 0) : "", m.ago(r.modelData.time), r.modelData["from"] || ""]
+                                                    .filter(x => x).join(" · ")
+                                            color: m.flash === r.modelData.id ? Theme.accent : Theme.dim
+                                            font { family: Theme.font; pixelSize: 11 }
+                                        }
+                                    }
+                                    // A click anywhere on the row does what the round mark says; a file drags out from here
+                                    MouseArea {
+                                        id: rowArea
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        drag.target: r.isFile ? dragDummy : null
+                                        onPressed: if (r.isFile) r.grabToImage(res => { dragSource.Drag.imageSource = res.url })
+                                        onClicked: m.act(r.modelData)
+                                    }
+                                    // What a click does: copy a text, open a file
+                                    Rectangle {
+                                        id: mark
+                                        anchors { right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter }
+                                        width: 32; height: 32; radius: 16
+                                        color: r.lit ? Theme.primary : Theme.sel
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: Icons.g(m.flash === r.modelData.id ? "check" : r.isFile ? "external-link" : "copy")
+                                            color: r.lit ? Theme.bg : Theme.accent
+                                            font { family: Icons.family; pixelSize: 15 }
                                         }
                                     }
                                 }
-                                Column {
-                                    anchors { left: tile.right; leftMargin: 12; right: mark.left; rightMargin: 10; verticalCenter: parent.verticalCenter }
-                                    spacing: 4
-                                    Text {
-                                        width: parent.width
-                                        elide: Text.ElideRight
-                                        text: r.isFile ? r.modelData.name : r.modelData.text.replace(/\s+/g, " ").trim()
-                                        color: Theme.accent
-                                        font { family: Theme.font; pixelSize: 13; letterSpacing: 0.3 }
-                                    }
-                                    Text {
-                                        width: parent.width
-                                        elide: Text.ElideRight
-                                        text: m.flash === r.modelData.id ? "copied"
-                                            : [r.isFile ? m.size(r.modelData.size || 0) : "", m.ago(r.modelData.time), r.modelData["from"] || ""]
-                                                .filter(x => x).join(" · ")
-                                        color: m.flash === r.modelData.id ? Theme.accent : Theme.dim
-                                        font { family: Theme.font; pixelSize: 11 }
-                                    }
-                                }
-                                // A click anywhere on the row does what the round mark says; a file drags out from here
-                                MouseArea {
-                                    id: rowArea
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    drag.target: r.isFile ? dragDummy : null
-                                    onPressed: if (r.isFile) r.grabToImage(res => { dragSource.Drag.imageSource = res.url })
-                                    onClicked: m.act(r.modelData)
-                                }
-                                // What a click does: copy a text, open a file
-                                Rectangle {
-                                    id: mark
-                                    anchors { right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter }
-                                    width: 32; height: 32; radius: 16
-                                    color: r.lit ? Theme.primary : Theme.sel
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: Icons.g(m.flash === r.modelData.id ? "check" : r.isFile ? "external-link" : "copy")
-                                        color: r.lit ? Theme.bg : Theme.accent
-                                        font { family: Icons.family; pixelSize: 15 }
-                                    }
-                                }
                             }
+                        }
+                    }
+
+                    // The rows under the pill fade out, and the card with them; the pill and buttons come later in the
+                    // column and are drawn over it
+                    Rectangle {
+                        visible: listBox.scrolls
+                        anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
+                        height: m.listFade
+                        gradient: Gradient {
+                            GradientStop { position: 0; color: Qt.rgba(Theme.card.r, Theme.card.g, Theme.card.b, 0) }
+                            GradientStop { position: 0.35; color: Theme.card }
+                            GradientStop { position: 1; color: Theme.bg }
                         }
                     }
                 }
@@ -534,12 +568,13 @@ Column {
                 }
             }
 
-            // ---- the device sends go to (10 px more room above it than the column's spacing) ----
+            // ---- the device sends go to (10 px more room above it than the column's spacing, but not over a long
+            // list, which runs on under it) ----
             Item {
                 id: pillWrap
                 visible: !m.dropping
                 width: parent.width
-                height: pill.height + 10
+                height: pill.height + (listBox.scrolls ? 0 : 10)
                 Rectangle {
                     id: pill
                     anchors.bottom: parent.bottom
