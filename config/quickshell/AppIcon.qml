@@ -29,6 +29,10 @@ Image {
     }
     onCandidatesChanged: attempt = 0
     source: attempt < candidates.length ? candidates[attempt] : ""
-    onStatusChanged: if (status === Image.Error && attempt < candidates.length) attempt++
+    // A local file fails while source is still being set: stepping on right there is a binding loop, and after a few
+    // misses in a row (a new app: no themed path, no SVG) Qt gives up before reaching the PNG. So step on afterwards.
+    onStatusChanged: if (status === Image.Error) Qt.callLater(() => {
+        if (status === Image.Error && attempt < candidates.length) attempt++
+    })
     fillMode: Image.PreserveAspectFit
 }
