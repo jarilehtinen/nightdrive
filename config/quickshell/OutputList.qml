@@ -84,7 +84,7 @@ Column {
     Sh {
         id: btProc
         // Audio Sink UUID = headphones / speakers
-        script: 'bluetoothctl devices Paired | while read -r _ mac name; do\n' +
+        script: 'bluetoothctl devices Paired | sed "s/\\x1b\\[[0-9;]*m//g" | while read -r _ mac name; do\n' +
                 '  info=$(bluetoothctl info "$mac")\n' +
                 '  grep -q "Connected: no" <<<"$info" && grep -q "UUID: Audio Sink" <<<"$info" && echo "$mac|$name"\n' +
                 'done'

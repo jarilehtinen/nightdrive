@@ -52,7 +52,7 @@ Column {
     }
     Sh {
         id: listProc
-        script: 'bluetoothctl devices | while read -r _ mac name; do\n' +
+        script: 'bluetoothctl devices | sed "s/\\x1b\\[[0-9;]*m//g" | while read -r _ mac name; do\n' +
                 '  info=$(bluetoothctl info "$mac")\n' +
                 '  c=$(grep -c "Connected: yes" <<<"$info"); p=$(grep -c "Paired: yes" <<<"$info"); n=$(grep -c "^\\s*Name:" <<<"$info")\n' +
                 '  b=$(grep -oP "Battery Percentage: 0x\\w+ \\(\\K[0-9]+" <<<"$info")\n' +
