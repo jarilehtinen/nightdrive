@@ -10,7 +10,7 @@ A mailbox between your computers and your phone. Leave photos, files, text or a 
 - Below the list are the three ways to send, as in the phone's app: **Aa** types a text, **Send Clipboard** sends the clipboard, and **+** picks files. They go to the device in the pill above them: click it to pick another of your computers or phones (Ferry remembers the last one picked), or to add a device.
 - Drag files over the menu and the list turns into a tile for each device: drop them on the one they're for. Files dropped on the inbox icon in the top bar go to the picked device.
 - A send to a phone waits in the box until that phone picks it up, and only that phone gets the notification. A send to another computer goes straight there: it shows up in that computer's menu, and Send Clipboard puts it on that computer's clipboard. A computer that's asleep can't take one.
-- Files from the phone go to Downloads, and you get a notification when something arrives.
+- Files from the phone go to Downloads, and you get a notification when something arrives (a photo or an image shows in it, as a screenshot does).
 - What the phone sends with Clipboard lands on the computer's clipboard too, ready to paste (an image also stays in Downloads).
 - Everything leaves the box after 7 days.
 

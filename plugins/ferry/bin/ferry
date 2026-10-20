@@ -94,6 +94,7 @@ MAX_FILE = 4 << 30           # bytes per file from the phone
 MAX_TEXT = 1 << 20           # bytes of text
 PUSH_PAYLOAD = 2600          # bytes of a notification: Ferry's push relay takes 2800 encrypted (APNs' 4 KB as base64)
 MIN_FREE = 2 << 30           # bytes left free on the disk: an upload that would go below this is refused
+PREVIEW = re.compile(r"^image/(jpeg|png|gif|webp|bmp)$")   # a received image the notification shows as a picture
 INLINE = re.compile(r"^(image/(jpeg|png|gif|webp|heic|heif|avif)|video/|audio/|application/pdf$|text/plain$)")
                              # shown in the browser; any other file is a download (an HTML or SVG file would run its
                              # scripts as the Ferry page)
@@ -128,9 +129,15 @@ def human(n):
         n /= 1000
 
 
-def notify(summary, body="", actions=()):
-    """A desktop notification; with actions, {key: function} runs the pressed button's function (in a thread)."""
-    cmd = ["notify-send", "-a", APP, "-i", ICON, "-p"]
+def notify(summary, body="", actions=(), preview=""):
+    """A desktop notification; with actions, {key: function} runs the pressed button's function (in a thread). A
+    preview (an image's path) shows under the text, as a screenshot's does (quickshell/Notifs.qml)."""
+    # -i is the notification's picture (libnotify 0.8): with a preview the picture is the image, and the icon goes as -n
+    cmd = ["notify-send", "-a", APP, "-p"]
+    if preview:
+        cmd += ["-n", ICON, "-c", "x-nightdrive.preview", "-h", f"string:image-path:file://{preview}"]
+    else:
+        cmd += ["-i", ICON]
     for key in actions:
         cmd += ["-A", f"{key}={actions[key][0]}"]
     if actions:
@@ -147,6 +154,11 @@ def notify(summary, body="", actions=()):
             actions[out[-1]][1]()
     threading.Thread(target=wait, daemon=True).start()
     return nid
+
+
+def previewable(path, kind):
+    """The path when the notification can show the file as a picture: the formats Qt draws (not HEIC), else ""."""
+    return path if PREVIEW.match(kind or "") else ""
 
 
 def idle_for():
@@ -731,7 +743,7 @@ class Ferry:
                 subprocess.run(["wl-copy", "--type", kind], stdin=f)
             notify(f"Copied {os.path.basename(path)}", f"From {who} · {os.path.basename(os.path.dirname(path))}", {
                 "default": ("Open", lambda: subprocess.Popen(["xdg-open", path])),
-                "show": ("Show in Files", lambda: subprocess.Popen(["nautilus", "--select", path]))})
+                "show": ("Show in Files", lambda: subprocess.Popen(["nautilus", "--select", path]))}, previewable(path, kind))
             return refresh_bar()
         with self.lock:
             when, paths, nid = self.recent
@@ -745,7 +757,8 @@ class Ferry:
         first = paths[0]
         nid = notify(title, f"From {who} · {os.path.basename(os.path.dirname(path))}", {
             "default": ("Open", lambda: subprocess.Popen(["xdg-open", first if len(paths) == 1 else os.path.dirname(first)])),
-            "show": ("Show in Files", lambda: subprocess.Popen(["nautilus", "--select", first]))})
+            "show": ("Show in Files", lambda: subprocess.Popen(["nautilus", "--select", first]))},
+            previewable(first, kind) if len(paths) == 1 else "")
         with self.lock:
             if self.recent[1] is paths:
                 self.recent = (self.recent[0], paths, nid)

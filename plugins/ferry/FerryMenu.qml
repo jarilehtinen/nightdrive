@@ -445,6 +445,8 @@ Column {
                                         color: "transparent"
                                         Image {
                                             id: thumbImg
+                                            // A phone's photo is stored sideways, its turn in EXIF: Qt applies it only when asked
+                                            autoTransform: true
                                             anchors.fill: parent
                                             source: r.hasThumb && r.modelData.path ? "file://" + r.modelData.path : ""
                                             sourceSize: Qt.size(80, 80)
