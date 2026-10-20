@@ -137,5 +137,11 @@ when the display is plugged in or out, or on `hyprctl reload`. The receiver itse
 **Workaround:** start mirroring again from the phone. The receiver restarts UxPlay by itself and doesn't count a crash
 right after a screen change (or config reload) towards its limit of five crashes in a minute, so it stays on.
 
-**A fix for everyone could be:** a fix in GStreamer's `waylandsink`; a report there needs a backtrace (`gdb` with
-`coredumpctl debug`).
+**Cause, exactly:** `output_done` takes the display from the output with `g_object_steal_data`, which removes it, but a
+compositor sends `wl_output.done` again after every change to a screen; the second time it's gone. Reported to GStreamer
+as [#5329](https://gitlab.freedesktop.org/gstreamer/gstreamer/-/work_items/5329) (also
+[#5144](https://gitlab.freedesktop.org/gstreamer/gstreamer/-/work_items/5144)).
+
+**A fix for everyone could be:** GStreamer's fix, waiting as
+[!11741](https://gitlab.freedesktop.org/gstreamer/gstreamer/-/merge_requests/11741) (a draft in October 2026). Once a
+GStreamer release with it reaches Fedora, the receiver's crash exception and this entry can go.
