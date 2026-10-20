@@ -188,7 +188,10 @@ function NightdriveLocked()
     hl.exec_cmd(HOME .. "/.config/hypr/scripts/wallpaper restore")   -- swaybg with the remembered wallpaper (change: launcher › Settings › Background)
     hl.exec_cmd("env PATH=" .. HOME .. "/.local/bin:" .. os.getenv("PATH") .. " " .. HOME .. "/.config/hypr/scripts/dictate daemon")   -- speech to text (F5), Parakeet
     hl.exec_cmd(HOME .. "/.config/hypr/scripts/idle start")   -- hypridle with the screensaver and screen-off times (launcher › Settings › Screensaver)
-    hl.exec_cmd("easyeffects --service-mode -w")   -- headphone EQ in the background (presets: config/easyeffects, picked from the headphone icon in the top bar)
+    -- Headphone EQ in the background (presets: config/easyeffects, picked from the headphone icon in the top bar). Only with
+    -- PipeWire's socket (socket-activated, there before the session): without it EasyEffects aborts with a core dump, as in
+    -- the sandbox, which has no audio
+    hl.exec_cmd("sh -c '[ -S \"$XDG_RUNTIME_DIR/pipewire-0\" ] && exec easyeffects --service-mode -w'")
     hl.exec_cmd(HOME .. "/.config/hypr/scripts/bt-audio-follow")   -- Bluetooth headphones become the output when they connect
     hl.exec_cmd(HOME .. "/.config/hypr/scripts/jack-volume")   -- headphones or speakers in the jack: a volume for each, starts quiet
     hl.exec_cmd(HOME .. "/.config/hypr/scripts/headphones-ctl")   -- Sony / AirPods: listening mode in the headphones menu, AirPods ear detection
