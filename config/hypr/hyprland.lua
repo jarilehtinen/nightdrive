@@ -11,6 +11,7 @@
 local MONITOR_SCALE = 2.0
 local KB_LAYOUT     = "fi"
 local KB_VARIANT    = "mac"
+local BUILTIN_DISPLAY = "eDP-1"   -- a laptop's own screen (a desktop has none: the rule below then does nothing)
 
 local HOME = os.getenv("HOME")
 
@@ -33,6 +34,9 @@ if scales then
     end
     scales:close()
 end
+-- Workspace 1 is on the laptop's own screen and an external display takes the next free one, whatever order they come
+-- up in at boot (an HDMI display that drops out for a moment at boot left the MacBook on 3)
+hl.workspace_rule({ workspace = "1", monitor = BUILTIN_DISPLAY, default = true })
 
 -------------------
 ---- AUTOSTART ----
