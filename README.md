@@ -265,6 +265,8 @@ The same `nightdrive` command reaches the settings from a terminal (`nightdrive`
 | `nightdrive channel` | The update channel, stable or dev; `nightdrive channel dev` switches to it |
 | `nightdrive version` | The release you have, and the channel |
 | `nightdrive theme color teal` | Theme colour: violet, blue, teal, green, amber, rose or graphite |
+| `nightdrive theme set background '#171822'` | The look: the background and opacity of the terminals, the launcher, Firefox and Thunderbird, and the window borders and shadows (`inactive-border off`, `shadow-size 8`…); `nightdrive theme look` lists the settings, `default` puts one back; the same with sliders in Theme Editor (launcher › Settings › Theme) |
+| `nightdrive theme save "My theme"` | Saves the theme colour and the look as a theme of your own (in `~/.config/nightdrive/themes`); `nightdrive theme themes` lists them with Nightdrive's Default, `use ID` switches, `delete ID` removes one of yours, `reset` goes back to Default; also launcher › Settings › Theme › Themes and Theme Editor's Save as theme |
 | `nightdrive wallpaper set <image>` | Changes the wallpaper; `nightdrive wallpaper current` prints it |
 | `nightdrive display list` | Each screen's even scales; `nightdrive display scale eDP-1 2` sets one |
 | `nightdrive bar-style opacity 80` | Top bar opacity; also `icons`, `icon-opacity` and `highlight` |

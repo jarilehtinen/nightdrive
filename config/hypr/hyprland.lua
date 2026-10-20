@@ -251,6 +251,7 @@ hl.config({
         gaps_out = 10,
         border_size = 2,
         col = {
+            -- Borders and shadow below: until the theme's look.lua (after this block) has been written
             active_border   = "rgba(7aa2f7ff)",       -- Omarchy's Tokyo Night: theme accent
             inactive_border = "rgba(595959aa)",       -- Omarchy default
         },
@@ -278,6 +279,8 @@ hl.config({
         enabled = true,   -- only the workspace slide is on (below); everything else stays instant
     },
 })
+-- The look's borders and shadow (`nightdrive theme set`, hypr/scripts/theme writes the file and runs it over IPC)
+pcall(dofile, HOME .. "/.cache/nightdrive/look.lua")
 -- Workspace switch slides like macOS Spaces, so a swipe finishes (or snaps back) smoothly after the fingers lift
 hl.curve("spaces", { type = "bezier", points = { {0.25, 1}, {0.5, 1} } })
 hl.animation({ leaf = "global",           enabled = false })
@@ -404,6 +407,14 @@ hl.window_rule({
 })
 -- Image preview (Files' Space preview Sushi, image viewer Loupe): on top of the windows instead of splitting them, like
 -- Quick Look and Preview; ⌘⇧T moves it into the tiling layout
+-- Theme Editor (quickshell/ThemeEditor.qml): floats at the right edge next to the windows it styles; ⌘⇧T tiles it
+hl.window_rule({
+    name  = "float-theme-editor",
+    match = { class = "^org\\.quickshell$", title = "^Theme Editor$" },
+    float = true,
+    size  = "460 monitor_h-57",             -- the screen's height under the bar; it scrolls
+    move  = "monitor_w-470 47",
+})
 hl.window_rule({
     name  = "float-preview",
     match = { class = "^org\\.gnome\\.Loupe$" },

@@ -196,6 +196,8 @@ ShellRoot {
 
     AirPodsSettings {}
 
+    ThemeEditor {}
+
     SharePicker {}
 
     Drawer {}

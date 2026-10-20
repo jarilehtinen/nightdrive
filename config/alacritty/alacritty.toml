@@ -1,4 +1,5 @@
-# Alacritty: Nightdrive's settings (nightdrive.toml), then yours (local.toml next to this file, git-ignored).
-# This file only imports them: settings written here would win over both, and of the imports the later one wins.
+# Alacritty: Nightdrive's settings (nightdrive.toml), the look (`nightdrive theme set background …`, hypr/scripts/theme),
+# then yours (local.toml next to this file, git-ignored). This file only imports them: settings written here would win
+# over all, and of the imports the later one wins. A missing one is skipped.
 [general]
-import = ["~/.config/alacritty/nightdrive.toml", "~/.config/alacritty/local.toml"]
+import = ["~/.config/alacritty/nightdrive.toml", "~/.cache/nightdrive/alacritty.toml", "~/.config/alacritty/local.toml"]

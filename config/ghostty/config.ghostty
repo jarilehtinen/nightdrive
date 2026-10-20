@@ -44,12 +44,12 @@ keybind = ctrl+page_up=previous_tab
 keybind = ctrl+page_down=next_tab
 
 # --- Tokyo Night (Omarchy's default theme), as in kitty ---
-background = #1a1b26
+background = #171822
 foreground = #c0caf5
 selection-background = #33467c
 selection-foreground = #c0caf5
 cursor-color = #c0caf5
-cursor-text = #1a1b26
+cursor-text = #171822
 palette = 0=#15161e
 palette = 1=#f7768e
 palette = 2=#9ece6a
@@ -78,5 +78,7 @@ background-opacity = 0.97
 # Code, tmux, vim), select while holding Shift.
 copy-on-select = clipboard
 
-# Your own settings last, so they win (the ? : no error when there is none)
+# The look (`nightdrive theme set background …`, hypr/scripts/theme): background and opacity; the values above are its
+# defaults. Your own settings last, so they win (the ? : no error when there is none)
+config-file = ?~/.cache/nightdrive/ghostty
 config-file = ?local.ghostty

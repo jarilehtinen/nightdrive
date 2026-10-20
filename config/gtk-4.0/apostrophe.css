@@ -1,6 +1,7 @@
 /* Tokyo Night for Apostrophe (Flatpak). Linked by link.sh to ~/.var/app/<id>/config/gtk-4.0/gtk.css, because a Flatpak
    app reads its own config dir, not ~/.config. Same colours as gtk.css, but as CSS variables: the app's newer GNOME
    runtime ignores @define-color overrides. */
+@import url("nightdrive-colors.css");   /* the look's background (--nd-bg), written by hypr/scripts/theme */
 :root {
   --accent-color: #7aa2f7;
   --accent-bg-color: #7aa2f7;
@@ -17,14 +18,14 @@
   --error-color: #f7768e;
   --error-bg-color: #f7768e;
   --error-fg-color: #15161e;
-  --window-bg-color: #1a1b26;
+  --window-bg-color: var(--nd-bg, #171822);
   --window-fg-color: #c0caf5;
-  --view-bg-color: #1a1b26;
+  --view-bg-color: var(--nd-bg, #171822);
   --view-fg-color: #c0caf5;
   --headerbar-bg-color: #16161e;
   --headerbar-fg-color: #c0caf5;
   --headerbar-border-color: #16161e;
-  --headerbar-backdrop-color: #1a1b26;
+  --headerbar-backdrop-color: var(--nd-bg, #171822);
   --headerbar-shade-color: rgba(0, 0, 0, 0.25);
   --card-bg-color: #1f2335;
   --card-fg-color: #c0caf5;
@@ -48,5 +49,5 @@
 }
 
 /* The editor's GtkSourceView scheme hard-codes #2b2b2f; user CSS outranks it */
-textview, textview > text { background-color: #1a1b26; color: #c0caf5; }
+textview, textview > text { background-color: var(--nd-bg, #171822); color: #c0caf5; }
 textview > text selection { background-color: alpha(#7aa2f7, 0.3); }

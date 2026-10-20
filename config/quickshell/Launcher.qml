@@ -240,6 +240,7 @@ PanelWindow {
                                               "Keyboard Shortcuts": "hyper caps lock keys keybindings hotkeys open app", "Theme": "appearance style look colors",
                                               "Color": "theme accent violet purple blue teal green amber rose graphite gray",
                                               "Background": "wallpaper desktop image picture",
+                                              "Theme Editor…": "window background terminal kitty opacity transparency border frame shadow inactive",
                                               "Top bar": "waybar panel menu bar",
                                               "Launcher": "search fuzzy typos shortcuts hints spotlight",
                                               "Computer name": "hostname rename device localsend airplay ferry phone",

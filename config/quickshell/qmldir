@@ -5,6 +5,12 @@ MenuRow 1.0 MenuRow.qml
 BusyDots 1.0 BusyDots.qml
 MenuHeader 1.0 MenuHeader.qml
 Slider 1.0 Slider.qml
+SettingToggle 1.0 SettingToggle.qml
+SettingLevel 1.0 SettingLevel.qml
+SettingChoice 1.0 SettingChoice.qml
+SettingColor 1.0 SettingColor.qml
+SettingButton 1.0 SettingButton.qml
+SettingDropdown 1.0 SettingDropdown.qml
 Launcher 1.0 Launcher.qml
 Osd 1.0 Osd.qml
 Picker 1.0 Picker.qml
@@ -36,6 +42,7 @@ LevelRing 1.0 LevelRing.qml
 BatteryBar 1.0 BatteryBar.qml
 BatteryWatch 1.0 BatteryWatch.qml
 AirPodsSettings 1.0 AirPodsSettings.qml
+ThemeEditor 1.0 ThemeEditor.qml
 BehaviourLevels 1.0 BehaviourLevels.qml
 InstallLevels 1.0 InstallLevels.qml
 ToolsLevels 1.0 ToolsLevels.qml

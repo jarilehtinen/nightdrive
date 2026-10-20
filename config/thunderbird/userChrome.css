@@ -1,4 +1,5 @@
 @import url("nightdrive-icons.css");   /* Lucide icons with this machine's paths, written by link.sh */
+@import url("nightdrive-colors.css");   /* the look's background (--nd-bg), written by hypr/scripts/theme */
 /* UI fonts (same family as in kitty):
    body text Regular, secondary (dates, sender, buttons, status bar) Light. */
 * { font-family: "JetBrains Mono", monospace !important; }
@@ -25,7 +26,7 @@ li.unread .subject, .card-layout.unread .subject, .unread .subject {
 
 /* ===== Tokyo Night colours ===== */
 :root, #folderTree, #threadTree, [is="tree-view-table-body"], #messagepane, body {
-  --layout-background-0: #1a1b26 !important;   /* main background */
+  --layout-background-0: var(--nd-bg, #171822) !important;   /* main background */
   --layout-background-1: #16161e !important;   /* sidebar, toolbars */
   --layout-background-2: #1f2335 !important;
   --layout-background-3: #292e42 !important;
@@ -42,9 +43,9 @@ li.unread .subject, .card-layout.unread .subject, .unread .subject {
   --button-primary-hover-background-color: #8db4ff !important;
   --button-primary-active-background-color: #6a92e7 !important;
   --button-primary-border-color: #7aa2f7 !important;
-  --button-primary-text-color: #1a1b26 !important;
-  --tree-pane-background: #1a1b26 !important;
-  --tree-view-bg: #1a1b26 !important;
+  --button-primary-text-color: var(--nd-bg, #171822) !important;
+  --tree-pane-background: var(--nd-bg, #171822) !important;
+  --tree-view-bg: var(--nd-bg, #171822) !important;
 
   /* Folder list */
   --listbox-hover: #1f2335 !important;
@@ -54,7 +55,7 @@ li.unread .subject, .card-layout.unread .subject, .unread .subject {
   --listbox-focused-selected-color: #c0caf5 !important;
 
   /* Message cards: no borders, lighter selection */
-  --tree-card-background: #1a1b26 !important;
+  --tree-card-background: var(--nd-bg, #171822) !important;
   --tree-card-border: transparent !important;
   --tree-card-border-hover: transparent !important;
   --tree-card-border-focus: transparent !important;
@@ -77,7 +78,7 @@ li.unread .subject, .card-layout.unread .subject, .unread .subject {
 
 /* Top bar and tabs */
 :root {
-  --toolbar-background-color: #1a1b26 !important;       /* selected tab = content background */
+  --toolbar-background-color: var(--nd-bg, #171822) !important;       /* selected tab = content background */
   --toolbar-color: #c0caf5 !important;
   --tabs-toolbar-background-color: #16161e !important;  /* tab strip */
   --tabs-toolbar-box-shadow: none !important;
@@ -145,7 +146,7 @@ unified-toolbar li[item-id="reply"], unified-toolbar li[item-id="archive"] { mar
 #messageHeader {
   padding: 12px 20px 10px !important;
   border-bottom: 1px solid #292e42 !important;
-  background-color: #1a1b26 !important;
+  background-color: var(--nd-bg, #171822) !important;
 }
 /* Action buttons and the star live in the top bar → remove from the header */
 #header-view-toolbox, #starMessageButton { display: none !important; }
@@ -213,14 +214,14 @@ unified-toolbar li[item-id="reply"], unified-toolbar li[item-id="archive"] { mar
 #folderTree, #folderPane, :root {
   --folderpane-unread-count-background: #9d7cd8 !important;
   --folderpane-unread-new-count-background: #bb9af7 !important;
-  --folderpane-unread-count-text: #1a1b26 !important;
+  --folderpane-unread-count-text: var(--nd-bg, #171822) !important;
 }
 #folderTree .unread-count { font-weight: 600 !important; }
 /* Folder pane (accounts, folders): 1 px under the rest of the UI */
 #folderTree { font-size: calc(1rem - 1px) !important; }
 
 /* Message area background (no message selected / behind the message): blue, not grey */
-#messagepane, #messageBrowser, #multimessage, #messagePaneBox, #messagePane { background-color: #1a1b26 !important; }
+#messagepane, #messageBrowser, #multimessage, #messagePaneBox, #messagePane { background-color: var(--nd-bg, #171822) !important; }
 
 /* "To protect your privacy..." bar (remoteContent): medium violet instead of yellow */
 notification-message[value="remoteContent"] {

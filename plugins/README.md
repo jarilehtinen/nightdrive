@@ -137,6 +137,13 @@ calendar's grid, Ferry's drop zone and QR code are all fine).
   too.
 - **A text field** needs the keyboard, which a menu doesn't have by default: `readonly property bool wantsKeyboard`
   true while one shows (Ferry's Aa).
+- **Settings with more room** (a window of its own, as AirPods settings and Theme Editor) use the `Setting…` parts, so
+  they look and behave alike: `SettingToggle` (`title`, `desc`, `checked`, `onPicked: v => …`), `SettingLevel` (a slider:
+  `value`, `to`, `unit`, `lowText`/`highText`, `labelWidth` for the title in front of it; `onPicked` when the mouse
+  lets go), `SettingChoice` (a few options side by side: `options`, `current` index), `SettingColor` (swatches in
+  `presets`, a hex field and a spectrum; `onPicked: hex => …`), `SettingDropdown` (`model: [{ value, name, swatch }]`,
+  `current`, `onPicked`) and `SettingButton` (`text`, `strong` for the main action, `active`). Each one reports the
+  change and leaves its value to you: set `checked`, `value` or `current` from what your command reads back.
 
 The skeleton every menu has:
 

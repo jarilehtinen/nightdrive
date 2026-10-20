@@ -1,20 +1,35 @@
 #!/usr/bin/python3 -I
-"""Colour theme (launcher Settings › Theme › Color). Choice: ~/.local/state/theme-color.
+"""Colour theme (launcher Settings › Theme › Color) and the look (Theme Editor), together a theme (Settings › Theme ›
+Themes). Choices: ~/.local/state/theme-color, ~/.local/state/nightdrive/theme-look.json, theme-name.
 
-  theme color [name]   prints / sets the theme and applies it
+  theme color [name]   prints / sets the theme colour and applies it
   theme list           "key<TAB>name<TAB>main colour hex<TAB>current?" for the launcher
+  theme look           the look's settings (LOOK below): "key<TAB>value<TAB>changed?"
+  theme set KEY VALUE  sets one of them and applies it (VALUE default: back to the Default theme's)
+  theme themes         "id<TAB>name<TAB>main colour hex<TAB>background<TAB>own?<TAB>current | changed?": Nightdrive's
+                       themes (config/hypr/themes), then yours (~/.config/nightdrive/themes)
+  theme use ID         the theme's colour and look
+  theme save NAME      the colour and look as a theme of yours (the same name again: updates it)
+  theme delete ID      deletes a theme of yours
+  theme reset          back to the Default theme
   theme apply          writes ~/.cache/nightdrive/: theme.json (Quickshell), notify-icons, fuzzel.ini, hyprlock.conf,
-                       gtk-colors.css (imported by config/gtk-*/gtk.css), and the top bar's bar.json via bar-style
-                       (Hyprland autostart runs it before Quickshell)
+                       gtk-colors.css (imported by config/gtk-*/gtk.css), the look's files for the terminals and
+                       Hyprland (look.lua), nightdrive-colors.css in the Firefox and Thunderbird profiles and Apostrophe,
+                       and the top bar's bar.json via bar-style (Hyprland autostart runs it before Quickshell)
 
 Shades are derived from the original violet: each role keeps its lightness and saturation, only the hue changes.
 So Violet produces exactly the original colours. The login screen (/etc/greetd) stays violet.
 """
-import colorsys, json, os, subprocess, sys
+import colorsys, glob, json, os, subprocess, sys
 
 HOME = os.environ["HOME"]
 STATE = f"{HOME}/.local/state/theme-color"
+LOOK_STATE = f"{HOME}/.local/state/nightdrive/theme-look.json"   # only the settings changed from LOOK
+NAME_STATE = f"{HOME}/.local/state/nightdrive/theme-name"        # the theme last chosen or saved (its id)
+OWN_THEMES = f"{HOME}/.config/hypr/themes"                       # Nightdrive's: the repo's config/hypr/themes
+MY_THEMES = f"{HOME}/.config/nightdrive/themes"                  # yours, saved from Theme Editor
 OUT = f"{HOME}/.cache/nightdrive"
+APOSTROPHE = f"{HOME}/.var/app/org.gnome.gitlab.somas.Apostrophe/config/gtk-4.0"   # a Flatpak: can't read ~/.cache
 
 # Roles as the original violets (Theme.qml, fuzzel, hyprlock, voxtype, top bar)
 BASE = {
@@ -33,6 +48,14 @@ BASE = {
 BASE_HUE = 279
 # Colours the theme doesn't change (Theme.qml): the menus' background and the state colours, for the GTK windows
 FIXED = {"bg": "#0b0b0d", "danger": "#f7768e", "warning": "#e0af68", "ok": "#9ece6a"}
+
+# The look, apart from the theme colour: the background of the terminals and the apps that share it (launcher, fuzzel,
+# Firefox, Thunderbird, Apostrophe; Default: Tokyo Night's #1a1b26 10 % darker, with the blurred wallpaper showing
+# through a little), the active and inactive window borders and the shadow. Opacities in per cent, shadow-size in px.
+# Its values and keys come from the Default theme.
+LOOK = json.load(open(f"{OWN_THEMES}/default.json"))["look"]
+# Colours of the terminals' Tokyo Night palette that the files below write next to the background
+TERM_FG = "#c0caf5"
 
 # name → (display name, hue in degrees, saturation multiplier)
 THEMES = {
@@ -76,6 +99,98 @@ def current():
     return v if v in THEMES else "violet"
 
 
+def look():
+    try:
+        mine = json.load(open(LOOK_STATE))
+    except (OSError, ValueError):
+        mine = {}
+    return {k: mine.get(k, v) for k, v in LOOK.items()}
+
+
+def themes():
+    """id → (theme, own?): Nightdrive's first, Default leading, then yours by name."""
+    out = {}
+    for d, mine in ((OWN_THEMES, False), (MY_THEMES, True)):
+        found = []
+        for p in glob.glob(f"{d}/*.json"):
+            try:
+                t = json.load(open(p))
+            except (OSError, ValueError):
+                continue
+            tid = os.path.basename(p)[:-5]
+            if mine and tid in out:
+                continue                    # Nightdrive's own wins
+            found.append((0 if tid == "default" else 1, t.get("name", tid).lower(), tid, t))
+        for _, _, tid, t in sorted(found):
+            out[tid] = (t, mine)
+    return out
+
+
+def theme_name():
+    try:
+        return open(NAME_STATE).read().strip()
+    except OSError:
+        return "default"
+
+
+def slug(name):
+    return "-".join("".join(c if c.isalnum() else " " for c in name.lower()).split())
+
+
+def save_look(values):
+    """The look as differences from Default (what LOOK_STATE holds)."""
+    os.makedirs(os.path.dirname(LOOK_STATE), exist_ok=True)
+    write(LOOK_STATE, json.dumps({k: v for k, v in values.items() if k in LOOK and v != LOOK[k]}, indent=1) + "\n")
+
+
+def use(tid):
+    t = themes()[tid][0]
+    save_look(dict(LOOK, **t.get("look", {})))
+    color = t.get("color", "violet")
+    os.makedirs(os.path.dirname(STATE), exist_ok=True)
+    write(STATE, (color if color in THEMES else "violet") + "\n")
+    write(NAME_STATE, tid + "\n")
+    apply()
+    reload()
+
+
+def check(key, value):
+    """The value as stored, or exits with what is wrong."""
+    if key not in LOOK:
+        sys.exit(f"unknown setting: {key} ({', '.join(LOOK)})")
+    if value == "default":
+        return LOOK[key]
+    if key.endswith("color") or key == "background":
+        v = value if value.startswith("#") else "#" + value
+        if len(v) == 7 and all(c in "0123456789abcdefABCDEF" for c in v[1:]):
+            return v.lower()
+        sys.exit(f"{key}: a colour like #171822")
+    if key.endswith("opacity") or key == "shadow-size":
+        try:
+            n = float(value)
+        except ValueError:
+            n = -1
+        if key == "shadow-size":
+            if n == int(n) and 0 <= n <= 200:
+                return int(n)
+            sys.exit(f"{key}: whole pixels from 0 to 200")
+        if 0 <= n <= 100:
+            return int(n) if n == int(n) else n
+        sys.exit(f"{key}: a number from 0 to 100")
+    if value in ("on", "off"):
+        return value
+    sys.exit(f"{key}: on or off")
+
+
+def alpha(pct):
+    return f"{round(float(pct) * 2.55):02x}"
+
+
+def rgba(hexcol, pct):
+    """Hyprland's rgba(rrggbbaa)."""
+    return f"rgba({hexcol[1:]}{alpha(pct)})"
+
+
 def write(path, text):
     tmp = path + ".tmp"
     with open(tmp, "w") as f:
@@ -86,7 +201,9 @@ def write(path, text):
 def apply():
     p = palette(current())
     os.makedirs(OUT, exist_ok=True)
-    write(f"{OUT}/theme.json", json.dumps(dict(p, name=current()), indent=1) + "\n")
+    lk = look()
+    write(f"{OUT}/theme.json", json.dumps(dict(p, name=current(), launcherBg="#" + alpha(lk["background-opacity"])
+                                               + lk["background"][1:]), indent=1) + "\n")
     hx = {k: v[1:] for k, v in p.items()}
     # Notification icons (quickshell/data/notify-icons, drawn in the original muted colour) in the theme's text colour
     src, icons = f"{HOME}/.config/quickshell/data/notify-icons", f"{OUT}/notify-icons"
@@ -94,7 +211,9 @@ def apply():
         for name in files:
             os.makedirs(icons + d[len(src):], exist_ok=True)
             write(f"{icons}{d[len(src):]}/{name}", open(f"{d}/{name}").read().replace(BASE["muted"], p["muted"]))
+    bg, op = lk["background"], lk["background-opacity"]
     write(f"{OUT}/fuzzel.ini", "# written by theme\n[colors]\n"
+          f"background={bg[1:]}{alpha(op)}\n"
           f"text={hx['muted']}ff\ninput={hx['muted']}ff\nprompt={hx['primary']}ff\nmatch={hx['primary']}ff\nselection={hx['sel']}ff\n"
           f"selection-text={hx['accent']}ff\nselection-match={hx['primary']}ff\nborder={hx['primary']}ff\n")
     write(f"{OUT}/hyprlock.conf", f"# written by theme\n$primary = rgb({hx['primary']})\n$accent = rgb({hx['accent']})\n")
@@ -102,11 +221,53 @@ def apply():
     # gtk.css files, so switching themes doesn't change a tracked file. GTK reads it when an app starts.
     write(f"{OUT}/gtk-colors.css", "/* written by theme */\n"
           + "".join(f"@define-color nd_{k} {v};\n" for k, v in {**FIXED, **p}.items()))
+    apply_look(lk)
+
+
+def apply_look(lk):
+    """The look's files: each app's config includes its own (and falls back to the same colours when it's missing)."""
+    bg, op = lk["background"], float(lk["background-opacity"])
+    write(f"{OUT}/kitty.conf", f"# written by theme\nbackground {bg}\ncursor_text_color {bg}\n"
+          f"background_opacity {op / 100:g}\n")
+    write(f"{OUT}/ghostty", f"# written by theme\nbackground = {bg}\ncursor-text = {bg}\n"
+          f"background-opacity = {op / 100:g}\n")
+    write(f"{OUT}/foot.ini", f"# written by theme\n[colors-dark]\nalpha={op / 100:g}\nbackground={bg[1:]}\n"
+          f"cursor={bg[1:]} {TERM_FG[1:]}\n")
+    write(f"{OUT}/alacritty.toml", f'# written by theme\n[window]\nopacity = {op / 100:g}\n\n'
+          f'[colors.primary]\nbackground = "{bg}"\n\n[colors.cursor]\ntext = "{bg}"\n')
+    # Firefox, Thunderbird (their userChrome/userContent.css import it from the profile's chrome folder) and Apostrophe
+    css = f"/* written by theme */\n:root {{ --nd-bg: {bg}; }}\n"
+    for d in glob.glob(f"{HOME}/.config/mozilla/firefox/*/chrome") + glob.glob(f"{HOME}/.config/thunderbird/*/chrome"):
+        write(f"{d}/nightdrive-colors.css", css)
+    if os.path.isdir(APOSTROPHE):
+        write(f"{APOSTROPHE}/nightdrive-colors.css", css)
+    shadow = rgba(lk["shadow-color"], lk["shadow-opacity"])
+    inactive = rgba(lk["inactive-border-color"], lk["inactive-border-opacity"]) if lk["inactive-border"] == "on" \
+        else "rgba(00000000)"
+    inactive_shadow = shadow if lk["inactive-shadow"] == "on" else "rgba(00000000)"
+    write(f"{OUT}/look.lua", "-- written by theme: hyprland.lua runs it after its own look, `theme set` over IPC\n"
+          "hl.config({\n"
+          f'    general = {{ col = {{ active_border = "{rgba(lk["border-color"], lk["border-opacity"])}", '
+          f'inactive_border = "{inactive}" }} }},\n'
+          f'    decoration = {{ shadow = {{ enabled = {"true" if lk["shadow"] == "on" else "false"}, '
+          f'range = {lk["shadow-size"]}, color = "{shadow}", '
+          f'color_inactive = "{inactive_shadow}" }} }},\n'
+          "})\n")
+
+
+def reload_look():
+    """What doesn't follow its file by itself. Alacritty and Quickshell watch theirs; foot reads its own at a new window,
+    Firefox, Thunderbird and Apostrophe when they start."""
+    run = lambda *c: subprocess.run(c, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    run("hyprctl", "eval", f'dofile("{OUT}/look.lua")')
+    run("pkill", "-USR1", "-x", "kitty")      # kitty reloads its config
+    run("pkill", "-USR2", "-x", "ghostty")    # and Ghostty
 
 
 def reload():
     run = lambda *c: subprocess.run(c, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     run(f"{HOME}/.config/hypr/scripts/bar-style", "apply")       # top bar colours (the bar watches the file)
+    reload_look()
     # The file picker's portal keeps running and reads gtk.css only when it starts: restart it (D-Bus starts it
     # again on the next Open dialog), unless a picker is open right now
     out = subprocess.run(["hyprctl", "clients", "-j"], capture_output=True, text=True).stdout
@@ -121,12 +282,61 @@ def reload():
 args = sys.argv[1:]
 if args[:1] == ["apply"]:
     apply()
+    # Hyprland read look.lua when its config loaded: the one just written may be newer (or the first)
+    subprocess.run(["hyprctl", "eval", f'dofile("{OUT}/look.lua")'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     # bar.json too: without it the bar's icons have no colour. Waybar's start script wrote it before 13.10.2026.
     subprocess.run([f"{HOME}/.config/hypr/scripts/bar-style", "apply"])
 elif args[:1] == ["list"]:
     cur = current()
     for k, (label, _, _) in THEMES.items():
         print(f"{k}\t{label}\t{palette(k)['primary']}\t{'current' if k == cur else ''}")
+elif args[:1] == ["look"]:
+    for k, v in look().items():
+        print(f"{k}\t{v}\t{'' if v == LOOK[k] else 'changed'}")
+elif args[:1] == ["set"] and len(args) == 3:
+    value = check(args[1], args[2])
+    try:
+        mine = json.load(open(LOOK_STATE))
+    except (OSError, ValueError):
+        mine = {}
+    mine.pop(args[1], None)
+    if value != LOOK[args[1]]:
+        mine[args[1]] = value
+    os.makedirs(os.path.dirname(LOOK_STATE), exist_ok=True)
+    write(LOOK_STATE, json.dumps(mine, indent=1) + "\n")
+    apply()
+    reload_look()
+elif args[:1] == ["themes"]:
+    cur, lk, col = theme_name(), look(), current()
+    for tid, (t, mine) in themes().items():
+        tl = dict(LOOK, **t.get("look", {}))
+        state = "" if tid != cur else "current" if tl == lk and t.get("color") == col else "changed"
+        c = t.get("color", "violet")
+        print(f"{tid}\t{t.get('name', tid)}\t{palette(c if c in THEMES else 'violet')['primary']}\t{tl['background']}"
+              f"\t{'own' if mine else ''}\t{state}")
+elif args[:1] == ["use"] and len(args) == 2:
+    if args[1] not in themes():
+        sys.exit(f"unknown theme: {args[1]} ({', '.join(themes())})")
+    use(args[1])
+elif args[:1] == ["save"] and len(args) == 2 and args[1].strip():
+    name, tid = args[1].strip(), slug(args[1])
+    if not tid:
+        sys.exit("a name with letters or digits")
+    if os.path.exists(f"{OWN_THEMES}/{tid}.json"):
+        sys.exit(f"{name}: Nightdrive's own theme has that name")
+    os.makedirs(MY_THEMES, exist_ok=True)
+    write(f"{MY_THEMES}/{tid}.json", json.dumps({"name": name, "color": current(), "look": look()}, indent=1) + "\n")
+    os.makedirs(os.path.dirname(NAME_STATE), exist_ok=True)
+    write(NAME_STATE, tid + "\n")
+    print(tid)
+elif args[:1] == ["delete"] and len(args) == 2:
+    if not os.path.exists(f"{MY_THEMES}/{args[1]}.json"):
+        sys.exit(f"no theme of yours: {args[1]}")
+    os.remove(f"{MY_THEMES}/{args[1]}.json")
+    if theme_name() == args[1]:
+        os.remove(NAME_STATE)       # the values stay: they just aren't a saved theme any more
+elif args[:1] == ["reset"]:
+    use("default")
 elif args[:1] == ["color"]:
     if len(args) == 1:
         print(current())

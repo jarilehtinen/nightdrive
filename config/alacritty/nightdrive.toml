@@ -21,7 +21,7 @@ duration = 0
 
 # --- Tokyo Night (Omarchy's default theme), as in kitty ---
 [colors.primary]
-background = "#1a1b26"
+background = "#171822"
 foreground = "#c0caf5"
 
 [colors.selection]
@@ -30,7 +30,7 @@ text = "#c0caf5"
 
 [colors.cursor]
 cursor = "#c0caf5"
-text = "#1a1b26"
+text = "#171822"
 
 [colors.normal]
 black = "#15161e"

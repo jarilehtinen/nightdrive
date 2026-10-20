@@ -64,117 +64,6 @@ PanelWindow {
         Keys.onPressed: e => { if (e.key === Qt.Key_Escape) { win.open = false; e.accepted = true } }
     }
 
-    // ---- the parts: an on/off setting, a choice of three, a level ----
-    component Switch: Rectangle {
-        property bool checked: false
-        signal toggled()
-        width: 34; height: 20; radius: 10
-        color: checked ? Theme.accent : Theme.border
-        Rectangle {
-            width: 14; height: 14; radius: 7; y: 3
-            x: parent.checked ? 17 : 3
-            color: parent.checked ? Theme.bg : Theme.text
-            Behavior on x { NumberAnimation { duration: 120 } }
-        }
-        MouseArea { cursorShape: Qt.PointingHandCursor; anchors.fill: parent; onClicked: parent.toggled() }
-    }
-    component Title: Column {
-        property string title: ""
-        property string desc: ""
-        spacing: 4
-        Text { width: parent.width; text: parent.title; color: Theme.text; font { family: Theme.font; pixelSize: 14 } }
-        Text {
-            width: parent.width
-            text: parent.desc
-            wrapMode: Text.Wrap
-            lineHeight: 1.15
-            color: Theme.dim
-            font { family: Theme.font; pixelSize: 12 }
-        }
-    }
-    component Toggle: Item {
-        id: tg
-        property string title: ""
-        property string desc: ""
-        property bool checked: false
-        signal picked(bool v)
-        height: Math.max(t.implicitHeight, 20) + 16
-        Title { id: t; y: 8; width: parent.width - 50; title: tg.title; desc: tg.desc }
-        Switch { anchors.right: parent.right; y: 10; checked: tg.checked; onToggled: tg.picked(!tg.checked) }
-    }
-    component Choice: Column {
-        id: ch
-        property string title: ""
-        property string desc: ""
-        property var options: []
-        property int current: 0
-        signal picked(int v)
-        topPadding: 8; bottomPadding: 8
-        spacing: 10
-        Title { width: parent.width; title: ch.title; desc: ch.desc }
-        Rectangle {
-            width: parent.width; height: 36; radius: 8
-            color: Qt.rgba(1, 1, 1, 0.05)
-            Row {
-                anchors { fill: parent; margins: 3 }
-                spacing: 4
-                Repeater {
-                    model: ch.options
-                    Rectangle {
-                        required property string modelData
-                        required property int index
-                        readonly property bool on: ch.current === index
-                        width: (parent.width - 8) / 3; height: parent.height; radius: 6
-                        // the theme colour, stronger than a selected row: the choice has to read at a glance
-                        color: on ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.32) : area.containsMouse ? Theme.hover : "transparent"
-                        Text {
-                            anchors.centerIn: parent
-                            text: parent.modelData
-                            color: parent.on ? Qt.lighter(Theme.accent, 1.08) : Theme.dim
-                            font { family: Theme.font; pixelSize: 12; weight: parent.on ? Font.Medium : Font.Normal }
-                        }
-                        MouseArea { id: area; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: ch.picked(parent.index) }
-                    }
-                }
-            }
-        }
-    }
-    component Level: Column {
-        id: lv
-        property string title: ""
-        property string desc: ""
-        property int value: 0           // 0–100
-        property string lowText: ""     // labels at the ends of the slider; empty: the value on the right
-        property string highText: ""
-        property real dragging: -1
-        signal picked(int v)
-        topPadding: 8; bottomPadding: 12
-        spacing: 12
-        Title { width: parent.width; title: lv.title; desc: lv.desc }
-        Row {
-            width: parent.width
-            spacing: 12
-            Text { id: lo; text: lv.lowText; color: Theme.dim; anchors.verticalCenter: parent.verticalCenter; font { family: Theme.font; pixelSize: 11 } }
-            Slider {
-                width: parent.width - lo.width - hi.width - 24
-                anchors.verticalCenter: parent.verticalCenter
-                trackColor: Qt.rgba(1, 1, 1, 0.1)
-                value: lv.dragging >= 0 ? lv.dragging : lv.value / 100
-                onMoved: v => lv.dragging = v
-                onPressedChanged: if (!pressed && lv.dragging >= 0) { lv.picked(Math.round(lv.dragging * 100)); lv.dragging = -1 }
-            }
-            Text {
-                id: hi
-                width: lv.highText !== "" ? implicitWidth : 36
-                horizontalAlignment: Text.AlignRight
-                text: lv.highText !== "" ? lv.highText : Math.round(lv.dragging >= 0 ? lv.dragging * 100 : lv.value) + "%"
-                color: lv.highText !== "" ? Theme.dim : Theme.text
-                anchors.verticalCenter: parent.verticalCenter
-                font { family: Theme.font; pixelSize: lv.highText !== "" ? 11 : 13 }
-            }
-        }
-    }
-
     Rectangle {
         anchors.centerIn: parent
         width: 820
@@ -230,7 +119,7 @@ PanelWindow {
                     id: closeBtn
                     anchors { right: parent.right; verticalCenter: parent.verticalCenter }
                     width: 32; height: 32; radius: 6
-                    color: closeArea.containsMouse ? Theme.hover : Qt.rgba(1, 1, 1, 0.05)
+                    color: Qt.rgba(1, 1, 1, closeArea.containsMouse ? 0.10 : 0.05)   // hover: a little lighter, not the theme colour
                     Text { anchors.centerIn: parent; text: Icons.g("x"); color: Theme.dim; font { family: Icons.family; pixelSize: 16 } }
                     MouseArea { id: closeArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: win.open = false }
                 }
@@ -256,7 +145,7 @@ PanelWindow {
                     width: parent.colWidth
                     spacing: 4
                     MenuHeader { width: parent.width; title: "Noise control" }
-                    Level {
+                    SettingLevel {
                         width: parent.width
                         title: "Adaptive noise level"
                         desc: "In Adaptive mode: how much of the noise around you gets through."
@@ -264,21 +153,21 @@ PanelWindow {
                         value: win.values.adaptiveLevel || 0
                         onPicked: v => win.setValue("adaptiveLevel", v)
                     }
-                    Toggle {
+                    SettingToggle {
                         width: parent.width
                         title: "Conversation Awareness"
                         desc: "Lowers the volume and lets voices through when you start talking."
                         checked: !!win.values.conversation
                         onPicked: v => win.setValue("conversation", v)
                     }
-                    Toggle {
+                    SettingToggle {
                         width: parent.width
                         title: "One-Bud ANC"
                         desc: "Keeps noise cancelling on when only one AirPod is in your ear."
                         checked: !!win.values.oneBudAnc
                         onPicked: v => win.setValue("oneBudAnc", v)
                     }
-                    Toggle {
+                    SettingToggle {
                         width: parent.width
                         title: "Personalized Volume"
                         desc: "Adjusts the volume over time to your surroundings and how you listen."
@@ -287,7 +176,7 @@ PanelWindow {
                     }
                     Item { width: 1; height: 12 }
                     MenuHeader { width: parent.width; title: "Case" }
-                    Level {
+                    SettingLevel {
                         width: parent.width
                         title: "Case sound volume"
                         desc: "The chime the case plays when it starts charging or you open it."
@@ -300,14 +189,14 @@ PanelWindow {
                     width: parent.colWidth
                     spacing: 4
                     MenuHeader { width: parent.width; title: "Stem controls" }
-                    Toggle {
+                    SettingToggle {
                         width: parent.width
                         title: "Swipe for volume"
                         desc: "Swipe up or down on the stem to change the volume."
                         checked: !!win.values.swipeVolume
                         onPicked: v => win.setValue("swipeVolume", v)
                     }
-                    Choice {
+                    SettingChoice {
                         width: parent.width
                         title: "Press speed"
                         desc: "How quickly you need to press twice or three times in a row."
@@ -315,7 +204,7 @@ PanelWindow {
                         current: win.values.pressSpeed || 0
                         onPicked: v => win.setValue("pressSpeed", v)
                     }
-                    Choice {
+                    SettingChoice {
                         width: parent.width
                         title: "Press and hold duration"
                         desc: "How long to hold the stem to switch the listening mode."
@@ -325,14 +214,14 @@ PanelWindow {
                     }
                     Item { width: 1; height: 12 }
                     MenuHeader { width: parent.width; title: "Automatic pause" }
-                    Toggle {
+                    SettingToggle {
                         width: parent.width
                         title: "Ear detection"
                         desc: "Pauses when you take an AirPod out and resumes when you put it back."
                         checked: win.values.earDetection !== false
                         onPicked: v => win.setValue("earDetection", v)
                     }
-                    Toggle {
+                    SettingToggle {
                         width: parent.width
                         title: "Sleep detection"
                         desc: "Pauses the music when the AirPods notice you have fallen asleep."

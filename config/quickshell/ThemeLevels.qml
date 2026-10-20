@@ -1,8 +1,9 @@
 import QtQuick
 import Quickshell
 
-// The launcher's Settings › Theme: Color (the desktop's accent; the launcher recolors at once) and Background (the
-// wallpapers, yours and the bundled ones; ⌘⌫ moves one of yours to the trash). Background's rows are drawn as a grid
+// The launcher's Settings › Theme: Themes (Nightdrive's and the ones saved in Theme Editor; ⌘⌫ deletes one of yours),
+// Color (the desktop's accent; the launcher recolors at once), Background (the wallpapers, yours and the bundled ones;
+// ⌘⌫ moves one of yours to the trash) and Theme Editor (ThemeEditor.qml: the window background, borders and shadow). Background's rows are drawn as a grid
 // by Launcher.qml (grid, once wallLoaded), which also marks wallCurrent there.
 // Launcher.qml asks it like DefaultAppsLevels (levels, titles, parents, items, activate, footer, entered), and also
 // deleteSelected (⌘⌫, Delete).
@@ -11,34 +12,47 @@ Item {
     property var launcher: null
 
     property var themeList: []                // Color: [{ value, name, swatch, current }] (hypr/scripts/theme list)
+    property var savedList: []                // Themes: [{ id, name, swatch, own, state }] (hypr/scripts/theme themes)
     property var wallList: []                 // Background: [{ path, thumb, name, group, own }] (hypr/scripts/wallpaper list)
     property bool wallLoaded: false
     property string wallCurrent: ""           // the current wallpaper
 
     readonly property string scripts: Quickshell.env("HOME") + "/.config/hypr/scripts"
-    readonly property var levels: ["theme", "themecolor", "background"]
-    readonly property var titles: ({ theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background" })
-    readonly property var parents: ({ theme: "settings", themecolor: "theme", background: "theme" })
+    readonly property var levels: ["theme", "themes", "themecolor", "background"]
+    readonly property var titles: ({ theme: "Settings › Theme", themes: "Settings › Theme › Themes", themecolor: "Settings › Theme › Color",
+                                     background: "Settings › Theme › Background" })
+    readonly property var parents: ({ theme: "settings", themes: "theme", themecolor: "theme", background: "theme" })
 
-    function footer(level, query) { return "" }
+    function footer(level, query) { return level === "themes" ? "Cmd+Backspace: delete one of yours" : "" }
     function opened() {}
     function entered(level) {
         if (level === "background") wallProc.running = true
         if (level === "theme" || level === "themecolor") themeProc.running = true
+        if (level === "theme" || level === "themes") savedProc.running = true
     }
     function shiftActivate(it) {}
 
     // Theme: Color with its current value, and Background (the root search finds them too)
     function themeItems() {
         const cur = themeList.find(c => c.current)
+        const saved = savedList.find(c => c.state !== "")
         return [
+            { kind: "nav", name: "Themes", glyph: "swatch-book", target: "themes",
+              summary: saved ? saved.name + (saved.state === "changed" ? " · changed" : "") : undefined },
             { kind: "nav", name: "Color", glyph: "palette", target: "themecolor", summary: cur ? cur.name.toLowerCase() : undefined },
-            { kind: "nav", name: "Background", glyph: "wallpaper", target: "background" }
+            { kind: "nav", name: "Background", glyph: "wallpaper", target: "background" },
+            { kind: "action", name: "Theme Editor…", glyph: "paint-bucket", cmd: ["qs", "ipc", "call", "themeeditor", "open"] }
         ]
     }
 
     function items(level, q) {
         if (level === "theme") return { all: themeItems().map(i => ({ item: i, text: i.name, extra: launcher.settingsAliases[i.name] || "" })) }
+        if (level === "themes") {
+            if (savedList.length === 0) return [{ kind: "hint", name: "Loading…" }]
+            return { all: savedList.map(c => ({ item: { kind: "savedtheme", value: c.id, name: c.name, swatch: c.swatch, own: c.own,
+                                                        summary: c.state === "current" ? "current" : c.state === "changed" ? "current · changed"
+                                                               : c.own ? "yours" : undefined }, text: c.name })) }
+        }
         if (level === "themecolor") {
             if (themeList.length === 0) return [{ kind: "hint", name: "Loading…" }]
             return { all: themeList.map(c => ({ item: { kind: "themecolor", value: c.value, name: c.name, swatch: c.swatch,
@@ -61,6 +75,12 @@ Item {
             Quickshell.execDetached([scripts + "/theme", "color", String(it.value)])
             return true
         }
+        if (it.kind === "savedtheme") {   // stays open: themes can be tried one after another
+            l.keepSelection()
+            savedList = savedList.map(c => Object.assign({}, c, { state: c.id === it.value ? "current" : "" }))
+            Quickshell.execDetached([scripts + "/theme", "use", String(it.value)])
+            return true
+        }
         if (it.kind === "walladd") {      // the launcher closes while the picker is open; the script reopens Background
             l.open = false
             Quickshell.execDetached([scripts + "/wallpaper", "add"])
@@ -77,6 +97,16 @@ Item {
     // Only your own images (~/Pictures/Wallpapers, `own` from hypr/scripts/wallpaper list); bundled ones can't be deleted.
     function deleteSelected() {
         const l = launcher
+        if (l.level === "themes") {      // a theme of yours: a second press deletes it (the values in use stay)
+            const it = l.results[l.selIndex]
+            if (!it || it.kind !== "savedtheme" || !it.own) { l.shakeNow(); return true }
+            if (!arm("deltheme:" + it.value)) return true
+            savedList = savedList.filter(c => c.id !== it.value)
+            if (l.selIndex >= l.results.length) l.select(l.results.length - 1)
+            Quickshell.execDetached([scripts + "/theme", "delete", String(it.value)])
+            savedReload.restart()
+            return true
+        }
         if (l.level !== "background" || !wallLoaded) return false
         const it = l.results[l.selIndex]
         if (!it || it.kind !== "wall" || !it.own) { l.shakeNow(); return true }
@@ -94,6 +124,7 @@ Item {
         return true
     }
     Timer { id: disarmTimer; interval: 4000; onTriggered: if (t.launcher) t.launcher.armed = "" }
+    Timer { id: savedReload; interval: 600; onTriggered: savedProc.running = true }
     Timer { id: wallReload; interval: 600; onTriggered: wallProc.running = true }   // current wallpaper (the default, if the deleted one was in use)
 
     // Background: wallpapers and their previews (the script creates missing previews the first time)
@@ -109,6 +140,17 @@ Item {
             t.wallLoaded = true
             // On open, select the current wallpaper
             if (first || t.launcher.query === "") t.launcher.selectWhere(r => r.path === t.wallCurrent)
+        }
+    }
+    // Themes: the saved themes; select the one in use
+    Sh {
+        id: savedProc
+        command: [t.scripts + "/theme", "themes"]
+        onResult: text => {
+            t.savedList = text.split("\n").map(l => l.split("\t")).filter(f => f.length >= 6)
+                .map(f => ({ id: f[0], name: f[1], swatch: f[2], own: f[4] === "own", state: f[5] }))
+            const l = t.launcher
+            if (l.level === "themes" && l.query === "") l.selectWhere(r => r.value === (t.savedList.find(c => c.state !== "") || {}).id)
         }
     }
     // Color: themes and the current one; select the current one

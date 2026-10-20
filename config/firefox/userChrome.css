@@ -1,3 +1,5 @@
+@import url("nightdrive-colors.css");   /* the look's background (--nd-bg), written by hypr/scripts/theme */
+
 /* Tabs below the address bar.
    To restore the default: remove this file (symlink) from the profile's chrome folder and restart Firefox. */
 #navigator-toolbox { display: flex !important; flex-direction: column !important; }
@@ -9,7 +11,7 @@
 
 /* ===== Nightdrive's colours (from Tokyo Night) ===== */
 :root {
-  --jn-bg: #1a1b26;  --jn-bg-dark: #16161e;  --jn-bg-hl: #292e42;  --jn-bg-hl2: #3b4261;
+  --jn-bg: var(--nd-bg, #171822);  --jn-bg-dark: #14141b;  --jn-bg-hl: #292e42;  --jn-bg-hl2: #3b4261;
   --jn-fg: #c0caf5;  --jn-fg-dim: #787c99;   --jn-border: #292e42;  --jn-accent: #7aa2f7;
 
   --toolbar-bgcolor: var(--jn-bg) !important;                 /* nav-bar, bookmarks, selected tab */
@@ -53,9 +55,9 @@
 #nav-bar, #PersonalToolbar { background: var(--jn-bg) !important; }
 #TabsToolbar { background: var(--jn-bg) !important; padding-left: 5px !important; }
 .tab-background[selected] { background: #2a2e45 !important; }
-.tab-background:not([selected]) { background: #1e1f2d !important; }   /* inactive: a touch lighter than the tab strip #1a1b26 */
-.tabbrowser-tab { --tab-hover-background-color: #222435 !important; }   /* hover: halfway between inactive #1a1b26 and selected #2a2e45 */
-.tabbrowser-tab:hover > .tab-stack > .tab-background:not([selected]) { background: #222435 !important; }
+.tab-background:not([selected]) { background: var(--jn-bg) !important; }   /* inactive: the tab strip's own colour, no box */
+.tabbrowser-tab { --tab-hover-background-color: #222537 !important; }   /* hover: between the tab strip and selected #2a2e45 */
+.tabbrowser-tab:hover > .tab-stack > .tab-background:not([selected]) { background: #222537 !important; }
 .tabbrowser-tab[selected] .tab-label { color: var(--jn-fg) !important; }
 .tabbrowser-tab:not([selected]) .tab-label { color: #8a90b5 !important; }
 #urlbar-background { background: var(--jn-bg-dark) !important; border-color: var(--jn-border) !important; }
