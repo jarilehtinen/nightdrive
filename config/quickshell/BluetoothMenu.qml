@@ -115,24 +115,37 @@ Column {
         text: "No devices. Press Scan for devices."
     }
 
-    Column {
+    // A long list (a scan in a busy place) scrolls: maxRows whole rows, no sliver of the next one, so the menu
+    // stays on the screen
+    Flickable {
+        id: flick
+        readonly property int maxRows: 8
         visible: m.powered
         width: parent.width
-        spacing: 2
-        Repeater {
-            model: m.powered ? m.shown : []
-            delegate: MenuRow {
-                required property var modelData
-                width: parent.width
-                icon: m.iconFor(modelData.name)
-                label: modelData.name
-                active: modelData.connected
-                checkIcon: modelData.connected ? "check" : ""
-                hoverCheckIcon: modelData.connected ? "unplug" : ""   // a click disconnects
-                busy: m.busy === modelData.mac
-                detail: modelData.battery !== "" ? modelData.battery + "%"
-                      : (!modelData.paired ? "not paired" : "")
-                onClicked: m.activate(modelData)
+        height: Math.min(rows.implicitHeight, maxRows * (34 + rows.spacing) - rows.spacing)
+        contentHeight: rows.implicitHeight
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+        TouchScroll { view: flick }
+        Column {
+            id: rows
+            width: flick.width
+            spacing: 2
+            Repeater {
+                model: m.powered ? m.shown : []
+                delegate: MenuRow {
+                    required property var modelData
+                    width: parent.width
+                    icon: m.iconFor(modelData.name)
+                    label: modelData.name
+                    active: modelData.connected
+                    checkIcon: modelData.connected ? "check" : ""
+                    hoverCheckIcon: modelData.connected ? "unplug" : ""   // a click disconnects
+                    busy: m.busy === modelData.mac
+                    detail: modelData.battery !== "" ? modelData.battery + "%"
+                          : (!modelData.paired ? "not paired" : "")
+                    onClicked: m.activate(modelData)
+                }
             }
         }
     }

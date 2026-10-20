@@ -71,8 +71,29 @@ ShellRoot {
             }
         }
         if (loader.item) walk(loader.item)
-        out.sort((a, b) => a.mapToItem(card, 0, 0).y - b.mapToItem(card, 0, 0).y)
+        out.sort((a, b) => navY(a) - navY(b))
         return out
+    }
+    // The scrolling list (Flickable, ListView) a row is in, or null
+    function flickOf(it) {
+        for (let p = it.parent; p; p = p.parent)
+            if (p.contentItem !== undefined && p.contentY !== undefined) return p
+        return null
+    }
+    // A row's place in the menu, top to bottom. A row in a scrolling list counts within the list's own box, so a row
+    // scrolled out of sight still comes before the rows under the list
+    function navY(it) {
+        const f = flickOf(it)
+        if (!f) return it.mapToItem(card, 0, 0).y
+        const y = it.mapToItem(f.contentItem, 0, 0).y
+        return f.mapToItem(card, 0, 0).y + y / Math.max(1, f.contentHeight) * f.height
+    }
+    function navShow(it) {
+        const f = flickOf(it)
+        if (!f) return
+        const y = it.mapToItem(f.contentItem, 0, 0).y
+        if (y < f.contentY) f.contentY = y
+        else if (y + it.height > f.contentY + f.height) f.contentY = y + it.height - f.height
     }
     function navMove(d) {
         const rows = navRows()
@@ -82,6 +103,7 @@ ShellRoot {
         if (navItem) navItem.navSelected = false
         navItem = rows[i]
         navItem.navSelected = true
+        navShow(navItem)
     }
     function navAct(a) {     // a: left | right | up | down | enter
         if (!navMode) return false
