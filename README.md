@@ -57,7 +57,8 @@ you walk through the menus with the arrow keys.
 
 System › Install › Software in the launcher searches Fedora's packages and Flathub's apps at once, one row per app (Fedora's
 when both have it, Tab in the details takes Flathub's), with command-line tools below and the details before installing.
-Browse has Popular (top 100) and categories: Flathub's most installed apps that your machine can run (ARM or x86). System ›
+Browse has Popular (top 100) and categories: Flathub's most installed apps that your machine can run (ARM or x86), and in
+Terminals Fedora's terminals first (Ghostty, kitty, Alacritty, foot, Ptyxis). System ›
 Remove has Software (both) and Webapps, and its search looks in both.
 
 Everything beyond the core is an optional part you choose when installing, or later under System › Install: apps Nightdrive

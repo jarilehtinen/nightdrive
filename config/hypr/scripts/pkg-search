@@ -90,10 +90,16 @@ def listing(key):
     cat = catalog()
     fedora = {appid(aid): pkg for pkg, (aid, *_) in cat.items() if aid}    # AppStream id → Fedora's package
     rpms, fps = installed()
-    rows = [{"name": e["name"], "summary": e["summary"], "src": e["src"], "id": e["id"], "icon": "", "glyph": e.get("glyph"),
+    # A Fedora package's own icon when its AppStream data has one (kitty), the glyph otherwise (foot)
+    rows = [{"name": e["name"], "summary": e["summary"], "src": e["src"], "id": e["id"],
+             "icon": fedora_icon(cat[e["id"]][3]) if e["src"] == "dnf" and e["id"] in cat else "", "glyph": e.get("glyph"),
              "installed": e["id"] in (rpms if e["src"] == "dnf" else fps), "alt": None} for e in extra]
     for a in picked:
         pkg = fedora.get(appid(a["id"]))
+        # Already first as an EXTRA row: by package, or by name when the ids differ (Flathub's Ptyxis is app.devsuite.Ptyxis,
+        # Fedora's org.gnome.Ptyxis)
+        if pkg in {e["id"] for e in extra} or a["name"].lower() in {e["name"].lower() for e in extra}:
+            continue
         if pkg:
             _, fname, fsum, icon, _ = cat[pkg]
             rows.append({"name": fname or a["name"], "summary": fsum or a["summary"], "src": "dnf", "id": pkg, "icon": fedora_icon(icon),

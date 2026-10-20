@@ -39,7 +39,7 @@ KINDS = [
     ("text", "Text editor", "file-pen-line", "text editor", ["text/plain"], ["TextEditor"]),
     # Without its own default, source code opens in the text editor (its types are text/plain's): Markdown's in Apostrophe
     ("code", "Code editor", "code", "code", CODE, ["TextEditor", "IDE"]),
-    ("terminal", "Terminal", "square-terminal", "terminal", [], ["TerminalEmulator"]),
+    ("terminal", "Terminal", "square-terminal", "cat:terminals", [], ["TerminalEmulator"]),
     ("images", "Images", "image", "image viewer",
      ["image/png", "image/jpeg", "image/gif", "image/webp", "image/bmp", "image/tiff", "image/svg+xml", "image/avif",
       "image/heic"], []),

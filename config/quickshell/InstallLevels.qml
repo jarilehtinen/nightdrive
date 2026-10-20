@@ -181,9 +181,11 @@ Item {
             n.launcher.selectFirst()
         }
     }
-    // Browse's categories: their names and icons come with the lists (software-catalog writes both)
+    // Browse's categories: their names and icons come with the lists (software-catalog writes both), read again when an
+    // update brings a new file
     FileView {
         path: Quickshell.env("HOME") + "/.config/quickshell/data/software.json"; printErrors: false
+        watchChanges: true; onFileChanged: reload()
         onLoaded: { try { n.swCats = JSON.parse(text()).categories || [] } catch (e) { n.swCats = [] } }
     }
     // Recommended, Plugins and Webapp: plugins.txt via `nightdrive plugins` (id, name, icon, description, default,

@@ -13,7 +13,8 @@ OUT = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../quickshel
 # The launcher shows the categories in this order
 CATEGORIES = [("browsers", "Browsers", "globe"), ("communication", "Communication", "message-circle"),
               ("productivity", "Productivity", "briefcase"), ("creative", "Creative", "palette"), ("media", "Media", "clapperboard"),
-              ("development", "Development", "code"), ("gaming", "Gaming", "gamepad-2"), ("utilities", "Utilities", "wrench")]
+              ("development", "Development", "code"), ("terminals", "Terminals", "square-terminal"), ("gaming", "Gaming", "gamepad-2"),
+              ("utilities", "Utilities", "wrench")]
 # An app's category from Flathub's (FreeDesktop) categories: the first rule that matches its main category or one of its
 # sub-categories wins. The order settles the overlaps: a game is Gaming and a browser a Browser whatever else they say
 # (Vivaldi: also Email, Viewer, …), a player that also records (VLC) is Media, an AI chat that's a development tool
@@ -21,7 +22,8 @@ CATEGORIES = [("browsers", "Browsers", "globe"), ("communication", "Communicatio
 RULES = [
     ("gaming", ["game"]),
     ("browsers", ["WebBrowser"]),
-    ("utilities", ["Viewer", "Scanning", "Emulator", "TerminalEmulator", "Calculator", "P2P", "FileTransfer"]),
+    ("terminals", ["TerminalEmulator"]),
+    ("utilities", ["Viewer", "Scanning", "Emulator", "Calculator", "P2P", "FileTransfer"]),
     ("media", ["Player", "TV"]),
     ("development", ["Development", "IDE", "WebDevelopment", "Debugger", "RevisionControl", "Database"]),
     ("communication", ["InstantMessaging", "Chat", "Email", "VideoConference", "Telephony", "IRCClient", "News", "Feed"]),
@@ -47,9 +49,20 @@ EXCLUDE = {
 # Test builds next to the real one (Google Chrome (unstable), com.google.ChromeDev)
 PRERELEASE = re.compile(r"\((unstable|beta|dev|nightly|canary|preview)\)|\.(Dev|Beta|Nightly|Canary|Unstable|Devel)$", re.I)
 # Rows that Flathub's numbers don't give, first in their list. platform/arch: only there (platform script's names).
+# Terminals: a sandbox suits them badly, so the good ones are Fedora's (Ghostty from Nightdrive's COPR), not Flathub's.
 EXTRA = [
     {"src": "dnf", "id": "steam", "name": "Steam", "summary": "Steam for Apple Silicon (x86 games through muvm and FEX)",
      "category": "gaming", "platform": "asahi", "glyph": "gamepad-2"},
+    {"src": "dnf", "id": "ghostty", "name": "Ghostty", "summary": "Fast, native terminal with GPU rendering",
+     "category": "terminals", "glyph": "square-terminal"},
+    {"src": "dnf", "id": "kitty", "name": "kitty", "summary": "GPU-based terminal with tabs, splits and images (Nightdrive's default)",
+     "category": "terminals", "glyph": "square-terminal"},
+    {"src": "dnf", "id": "alacritty", "name": "Alacritty", "summary": "Minimal and fast OpenGL terminal",
+     "category": "terminals", "glyph": "square-terminal"},
+    {"src": "dnf", "id": "foot", "name": "foot", "summary": "Lightweight Wayland terminal",
+     "category": "terminals", "glyph": "square-terminal"},
+    {"src": "dnf", "id": "ptyxis", "name": "Ptyxis", "summary": "GNOME's terminal, made for containers (Toolbx, Distrobox)",
+     "category": "terminals", "glyph": "square-terminal"},
 ]
 
 

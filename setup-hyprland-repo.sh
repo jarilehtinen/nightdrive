@@ -1,7 +1,8 @@
 #!/bin/bash
 # The dnf repo of the Hyprland stack: Nightdrive's own COPR jarilehtinen/nightdrive (aarch64 and x86_64, specs in
 # github.com/nightdrive-sh/nightdrive-packages). Fedora's own repos have no Hyprland, and its Hyprland libraries are too
-# old. includepkgs limits the COPR to the stack's packages, so it never replaces another Fedora package.
+# old. includepkgs limits the COPR to the stack's packages, so it never replaces another Fedora package. Ghostty is there
+# too (Install › Software › Terminals): Fedora and Flathub don't have it.
 # It replaces arcaneon/arcos, the COPR Nightdrive used until 19.10.2026, whose aarch64 builds fell behind: its repo goes,
 # and the next dnf upgrade moves the packages over (hyprland obsoletes hyprland-uwsm, hyprland-guiutils the Qt utilities).
 # Run by install.sh, `nightdrive update` (only when something is to change) and the sandbox's Containerfile.
@@ -10,7 +11,7 @@
 set -euo pipefail
 COPR=jarilehtinen/nightdrive
 OLD=arcaneon/arcos
-INCLUDE=hypr*,aquamarine,xdg-desktop-portal-hyprland,uwsm,lua5.5
+INCLUDE=hypr*,aquamarine,xdg-desktop-portal-hyprland,uwsm,lua5.5,ghostty
 repo_file() { ls /etc/yum.repos.d/*copr*"${1%/*}"*"${1#*/}"*.repo 2>/dev/null | head -1 || true; }
 # dnf5 vendor change policy: the stack's packages may move to this COPR from arcos (and from Fedora's own, older
 # Hyprland libraries). Fedora Asahi Remix turns vendor changes off (allow_vendor_change=False, "sticky vendors"), so
