@@ -145,3 +145,29 @@ as [#5329](https://gitlab.freedesktop.org/gstreamer/gstreamer/-/work_items/5329)
 **A fix for everyone could be:** GStreamer's fix, waiting as
 [!11741](https://gitlab.freedesktop.org/gstreamer/gstreamer/-/merge_requests/11741) (a draft in October 2026). Once a
 GStreamer release with it reaches Fedora, the receiver's crash exception and this entry can go.
+
+## WezTerm from Flathub doesn't open a window
+
+**Seen:** MacBook (Apple Silicon), Fedora Asahi Remix 44, Hyprland 0.56.2, Flathub's `org.wezfurlong.wezterm`
+20240203-110809-5046fc22. Found 2026-10-20.
+
+**Symptom:** WezTerm starts (its process and shell run, and starting it again says "Spawned your command via the
+existing GUI instance"), but no window ever shows. XWayland (`--config enable_wayland=false`) and software rendering
+(`--config "front_end='Software'"`) don't show one either.
+
+**Cause:** Flathub's WezTerm is its last stable release, from February 2024, on the Flatpak runtime 23.08, which has
+ended. Its Mesa has no Apple Silicon GPU driver (it draws with llvmpipe), and that release has Wayland problems with
+newer compositors. WezTerm is developed further in nightly builds only. Install › Software › Terminals leaves it out
+for this reason; a search still finds it.
+
+**Workaround:** WezTerm's own nightly builds for Fedora (aarch64 and x86_64), not tried on Nightdrive yet:
+
+```
+sudo dnf copr enable wezfurlong/wezterm-nightly
+sudo dnf install wezterm
+```
+
+Undo: `sudo dnf remove wezterm && sudo dnf copr remove wezfurlong/wezterm-nightly`.
+
+**A fix for everyone could be:** offering the nightly builds in Terminals once they are tried here, or Flathub's
+build again if it is updated.

@@ -6302,17 +6302,6 @@
 "category": "media"
 },
 {
-"id": "org.wezfurlong.wezterm",
-"name": "WezTerm",
-"summary": "Powerful terminal and multiplexer",
-"arches": [
-"aarch64",
-"x86_64"
-],
-"installs": 2196,
-"category": "terminals"
-},
-{
 "id": "org.gnome.Podcasts",
 "name": "Podcasts",
 "summary": "Listen to your favorite shows",

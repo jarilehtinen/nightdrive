@@ -45,6 +45,7 @@ EXCLUDE = {
     "org.gnome.Extensions": "GNOME Shell extensions",
     "io.github.realmazharhussain.GdmSettings": "GDM's settings: Nightdrive doesn't use GDM",
     "com.github.GradienceTeam.Gradience": "libadwaita theming: Nightdrive themes GTK itself",
+    "org.wezfurlong.wezterm": "its window never shows on Hyprland (Flathub's build is from 2024, on an ended runtime)",
 }
 # Test builds next to the real one (Google Chrome (unstable), com.google.ChromeDev)
 PRERELEASE = re.compile(r"\((unstable|beta|dev|nightly|canary|preview)\)|\.(Dev|Beta|Nightly|Canary|Unstable|Devel)$", re.I)
