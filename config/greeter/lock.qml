@@ -19,6 +19,14 @@ ShellRoot {
     // a missing service would fall back to PAM's "other", which refuses every password
     readonly property string pamService: Quickshell.env("NIGHTDRIVE_LOCK_PAM") || "login"
 
+    // The screen with the prompt: the focused monitor, where the keyboard goes; the first screen before Hyprland's state has
+    // arrived or if it names none of them, so there's always one. By name: monitorFor() gave another object than
+    // focusedMonitor, and no screen had the prompt.
+    readonly property string promptScreen: {
+        const f = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : ""
+        if (Quickshell.screens.some(s => s.name === f)) return f
+        return Quickshell.screens.length > 0 ? Quickshell.screens[0].name : ""
+    }
     property string pending: ""     // typed password, waiting for PAM's prompt
     property bool busy: false
     property string message: ""
@@ -65,10 +73,7 @@ ShellRoot {
             color: "#1a1b26"
             LoginView {
                 anchors.fill: parent
-                // The prompt on the focused monitor, where the keyboard goes; before Hyprland's state has arrived, the
-                // first screen
-                main: Hyprland.focusedMonitor ? Hyprland.monitorFor(surface.screen) === Hyprland.focusedMonitor
-                                              : surface.screen === Quickshell.screens[0]
+                main: surface.screen !== null && surface.screen.name === root.promptScreen
                 busy: root.busy
                 message: root.message
                 onTyping: root.message = ""
