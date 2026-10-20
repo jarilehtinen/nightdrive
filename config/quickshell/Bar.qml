@@ -117,7 +117,10 @@ Variants {
                 MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: Quickshell.execDetached(["hyprctl", "dispatch", "hl.dsp.workspace.toggle_special(\"drawer\")"])
+                    // On this screen: the drawer opens on the focused one, and clicking the bar doesn't focus it
+                    onClicked: Quickshell.execDetached(["sh", "-c", 'hyprctl dispatch "hl.dsp.focus({ monitor = \\"$1\\" })"; ' +
+                                                        'hyprctl dispatch "hl.dsp.workspace.toggle_special(\\"drawer\\")"',
+                                                        "sh", win.modelData.name])
                 }
             }
         }
