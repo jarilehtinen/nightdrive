@@ -6,8 +6,9 @@ font-family = JetBrains Mono
 font-style = Thin
 font-style-bold = SemiBold
 font-size = 9.5
-# The thin face draws thinner and dimmer than in kitty without it
+# The thin face draws thinner and dimmer than in kitty without these: linear blending is the closest to kitty's
 font-thicken = true
+alpha-blending = linear
 
 # --- Appearance ---
 window-padding-x = 10
