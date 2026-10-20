@@ -248,6 +248,21 @@ Rectangle {
             }
         }
 
+        // A level (hint value: the battery's charge) as a meter under the text, red on a critical one
+        Item { width: 1; height: meter.visible ? 10 : 0 }
+        Rectangle {
+            id: meter
+            visible: card.row.value >= 0
+            width: parent.width; height: visible ? 4 : 0
+            radius: 2
+            color: Theme.border
+            Rectangle {
+                width: Math.max(height, parent.width * card.row.value / 100)
+                height: parent.height; radius: 2
+                color: card.row.critical ? Theme.danger : Theme.accent
+            }
+        }
+
         // A preview picture (a screenshot) under the text, as wide as the card; a tall one at most previewHeight high and
         // narrower then (the whole picture always shows)
         Item { width: 1; height: shot.visible ? 10 : 0 }

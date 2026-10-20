@@ -291,7 +291,8 @@ Singleton {
                 summary: n.summary, body: n.body,
                 // The app's icon; the notification's own picture (an avatar, a cover) goes to the right, and so does
                 // a device icon (blueman's headphones). Any other app_icon is the app's own icon again: shown once.
-                icon: appIcon || own,
+                // A Lucide glyph asked for by name (lucide:<name>) wins over an icon named like the app ("Battery")
+                icon: own.startsWith("lucide:") ? own : appIcon || own,
                 image: (n.image && !named ? n.image : "") || (appIcon && s.ownIconNames.indexOf(n.appIcon || named) >= 0 ? own : ""),
                 // A picture to show under the text, not as a square (screenshots: hypr/scripts/screenshot)
                 preview: !!n.image && !named && hints.category === "x-nightdrive.preview",
@@ -299,6 +300,8 @@ Singleton {
                 wmclass: e ? e.startupClass : "",
                 time: same ? prev.time : Date.now(),
                 critical: n.urgency === NotificationUrgency.Critical,
+                // A level to show as a meter under the text, 0–100 (hint value: `-h int:value:N`; -1 = none)
+                value: typeof hints.value === "number" ? Math.max(0, Math.min(100, hints.value)) : -1,
                 tag: "",
                 expires: hints["x-nightdrive-expires"] > 0 ? Date.now() + hints["x-nightdrive-expires"] * 1000 : 0
             }

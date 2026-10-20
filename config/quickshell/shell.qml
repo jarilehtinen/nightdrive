@@ -169,6 +169,8 @@ ShellRoot {
 
     NotificationPopups {}
 
+    BatteryWatch {}
+
     Picker {}
 
     PowerDialog {}
