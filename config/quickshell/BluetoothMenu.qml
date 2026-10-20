@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell
+import Quickshell.Io
 
 // Bluetooth: on/off, devices, connecting, scanning for devices. Uses bluetoothctl.
 Column {
@@ -19,6 +20,7 @@ Column {
     property string busy: ""
     property string message: ""
     property string messageMac: ""   // the device the error is about: it clears once that device is connected
+    property string passkey: ""      // shown while pairing a keyboard that asks for it to be typed
     signal close()
 
     function refresh() { powerProc.running = true; listProc.running = true }
@@ -30,8 +32,18 @@ Column {
     function activate(d) {
         if (m.busy !== "") return
         m.busy = d.mac; m.message = ""; m.messageMac = d.mac
-        actProc.environment = { "MAC": d.mac, "MODE": d.connected ? "disconnect" : (d.paired ? "connect" : "pair") }
+        if (!d.connected && !d.paired) {
+            pairProc.environment = { "MAC": d.mac }
+            pairProc.running = true
+            return
+        }
+        actProc.environment = { "MAC": d.mac, "MODE": d.connected ? "disconnect" : "connect" }
         actProc.running = true
+    }
+    function done(ok, lastLine) {
+        m.busy = ""
+        if (!ok) m.message = lastLine
+        m.refresh()
     }
     function iconFor(name) {
         return /head|buds|airpods|wh-|wf-|sony/i.test(name) ? "headphones"
@@ -83,16 +95,29 @@ Column {
         script: 'case "$MODE" in\n' +
                 '  disconnect) bluetoothctl disconnect "$MAC" ;;\n' +
                 '  connect) bluetoothctl connect "$MAC" ;;\n' +
-                '  pair) bluetoothctl pair "$MAC" && bluetoothctl trust "$MAC" && bluetoothctl connect "$MAC" ;;\n' +
                 'esac'
         onResult: text => {
-            m.busy = ""
-            if (actProc.exitCode !== 0) {
-                const lines = text.trim().split("\n")
-                m.message = lines[lines.length - 1]
-            }
-            m.refresh()
+            const lines = text.trim().split("\n")
+            m.done(actProc.exitCode === 0, lines[lines.length - 1])
         }
+    }
+    // Pairing reads the output as it comes: a keyboard may show a passkey to type on it (the agent prints it), and
+    // that has to be on the screen while bluetoothctl waits, not after it
+    Process {
+        id: pairProc
+        property string last: ""
+        command: ["bash", "-c", 'exec 2>&1; bluetoothctl --agent KeyboardDisplay --timeout 60 pair "$MAC" && ' +
+                  'bluetoothctl trust "$MAC" && bluetoothctl connect "$MAC"']
+        stdout: SplitParser {
+            onRead: line => {
+                const l = line.replace(/\x1b\[[0-9;]*m/g, "").trim()
+                if (l === "") return
+                pairProc.last = l
+                const k = l.match(/(?:passkey|pin code)\D*(\d{4,6})/i)
+                if (k) m.passkey = k[1]
+            }
+        }
+        onExited: code => { m.passkey = ""; m.done(code === 0, pairProc.last) }
     }
 
     MenuHeader {
@@ -160,6 +185,11 @@ Column {
         onClicked: m.showHidden = !m.showHidden
     }
 
+    MenuNote {
+        visible: m.passkey !== ""
+        variant: "warning"
+        text: "Type " + m.passkey + " on the keyboard, then Enter"
+    }
     MenuNote {
         visible: m.message !== ""
         variant: "danger"
