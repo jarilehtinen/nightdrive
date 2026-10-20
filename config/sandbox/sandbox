@@ -63,6 +63,10 @@ up() {
   write_local "$SHOT_MODE" "$SHOT_SCALE"
   # The same content link.sh writes into the repo, so its comparison matches and it doesn't try to write (read-only)
   printf 'screencopy {\n    custom_picker_binary = /home/nd/.config/hypr/scripts/share-picker\n}\n' > "$state/xdph.conf"
+  # Your private local.d (README › Make it yours) stays out too: its links point outside the repo, and Hyprland can't
+  # open them in the container (a config error on every screenshot)
+  mkdir -p "$state/local.d"
+  [[ -d $repo/config/hypr/local.d ]] && opts+=(-v "$state/local.d":/home/nd/nightdrive/config/hypr/local.d:ro)
   # A file mounted inside the read-only repo needs a file to mount over: Podman would create a missing one in the repo
   # itself, owned by a subordinate uid. An empty one made here instead, and down removes it again.
   for f in local.lua xdph.conf; do

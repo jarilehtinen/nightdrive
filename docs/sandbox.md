@@ -21,7 +21,7 @@ you): without one Hyprland crashes at start. Tested on x86_64 (Rocky Linux 9, In
 The repo is mounted read-only, so an edit reloads in the sandbox right away, as on the desktop (and the same Quickshell
 quirks apply: it doesn't watch `shell.qml` once that file has been replaced by a new one, and components listed in
 `qmldir` keep their old version until a restart). The container gets its own `config/hypr/local.lua` and `xdph.conf`
-mounted over the repo's, so your own `local.lua` doesn't apply there.
+mounted over the repo's, and an empty `local.d` over yours, so your own `local.lua` and `local.d` don't apply there.
 
 The container matches a MacBook Pro 14" as far as Hyprland goes, not the hardware: battery, Bluetooth, Wi-Fi and sound stay
 empty. None of the optional parts (`plugins.txt`, `plugins/`) is installed, so the desktop is the one you get with
