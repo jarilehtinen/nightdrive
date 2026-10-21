@@ -85,9 +85,13 @@ case ${1:-current} in
   set)
     style=${2:?style}; s=$(sink_name); [[ -n $s ]] || exit 1
     p=$(full_name "$s" "$(headphones_key "$s")" "$style")
-    f=$(autoload_file "$s"); mkdir -p "$(dirname "$f")"
+    f=$(autoload_file "$s")
+    # No active port: the headphones are going away (e.g. switched off), and the file would get the wrong name
+    [[ $f == *:.json ]] && exit 1
+    mkdir -p "$(dirname "$f")"
+    # Written whole, then moved in place: EasyEffects watches the folder and aborts on a half-written file
     jq -n --arg d "$s" --arg desc "$(description "$s")" --arg r "$(basename "$f" .json | cut -d: -f2-)" --arg p "$p" \
-      '{device:$d, "device-description":$desc, "device-profile":$r, "preset-name":$p}' > "$f"
+      '{device:$d, "device-description":$desc, "device-profile":$r, "preset-name":$p}' > "$f.tmp" && mv -f "$f.tmp" "$f"
     [[ $style != Off ]] && { mkdir -p "$(dirname "$last")"; echo "$style" > "$last"; }
     pgrep -x easyeffects >/dev/null || { easyeffects --service-mode -w >/dev/null 2>&1 & sleep 1; }
     easyeffects -b 2 >/dev/null 2>&1   # just in case: turn global bypass off
