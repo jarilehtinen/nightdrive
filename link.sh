@@ -116,6 +116,23 @@ for u in "${units[@]}"; do link "$repo/config/systemd/user/$u" "$HOME/.config/sy
 # ⌘Enter (terminal) and ⌘⌥Enter (Claude Code) open in ~/Projects, and kitty fails to start in a folder that doesn't exist
 mkdir -p "$HOME/Projects"
 
+# Claude Code's notifications come from "Claude" with the session's topic, a click goes to its window, and a permission
+# request has Allow and Deny (hypr/scripts/claude-notify: Notification and PermissionRequest hooks in
+# ~/.claude/settings.json, each added once and kept beside your own hooks). Its own terminal notification (kitty's, the
+# same for every session) goes off, unless you picked a channel.
+cn='~/.config/hypr/scripts/claude-notify'
+cs="$HOME/.claude/settings.json"
+mkdir -p "$HOME/.claude"; [[ -s $cs ]] || echo '{}' > "$cs"
+for ev in Notification PermissionRequest; do
+  jq -e --arg e "$ev" --arg c "$cn" '[.hooks[$e][]?.hooks[]?.command] | index($c)' "$cs" >/dev/null 2>&1 && continue
+  jq --arg e "$ev" --arg c "$cn" '.hooks[$e] += [{matcher: "", hooks: [{type: "command", command: $c}]}]' "$cs" > "$cs.tmp" \
+    && mv "$cs.tmp" "$cs" || rm -f "$cs.tmp"
+done
+cg="$HOME/.claude.json"
+if [[ -s $cg ]] && jq -e '.preferredNotifChannel == null or .preferredNotifChannel == "auto"' "$cg" >/dev/null 2>&1; then
+  jq '.preferredNotifChannel = "notifications_disabled"' "$cg" > "$cg.tmp" && mv "$cg.tmp" "$cg" || rm -f "$cg.tmp"
+fi
+
 # The nightdrive command (bin/nightdrive)
 mkdir -p "$HOME/.local/bin"
 for f in "$repo"/bin/*; do link "$f" "$HOME/.local/bin/$(basename "$f")"; done

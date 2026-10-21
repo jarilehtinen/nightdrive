@@ -1,0 +1,92 @@
+#!/bin/bash
+# Claude Code's Notification and PermissionRequest hooks (link.sh puts them in ~/.claude/settings.json): when a session
+# waits for you while you're in another window, a notification from "Claude" that says which one (its topic from the
+# window title, the project) and what it wants; a click, or its Show session button, goes to its window. The bar's
+# Claude icon gets its dot (Claude.qml). Nothing while you're in that window. Claude Code's own terminal notification
+# (kitty's, all alike) is turned off by link.sh.
+#   Notification: "Waiting for your input" and the like.
+#   PermissionRequest: what it wants to run or change, with Allow and Deny. The hook waits for the answer (Claude Code
+#   asks in the terminal at the same time): Allow or Deny answers for you; going to the window, Show session, closing
+#   the notification or the terminal's own answer leave it to the terminal.
+# Reads the hook's JSON on stdin: {hook_event_name, cwd, message | tool_name, tool_input, ...}.
+set -uo pipefail
+readonly WAIT=590   # seconds a permission notification waits; Claude Code gives a hook 600
+
+in=$(cat)
+event=$(jq -r '.hook_event_name // "Notification"' <<<"$in")
+dir=$(jq -r '.cwd // empty' <<<"$in"); project=${dir##*/}
+state="${XDG_RUNTIME_DIR:-/tmp}/nightdrive/claude-notify"; mkdir -p "$state"
+
+# The session's window: up the parents (claude, its shell, the terminal) to a pid Hyprland knows
+clients=$(hyprctl -j clients 2>/dev/null) || clients='[]'
+p=$PPID addr= title=
+while (( p > 1 )); do
+  read -r addr title < <(jq -r --argjson p "$p" 'first(.[] | select(.pid == $p) | "\(.address) \(.title)") // ""' <<<"$clients")
+  [[ -n $addr ]] && break
+  p=$(awk '{print $4}' "/proc/$p/stat" 2>/dev/null) || break
+done
+active() { [[ -n $addr && $(hyprctl -j activewindow 2>/dev/null | jq -r '.address // ""') == "$addr" ]]; }
+active && exit 0
+# A permission notification of this session is up (below): Claude Code's own "needs your permission" comes six seconds
+# later and would replace it with one without the buttons
+[[ $event == Notification && -n $addr && -e $state/$addr.perm ]] && exit 0
+[[ -n $addr ]] && qs ipc call claude want "$addr" >/dev/null 2>&1
+
+# Claude Code's title: a status glyph (✳, a spinner), then the topic
+topic=$(sed -E 's/^[^[:alnum:][:space:]]+[[:space:]]+//' <<<"$title")
+[[ -n $topic ]] || topic=${project:-Claude Code}
+icon=lucide:bot   # the same as agent-warn's: your own at ~/.config/nightdrive/agent-icon.svg|png
+for f in "$HOME"/.config/nightdrive/agent-icon.{svg,png}; do [[ -f $f ]] && { icon=$f; break; }; done
+
+# One notification per session: its last one closes (the id is kept by window) and a new one pops up; replacing it
+# (notify-send -r) would only update the card, with no popup
+idf="$state/${addr:-none}"
+close() { [[ -n ${1:-} ]] && gdbus call --session --dest org.freedesktop.Notifications --object-path /org/freedesktop/Notifications \
+            --method org.freedesktop.Notifications.CloseNotification "$1" >/dev/null 2>&1; }
+close "$(cat "$idf" 2>/dev/null)"
+focus() { [[ -n $addr ]] && hyprctl dispatch "hl.dsp.focus({ window = \"address:$addr\" })" >/dev/null; }
+
+if [[ $event == PermissionRequest ]]; then
+  # What it wants: the command, the file, or the tool's name
+  tool=$(jq -r '.tool_name // "a tool"' <<<"$in")
+  what=$(jq -r '.tool_input | (.command // .file_path // .notebook_path // .url // .pattern // empty) | tostring' <<<"$in" | head -c 300)
+  what=${what/#$HOME/\~}
+  body="$tool${what:+: $what}${project:+ · $project}"
+  out=$(mktemp "$state/perm.XXXXXX")
+  touch "$state/$addr.perm"
+  notify-send -a Claude -i "$icon" -p -A default=Open -A allow=Allow -A deny=Deny -A show="Show session" -w \
+    "$topic" "$body" > "$out" 2>/dev/null < /dev/null &
+  ns=$!
+  # The terminal's answer ends this hook early (Claude Code stops it): the notification goes with it
+  cleanup() { close "$(sed -n 1p "$out" 2>/dev/null)"; kill "$ns" 2>/dev/null; rm -f "$out" "$state/$addr.perm"; }
+  trap cleanup EXIT
+  trap 'exit 0' TERM INT HUP
+  decide() { jq -nc --arg b "$1" '{hookSpecificOutput: {hookEventName: "PermissionRequest",
+             decision: ({behavior: $b} + (if $b == "deny" then {message: "Denied from the desktop notification"} else {} end))}}'; }
+  for (( i = 0; i < WAIT * 4; i++ )); do
+    sleep 0.25
+    sed -n 1p "$out" > "$idf" 2>/dev/null
+    if ! kill -0 "$ns" 2>/dev/null; then    # answered, or closed without one
+      case $(sed -n 2p "$out") in
+        allow) decide allow ;;
+        deny) decide deny ;;
+        default|show) focus ;;
+      esac
+      exit 0
+    fi
+    (( i % 4 == 3 )) && active && exit 0   # you went to the window: answer there
+  done
+  exit 0
+fi
+
+msg=$(jq -r '.message // "Claude is waiting for your input"' <<<"$in")
+# The notification is from Claude already: "Claude needs your permission…" → "Needs your permission…"
+[[ $msg =~ ^Claude\ (is\ )?(.)(.*)$ ]] && msg="${BASH_REMATCH[2]^}${BASH_REMATCH[3]}"
+# In the background, so the hook returns at once while the notification waits for its click. notify-send -p prints the
+# id at once, -w the action later.
+setsid bash -c '
+  notify-send -a Claude -i "$1" -p -A default=Open -A show="Show session" -w "$2" "$3" | {
+    read -r id && echo "$id" > "$4"
+    read -r action && [[ ( $action == default || $action == show ) && -n $5 ]] && hyprctl dispatch "hl.dsp.focus({ window = \"address:$5\" })"
+  }' _ "$icon" "$topic" "${msg%.}${project:+ · $project}" "$idf" "$addr" >/dev/null 2>&1 < /dev/null &
+exit 0

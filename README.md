@@ -48,8 +48,10 @@ question and press ⌘⌥Enter to send it straight to Claude Code.
 ### Menus you want to click
 
 Click an icon and a small menu opens under it: sound and output devices, Wi-Fi, Bluetooth, battery and brightness, Tailscale,
-headphone EQ, system load and temperatures, the calendar, notifications, music, and your **Claude usage limits**. ⌘⇧Space lets
-you walk through the menus with the arrow keys.
+headphone EQ, system load and temperatures, the calendar, notifications, music, and **Claude**: your Claude Code sessions (a
+dot on the icon when one finished while you were elsewhere; a click goes to its window) and your usage limits. When a
+session waits for you, its notification says which one and what it wants, and a permission request can be answered
+right there (Allow, Deny). ⌘⇧Space lets you walk through the menus with the arrow keys.
 
 ![The music, home and headphones menus in the top bar](docs/screenshots/menus.jpg)
 
@@ -123,7 +125,7 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
 | Mail (optional) | Thunderbird | themed, with a minimal toolbar ([details](docs/thunderbird.md)) |
 | Music (optional) | [Deck](plugins/deck/README.md) (Spotify in the terminal, needs Spotify Premium) | bar icon, music menu, player row in the launcher, media keys |
 | Passwords (optional) | [1Password](plugins/1password/README.md) + `op` CLI | Passwords level in the launcher, SSH agent |
-| AI | [Claude Code](https://claude.com/claude-code) (the installer sets it up; log in once with `claude`) | ⌘⌥Enter in `~/Projects`, ask from the launcher, usage limits in the bar |
+| AI | [Claude Code](https://claude.com/claude-code) (the installer sets it up; log in once with `claude`) | ⌘⌥Enter in `~/Projects`, ask from the launcher, sessions and usage limits in the bar |
 | Dictation | [Voxtype](https://github.com/peteonrails/voxtype) (Parakeet) | F5 / Fn push-to-talk, recording card on screen |
 | Network | NetworkManager, BlueZ, [Tailscale](plugins/tailscale/README.md) (optional) | Wi-Fi, Bluetooth and Tailscale menus |
 | Audio | PipeWire, [EasyEffects](https://github.com/wwmm/easyeffects) | output switching (AirPlay speakers too), EQ presets for headphones; the headphone jack asks whether headphones or speakers went in, keeps a volume for each and starts quiet until you answer; Sony and AirPods listening mode, AirPods battery per pod and case and their own settings |
@@ -364,7 +366,7 @@ The full list is in [`config/hypr/SHORTCUTS.md`](config/hypr/SHORTCUTS.md).
   that repository to them.
 - **Asahi specifics.** The notch area needs the `appledrm.show_notch=1` kernel argument, which the installer sets. The 16 KiB memory
   pages break a few Electron apps, but 1Password works.
-- **The Claude usage menu** reads your plan's limits with Claude Code's own sign-in, so Claude Code must have been run once.
+- **The Claude menu** reads your plan's limits with Claude Code's own sign-in, so Claude Code must have been run once.
 - **No credentials are stored in this repo.** Tokens stay with each app (Deck, Claude Code) or in 1Password.
 
 ## Want to participate?

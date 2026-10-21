@@ -1,7 +1,9 @@
 import QtQuick
 import Quickshell
 
-// Claude usage: 5-hour session, week and per-model week (topbar/scripts/claude-usage, Claude Code's own sign-in).
+// Claude: the Claude Code sessions on this desktop (Claude.qml: a click goes to its window; the ones that finished while
+// you were elsewhere first) and a new one, then the plan's usage: 5-hour session, week and per-model week
+// (topbar/scripts/claude-usage, Claude Code's own sign-in).
 Column {
     id: m
     width: parent ? parent.width : 300
@@ -42,7 +44,34 @@ Column {
         return "resets " + Qt.formatDateTime(t, "ddd HH:mm")
     }
 
-    MenuHeader { width: parent.width; title: "Claude usage"; subtitle: m.usage && m.usage.plan ? m.usage.plan : "" }
+    MenuHeader { width: parent.width; title: "Claude"; subtitle: m.usage && m.usage.plan ? m.usage.plan : "" }
+
+    MenuSection { title: "Sessions" }
+    Column {
+        width: parent.width
+        spacing: 2
+        Repeater {
+            model: Claude.sessions
+            delegate: MenuRow {
+                required property var modelData
+                width: parent.width
+                icon: modelData.wants ? "bell-dot" : modelData.state === "working" ? "loader" : "terminal"
+                iconColor: modelData.wants ? Theme.accent : "transparent"
+                active: modelData.wants
+                label: modelData.topic || modelData.project
+                detail: modelData.state === "working" ? "working" : modelData.wants ? "done" : modelData.project
+                busy: modelData.state === "working"
+                onClicked: { Claude.focus(modelData); m.close() }
+            }
+        }
+    }
+    MenuButton {
+        icon: "plus"
+        label: "New session"
+        onClicked: { Claude.newSession(); m.close() }
+    }
+
+    MenuSection { apart: true; title: "Usage" }
 
     MenuNote {
         visible: m.loaded && (!m.usage || !m.usage.windows || m.usage.windows.length === 0 || !!m.usage.error)
@@ -83,44 +112,10 @@ Column {
         }
     }
 
-    // 10 px above the button on top of the spacing, in place of a divider (a Column skips a zero-height spacer)
-    Item {
-        width: parent.width
-        height: openRow.height + 10
-        // A pill like Ferry's Send Clipboard: a soft wash of the theme colour, not a filled button
-        Rectangle {
-            id: openRow
-            property bool navSelected: false
-            readonly property bool navEnabled: true
-            function navActivate() { openArea.clicked(null) }
-            y: 10
-            width: parent.width
-            height: 36; radius: 18
-            color: openArea.containsMouse ? Qt.lighter(Theme.sel, 1.3) : Theme.sel   // under the mouse just brighter
-            border { width: 1; color: navSelected ? Theme.primary : Theme.border }
-            Row {
-                anchors.centerIn: parent
-                spacing: 9
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: Icons.g("external-link")
-                    color: Theme.accent
-                    font { family: Icons.family; pixelSize: 16 }
-                }
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "Open usage page"
-                    color: Theme.accent
-                    font { family: Theme.font; pixelSize: 13; weight: Font.Medium }
-                }
-            }
-            MouseArea {
-                id: openArea
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: { Quickshell.execDetached(["xdg-open", "https://claude.ai/settings/usage"]); m.close() }
-            }
-        }
+    MenuButton {
+        gap: 10   // no divider above it: the room sets it apart
+        icon: "external-link"
+        label: "Open usage page"
+        onClicked: { Quickshell.execDetached(["xdg-open", "https://claude.ai/settings/usage"]); m.close() }
     }
 }

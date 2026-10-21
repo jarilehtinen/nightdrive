@@ -1,0 +1,21 @@
+#!/bin/bash
+# The Claude Code sessions running in a terminal window on this desktop, for the Claude menu (Claude.qml):
+# [{address, pid, dir, started}], address = the window (hyprctl clients), started = epoch seconds.
+# The window's title tells the rest live (Claude Code sets it: ✳ when it waits for you, a spinner while it works).
+# A session in tmux or over ssh has no window of its own and isn't listed.
+set -uo pipefail
+clients=$(hyprctl -j clients 2>/dev/null) || { echo '[]'; exit 0; }
+now=$(date +%s)
+for pid in $(pgrep -x claude); do
+  # Up the parents to the terminal's window
+  p=$pid addr=
+  while (( p > 1 )); do
+    addr=$(jq -r --argjson p "$p" 'first(.[] | select(.pid == $p) | .address) // empty' <<<"$clients")
+    [[ -n $addr ]] && break
+    p=$(awk '{print $4}' "/proc/$p/stat" 2>/dev/null) || break
+  done
+  [[ -n $addr ]] || continue
+  dir=$(readlink "/proc/$pid/cwd" 2>/dev/null) || continue
+  age=$(ps -o etimes= -p "$pid" | tr -d ' ')
+  jq -nc --arg a "$addr" --argjson pid "$pid" --arg d "$dir" --argjson s "$(( now - ${age:-0} ))" '{address: $a, pid: $pid, dir: $d, started: $s}'
+done | jq -sc 'unique_by(.address)'

@@ -67,6 +67,14 @@ Item {
             cache: false
         }
 
+        // Claude: a dot on the icon while a session that finished in the background waits for you (Claude.qml)
+        Rectangle {
+            visible: mod.name === "claude" && Claude.wanting > 0 && mod.icon !== ""
+            width: 7; height: 7; radius: 3.5
+            x: mod.snap(img.x + img.width - 7); y: mod.snap(img.y + 1)
+            color: Theme.danger   // red like a critical module (the Dashboard's tasks); no ring around it: the bar's background can be see-through
+        }
+
         BarText {
             id: txt
             visible: mod.label !== ""
