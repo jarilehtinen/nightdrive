@@ -50,7 +50,7 @@ BASE_HUE = 279
 FIXED = {"bg": "#0b0b0d", "danger": "#f7768e", "warning": "#e0af68", "ok": "#9ece6a"}
 
 # The look, apart from the theme colour: the background of the terminals and the apps that share it (launcher, fuzzel,
-# Firefox, Thunderbird, Apostrophe; Default: Tokyo Night's #1a1b26 10 % darker, with the blurred wallpaper showing
+# Firefox, Thunderbird, Apostrophe; Default: Tokyo Night's #1a1b26 10 % darker and a touch more violet, with the blurred wallpaper showing
 # through a little), the active and inactive window borders and the shadow. Opacities in per cent, shadow-size in px.
 # Its values and keys come from the Default theme.
 LOOK = json.load(open(f"{OWN_THEMES}/default.json"))["look"]

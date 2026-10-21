@@ -2,17 +2,17 @@
  "name": "Default",
  "color": "violet",
  "look": {
-  "background": "#171822",
+  "background": "#181722",
   "background-opacity": 97,
   "border-color": "#7aa2f7",
   "border-opacity": 100,
-  "inactive-border": "on",
+  "inactive-border": "off",
   "inactive-border-color": "#595959",
   "inactive-border-opacity": 66.7,
   "shadow": "on",
-  "shadow-size": 4,
-  "shadow-color": "#1a1a1a",
-  "shadow-opacity": 93.3,
+  "shadow-size": 16,
+  "shadow-color": "#000000",
+  "shadow-opacity": 9,
   "inactive-shadow": "on"
  }
 }

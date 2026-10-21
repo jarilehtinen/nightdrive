@@ -248,7 +248,7 @@ FloatingWindow {
                 width: parent.width
                 title: "Color"
                 value: win.look.background || ""
-                presets: [["#171822", "Nightdrive"], ["#1a1b26", "Tokyo Night"], ["#121219", "Darker"], ["#000000", "Black"]]
+                presets: [["#181722", "Nightdrive"], ["#1a1b26", "Tokyo Night"], ["#121219", "Darker"], ["#000000", "Black"]]
                 onPicked: h => win.setValue("background", h)
             }
             SettingLevel {
