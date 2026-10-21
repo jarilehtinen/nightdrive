@@ -1,0 +1,69 @@
+#!/bin/bash
+# Bluetooth headphones' microphone, picked by hand. Headphones stay in music mode (A2DP: no microphone) on their own
+# (wireplumber.conf.d/51-bt-no-headset-autoswitch.conf); the Sound menus list them as a microphone anyway, and picking
+# one switches it to headset mode (HFP: a microphone, plainer sound) and makes its microphone the default. Picking
+# another microphone switches it back to music mode.
+#   bt-mic list         connected headphones in music mode that have a headset mode: JSON [{card, name}]
+#   bt-mic use CARD     headset mode (the best codec: highest priority) and its microphone as the default
+#   bt-mic release      every headphones in headset mode back to music mode (the best codec)
+# The profile is set with save: false, so WirePlumber doesn't remember it: headphones connect in music mode again.
+set -uo pipefail
+
+# Seconds to wait for the headphones' microphone to appear after a switch, and the switches tried
+MIC_WAIT=2
+TRIES=3
+
+devices() {
+  pw-dump 2>/dev/null | jq -c '[ .[] | select(.type == "PipeWire:Interface:Device" and .info.props["device.api"] == "bluez5")
+    | { id, card: .info.props["device.name"], name: (.info.props["device.description"] // .info.props["device.name"]),
+        active: ([.info.params.Profile[]? | .name] | first // ""),
+        profiles: [.info.params.EnumProfile[]? | select(.available != "no") | {index, name, priority}] } ]'
+}
+# best DEVICE_JSON PREFIX: the index of the highest-priority profile whose name starts with PREFIX
+best() { jq -r --arg p "$2" '[.profiles[] | select(.name | startswith($p))] | max_by(.priority) | .index // empty' <<<"$1"; }
+# pw-cli prints harmless errors about objects that went away during the switch
+set_profile() { pw-cli set-param "$1" Profile "{ index: $2, save: false }" >/dev/null 2>&1; }
+
+case ${1:-} in
+  list)
+    devices | jq -c 'map(select((.active | startswith("headset-head-unit")) | not)
+                         | select(any(.profiles[]; .name | startswith("headset-head-unit"))) | {card, name})' ;;
+  use)
+    card=${2:?usage: bt-mic use CARD}
+    dev=$(devices | jq -c --arg c "$card" '.[] | select(.card == $c)')
+    [[ -n $dev ]] || { echo "not connected: $card" >&2; exit 1; }
+    idx=$(best "$dev" headset-head-unit)
+    [[ -n $idx ]] || { echo "no headset mode: $card" >&2; exit 1; }
+    devid=$(jq -r .id <<<"$dev")
+    music=$(best "$dev" a2dp-sink)
+    # The microphone apps see is WirePlumber's loopback of the headset's own source (an internal one, hidden from
+    # apps), created once the profile is headset: bluez_input.<address with colons>, with the device's id
+    # The headphones' sink is made anew too, and meanwhile the default output falls back to the speakers: it is set
+    # back to them along with the microphone.
+    # WirePlumber sometimes drops the loopback while the switch tears down a playing stream ("Object activation aborted:
+    # proxy destroyed" in its log) and makes none: then back to music mode and switched again. If none of the tries
+    # gives a microphone, the headphones stay in music mode and this fails.
+    for try in $(seq $TRIES); do
+      (( try > 1 )) && { set_profile "$devid" "$music"; sleep 1; }
+      set_profile "$devid" "$idx"
+      for _ in $(seq $((MIC_WAIT * 10))); do
+        read -r src sink < <(pw-dump 2>/dev/null | jq -r --arg d "$devid" '[.[] | select(.type == "PipeWire:Interface:Node")
+               | select((.info.props["device.id"] | tostring) == $d) | .info.props] as $n
+               | [($n[] | select(.["media.class"] == "Audio/Source") | .["node.name"]) // "",
+                  ($n[] | select(.["media.class"] == "Audio/Sink") | .["node.name"]) // ""] | @tsv')
+        if [[ -n $src && -n $sink ]]; then
+          sleep 0.3   # set too soon, the default is overridden by WirePlumber's own pick for the new nodes
+          pactl set-default-sink "$sink"; pactl set-default-source "$src"; exit 0
+        fi
+        sleep 0.1
+      done
+    done
+    set_profile "$devid" "$music"
+    echo "no microphone appeared: $card" >&2; exit 1 ;;
+  release)
+    devices | jq -c '.[] | select(.active | startswith("headset-head-unit"))' | while read -r dev; do
+      idx=$(best "$dev" a2dp-sink)
+      [[ -n $idx ]] && set_profile "$(jq -r .id <<<"$dev")" "$idx"
+    done ;;
+  *) echo "usage: bt-mic list | use CARD | release" >&2; exit 2 ;;
+esac

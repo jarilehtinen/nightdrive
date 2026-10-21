@@ -29,6 +29,7 @@ Item {
         if (cur.kind === "wifinet") return cur.active ? "" : "Enter: connect"
         if (cur.kind === "btdev") return "Enter: " + (cur.connected ? "disconnect" : cur.paired ? "connect" : "pair and connect")
         if (cur.kind === "sounddev") return "Enter: use this"
+        if (cur.kind === "btmic") return "Enter: switch to headset mode and use this"
         if (cur.kind === "hpdev") return "Enter: " + (cur.current ? "disconnect" : "use as output")
         if (cur.kind === "hpmode") return cur.trailGlyph ? "" : "Enter: switch"
         if (cur.kind === "tsmachine") return "Enter: copy IP address  ·  Cmd+C: copy"
@@ -103,10 +104,21 @@ Item {
         if (it.kind === "slider") { sel(); toggleMute(it.key); return true }
         if (it.kind === "sounddev") {
             sel()
-            Quickshell.execDetached(["wpctl", "set-default", String(it.id)])
+            // A microphone that isn't the headphones': the headphones go back to music mode (as in OutputList)
+            const src = sources.find(x => x.id === it.id)
+            if (src && !src.bt) Quickshell.execDetached(["bash", "-c", 'wpctl set-default "$1" && "$2" release', "_", String(it.id), btMic])
+            else Quickshell.execDetached(["wpctl", "set-default", String(it.id)])
             soundSoon.restart()
             const d = sinks.find(x => x.id === it.id)
             if (d && d.airplay) Quickshell.execDetached([airplayCheck, "notify", d.node])   // warns if it refuses audio
+            return true
+        }
+        if (it.kind === "btmic") {
+            if (btMicBusy !== "") return true
+            sel()
+            btMicBusy = it.card; btMicFailed = ""
+            btMicUse.environment = { "BTMIC": btMic, "CARD": it.card }
+            btMicUse.running = true
             return true
         }
         if (it.kind === "hpdev") {
@@ -470,12 +482,32 @@ done; true'
     property real micPending: -1
     property var sinks: []           // [{ id, name, current, bt }]
     property var sources: []
+    // Connected headphones in music mode, which have no microphone then: listed as one anyway, Enter switches them to
+    // headset mode (hypr/scripts/bt-mic, as in OutputList)
+    readonly property string btMic: Quickshell.env("HOME") + "/.config/hypr/scripts/bt-mic"
+    property var btMics: []          // [{ card, name }]
+    property string btMicBusy: ""    // switching this card to headset mode
+    property string btMicFailed: ""  // the last switch of this card gave no microphone (it stays in music mode)
     // AirPlay speakers that refuse PipeWire's AirPlay 1 (RTSP 403): Apple TV / HomePod since OS 27 (Apple bug FB24452968).
     // Probed live, so the warning disappears by itself once Apple fixes it. See docs/known-issues.md.
     property var airplayRefused: []  // [node.name]
     readonly property string airplayCheck: Quickshell.env("HOME") + "/.config/hypr/scripts/airplay-check"
     property real airplayProbedAt: 0
-    function soundRefresh() { volProc.running = true; micProc.running = true; dumpProc.running = true }
+    function soundRefresh() { volProc.running = true; micProc.running = true; dumpProc.running = true; if (!btMicProc.running) btMicProc.running = true }
+    Sh {
+        id: btMicProc
+        command: [s.btMic, "list"]
+        onResult: text => {
+            let v = []
+            try { v = JSON.parse(text) } catch (e) {}
+            if (JSON.stringify(v) !== JSON.stringify(s.btMics)) { s.sel(); s.btMics = v }
+        }
+    }
+    Sh {
+        id: btMicUse
+        script: '"$BTMIC" use "$CARD"'
+        onResult: text => { s.sel(); s.btMicFailed = btMicUse.exitCode !== 0 ? s.btMicBusy : ""; s.btMicBusy = ""; s.soundRefresh() }
+    }
     function toggleMute(key) {
         if (key === "mic") micMuted = !micMuted; else muted = !muted
         Quickshell.execDetached(["wpctl", "set-mute", key === "mic" ? "@DEFAULT_AUDIO_SOURCE@" : "@DEFAULT_AUDIO_SINK@", "toggle"])
@@ -499,7 +531,11 @@ done; true'
                { kind: "slider", key: "mic", name: "Microphone", value: micVolume, dimmed: micMuted, extra: "mute input",
                  glyph: micMuted ? "mic-off" : "mic", summary: micMuted ? "muted" : pct(micVolume) })
         for (const d of sources)
-            r.push({ kind: "sounddev", id: d.id, name: d.name, glyph: devIcon(d, true), trailGlyph: d.current ? "check" : undefined, extra: "input microphone" })
+            r.push({ kind: "sounddev", id: d.id, name: d.name, glyph: devIcon(d, true), trailGlyph: d.current ? "check" : undefined,
+                     summary: d.bt ? "headset mode" : undefined, extra: "input microphone" })
+        for (const d of btMics)
+            r.push({ kind: "btmic", card: d.card, name: d.name, glyph: "headphones", extra: "input microphone headphones",
+                     summary: btMicBusy === d.card ? "switching…" : btMicFailed === d.card ? "didn't switch" : "headset mode" })
         r.push({ kind: "header", name: "More" })
         r.push({ kind: "action", name: "Sound settings…", glyph: "settings", cmd: ["pavucontrol"] })
         return r
@@ -569,9 +605,9 @@ done; true'
                             airplay: /^raop_sink\./.test(p["node.name"]),   // PipeWire's AirPlay speakers (RAOP)
                             node: p["node.name"] })
             }
-            // The machine's own devices first, the rest alphabetically (as in OutputList)
-            const rank = n => /^MacBook Pro/i.test(n) ? 0 : /^Built-in/i.test(n) ? 1 : 2
-            for (const k in out) out[k].sort((a, b) => rank(a.name) - rank(b.name) || a.name.localeCompare(b.name))
+            // The same kinds together, as in OutputList: the machine's own, Bluetooth headphones, other wired, AirPlay
+            const rank = d => /^MacBook Pro/i.test(d.name) ? 0 : /^Built-in/i.test(d.name) ? 1 : d.bt ? 2 : d.airplay ? 5 : 4
+            for (const k in out) out[k].sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name))
             if (JSON.stringify(out["Audio/Sink"]) === JSON.stringify(s.sinks) && JSON.stringify(out["Audio/Source"]) === JSON.stringify(s.sources)) return
             s.sel()
             s.sinks = out["Audio/Sink"]

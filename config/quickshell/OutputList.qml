@@ -6,6 +6,8 @@ import Quickshell
 // Uses pw-dump like VolumeMenu (Quickshell's Pipewire module doesn't work with Pipewire 1.6).
 // Outputs also list paired Bluetooth headphones that aren't connected: a click connects them and makes them the output
 // (no need to go through the Bluetooth menu). Whether they're in range isn't known without a scan, so a failed connect shows an error.
+// Microphones also list connected headphones in music mode, which have no microphone then: a click switches them to
+// headset mode and makes theirs the default, and picking another microphone switches them back (hypr/scripts/bt-mic).
 Column {
     id: o
     width: parent ? parent.width : 300
@@ -25,12 +27,17 @@ Column {
     property string btBusy: ""       // connecting to this MAC
     property string btFailed: ""     // the last connect to this MAC failed (off, in the case or out of range)
     property string btMakeDefault: "" // connected: make its sink the default as soon as it appears
+    readonly property string btMic: Quickshell.env("HOME") + "/.config/hypr/scripts/bt-mic"
+    property var btMics: []          // connected headphones in music mode: [{ card, name }]
+    property string btMicBusy: ""    // switching this card to headset mode
+    property string btMicFailed: ""  // the last switch of this card gave no microphone (it stays in music mode)
     property int tick: 0
 
     function refresh() {
         dumpProc.running = true
         // bluetoothctl is slower than pw-dump: every 3 s is enough
         if (o.kind === "sink" && o.tick++ % 3 === 0 && !btProc.running) btProc.running = true
+        if (o.kind === "source" && !btMicProc.running) btMicProc.running = true
     }
     function btConnect(d) {
         if (o.btBusy !== "") return
@@ -65,9 +72,6 @@ Column {
                 sinks.push({ id: ob.id, name: p["node.description"] || p["node.name"], current: p["node.name"] === defName,
                              bt: /^bluez_/.test(p["node.name"]), node: p["node.name"] })
             }
-            // The machine's own devices first (MacBook Pro …, then Built-in …), the rest alphabetically
-            const rank = n => /^MacBook Pro/i.test(n) ? 0 : /^Built-in/i.test(n) ? 1 : 2
-            sinks.sort((a, b) => rank(a.name) - rank(b.name) || a.name.localeCompare(b.name))
             o.sinkList = sinks
             if (o.btMakeDefault !== "") {
                 const s = sinks.find(d => d.node.startsWith("bluez_output." + o.btMakeDefault.replace(/:/g, "_")))
@@ -104,31 +108,89 @@ Column {
         }
     }
     Sh {
+        id: btMicProc
+        command: [o.btMic, "list"]
+        onResult: text => { try { o.btMics = JSON.parse(text) } catch (e) { o.btMics = [] } }
+    }
+    Sh {
+        id: btMicUse
+        script: '"$BTMIC" use "$CARD"'
+        onResult: text => { o.btMicFailed = btMicUse.exitCode !== 0 ? o.btMicBusy : ""; o.btMicBusy = ""; o.refresh() }
+    }
+    // A microphone that isn't the headphones': the headphones go back to music mode
+    function pick(d) {
+        if (o.kind === "source" && !d.bt)
+            Quickshell.execDetached(["bash", "-c", 'wpctl set-default "$1" && "$2" release', "_", String(d.id), o.btMic])
+        else Quickshell.execDetached(["wpctl", "set-default", String(d.id)])
+        soon.start()
+    }
+    Sh {
         id: probe
         onResult: text => o.refused = text.split("\n").filter(l => l !== "")
     }
 
+    // One list, the same kinds together: the machine's own devices (MacBook Pro …, then Built-in …), Bluetooth headphones
+    // (connected, then the ones a click connects or switches to headset mode), other wired ones (USB, HDMI), then AirPlay
+    // speakers; alphabetically within each. SystemLevels' Sound page sorts the same way (group()).
+    function group(d) {
+        return d.type === "btconnect" ? 3 : d.type === "btmic" ? 2 : /^MacBook Pro/i.test(d.name) ? 0 : /^Built-in/i.test(d.name) ? 1
+             : d.bt ? 2 : /^raop_sink\./.test(d.node || "") ? 5 : 4
+    }
+    readonly property var rows: {
+        const r = o.sinkList.map(d => Object.assign({ type: "dev" }, d))
+            .concat((o.kind === "source" ? o.btMics : []).map(d => Object.assign({ type: "btmic" }, d)))
+            .concat((o.kind === "sink" ? o.btList : []).map(d => Object.assign({ type: "btconnect" }, d)))
+        return r.sort((a, b) => o.group(a) - o.group(b) || a.name.localeCompare(b.name))
+    }
+
     Repeater {
-        model: o.sinkList
-        delegate: MenuRow {
+        model: o.rows
+        delegate: Loader {
             required property var modelData
+            width: o.width
+            sourceComponent: modelData.type === "btmic" ? btMicRow : modelData.type === "btconnect" ? btConnectRow : devRow
+            readonly property var d: modelData
+        }
+    }
+    Component {
+        id: devRow
+        MenuRow {
+            readonly property var modelData: parent.d
             width: o.width
             active: modelData.current
             checkIcon: modelData.current ? "check" : ""
             label: modelData.name
             danger: o.refused.includes(modelData.node)
-            detail: danger ? "no audio (Apple bug)" : ""
+            detail: danger ? "no audio (Apple bug)" : o.kind === "source" && modelData.bt ? "headset mode" : ""
             icon: o.kind === "source" ? (modelData.bt || /head|buds|airpods/i.test(modelData.name) ? "headphones" : "mic")
                 : modelData.bt || /head|buds|airpods/i.test(modelData.name) ? "headphones"
                 : /macbook|built-in|laptop/i.test(modelData.name) ? "laptop"
                 : /tv|display|monitor/i.test(modelData.name) ? "tv" : "speaker"
-            onClicked: { Quickshell.execDetached(["wpctl", "set-default", String(modelData.id)]); soon.start() }
+            onClicked: o.pick(modelData)
         }
     }
-    Repeater {
-        model: o.kind === "sink" ? o.btList : []
-        delegate: MenuRow {
-            required property var modelData
+    Component {
+        id: btMicRow
+        MenuRow {
+            readonly property var modelData: parent.d
+            width: o.width
+            icon: "headphones"
+            label: modelData.name
+            busy: o.btMicBusy === modelData.card
+            danger: o.btMicFailed === modelData.card
+            detail: danger ? "didn't switch" : "headset mode"
+            onClicked: {
+                if (o.btMicBusy !== "") return
+                o.btMicBusy = modelData.card; o.btMicFailed = ""
+                btMicUse.environment = { "BTMIC": o.btMic, "CARD": modelData.card }
+                btMicUse.running = true
+            }
+        }
+    }
+    Component {
+        id: btConnectRow
+        MenuRow {
+            readonly property var modelData: parent.d
             width: o.width
             icon: "headphones"
             label: modelData.name
