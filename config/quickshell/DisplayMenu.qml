@@ -104,22 +104,44 @@ Column {
             font { family: Theme.font; pixelSize: 13 }
         }
     }
-    MenuRow {
+    // Night light: laid out like the brightness row above it (the moon under the sun), with a switch on the right
+    Item {
+        id: nightRow
         visible: m.night !== ""
         width: parent.width
-        icon: "moon"
-        label: "Night light"
-        padded: true
-        active: m.night === "on"
-        checkIcon: m.night === "on" ? "check" : ""
-        onClicked: {
+        height: 30
+        property bool navSelected: false
+        readonly property bool navEnabled: visible
+        function navActivate() { toggle() }
+        function toggle() {
             m.night = m.night === "on" ? "off" : "on"
             Quickshell.execDetached([Quickshell.env("HOME") + "/.config/hypr/scripts/nightlight", m.night])
         }
+        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: nightRow.toggle() }
+        Text {
+            id: moonIcon
+            width: 22
+            anchors.verticalCenter: parent.verticalCenter
+            horizontalAlignment: Text.AlignHCenter
+            text: Icons.g("moon")
+            color: Theme.text
+            font { family: Icons.family; pixelSize: 18 }
+        }
+        Text {
+            anchors { left: moonIcon.right; leftMargin: 12; verticalCenter: parent.verticalCenter }
+            text: "Night light"
+            color: Theme.text
+            font { family: Theme.font; pixelSize: 13 }
+        }
+        Toggle {
+            anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+            checked: m.night === "on"
+            navSelected: nightRow.navSelected
+            onToggled: nightRow.toggle()
+        }
     }
 
-    Divider { visible: m.mirrorAvail }
-    MenuSection { visible: m.mirrorAvail; title: "Screen Mirroring" }
+    MenuSection { visible: m.mirrorAvail; apart: true; title: "Screen Mirroring" }
     MenuNote {
         visible: m.mirrorAvail && m.mirrorDevices.length === 0
         text: "Looking for AirPlay devices…"
@@ -151,7 +173,7 @@ Column {
         }
     }
 
-    Divider { visible: m.displays.length > 0 }
+    // Each display's scales under its own name (the laptop's screen, the external one's model), "scale" on the right
     Repeater {
         model: m.displays
         delegate: Column {
@@ -159,14 +181,19 @@ Column {
             readonly property var d: modelData
             width: m.width
             spacing: 2
-            MenuSection { title: "Scale" + (m.displays.length > 1 ? " · " + d.name : "") }
+            readonly property bool laptop: /^eDP-/.test(d.name)   // a laptop's panel (BUILTIN_DISPLAY in hyprland.lua)
+            MenuSection {
+                apart: true
+                title: m.displays.length < 2 ? "Scale" : laptop ? "Laptop screen" : (d.desc !== "-" ? d.desc.replace(/\s+0x[0-9A-Fa-f]+$/, "") : d.name)
+                subtitle: m.displays.length < 2 ? "" : "Scale"
+            }
             Repeater {
                 model: d.opts
                 delegate: MenuRow {
                     required property var modelData
                     readonly property bool cur: Math.abs(modelData.value - d.scale) < 0.01
                     width: parent.width
-                    icon: "monitor"
+                    icon: laptop ? "laptop" : "monitor"
                     label: modelData.size
                     detail: "scale " + +modelData.value.toFixed(2)
                     active: cur

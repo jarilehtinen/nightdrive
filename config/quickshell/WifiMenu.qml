@@ -253,7 +253,6 @@ done; true'
             if (!m.wifiOn) m.nets = []
         }
     }
-    Divider { pad: 2 }
 
     // Connected network at the top (an information row), throughput and public IP below it, then Disconnect and Forget
     MenuRow {
@@ -297,46 +296,39 @@ done; true'
         Text { text: m.linkLine; color: Theme.dim; font { family: Theme.font; pixelSize: 12 } }
     }
     Item { visible: m.wifiOn && m.activeNet !== null; width: 1; height: 6 }   // extra space between the statistics and Disconnect
-    MenuRow {
+    MenuButton {
         visible: m.wifiOn && m.activeNet !== null
         width: parent.width
         icon: "unplug"
-        action: true
         label: "Disconnect"
         busy: m.connecting === m.activeSsid
         onClicked: m.activate(m.activeNet)
     }
-    MenuRow {      // unlike Disconnect, also deletes the saved password: the network won't connect again by itself
+    MenuButton {      // unlike Disconnect, also deletes the saved password: the network won't connect again by itself
         visible: m.wifiOn && m.activeNet !== null
         width: parent.width
         icon: "trash-2"
-        action: true
         danger: m.forgetArmed === m.activeSsid
         label: m.forgetArmed === m.activeSsid ? "Click again to forget" : "Forget network"
         onClicked: m.forget(m.activeSsid)
     }
 
-    // The two status lines sit in the middle between the lines above and below them: the line above has 2 px under it,
-    // the one below 11 px over it (Divider), hence 9 px more on top
     Item {      // the dots at the right edge, like the toggle above them
         visible: m.wifiOn && m.nets.length === 0
         width: parent.width
         height: searching.height
         MenuNote {
             id: searching
-            topPadding: 9
             text: "Searching for networks"
         }
-        BusyDots { anchors.right: parent.right; y: 9 + (searching.height - 9 - height) / 2 + 1 }
+        BusyDots { anchors.right: parent.right; y: (searching.height - height) / 2 + 1 }
     }
     MenuNote {
         visible: !m.wifiOn
-        topPadding: 9
         text: "Wi-Fi is off"
     }
 
-    Divider { visible: m.wifiOn && m.activeNet !== null && m.otherNets.length > 0 }
-    MenuSection { visible: m.wifiOn && m.otherNets.length > 0; title: m.activeNet ? "Other networks" : "Networks" }
+    MenuSection { visible: m.wifiOn && m.otherNets.length > 0; apart: m.activeNet !== null; title: m.activeNet ? "Other networks" : "Networks" }
 
     Column {
         width: parent.width
@@ -407,11 +399,10 @@ done; true'
         text: m.message
     }
 
-    Divider { padBottom: 6 }
-    MenuRow {
+    MenuButton {
         width: parent.width
+        gap: 10   // no divider above it: the room sets it apart
         icon: "settings"
-        action: true
         label: "Network settings…"
         onClicked: { Quickshell.execDetached(["nm-connection-editor"]); m.close() }   // all of NetworkManager's settings (IP, DNS, VPN)
     }

@@ -132,13 +132,11 @@ while (b := p.stdout.read(1600)) and len(b) == 1600:
         }
     }
 
-    Divider {}
-    MenuSection { title: "Output" }
+    MenuSection { apart: true; title: "Output" }
 
     OutputList { width: parent.width }
 
-    Divider {}
-    MenuHeader { width: parent.width; title: "Microphone"; showToggle: true; checked: !m.micMuted; onToggled: m.toggleMicMute() }
+    MenuHeader { width: parent.width; apart: true; title: "Microphone"; showToggle: true; checked: !m.micMuted; onToggled: m.toggleMicMute() }
 
     Row {
         width: parent.width
@@ -173,16 +171,14 @@ while (b := p.stdout.read(1600)) and len(b) == 1600:
         }
     }
 
-    Divider {}
-    MenuSection { title: "Input source" }
+    MenuSection { apart: true; title: "Input source" }
 
     OutputList { width: parent.width; kind: "source" }
 
-    Divider {}
-    MenuRow {
+    MenuButton {
         width: parent.width
+        gap: 10   // no divider above it: the room sets it apart
         icon: "settings"
-        action: true
         label: "Sound settings…"
         onClicked: { Quickshell.execDetached(["pavucontrol"]); m.close() }
     }

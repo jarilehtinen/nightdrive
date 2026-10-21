@@ -119,10 +119,10 @@ Column {
         text: m.message
     }
 
-    MenuRow {
+    MenuButton {
         width: parent.width
+        gap: 10   // no divider above it: the room sets it apart
         icon: "external-link"
-        action: true
         label: "Admin console"
         onClicked: { Quickshell.execDetached(["xdg-open", "https://login.tailscale.com/admin/machines"]); m.close() }
     }

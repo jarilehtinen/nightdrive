@@ -48,31 +48,30 @@ Column {
 
     MenuHeader { width: parent.width; title: "Battery" }
 
-    // ASCII battery: [█████████░░░░░░░░░░░] 47 % (the bar's colour shows charging / low; no icon, it would say the same)
-    readonly property int cells: 26   // fills the menu width next to the percentage
+    // The battery drawn large (BatteryShape), the percentage after it: the fill's colour shows charging / low, and a bolt
+    // sits inside it while charging
     readonly property color battColor: m.state === "charging" ? Theme.accent : (m.percent <= 10 ? Theme.danger : (m.percent <= 20 ? Theme.warning : Theme.primary))
-    readonly property string battBar: {
-        const n = Math.max(0, Math.min(cells, Math.round(m.percent / 100 * cells)))
-        return "[" + "█".repeat(n) + "░".repeat(cells - n) + "]"
-    }
 
     Column {
         width: parent.width
-        spacing: 7   // the bar and the status line below it
+        spacing: 7   // the battery and the status line below it
         Row {
-            spacing: 12
-            Text {
+            width: parent.width
+            spacing: 14
+            BatteryShape {
+                width: parent.width - pct.width - parent.spacing
+                height: 34
                 anchors.verticalCenter: parent.verticalCenter
-                text: m.battBar
+                level: m.percent
                 color: m.battColor
-                font { family: Theme.font; pixelSize: 14 }
+                bolt: m.state === "charging"
             }
             Text {
                 id: pct
                 anchors.verticalCenter: parent.verticalCenter
                 text: m.percent + "%"
                 color: Theme.text
-                font { family: Theme.font; pixelSize: 15; bold: true }
+                font { family: Theme.font; pixelSize: 18; bold: true }
             }
         }
         MenuNote {
@@ -82,7 +81,7 @@ Column {
         }
     }
 
-    MenuSection { visible: m.bat !== null; title: "Details" }
+    MenuSection { visible: m.bat !== null; apart: true; title: "Details" }
     Column {
         visible: m.bat !== null
         width: parent.width

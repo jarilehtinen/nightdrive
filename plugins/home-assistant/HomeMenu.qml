@@ -67,11 +67,10 @@ Column {
         }
     }
 
-    Divider { padBottom: 6 }
-    MenuRow {
+    MenuButton {
         width: parent.width
+        gap: 10   // no divider above it: the room sets it apart
         icon: "external-link"
-        action: true
         label: "Open Home Assistant"
         onClicked: { Quickshell.execDetached([Home.bin, "open"]); m.close() }
     }

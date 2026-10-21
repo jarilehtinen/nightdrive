@@ -121,9 +121,12 @@ calendar's grid, Ferry's drop zone and QR code are all fine).
 - **`MenuHeader` first**: `MenuHeader { width: parent.width; title: "Ferry" }`. Optional `subtitle` (dimmed, on the
   right), an on/off toggle (`showToggle`, `checked`, `onToggled`) and a small button (`action: "Clear"`,
   `onActionClicked`, `actionEnabled`).
-- **Rows are `MenuRow`**: `icon`, `label`, `detail` (dimmed, on the right), `onClicked`. `action: true` is a button
-  (Open …), `danger: true` red, `active: true` the selected one, `interactive: false` an information row. Rows get
-  keyboard navigation (⌘⇧Space) for free.
+- **Rows are `MenuRow`**: `icon`, `label`, `detail` (dimmed, on the right), `onClicked`. `danger: true` red,
+  `active: true` the selected one, `interactive: false` an information row. Rows get keyboard navigation (⌘⇧Space) for
+  free.
+- **Buttons are `MenuButton`** (Open …, Settings…, Send): a round-ended pill, `icon`, `label`, `onClicked`; `usable:
+  false` dims it, `busy` adds animated dots, `danger` makes it red and `gap` gives it more room above (10 where no
+  `Divider` sets it apart). Keyboard navigation comes with it too.
 - **Section titles are `MenuSection`**: `title`, and an optional `subtitle` on the right (what the numbers below mean).
 - **Hint, error and empty-state lines are `MenuNote`**: `variant` `"dim"` (default), `"warning"` or `"danger"`; it
   wraps, and an empty one takes no room. Not a `Text` of your own.
@@ -459,10 +462,9 @@ Column {
     }
 
     Divider { padBottom: 6 }
-    MenuRow {
+    MenuButton {
         width: parent.width
         icon: "folder-search"
-        action: true
         label: "What takes up the space"
         onClicked: { Quickshell.execDetached([Quickshell.env("HOME") + "/.config/hypr/scripts/terminal", "--class", "floating-tui",
                                               "--", "ncdu", Quickshell.env("HOME")]); m.close() }

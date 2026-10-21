@@ -483,7 +483,7 @@ Column {
                                             elide: Text.ElideRight
                                             text: r.isFile ? r.modelData.name : r.modelData.text.replace(/\s+/g, " ").trim()
                                             color: Theme.accent
-                                            font { family: Theme.font; pixelSize: 13; letterSpacing: 0.3 }
+                                            font { family: Theme.font; pixelSize: 12 }
                                         }
                                         Text {
                                             width: parent.width
@@ -672,43 +672,13 @@ Column {
                     onClicked: m.mode = m.mode === "write" ? "list" : "write"
                 }
                 // In the text's place: Send (the text); otherwise Send Clipboard
-                Rectangle {
-                    id: send
-                    readonly property bool usable: !!m.target && m.canTake(m.target) && !m.sendingSince && (m.mode !== "write" || textEdit.text.trim() !== "")
-                    property bool navSelected: false
-                    readonly property bool navEnabled: usable
-                    function navActivate() { sendArea.clicked(null) }
+                MenuButton {
                     width: parent.width - 2 * (36 + parent.spacing)
-                    height: 36; radius: 18
-                    // A soft wash of the theme colour, not a filled button: no menu has one
-                    color: sendArea.containsMouse ? Qt.lighter(Theme.sel, 1.3) : Theme.sel   // under the mouse just brighter
-                    border { width: 1; color: navSelected ? Theme.primary : Theme.border }
-                    opacity: usable ? 1 : 0.4
-                    Row {
-                        anchors.centerIn: parent
-                        spacing: 9
-                        Text {
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: Icons.g(m.justSent ? "check" : m.sendFailed ? "circle-x" : m.sendingSince ? "loader" : m.mode === "write" ? "send" : "clipboard-copy")
-                            color: Theme.accent
-                            font { family: Icons.family; pixelSize: 16 }
-                        }
-                        Text {
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: m.justSent ? "Sent to " + (m.st && m.st.sent ? m.st.sent.to : "") : m.sendFailed ? "Not sent" : m.sendingSince ? "Sending…"
-                                : m.mode === "write" ? "Send" : "Send Clipboard"
-                            color: Theme.accent
-                            font { family: Theme.font; pixelSize: 13; weight: Font.Medium }
-                        }
-                    }
-                    MouseArea {
-                        id: sendArea
-                        anchors.fill: parent
-                        enabled: send.usable
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: if (m.mode === "write") m.sendText(); else m.sendFrom(["send-clipboard", "--to", m.target.id])
-                    }
+                    usable: !!m.target && m.canTake(m.target) && !m.sendingSince && (m.mode !== "write" || textEdit.text.trim() !== "")
+                    icon: m.justSent ? "check" : m.sendFailed ? "circle-x" : m.sendingSince ? "loader" : m.mode === "write" ? "send" : "clipboard-copy"
+                    label: m.justSent ? "Sent to " + (m.st && m.st.sent ? m.st.sent.to : "") : m.sendFailed ? "Not sent" : m.sendingSince ? "Sending…"
+                         : m.mode === "write" ? "Send" : "Send Clipboard"
+                    onClicked: if (m.mode === "write") m.sendText(); else m.sendFrom(["send-clipboard", "--to", m.target.id])
                 }
                 // Files from a dialog: the menu closes for it and opens again with "Sent"
                 RoundButton {

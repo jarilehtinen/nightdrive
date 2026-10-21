@@ -85,8 +85,7 @@ Column {
         }
     }
 
-    Divider { visible: m.hasBattery }
-    MenuHeader { visible: m.hasBattery; width: parent.width; title: "Battery" }
+    MenuSection { visible: m.hasBattery; apart: true; title: "Battery" }
     Column {
         visible: m.hasBattery
         width: parent.width
@@ -112,8 +111,8 @@ Column {
         }
     }
 
-    Divider {}
-    MenuHeader { width: parent.width; title: "Equalizer"; showToggle: true; checked: m.eqOn; onToggled: m.run(["toggle"]) }
+    // A header like the Sound menu's Microphone: its own on/off toggle
+    MenuHeader { width: parent.width; apart: true; title: "Equalizer"; showToggle: true; checked: m.eqOn; onToggled: m.run(["toggle"]) }
 
     Column {
         width: parent.width
@@ -138,8 +137,7 @@ Column {
     }
     // The headphones' listening mode: Sony headphones and AirPods switch to it and report it (hypr/scripts/headphones-ctl); for others it only
     // tells the EQ which measurement to use (headphones measured in several modes, see config/easyeffects/headphones.example.tsv)
-    Divider { visible: m.ancModes.length > 1 }
-    MenuHeader { visible: m.ancModes.length > 1; width: parent.width; title: "Listening mode" }
+    MenuSection { visible: m.ancModes.length > 1; apart: true; title: "Listening mode" }
     Column {
         visible: m.ancModes.length > 1
         width: parent.width
@@ -169,8 +167,7 @@ Column {
 
     // Max volume per headphones: switching to them (e.g. from a Mac) at full volume can be painfully loud.
     // hypr/scripts/bt-audio-follow turns any louder volume down to it.
-    Divider {}
-    MenuHeader { width: parent.width; title: "Max volume" }
+    MenuSection { apart: true; title: "Max volume" }
     Row {
         width: parent.width
         spacing: 12
@@ -206,19 +203,18 @@ Column {
         }
     }
 
-    Divider {}
-    MenuRow {
+    MenuButton {
         visible: !!m.info.airpods
         width: parent.width
+        gap: 10   // no divider above the buttons: the room sets them apart
         icon: "headphones"
-        action: true
         label: "AirPods settings…"
         onClicked: { Quickshell.execDetached(["qs", "ipc", "call", "airpods", "open"]); m.close() }
     }
-    MenuRow {
+    MenuButton {
         width: parent.width
+        gap: m.info.airpods ? 0 : 10
         icon: "sliders-horizontal"
-        action: true
         label: "EasyEffects…"
         onClicked: { Quickshell.execDetached(["easyeffects"]); m.close() }
     }

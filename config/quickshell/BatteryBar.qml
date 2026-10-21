@@ -13,7 +13,7 @@ Item {
     property int fontSize: 13
     readonly property color tone: charging ? Theme.ok : level < 20 && !stale ? Theme.danger : Theme.accent
 
-    height: 18
+    height: 20
     Text {
         id: lbl
         visible: b.label !== ""
@@ -23,21 +23,17 @@ Item {
         color: Theme.text
         font { family: Theme.font; pixelSize: b.fontSize }
     }
-    Rectangle {
+    BatteryShape {   // a battery, not a slider's track: the Max volume slider sits in the same menu
         id: track
         anchors { left: lbl.right; leftMargin: lbl.visible ? 10 : 0; right: pct.left; rightMargin: 10; verticalCenter: parent.verticalCenter }
-        height: 6; radius: 3
-        color: Theme.border
-        Rectangle {
-            width: parent.width * Math.max(0, Math.min(100, b.level)) / 100
-            height: parent.height; radius: 3
-            color: b.tone
-            opacity: b.stale ? 0.4 : 1
-        }
+        height: 14
+        level: b.level
+        color: b.tone
+        fillOpacity: b.stale ? 0.4 : 1
     }
     Text {
         id: pct
-        anchors { right: st.left; rightMargin: 10; verticalCenter: parent.verticalCenter }
+        anchors { right: st.left; rightMargin: st.width > 0 ? 10 : 0; verticalCenter: parent.verticalCenter }
         width: 38
         horizontalAlignment: Text.AlignRight
         text: b.level + "%"
@@ -47,7 +43,9 @@ Item {
     Row {
         id: st
         anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-        width: 64
+        // A column for the status only when there is one (AirPods: every row has one, so the bars line up); without one
+        // (other headphones' single bar) the bar reaches the percentage at the right edge
+        width: b.status !== "" || b.charging ? 64 : 0
         spacing: 4
         Text {
             visible: b.charging

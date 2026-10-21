@@ -72,9 +72,8 @@ Column {
         note: m.d && m.d.swapUsed > 0 ? "Swap " + m.mb(m.d.swapUsed) + " / " + m.mb(m.d.swapTotal) : ""
     }
 
-    Divider { visible: m.d !== null && m.d.temps.length > 0 }   // no sensors in a VM: the whole section is left out
-
-    MenuSection { visible: m.d !== null && m.d.temps.length > 0; title: "Temperatures" }
+    // No sensors in a VM: the whole section is left out
+    MenuSection { visible: m.d !== null && m.d.temps.length > 0; apart: true; title: "Temperatures" }
     Column {
         visible: m.d !== null
         width: parent.width
@@ -94,9 +93,7 @@ Column {
         }
     }
 
-    Divider {}
-
-    MenuSection { title: "Top processes"; subtitle: "CPU, 1 core = 100 %" }
+    MenuSection { apart: true; title: "Top processes"; subtitle: "CPU, 1 core = 100 %" }
     Column {
         width: parent.width
         spacing: 2

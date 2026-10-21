@@ -74,51 +74,6 @@ Column {
         }
     }
 
-    // The menu's one button, in the style of Ferry's Send Clipboard: a round-ended pill with a soft wash of the theme colour.
-    // 5 px more room above it than the column's spacing, so it stands apart from the controls.
-    component DeckButton: Item {
-        id: db
-        property string icon: ""
-        property string label: ""
-        property bool navSelected: false
-        readonly property bool navEnabled: visible
-        function navActivate() { db.clicked() }
-        signal clicked()
-        width: parent.width
-        height: visible ? 5 + 36 : 0
-        Rectangle {
-            y: 5
-            width: parent.width
-            height: 36
-            radius: 18
-            color: dbArea.containsMouse ? Qt.lighter(Theme.sel, 1.3) : Theme.sel   // under the mouse just brighter
-            border { width: 1; color: db.navSelected ? Theme.primary : Theme.border }
-            Row {
-                anchors.centerIn: parent
-                spacing: 9
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: Icons.g(db.icon)
-                    color: Theme.accent
-                    font { family: Icons.family; pixelSize: 16 }
-                }
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: db.label
-                    color: Theme.accent
-                    font { family: Theme.font; pixelSize: 13; weight: Font.Medium }
-                }
-            }
-            MouseArea {
-                id: dbArea
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: db.clicked()
-            }
-        }
-    }
-
     MenuHeader { width: parent.width; title: "Music" }
 
     // --- Deck not running / nothing playing ---
@@ -126,8 +81,9 @@ Column {
         visible: m.alive && m.info === null
         text: "Nothing playing"
     }
-    DeckButton {
+    MenuButton {
         visible: !m.alive || m.info === null
+        gap: 10   // no divider above it: the room sets it apart
         icon: "music"
         label: m.alive ? "Open Deck" : "Start Deck"
         onClicked: m.openDeck()
@@ -252,8 +208,9 @@ Column {
     OutputList { visible: m.info !== null && m.outOpen; active: visible; width: parent.width }
 
     // While playing: bring up Deck's window (or start it); when nothing is playing the same button is at the top
-    DeckButton {
+    MenuButton {
         visible: m.info !== null
+        gap: 10
         icon: "music"
         label: "Open Deck"
         onClicked: m.openDeck()

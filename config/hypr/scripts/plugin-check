@@ -30,7 +30,7 @@ FACTS = ("Homepage", "Needs", "Keys")                             # in this orde
 ID = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 HEX = re.compile(r"""["'`]#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})["'`]""")
 FONT = re.compile(r"""\bfamily\s*:\s*["'`]""")
-ROWS = re.compile(r"\b(MenuRow|MenuSection|MenuNote)\s*\{")
+ROWS = re.compile(r"\b(MenuRow|MenuSection|MenuNote|MenuButton)\s*\{")
 
 findings = []
 unchecked = []       # .lua files, on a machine without luac
@@ -292,6 +292,8 @@ def check_menus(d, opens):
                 find(f, n, "a font name: Theme.font (text) or Icons.family (icons)")
             if is_menu and not header and re.search(r"\bMenuHeader\s*\{", l):
                 header = n
+            if re.search(r"\baction\s*:\s*true\b", l):
+                find(f, n, "a MenuRow with action: true: a button is a MenuButton (plugins/README.md › The menu)")
             if is_menu and not rows and ROWS.search(l):
                 rows = n
         if not is_menu:

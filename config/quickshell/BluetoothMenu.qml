@@ -175,12 +175,10 @@ Column {
         }
     }
 
-    MenuRow {
+    MenuButton {
         visible: m.powered && m.hidden.length > 0
         width: parent.width
-        height: visible ? 34 : 0
         icon: m.showHidden ? "eye-off" : "eye"
-        action: true
         label: (m.showHidden ? "Hide unnamed devices" : "Show hidden devices") + " (" + m.hidden.length + ")"
         onClicked: m.showHidden = !m.showHidden
     }
@@ -196,20 +194,17 @@ Column {
         text: m.message
     }
 
-    Divider { padBottom: 6 }
-    MenuRow {
+    MenuButton {
         visible: m.powered
         width: parent.width
-        height: visible ? 34 : 0
+        gap: 10   // no divider above it: the room sets it apart
         icon: "bluetooth-searching"
-        action: true
         label: m.scanning ? "Scanning…" : "Scan for devices"
         onClicked: m.scan()
     }
-    MenuRow {
+    MenuButton {
         width: parent.width
         icon: "settings"
-        action: true
         label: "Bluetooth settings…"
         onClicked: { Quickshell.execDetached(["blueman-manager"]); m.close() }
     }

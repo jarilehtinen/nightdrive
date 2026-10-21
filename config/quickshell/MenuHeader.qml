@@ -15,14 +15,19 @@ Item {
     property bool navSelected: false   // selected during keyboard navigation
     readonly property bool navEnabled: showToggle || (action !== "" && actionEnabled)
     function navActivate() { if (showToggle) toggled(); else if (action !== "" && actionEnabled) actionClicked() }
+    // apart: a header further down a menu (Sound's Microphone, Headphones' Equalizer): a section title with a toggle. Its
+    // title is a MenuSection's size, so only the menu's own header is large, and it gets some room above it in place of
+    // a divider (less than MenuSection's apart: the rows above it already end in their own padding)
+    property bool apart: false
+    readonly property int lead: apart ? 8 : 0
 
-    height: 26
+    height: 26 + lead
     Text {
         id: titleText
-        anchors { left: parent.left; verticalCenter: parent.verticalCenter }
+        anchors { left: parent.left; verticalCenter: parent.verticalCenter; verticalCenterOffset: h.lead / 2 }
         text: h.title.toUpperCase()
         color: Theme.primary
-        font { family: Theme.font; pixelSize: 12; weight: Font.Medium; letterSpacing: 0.6 }
+        font { family: Theme.font; pixelSize: h.apart ? 11 : 12; weight: h.apart ? Font.Normal : Font.Medium; letterSpacing: 0.6 }
     }
     Text {
         visible: h.subtitle !== ""
@@ -37,7 +42,7 @@ Item {
         id: actionPill
         visible: h.action !== ""
         readonly property bool lit: h.actionEnabled && (actionArea.containsMouse || (h.navSelected && !h.showToggle))
-        anchors { right: parent.right; rightMargin: h.showToggle ? 44 : 0; verticalCenter: parent.verticalCenter }
+        anchors { right: parent.right; rightMargin: h.showToggle ? 44 : 0; verticalCenter: parent.verticalCenter; verticalCenterOffset: h.lead / 2 }
         width: actionText.implicitWidth + 18; height: 20; radius: 10
         color: lit ? Theme.sel : "transparent"
         border.width: 1
@@ -59,17 +64,11 @@ Item {
             onClicked: h.actionClicked()
         }
     }
-    Rectangle {
+    Toggle {
         visible: h.showToggle
-        anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-        width: 34; height: 20; radius: 10
-        color: h.navSelected ? Theme.primary : (h.checked ? Theme.accent : Theme.border)   // keyboard focus: the whole toggle turns violet
-        Rectangle {
-            width: 14; height: 14; radius: 7; y: 3
-            x: h.checked ? 17 : 3
-            color: h.checked ? Theme.bg : Theme.text
-            Behavior on x { NumberAnimation { duration: 120 } }
-        }
-        MouseArea { cursorShape: Qt.PointingHandCursor; anchors.fill: parent; onClicked: h.toggled() }
+        anchors { right: parent.right; verticalCenter: parent.verticalCenter; verticalCenterOffset: h.lead / 2 }
+        checked: h.checked
+        navSelected: h.navSelected
+        onToggled: h.toggled()
     }
 }
