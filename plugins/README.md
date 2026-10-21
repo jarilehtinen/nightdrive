@@ -97,8 +97,8 @@ explains every key), with a few differences:
 
 `status` is an executable script in the folder (the module runs it without a `status` key). It prints one line of JSON,
 `{"icon": "inbox", "text": "2", "class": "active"}`: the icon is a Lucide name (or `pack:name` from Iconify, or the name
-of an SVG in the plugin's `icons/`, drawn in `currentColor`: Tailscale's logo), the text comes after it, and the class is one of `off` (dimmed), `warning`, `critical`, `active` (highlighted) or `stale`. No
-icon and no text hides the module. The shared helper prints that line:
+of an SVG in the plugin's `icons/`, drawn in `currentColor`: Tailscale's logo), the text comes after it, and the class is one of `off` (dimmed), `warning`, `critical`, `active` (highlighted) or `stale`.
+`"dot": true` adds a small red dot to the icon, for something that waits for you. No icon and no text hides the module. The shared helper prints that line:
 
 ```bash
 #!/bin/bash
