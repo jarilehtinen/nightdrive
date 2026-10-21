@@ -15,12 +15,13 @@ Themes). Choices: ~/.local/state/theme-color, ~/.local/state/nightdrive/theme-lo
   theme apply          writes ~/.cache/nightdrive/: theme.json (Quickshell), notify-icons, fuzzel.ini, hyprlock.conf,
                        gtk-colors.css (imported by config/gtk-*/gtk.css), the look's files for the terminals and
                        Hyprland (look.lua), nightdrive-colors.css in the Firefox and Thunderbird profiles and Apostrophe,
-                       and the top bar's bar.json via bar-style (Hyprland autostart runs it before Quickshell)
+                       aerc's default styleset (when aerc is installed) and the top bar's bar.json via bar-style
+                       (Hyprland autostart runs it before Quickshell)
 
 Shades are derived from the original violet: each role keeps its lightness and saturation, only the hue changes.
 So Violet produces exactly the original colours. The login screen (/etc/greetd) stays violet.
 """
-import colorsys, glob, json, os, subprocess, sys
+import colorsys, glob, json, os, shutil, subprocess, sys
 
 HOME = os.environ["HOME"]
 STATE = f"{HOME}/.local/state/theme-color"
@@ -30,6 +31,10 @@ OWN_THEMES = f"{HOME}/.config/hypr/themes"                       # Nightdrive's:
 MY_THEMES = f"{HOME}/.config/nightdrive/themes"                  # yours, saved from Theme Editor
 OUT = f"{HOME}/.cache/nightdrive"
 APOSTROPHE = f"{HOME}/.var/app/org.gnome.gitlab.somas.Apostrophe/config/gtk-4.0"   # a Flatpak: can't read ~/.cache
+# aerc looks here before /usr/share, so a "default" here replaces its own (bright blue selection, white text) for
+# everyone who hasn't picked another styleset. A styleset can't include a file, hence the whole of it here.
+AERC_STYLESET = f"{HOME}/.config/aerc/stylesets/default"
+AERC_MARK = "# written by theme"
 
 # Roles as the original violets (Theme.qml, fuzzel, hyprlock, voxtype, top bar)
 BASE = {
@@ -221,7 +226,45 @@ def apply():
     # gtk.css files, so switching themes doesn't change a tracked file. GTK reads it when an app starts.
     write(f"{OUT}/gtk-colors.css", "/* written by theme */\n"
           + "".join(f"@define-color nd_{k} {v};\n" for k, v in {**FIXED, **p}.items()))
+    write_aerc(p)
     apply_look(lk)
+
+
+def write_aerc(p):
+    """aerc's colours: the theme's for what is selected, marked and titled, the terminal's palette (numbers) for the
+    rest. aerc reads it when it starts. A default styleset of your own (without the mark) is left alone."""
+    if not shutil.which("aerc"):
+        return
+    try:
+        if not open(AERC_STYLESET).read().startswith(AERC_MARK):
+            return
+    except OSError:
+        pass
+    lines = [
+        f"*.selected.bg = {p['sel']}", f"*.selected.fg = {p['accent']}", "*.selected.bold = true",
+        "statusline_*.dim = true",
+        "*warning.fg = 3", "*success.fg = 2", "*error.fg = 1", "*error.bold = true",
+        f"border.fg = {p['border']}",
+        f"title.bg = {p['sel']}", f"title.fg = {p['primary']}", "title.bold = true",
+        f"header.fg = {p['primary']}", "header.bold = true",
+        "msglist_unread.bold = true", "msglist_deleted.dim = true",
+        f"msglist_marked.bg = {p['deep']}", f"msglist_marked.fg = {p['accent']}",
+        f"msglist_pill.bg = {p['sel']}", f"msglist_pill.fg = {p['accent']}",
+        f"part_mimetype.fg = {p['primary']}",
+        "selector_chooser.bold = true", "selector_focused.bold = true",
+        f"selector_focused.bg = {p['sel']}", f"selector_focused.fg = {p['accent']}",
+        f"completion_*.bg = {p['hover']}", f"completion_pill.bg = {p['sel']}",
+        "completion_default.fg = 7", "completion_description.fg = 8",
+        "", "[viewer]",
+        "url.underline = true", "url.fg = 6",
+        f"header.fg = {p['primary']}", "header.bold = true",
+        "signature.dim = true", "signature.fg = 8",
+        "diff_meta.bold = true", "diff_chunk.fg = 6", "diff_add.fg = 2", "diff_del.fg = 1",
+        "quote_1.fg = 6", "quote_2.fg = 4", "quote_3.fg = 5", "quote_4.fg = 8",
+    ]
+    os.makedirs(os.path.dirname(AERC_STYLESET), exist_ok=True)
+    write(AERC_STYLESET, f"{AERC_MARK}: Settings › Theme sets these, `nightdrive theme apply` writes them again\n"
+          + "\n".join(lines) + "\n")
 
 
 def apply_look(lk):
