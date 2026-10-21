@@ -17,13 +17,15 @@ Variants {
         const m = def.menu !== undefined ? def.menu : def.name
         return menus.indexOf(m) >= 0 ? m : ""
     }
-    // Visible modules with a menu, left to right (keyboard navigation), and an icon's centre on the first screen
+    // Visible modules with a menu, left to right (keyboard navigation), and an icon's centre on a screen's bar (the
+    // first screen's without one)
     function navOrder() {
         const w = instances[0]
         return w ? w.modules().filter(m => m.visible && m.hasMenu).map(m => menuOf(m.def)) : []
     }
-    function xOf(menu) {
-        const w = instances[0]
+    function xOf(menu, screen) {
+        let w = instances[0]
+        for (let i = 0; i < instances.length; i++) if (screen && instances[i].modelData === screen) w = instances[i]
         const m = w ? w.modules().find(m => m.visible && menuOf(m.def) === menu) : null
         return m ? m.mapToItem(null, m.width / 2, 0).x : -1
     }

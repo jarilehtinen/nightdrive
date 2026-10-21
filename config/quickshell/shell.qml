@@ -6,6 +6,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Hyprland
 import Quickshell.Wayland
 
 ShellRoot {
@@ -33,7 +34,12 @@ ShellRoot {
             root.localLauncher = (parts[1] || "").split("\n").indexOf("LauncherExtension.qml") >= 0
         }
     }
-    property var menuScreen: null      // the screen whose bar was clicked (null = the default screen)
+    property var menuScreen: null      // the screen whose bar was clicked, or the focused one (a shortcut, ⌘⇧Space)
+    // The screen Hyprland has the focus on: a menu opened by a key comes up there, not on the first screen
+    function focusedScreen() {
+        const f = Hyprland.focusedMonitor
+        return (f && Quickshell.screens.find(s => s.name === f.name)) || Quickshell.screens[0]
+    }
     property bool viaSubmap: false     // opened by click/shortcut: ←/→/↑/↓/Enter/Esc come from a Hyprland submap (hypr/bindings.lua: qsmenu), no keyboard focus
     property var navItem: null         // selected row / toggle
 
@@ -69,8 +75,8 @@ ShellRoot {
         const n = order.length
         if (n === 0) return
         const name = order[((i % n) + n) % n]
-        menuScreen = null
-        anchorX = bar.xOf(name)
+        menuScreen = focusedScreen()
+        anchorX = bar.xOf(name, menuScreen)
         current = name
     }
     function navToggle() {
@@ -147,8 +153,8 @@ ShellRoot {
         function toggle(name: string): void {
             // Only a menu that exists: a plugin's isn't listed while the plugin isn't installed
             if (root.current !== name && root.menus.indexOf(name) < 0) return
-            root.anchorX = bar.xOf(name)      // below its bar icon; -1 (no icon in the bar) = the right edge
-            root.menuScreen = null
+            root.menuScreen = root.focusedScreen()
+            root.anchorX = bar.xOf(name, root.menuScreen)      // below its bar icon; -1 (no icon in the bar) = the right edge
             const opening = root.current !== name
             root.viaSubmap = opening
             root.navMode = opening
@@ -206,7 +212,7 @@ ShellRoot {
 
     Launcher {
         extSource: root.localLauncher ? "local/LauncherExtension.qml" : ""
-        onOpenMenu: name => { root.menuScreen = null; root.anchorX = bar.xOf(name); root.current = name }   // below its bar icon (-1 = none: right edge)
+        onOpenMenu: name => { root.menuScreen = root.focusedScreen(); root.anchorX = bar.xOf(name, root.menuScreen); root.current = name }   // below its bar icon (-1 = none: right edge)
     }
 
     PanelWindow {
