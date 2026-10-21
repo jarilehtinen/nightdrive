@@ -15,6 +15,7 @@ config/topbar/local.modules.jsonc
 config/topbar/local.adjust.conf
 config/topbar/status.local
 config/fuzzel/apps-allow.local.txt
+config/kitty/local.conf
 config/ghostty/local.ghostty
 config/alacritty/local.toml
 config/foot/local.ini
