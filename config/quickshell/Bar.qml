@@ -48,13 +48,17 @@ Variants {
         // Workspaces 1–5 always, others while they exist; the screen's active one highlighted, empty ones dimmed.
         // The laptop's own workspace (hyprland.lua: LAPTOP_WORKSPACE, ⌘0) is a laptop icon after them, there while an
         // external display is connected or while it exists; the laptop's screen then shows only it. Number size: the `workspaces` row in adjust.conf.
+        // What exists is read from the windows and the screens, not Hyprland.workspaces: a workspace given a new id
+        // (⌘⌥1–0, hypr/bindings.lua) stays there under its old id with its windows, as Hyprland sends no event for it.
         Row {
             x: 10; anchors.verticalCenter: parent.verticalCenter
             spacing: 4
             Repeater {
                 model: {
                     const ids = [1, 2, 3, 4, 5]
-                    for (const w of Hyprland.workspaces.values) if (w.id > 0 && ids.indexOf(w.id) < 0) ids.push(w.id)
+                    const add = w => { if (w && w.id > 0 && ids.indexOf(w.id) < 0) ids.push(w.id) }
+                    for (const t of Hyprland.toplevels.values) add(t.workspace)
+                    for (const m of Hyprland.monitors.values) add(m.activeWorkspace)
                     const docked = Quickshell.screens.length > 1 && Quickshell.screens.some(s => s.name.startsWith("eDP"))
                     // The laptop's screen then has only its own workspace: 1–9 are the external display's
                     if (docked && win.modelData.name.startsWith("eDP")) return [win.laptopWorkspace]
@@ -64,10 +68,10 @@ Variants {
                 Rectangle {
                     id: ws
                     required property int modelData
-                    readonly property var hw: Hyprland.workspaces.values.find(w => w.id === modelData) || null
+                    readonly property bool windows: Hyprland.toplevels.values.some(t => t.workspace && t.workspace.id === modelData)
                     readonly property bool active: { const m = Hyprland.monitorFor(win.modelData); return !!m && !!m.activeWorkspace && m.activeWorkspace.id === modelData }
                     readonly property bool laptop: modelData === win.laptopWorkspace
-                    readonly property color fg: active ? TopBar.c("hlFg") : hw && hw.toplevels.values.length > 0 ? TopBar.c("dim") : TopBar.c("off")
+                    readonly property color fg: active ? TopBar.c("hlFg") : windows ? TopBar.c("dim") : TopBar.c("off")
                     width: (laptop ? icon.implicitWidth : num.implicitWidth) + 20; height: 27; radius: 8
                     color: active ? TopBar.c("wsBg") : "transparent"
                     // Half while the drawer is over it, and on a screen without the focus (with more than one screen):

@@ -169,8 +169,9 @@ ShellRoot {
         target: "bar"
         function refresh(): void { TopBar.refresh("") }
         function refreshModule(name: string): void { TopBar.refresh(name) }
-        // Hyprland sends no event when a workspace gets a new id (⌘⌥1–0, hypr/bindings.lua): read them again
-        function workspaces(): void { Hyprland.refreshWorkspaces(); Hyprland.refreshMonitors() }
+        // Hyprland sends no event when a workspace gets a new id (⌘⌥1–0, hypr/bindings.lua): read them again, and the
+        // windows too, which still point at the old workspace (the bar's numbers would show it empty)
+        function workspaces(): void { Hyprland.refreshWorkspaces(); Hyprland.refreshMonitors(); Hyprland.refreshToplevels() }
     }
 
     // A click on a bar module. The menu also enters keyboard mode (Esc closes, arrows/Enter work as with ⌘⇧Space).
