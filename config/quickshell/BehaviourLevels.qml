@@ -125,6 +125,8 @@ Item {
                       sub: "Typos and initials also match: firefx, vsc", switchOn: launcher.prefs.fuzzy },
                     { kind: "lpref", key: "shortcuts", name: "Shortcut hints", glyph: "keyboard",
                       sub: "An app’s or menu’s keys on its row (Hyper P)", switchOn: launcher.prefs.shortcuts }]
+                .concat(Plugins.has("deck") ? [{ kind: "lpref", key: "deck", name: "Include Deck artists, albums and songs", glyph: "disc-3",
+                      sub: "Your shelf and Curated in the search, and a row to search Spotify", switchOn: launcher.prefs.deck }] : [])
         }
         if (level === "compname") {
             // Phones see it in LocalSend, AirPlay and Ferry. The name as typed: q is lower-cased

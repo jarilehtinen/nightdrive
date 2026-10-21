@@ -34,9 +34,32 @@ Item {
     function albumItem(a, withArtist = true) {
         return { kind: "album", name: a.name, artist: withArtist && a.artist ? a.artist : "", summary: a.year ? String(a.year) : "", glyph: "disc-3", uri: a.uri }
     }
-    // The root search's album rows ("fm-84" → Atlas): the MUSIC tag on the right instead of the year
-    function rootRows() {
-        return albums.map(a => ({ item: Object.assign(albumItem(a), { summary: undefined, from: "Music" }), text: a.name, extra: a.artist }))
+    // Settings › Launcher › Include Deck artists, albums and songs (off by default: the search shows no Deck rows then).
+    // On: the shelf's and Curated's albums and their artists among the hits, and after them a row that searches Spotify
+    // for what was typed. Spotify is asked only when that row is picked, never while typing.
+    function rootTail(q) {
+        if (!launcher.prefs.deck || launcher.query.trim().length < 2) return []
+        return [searchRow(launcher.query.trim())]
+    }
+    // A song row: the song with ARTIST · ALBUM below it, the length on the right
+    function songItem(s) {
+        return { kind: "spotifysong", name: s.name, glyph: "music", uri: s.uri, album: s.album.uri,
+                 artist: s.artist + " · " + s.album.name, summary: duration(s.duration_ms) }
+    }
+
+    // The root search's album rows ("fm-84" → Atlas) and their artists (opening one lists its albums on Spotify), with the
+    // MUSIC tag on the right; only when Deck is in the search (Settings › Launcher)
+    function rootRows() { return launcher.prefs.deck ? localRows() : [] }
+    // The shelf's and Curated's artists (opening one lists its albums on Spotify) and albums, as search rows
+    function localRows() {
+        const artists = []
+        for (const a of albums) if (a.artist_id && !artists.some(x => x.id === a.artist_id)) artists.push({ id: a.artist_id, name: a.artist })
+        return artists.map(a => ({ item: { kind: "spotifyartist", name: a.name, glyph: "mic-vocal", id: a.id, from: "Music" }, text: a.name }))
+            .concat(albums.map(a => ({ item: Object.assign(albumItem(a), { summary: undefined, from: "Music" }), text: a.name, extra: a.artist })))
+    }
+    // Search Spotify for what was typed: opens Music › Search Spotify with it (Spotify is asked only then)
+    function searchRow(text) {
+        return { kind: "spotifysearch", name: "Search Spotify for “" + text + "”", glyph: "search", value: text, from: "Music" }
     }
 
     // 3:45
@@ -46,10 +69,14 @@ Item {
         const hint = launcher.hint
         if (level === "music") {
             const count = list => albums.filter(a => a.list === list).length
-            return { all: [{ kind: "nav", name: "Album Shelf", glyph: "library-big", target: "shelf", summary: String(count("shelf")) },
-                           { kind: "nav", name: "Curated", glyph: "sparkles", target: "curated", summary: String(count("curated")) },
-                           { kind: "nav", name: "Search Spotify", glyph: "search", target: "musicsearch", summary: "in Deck" }]
-                .map(r => ({ item: r, text: r.name })) }
+            const navs = [{ kind: "nav", name: "Album Shelf", glyph: "library-big", target: "shelf", summary: String(count("shelf")) },
+                          { kind: "nav", name: "Curated", glyph: "sparkles", target: "curated", summary: String(count("curated")) },
+                          { kind: "nav", name: "Search Spotify", glyph: "search", target: "musicsearch", summary: "in Deck" }]
+                .map(r => ({ item: r, text: r.name }))
+            // Typing here finds the shelf's and Curated's artists and albums, whatever Settings › Launcher says (this is
+            // Deck's own level), and offers the same words to Spotify after them
+            if (q === "") return { all: navs }
+            return { all: navs.concat(localRows()), tail: [searchRow(launcher.query.trim())] }
         }
         if (level === "musicsearch") {
             // Results come from `deck search --json` a moment after typing stops; going back from an artist shows them again
@@ -62,9 +89,7 @@ Item {
             const artists = spotify.artists.slice(0, 4).map(a => ({ kind: "spotifyartist", name: a.name, glyph: "mic-vocal", id: a.id, chevron: true }))
             const found = spotify.albums.map(a => albumItem(a))
             // A song plays its album from that song (deck ctl play-song), as Enter on a song in Deck does
-            const songs = spotify.songs.slice(0, 6).map(s => ({ kind: "spotifysong", name: s.name, glyph: "music", uri: s.uri,
-                                                               album: s.album.uri, artist: s.artist + " · " + s.album.name,
-                                                               summary: duration(s.duration_ms) }))
+            const songs = spotify.songs.slice(0, 6).map(songItem)
             if (artists.length + found.length + songs.length === 0) return hint("Nothing found on Spotify").concat([inDeck])
             return (artists.length ? [{ kind: "header", name: "Artists" }].concat(artists) : [])
                 .concat(found.length ? [{ kind: "header", name: "Albums" }].concat(found) : [],
@@ -96,6 +121,7 @@ Item {
             l.go("artist")
             return true
         }
+        if (it.kind === "spotifysearch") { l.goSearch("musicsearch", it.value); return true }
         if (it.kind === "decksearch") { l.open = false; Quickshell.execDetached([bin + "/deck-ctl", "search", it.value]); return true }
         return false
     }
@@ -104,8 +130,8 @@ Item {
     Sh {
         id: musicProc
         script: 'd="$HOME/.config/deck"; s=$(cat "$d/shelf.json" 2>/dev/null || echo "[]"); c=$(cat "$d/curated.json" 2>/dev/null || echo "{}")
-jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downcase), .year) | .[] | {uri, name, artist, year, list: "shelf"}),
-  ($c.albums // [] | .[] | {uri, name, artist, year, list: "curated"})]\''
+jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downcase), .year) | .[] | {uri, name, artist, artist_id, year, list: "shelf"}),
+  ($c.albums // [] | .[] | {uri, name, artist, artist_id, year, list: "curated"})]\''
         onResult: text => { try { m.albums = JSON.parse(text) } catch (e) { m.albums = [] } }
     }
     // Music › Search: Spotify through Deck's own client (needs client_id in Deck's config.toml); one request after typing pauses

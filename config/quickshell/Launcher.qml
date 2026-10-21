@@ -62,15 +62,16 @@ PanelWindow {
     property string armed: ""                 // action awaiting confirmation
     readonly property var detail: details.item   // Install / Remove: the row whose details are shown (DetailCard.qml), null = none
     readonly property int detailWidth: 860    // the card's width while showing them
-    // Settings › Launcher: { fuzzy, shortcuts } in ~/.local/state/nightdrive/launcher.json (missing = on)
-    property var prefs: ({ fuzzy: true, shortcuts: true })
+    // Settings › Launcher: { fuzzy, shortcuts, deck } in ~/.local/state/nightdrive/launcher.json (missing = on; deck, the
+    // music player's albums and artists in the search, only when asked for)
+    property var prefs: ({ fuzzy: true, shortcuts: true, deck: false })
     readonly property string prefsFile: Quickshell.env("HOME") + "/.local/state/nightdrive/launcher.json"
     FileView {
         path: win.prefsFile; watchChanges: true; onFileChanged: reload(); printErrors: false
         onLoaded: {
             let v = {}
             try { v = JSON.parse(text()) || {} } catch (e) {}
-            const n = { fuzzy: v.fuzzy !== false, shortcuts: v.shortcuts !== false }
+            const n = { fuzzy: v.fuzzy !== false, shortcuts: v.shortcuts !== false, deck: v.deck === true }
             if (JSON.stringify(n) !== JSON.stringify(win.prefs)) win.prefs = n
         }
     }
@@ -407,6 +408,8 @@ PanelWindow {
                 // The plugins' own rows (rootRows: Deck's albums, "fm-84" → Atlas)
                 ...pluginExts.map(e => e.rootRows ? e.rootRows() : [])
             ]) all = all.concat(src)
+            // Rows after the hits as they are, whatever was typed (rootTail: Deck's Search Spotify row, when Deck is in the search)
+            if (q !== "") tail = [].concat(...pluginExts.map(e => e.rootTail ? e.rootTail(q) : []))
         } else if (level === "apps") {
             all = appEntries(q)
             if (q === "") all.sort((a, b) => a.text.localeCompare(b.text))
@@ -455,6 +458,8 @@ PanelWindow {
 
     // The row each level had selected when a sublevel was opened (by name: a search may have been on), so Esc returns to it
     property var lastSel: ({})
+    // Opens a level with this already typed (Deck's Search Spotify row)
+    function goSearch(target, text) { go(target); input.text = text }
     function go(target) {
         const cur = results[list.currentIndex]
         if (cur && cur.name && target !== level && (parents[target] || "root") === level)   // going down one level
