@@ -80,11 +80,17 @@ case ${1:-} in
     exec 9>"${XDG_RUNTIME_DIR:-/tmp}/bt-mic-watch.lock"
     flock -n 9 || exit 0
     headset() { devices | jq -r '[.[] | select(.active | startswith("headset-head-unit")) | .name] | first // empty'; }
-    playerctl --all-players --follow status 2>/dev/null | while true; do
-      if ! read -r -t "$WATCH_POLL" status; then
+    # Read from a process substitution, not a pipe: the loop runs in this shell, so ending it can stop playerctl, which
+    # would otherwise keep a pipeline (and this watcher) alive until it next printed something
+    exec 3< <(playerctl --all-players --follow status 2>/dev/null 9>&-)
+    player=$!
+    while true; do
+      read -r -t "$WATCH_POLL" status <&3; rc=$?
+      if (( rc > 128 )); then          # timed out
         [[ -n $(headset) ]] || break   # back in music mode (here, pavucontrol, a reconnect): nothing to watch
         continue
       fi
+      (( rc == 0 )) || break           # playerctl ended
       # playerctl first prints each player's status as it is: music already playing when headset mode was picked
       # doesn't count, only music started afterwards
       (( SECONDS < 2 )) && continue
@@ -92,11 +98,21 @@ case ${1:-} in
       name=$(headset); [[ -n $name ]] || break
       # In a call the headset mode is wanted: music then isn't a reason to ask
       [[ $(~/.config/topbar/scripts/privacy | jq '.mic | length') == 0 ]] || continue
-      answer=$(notify-send -a Sound -i lucide:headphones -A music="Switch to music mode" -w "$name: headset mode" \
-        "Music sounds plainer in headset mode, which is for the microphone. Music mode sounds better; the microphone goes back to this computer's.")
-      [[ $answer == music ]] && "$0" release
+      # notify-send waits for the answer in the background (without the lock: 9>&-), and is given up once the
+      # headphones leave headset mode some other way, so a notification left unanswered doesn't keep this running
+      answer=${XDG_RUNTIME_DIR:-/tmp}/bt-mic-answer
+      notify-send -a Sound -i lucide:headphones -A music="Switch to music mode" -w "$name: headset mode" \
+        "Music sounds plainer in headset mode, which is for the microphone. Music mode sounds better; the microphone goes back to this computer's." \
+        >"$answer" 9>&- &
+      asked=$!
+      while kill -0 "$asked" 2>/dev/null; do
+        sleep "$WATCH_POLL"
+        [[ -n $(headset) ]] || kill "$asked" 2>/dev/null
+      done
+      [[ $(cat "$answer" 2>/dev/null) == music ]] && "$0" release
+      rm -f "$answer"
       break   # asked once: no more notifications until the next switch to headset mode
     done
-    pkill -P $$ playerctl 2>/dev/null ;;
+    kill "$player" 2>/dev/null ;;
   *) echo "usage: bt-mic list | state | use CARD | release | watch" >&2; exit 2 ;;
 esac
