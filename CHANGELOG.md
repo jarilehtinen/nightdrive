@@ -3,6 +3,46 @@
 What each release of Nightdrive changed, newest first. `nightdrive update` shows the new ones when it's done, and
 each is also the release's page on [GitHub](https://github.com/nightdrive-sh/nightdrive/releases).
 
+## 0.5.0 – 2026-10-21
+
+A new look for the top bar's menus, Claude Code sessions in the bar, Theme Editor, and your headphones' microphone.
+
+- **The top bar's menus look like one family:** the same round buttons, section titles and switches everywhere, no
+  dividers, and the battery drawn as a battery, also each AirPod's and the case's. ⌘⇧Space and other keys open a menu
+  on the screen you're on.
+
+![The Claude, Battery and Headphones menus](docs/releases/0.5.0-menus.jpg)
+
+- **Claude menu:** your Claude Code sessions on this desktop, what each is doing, and a click goes to its window. A red
+  dot on the bar's icon tells when one finished or needs you while you were elsewhere. Its notifications say which
+  session and what it wants, and a permission request can be answered right in the notification (Allow, Deny). After
+  updating, open your Claude Code sessions again to get the new notifications.
+- **Theme Editor** (Settings › Theme): the window background and how see-through it is, the window borders, the
+  shadow and the theme colour, changed live. Save what you made as a theme of your own. The look that was called
+  Experimental is now the Default.
+
+![Theme Editor over a desktop](docs/releases/0.5.0-theme-editor.jpg)
+
+- **Microphone and camera in use:** their icons appear in the bar while an app records, the microphone's showing the
+  level, and a click shows which app it is.
+
+![The Microphone and Camera menus while Firefox uses them](docs/releases/0.5.0-privacy.jpg)
+
+- **Your Bluetooth headphones' microphone:** pick it in the Sound menu, or set Use for › Calls in the Headphones menu.
+  Music › best quality switches back, and music started in call mode offers to switch back too.
+- **Also new:**
+  - Screenshots to the clipboard have a Save button that keeps a copy in Downloads.
+  - Settings › Display has the keyboard backlight next to the screen brightness, the Display menu each display's
+    scales under its own name, and Night light a switch.
+  - Dictation uses the full Parakeet model when you've downloaded it, and stops recording when the key is released
+    even after a mouse click.
+  - Experimental: when the battery runs low, the open windows are kept, and if it runs out the next login offers to
+    open them again.
+- **Fixes:** unlocking after sleep no longer flashes the desktop or the lock's error screen; an app's notification
+  button removes its row from the history too; EasyEffects no longer crashes when Sony headphones are switched off;
+  Thunderbird's calendar reminders float.
+- The Hyprland packages come from Nightdrive's new COPR group project; `nightdrive update` switches over by itself.
+
 ## 0.4.0 – 2026-10-20
 
 Better with an external display, more terminals to choose from, and a safer headphone jack.
