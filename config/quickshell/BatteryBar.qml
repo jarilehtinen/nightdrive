@@ -23,7 +23,7 @@ Item {
         color: Theme.text
         font { family: Theme.font; pixelSize: b.fontSize }
     }
-    BatteryShape {   // a battery, not a slider's track: the Max volume slider sits in the same menu
+    BatteryShape {   // a battery, not a slider's track: the Volume limit slider sits in the same menu
         id: track
         anchors { left: lbl.right; leftMargin: lbl.visible ? 10 : 0; right: pct.left; rightMargin: 10; verticalCenter: parent.verticalCenter }
         height: 14

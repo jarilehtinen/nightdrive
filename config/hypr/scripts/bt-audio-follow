@@ -1,7 +1,7 @@
 #!/bin/bash
 # Bluetooth headphones become the audio output as soon as they connect. WirePlumber on its own only switches to them if
 # they were the last output picked by hand, so after picking the speakers once, connected headphones stayed silent.
-# Also keeps each headphones' volume at or under their max volume (headphones menu › Max volume, saved in $maxdir/<MAC>;
+# Also keeps each headphones' volume at or under their max volume (headphones menu › Volume limit, saved in $maxdir/<MAC>;
 # 50% for headphones without one, 100 = no limit):
 # a change from anywhere (keys, apps, a Mac or phone over AVRCP) is pulled back, and headphones connect at most at it.
 # Started by hyprland.lua; listens to PipeWire (pactl subscribe) in the background. One instance only (flock).

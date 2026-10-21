@@ -5,6 +5,8 @@ import Quickshell
 // (the connected headphones' own presets, see config/easyeffects/build-presets) and their noise cancelling state.
 // Battery: AirPods per pod and case (hypr/scripts/headphones-ctl), other headphones the level BlueZ reports.
 // AirPods settings… opens their own settings (AirPodsSettings.qml).
+// Use for: music mode or headset mode (the microphone), as picking the headphones' microphone in the Sound menus does
+// (hypr/scripts/bt-mic).
 // Info and changes: ~/.config/topbar/scripts/eq (info / set / toggle). The preset is saved as the headphones' autoload profile.
 Column {
     id: m
@@ -29,7 +31,7 @@ Column {
         return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b)
     })
     property var info: ({})
-    property real maxShown: -1   // while dragging the Max volume slider (saved on release)
+    property real maxShown: -1   // while dragging the Volume limit slider (saved on release)
     readonly property bool eqOn: !!info.preset && info.preset !== "off"
     readonly property var pods: (info.airpods && info.airpods.pods) || ({})
     readonly property var podRows: ["left", "right", "case"].filter(k => pods[k]).map(k => Object.assign({ key: k }, pods[k]))
@@ -40,7 +42,7 @@ Column {
     }
     signal close()
 
-    function refresh() { infoProc.running = true }
+    function refresh() { infoProc.running = true; if (!btStateProc.running) btStateProc.running = true }
     function run(args) {
         setProc.command = [m.eq].concat(args)
         setProc.running = true
@@ -59,6 +61,35 @@ Column {
             try { m.info = JSON.parse(text) } catch (e) {}
             if (m.info.anc === m.ancPending) m.ancPending = ""
         }
+    }
+    // Use for: these headphones' mode, if they have a headset mode ({ card, name, mode }), and the one being switched to
+    readonly property string btMic: Quickshell.env("HOME") + "/.config/hypr/scripts/bt-mic"
+    property var btStates: []
+    // The connected headphones' card: bluez_output.<MAC>.<n> -> bluez_card.<MAC>. Derived, so it shows as soon as both
+    // eq info and bt-mic state are in, whichever comes last
+    readonly property var btState: {
+        const mac = ((m.info.sink || "").match(/^bluez_output\.([0-9A-F_]+)/) || [])[1]
+        return (mac && m.btStates.find(d => d.card === "bluez_card." + mac)) || null
+    }
+    property string modePending: ""
+    property bool modeFailed: false
+    Sh {
+        id: btStateProc
+        command: [m.btMic, "state"]
+        onResult: text => {
+            try { m.btStates = JSON.parse(text) } catch (e) {}
+        }
+    }
+    Sh {
+        id: modeProc
+        script: 'if [ "$MODE" = headset ]; then "$BTMIC" use "$CARD"; else "$BTMIC" release; fi'
+        onResult: () => { m.modeFailed = modeProc.exitCode !== 0; m.modePending = ""; btStateProc.running = true }
+    }
+    function setMode(mode) {
+        if (!m.btState || m.btState.mode === mode || m.modePending !== "") return
+        m.modePending = mode; m.modeFailed = false
+        modeProc.environment = { "BTMIC": m.btMic, "MODE": mode, "CARD": m.btState.card }
+        modeProc.running = true
     }
     Sh {
         id: setProc
@@ -111,30 +142,6 @@ Column {
         }
     }
 
-    // A header like the Sound menu's Microphone: its own on/off toggle
-    MenuHeader { width: parent.width; apart: true; title: "Equalizer"; showToggle: true; checked: m.eqOn; onToggled: m.run(["toggle"]) }
-
-    Column {
-        width: parent.width
-        spacing: 2
-        Repeater {
-            // known presets first in this order, others (made in EasyEffects) after them
-            model: (m.info.presets || []).slice().sort((a, b) => {
-                const k = Object.keys(m.presetInfo), ia = k.indexOf(a), ib = k.indexOf(b)
-                return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b)
-            })
-            delegate: MenuRow {
-                required property string modelData
-                width: parent.width
-                icon: (m.presetInfo[modelData] || { icon: "sliders-horizontal" }).icon
-                label: modelData
-                detail: (m.presetInfo[modelData] || { detail: "" }).detail
-                active: m.info.preset === modelData
-                checkIcon: active ? "check" : ""
-                onClicked: m.run(["set", active ? "Off" : modelData])   // clicking the selected one turns the EQ off
-            }
-        }
-    }
     // The headphones' listening mode: Sony headphones and AirPods switch to it and report it (hypr/scripts/headphones-ctl); for others it only
     // tells the EQ which measurement to use (headphones measured in several modes, see config/easyeffects/headphones.example.tsv)
     MenuSection { visible: m.ancModes.length > 1; apart: true; title: "Listening mode" }
@@ -160,14 +167,63 @@ Column {
         visible: m.ancModes.length > 1 && !m.info.ancControlled
         text: "Pick the mode set on the headphones: the EQ follows it."
     }
+
+    // Use for: music mode (A2DP: the best quality, no microphone) or headset mode (HFP: their microphone, plainer sound)
+    MenuSection { visible: m.btState !== null; apart: true; title: "Use for" }
+    Column {
+        visible: m.btState !== null
+        width: parent.width
+        spacing: 2
+        Repeater {
+            model: [{ mode: "music", label: "Music", icon: "music", detail: "best quality" },
+                    { mode: "headset", label: "Calls", icon: "mic", detail: "microphone on" }]
+            delegate: MenuRow {
+                required property var modelData
+                width: parent.width
+                icon: modelData.icon
+                label: modelData.label
+                active: !!m.btState && m.btState.mode === modelData.mode
+                checkIcon: active ? "check" : ""
+                busy: m.modePending === modelData.mode
+                danger: m.modeFailed && modelData.mode === "headset" && !active
+                detail: danger ? "didn't switch" : modelData.detail
+                onClicked: m.setMode(modelData.mode)
+            }
+        }
+    }
+
+    // A header like the Sound menu's Microphone: its own on/off toggle
+    MenuHeader { width: parent.width; apart: true; title: "Equalizer"; showToggle: true; checked: m.eqOn; onToggled: m.run(["toggle"]) }
+
+    Column {
+        width: parent.width
+        spacing: 2
+        Repeater {
+            // known presets first in this order, others (made in EasyEffects) after them
+            model: (m.info.presets || []).slice().sort((a, b) => {
+                const k = Object.keys(m.presetInfo), ia = k.indexOf(a), ib = k.indexOf(b)
+                return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b)
+            })
+            delegate: MenuRow {
+                required property string modelData
+                width: parent.width
+                icon: (m.presetInfo[modelData] || { icon: "sliders-horizontal" }).icon
+                label: modelData
+                detail: (m.presetInfo[modelData] || { detail: "" }).detail
+                active: m.info.preset === modelData
+                checkIcon: active ? "check" : ""
+                onClicked: m.run(["set", active ? "Off" : modelData])   // clicking the selected one turns the EQ off
+            }
+        }
+    }
     MenuNote {
         visible: !!m.info.sink && !m.info.default
         text: "Sound is playing from another output. The EQ takes effect when the headphones are selected."
     }
 
-    // Max volume per headphones: switching to them (e.g. from a Mac) at full volume can be painfully loud.
+    // Volume limit per headphones: switching to them (e.g. from a Mac) at full volume can be painfully loud.
     // hypr/scripts/bt-audio-follow turns any louder volume down to it.
-    MenuSection { apart: true; title: "Max volume" }
+    MenuSection { apart: true; title: "Volume limit" }
     Row {
         width: parent.width
         spacing: 12
@@ -206,7 +262,7 @@ Column {
     MenuButton {
         visible: !!m.info.airpods
         width: parent.width
-        gap: 20   // no divider above the buttons: the room sets them apart from the Max volume slider
+        gap: 20   // no divider above the buttons: the room sets them apart from the Volume limit slider
         icon: "headphones"
         label: "AirPods settings…"
         onClicked: { Quickshell.execDetached(["qs", "ipc", "call", "airpods", "open"]); m.close() }
