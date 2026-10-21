@@ -18,8 +18,8 @@ A new look for the top bar's menus, Claude Code sessions in the bar, Theme Edito
   session and what it wants, and a permission request can be answered right in the notification (Allow, Deny). After
   updating, open your Claude Code sessions again to get the new notifications.
 - **Theme Editor** (Settings › Theme): the window background and how see-through it is, the window borders, the
-  shadow and the theme colour, changed live. Save what you made as a theme of your own. The look that was called
-  Experimental is now the Default.
+  shadow and the theme colour, changed live. Save what you made as a theme of your own. It comes with a refined default
+  look: no borders on inactive windows, a wide, soft shadow, and a touch more violet in the background.
 
 ![Theme Editor over a desktop](docs/releases/0.5.0-theme-editor.jpg)
 
