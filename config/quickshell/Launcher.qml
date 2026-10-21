@@ -399,6 +399,9 @@ PanelWindow {
                 // Install's sub-items ("flatpak", "webapp", "flathub" → Flatpak)
                 statics.install.map(t => ({ item: Object.assign({}, t, { from: "Install", summary: undefined }), text: t.name,
                                             extra: "install " + (installAliases[t.name] || "") })),
+                // Only found by searching: names the focused workspace (ToolsLevels › wsname)
+                [{ item: { kind: "nav", name: "Rename current space", glyph: "pencil", target: "wsname" }, text: "Rename current space",
+                   extra: "workspace name label" }],
                 // Power actions ("shut" → Shut down)
                 statics.power.map(t => ({ item: t, text: t.name, extra: powerAliases[t.name] || "" })),
                 // Apps ("1pas" → 1Password), also one named like a root item (e.g. a webapp next to its menu): the APPS tag and

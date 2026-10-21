@@ -10,6 +10,7 @@ Variants {
     model: Quickshell.screens
     property string current: ""         // the open menu
     property var menus: []              // menus that exist (<Name>Menu.qml)
+    property bool launcherOpen: false   // the logo is highlighted while it's open
     signal menuClicked(string menu, real x, var screen)
     signal moveStarted()                // ⌘+drag moves a module: its menu closes
 
@@ -53,6 +54,31 @@ Variants {
         Row {
             x: 10; anchors.verticalCenter: parent.verticalCenter
             spacing: 4
+            // The logo (N█) opens the launcher, for those who don't know ⌘Space yet
+            Rectangle {
+                width: logo.width + 20; height: 27; radius: 8
+                // Like the drawer's dot: dimmed, highlighted while the launcher is open on this screen
+                readonly property bool open: bar.launcherOpen && win.focused
+                color: open ? TopBar.c("wsBg") : "transparent"
+                // logo/nightdrive-icon-small.svg without its square: the N and the block, cut to their ink
+                Image {
+                    id: logo
+                    readonly property real h: Math.round(TopBar.size("workspaces").size * 0.88 * win.dpr) / win.dpr   // 11 px with the default 12.5
+                    function rgb(v) { const c = Qt.color(v); return "rgb(" + Math.round(c.r * 255) + "," + Math.round(c.g * 255) + "," + Math.round(c.b * 255) + ")\" fill-opacity=\"" + c.a }
+                    x: 10; y: Math.round((parent.height - h) / 2 * win.dpr) / win.dpr
+                    width: h * 19.42 / 14.13; height: h
+                    sourceSize { width: Math.round(width * win.dpr); height: Math.round(height * win.dpr) }
+                    source: "data:image/svg+xml;utf8," + encodeURIComponent(
+                        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="6.88 8.97 19.42 14.13">'
+                        + '<path fill="' + rgb(parent.open ? TopBar.c("hlFg") : TopBar.c("dim")) + '" d="M6.88 22.84H9.39V16.76C9.39 15.45 9.24 13.32 9.12 12.11L12.68 22.84H16V8.97H13.49V14.67C13.49 15.98 13.66 18.32 13.8 19.7L10.21 8.97H6.88Z"/>'
+                        + '<rect x="18.3" y="9.0" width="8.0" height="14.1" fill="' + rgb(Theme.primary) + '" opacity="' + (parent.open ? 1 : 0.6) + '"/></svg>')
+                }
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: Quickshell.execDetached(["qs", "ipc", "call", "launcher", "toggle"])
+                }
+            }
             Repeater {
                 model: {
                     const ids = [1, 2, 3, 4, 5]
@@ -83,7 +109,7 @@ Variants {
                         element: "workspaces"
                         dpr: win.dpr
                         x: Math.round((parent.width - implicitWidth) / 2 * win.dpr) / win.dpr
-                        text: ws.modelData
+                        text: { const w = Hyprland.workspaces.values.find(w => w.id === ws.modelData); return w && w.name ? w.name : ws.modelData }   // renamed: Launcher › Rename current space
                         color: ws.fg
                     }
                     Text {

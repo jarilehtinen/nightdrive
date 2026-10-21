@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell
+import Quickshell.Hyprland
 
 // The launcher's Clipboard (cliphist's history), and Tools › Emoji and Snippets (add, edit with Ctrl+Enter, remove with
 // ⌘⌫). Enter pastes the row into the window that had the focus, Shift+Enter only copies it. Tools and Screenshot
@@ -18,11 +19,12 @@ Item {
     property bool snipLoaded: false
     property string snipAuto: ""              // auto-expand: on | off | no-access (snippets status)
     property string snipTrigger: ""           // Snippets › Add / edit: the trigger being given a text
+    property int wsId: 0                      // Rename current space: the workspace the launcher was opened over
 
     readonly property string scripts: Quickshell.env("HOME") + "/.config/hypr/scripts"
-    readonly property var levels: ["clipboard", "emoji", "snippets", "snipkey", "sniptext"]
+    readonly property var levels: ["clipboard", "emoji", "snippets", "snipkey", "sniptext", "wsname"]
     readonly property var titles: ({ clipboard: "Clipboard", emoji: "Tools › Emoji", snippets: "Tools › Snippets", snipkey: "Snippets › Trigger",
-                                     sniptext: "Snippets › “" + snipTrigger + "”" })
+                                     sniptext: "Snippets › “" + snipTrigger + "”", wsname: "Rename space " + wsId })
     readonly property var parents: ({ emoji: "tools", snippets: "tools", snipkey: "snippets", sniptext: "snippets" })
     readonly property bool armsItself: true   // a snippet's armKey is for ⌘⌫ (deleteSelected), not for Shift+Enter
 
@@ -34,6 +36,7 @@ Item {
         if (level === "snippets" && cur.kind === "snipauto") return snipAuto === "off" ? "Enter: turn on in a terminal (asks for your password once)" : "Enter: turn off in a terminal"
         if (level === "snipkey" && query.trim() !== "") return "Enter: continue to the text"
         if (level === "sniptext" && query !== "") return "Enter: save"
+        if (level === "wsname") return "Enter: rename  ·  Esc: back"
         return ""
     }
     function opened() {}
@@ -41,6 +44,10 @@ Item {
         if (level === "emoji" && !emojiLoaded) emojiProc.running = true
         if (level === "clipboard") { clipLoaded = false; clipProc.running = true }
         if (level === "snippets") snipProc.running = true
+        if (level === "wsname") {
+            const m = Hyprland.focusedMonitor
+            wsId = m && m.activeWorkspace ? m.activeWorkspace.id : 0
+        }
     }
 
     function items(level, q) {
@@ -77,6 +84,12 @@ Item {
             if (l.query === "") return l.hint("Type the text that “" + snipTrigger + "” expands to")
             return [{ kind: "snipadd", name: "Save “" + snipTrigger + "”", summary: l.query, glyph: "text-cursor-input", value: l.query }]
         }
+        // Experimental: Hyprland's own name, so it's gone when the workspace empties (the bar shows the number again)
+        if (level === "wsname") {
+            const typed = l.query.trim()
+            if (typed === "") return [{ kind: "wsrename", name: "Show the number " + wsId, glyph: "hash", value: "" }]
+            return [{ kind: "wsrename", name: "Name it “" + typed + "”", glyph: "pencil", value: typed }]
+        }
         return []
     }
 
@@ -88,6 +101,12 @@ Item {
         if (it.kind === "snipauto") {
             l.open = false
             Quickshell.execDetached(l.term('"$HOME/.local/bin/nightdrive" snippets ' + (snipAuto === "off" ? "enable" : "disable")))
+            return true
+        }
+        if (it.kind === "wsrename") {
+            l.open = false
+            const name = it.value || String(wsId)
+            Quickshell.execDetached(["hyprctl", "dispatch", "hl.dsp.workspace.rename({ workspace = " + wsId + ", name = " + JSON.stringify(name) + " })"])
             return true
         }
         if (it.kind === "snipk") { snipTrigger = it.value; l.go("sniptext"); return true }

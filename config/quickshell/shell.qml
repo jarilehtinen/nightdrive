@@ -189,6 +189,7 @@ ShellRoot {
         id: bar
         current: root.current
         menus: root.menus
+        launcherOpen: launcher.open
         onMenuClicked: (name, x, screen) => root.clickMenu(name, x, screen)
         onMoveStarted: root.current = ""
     }
@@ -214,6 +215,7 @@ ShellRoot {
     Shelf {}
 
     Launcher {
+        id: launcher
         extSource: root.localLauncher ? "local/LauncherExtension.qml" : ""
         onOpenMenu: name => { root.menuScreen = root.focusedScreen(); root.anchorX = bar.xOf(name, root.menuScreen); root.current = name }   // below its bar icon (-1 = none: right edge)
     }
