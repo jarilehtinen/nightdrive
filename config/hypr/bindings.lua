@@ -433,7 +433,8 @@ hl.bind(mod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
 
 -- Media keys (MacBook top row)
 hl.bind("XF86AudioRaiseVolume",  hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 ; wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+ ; qs ipc call osd volume"), { locked = true, repeating = true })
-hl.bind("XF86AudioLowerVolume",  hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 ; wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%- ; qs ipc call osd volume"),      { locked = true, repeating = true })
+-- At 0 % the speakers (Asahi's filter chain) still let sound through, so the step that reaches 0 also mutes.
+hl.bind("XF86AudioLowerVolume",  hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%- ; if wpctl get-volume @DEFAULT_AUDIO_SINK@ | grep -q 'Volume: 0.00'; then wpctl set-mute @DEFAULT_AUDIO_SINK@ 1; else wpctl set-mute @DEFAULT_AUDIO_SINK@ 0; fi ; qs ipc call osd volume"), { locked = true, repeating = true })
 hl.bind("XF86AudioMute",         hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle ; qs ipc call osd volume"),     { locked = true })
 hl.bind("XF86MonBrightnessUp",   hl.dsp.exec_cmd(scripts .. "/brightness screen up"),   { locked = true, repeating = true })   -- F2: screen brightness in steps of ten
 hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd(scripts .. "/brightness screen down"), { locked = true, repeating = true })   -- F1
