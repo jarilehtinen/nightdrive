@@ -9,6 +9,13 @@
 #PersonalToolbar { order: 2 !important; }        /* bookmarks toolbar */
 #TabsToolbar { order: 3 !important; }            /* tabs below */
 
+/* One tab, no tab bar: the desktop works window by window, so a lone tab is just the window. The bar comes back
+   with a second tab (⌘T, a middle-clicked link), a pinned tab, a tab group or a split view. */
+#TabsToolbar:not(:has(.tabbrowser-tab:not([hidden]) ~ .tabbrowser-tab:not([hidden]),
+                      #pinned-tabs-container .tabbrowser-tab, tab-group, tab-split-view-wrapper)) {
+  visibility: collapse !important;
+}
+
 /* ===== Nightdrive's colours (from Tokyo Night) ===== */
 :root {
   --jn-bg: var(--nd-bg, #171822);  --jn-bg-dark: #14141b;  --jn-bg-hl: #292e42;  --jn-bg-hl2: #3b4261;

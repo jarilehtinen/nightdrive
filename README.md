@@ -121,7 +121,7 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
 | Window manager | [Hyprland](https://hypr.land) | Lua config, Mac-style keybindings, rounded screen corners |
 | Bar, menus, launcher | [Quickshell](https://quickshell.org) | one themed shell for the top bar, its menus, launcher, OSD and shelf; an orange microphone and camera in the bar while an app uses them (MacBooks have no microphone light), the microphone filling up with the input level, their menus name the apps |
 | Terminal | [kitty](https://sw.kovidgoyal.net/kitty/) | ⌘Enter, opens in `~/Projects`; Mac copy and paste. Another terminal (Ghostty, foot, Alacritty, WezTerm) in Settings › Default apps: it opens everywhere kitty did, with its own settings and colours |
-| Browser | Firefox | tabs below the address bar, themed UI |
+| Browser | Firefox | tabs below the address bar, no tab bar while a window has one tab, themed UI |
 | Mail (optional) | Thunderbird | themed, with a minimal toolbar ([details](docs/thunderbird.md)) |
 | Music (optional) | [Deck](plugins/deck/README.md) (Spotify in the terminal, needs Spotify Premium) | bar icon, music menu, player row in the launcher, media keys |
 | Passwords (optional) | [1Password](plugins/1password/README.md) + `op` CLI | Passwords level in the launcher, SSH agent |
