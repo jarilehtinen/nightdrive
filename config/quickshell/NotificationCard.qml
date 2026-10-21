@@ -4,7 +4,8 @@ import Quickshell.Widgets
 
 // One notification as a card: the app's icon and name with the time (× while the mouse is over it), the title, the text,
 // the notification's own picture on the right (a preview, e.g. a screenshot: small under the text), and the app's
-// actions as buttons. A preview that is a file gets Copy image and Copy path buttons of its own (also in the menu), and a
+// actions as buttons. A preview that is a file gets Copy image and Copy path buttons of its own (also in the menu), a
+// temporary one (a screenshot to the clipboard) Save too, and a
 // double click on it opens it in the image viewer.
 // The popups (NotificationPopups.qml) and the notification menu (NotificationsMenu.qml) both draw these, so a
 // notification looks the same in both.
@@ -26,8 +27,12 @@ Rectangle {
         return i.startsWith("/") ? "file://" + i : i.startsWith("file://") ? i : ""
     }
     readonly property string filePath: fileUri ? decodeURIComponent(fileUri.slice(7)) : ""
-    // The buttons: the preview's copies first, then the app's actions
-    readonly property var buttons: (filePath ? [{ text: "Copy image", copy: "image" }, { text: "Copy path", copy: "path" }] : [])
+    // A preview in the runtime dir is only a temporary file (a screenshot to the clipboard: hypr/scripts/screenshot), gone
+    // at logout: Save keeps a copy in Downloads
+    readonly property bool temporary: filePath !== "" && filePath.startsWith(Quickshell.env("XDG_RUNTIME_DIR") + "/")
+    // The buttons: the preview's own first (Save, the copies), then the app's actions
+    readonly property var buttons: (temporary ? [{ text: "Save", done: "Saved", save: true }] : [])
+        .concat(filePath ? [{ text: "Copy image", copy: "image" }, { text: "Copy path", copy: "path" }] : [])
         .concat(actions.map(a => ({ text: a.text, action: a })))
     readonly property bool hovered: hover.hovered || shotDrag.active   // a drag of the preview keeps a popup up too
     readonly property bool dragging: shot.Drag.active   // the preview is being dragged out (the menu lets the drop through)
@@ -332,7 +337,7 @@ Rectangle {
                 Rectangle {
                     id: btn
                     required property var modelData
-                    property bool copied: false        // "Copied" for a moment after a copy button
+                    property bool copied: false        // "Copied" (or "Saved") for a moment after a copy button
                     // Text only, no glyphs: the apps' actions come as bare labels, so every button looks the same.
                     // The label's width also while it says "Copied"
                     width: label.advanceWidth + 20; height: 26
@@ -342,7 +347,7 @@ Rectangle {
                     Text {
                         id: btnText
                         anchors.centerIn: parent
-                        text: btn.copied ? "Copied" : btn.modelData.text
+                        text: btn.copied ? btn.modelData.done || "Copied" : btn.modelData.text
                         color: btnArea.containsMouse ? Theme.accent : Theme.text
                         font { family: Theme.font; pixelSize: 11 }
                     }
@@ -363,7 +368,10 @@ Rectangle {
                                 if (!resident) Notifs.forget(uid)
                                 return
                             }
-                            Quickshell.execDetached(btn.modelData.copy === "image"
+                            // Save: named by when it was taken (the file's time), -n so a second click doesn't add another
+                            Quickshell.execDetached(btn.modelData.save
+                                ? ["sh", "-c", 'd=$(xdg-user-dir DOWNLOAD); mkdir -p "$d" && cp -n "$1" "$d/Screenshot_$(date -r "$1" +%Y-%m-%d_%H-%M-%S).png"', "sh", card.filePath]
+                                : btn.modelData.copy === "image"
                                 ? ["sh", "-c", 'wl-copy --type image/png < "$1"', "sh", card.filePath]
                                 : ["wl-copy", "--", card.filePath])
                             btn.copied = true

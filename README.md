@@ -298,7 +298,7 @@ which app is yours to choose (launcher › Settings › Keyboard Shortcuts).
 | ⌘ D · ⌘ ⇧ D | Drawer: show / hide · put the window in it, or take it back out |
 | ⌘ ⇧ V · ⌘ ⇧ E | Clipboard history · emoji |
 | ⌘ R · ⌘ ⇧ R | Reload · without the cache (browsers) |
-| ⌘ ⇧ S · ⌘ ⌥ S · ⌘ ⌥ ⇧ S | Screenshot of a region · of a window · of the screen, to the clipboard |
+| ⌘ ⇧ S · ⌘ ⌥ S · ⌘ ⌥ ⇧ S | Screenshot of a region · of a window · of the screen, to the clipboard (Save in the notification keeps a copy in Downloads) |
 | Hyper B / F / P / M / E | Browser / Files / 1Password / Music / Email |
 | ⌘ ⇧ Space | Walk through the top bar menus with the keyboard |
 | ⌘ + drag | On a top bar icon: move it to another place in the bar |

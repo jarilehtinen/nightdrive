@@ -58,7 +58,7 @@
 ## Screenshots
   ⌘ ⇧ S              Region to the clipboard
   ⌘ ⌥ S              Window to the clipboard (click the window)
-  ⌘ ⌥ ⇧ S            Whole screen to the clipboard
+  ⌘ ⌥ ⇧ S            Whole screen to the clipboard (Save in the notification keeps a copy in Downloads)
   ⌘ Space → Tools › Screenshot   Region, window or whole screen (saved to a file and the clipboard)
 
 ## Other
