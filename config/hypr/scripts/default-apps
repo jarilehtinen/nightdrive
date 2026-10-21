@@ -89,12 +89,13 @@ def entries():
     return {k: v["keys"] for k, v in found.items()}
 
 
-def usable(keys):
-    """An app to offer: shown somewhere (not NoDisplay/Hidden in its own file), not a terminal one (aerc opened a
-    terminal for a mailto link), and its program installed."""
+def usable(keys, by_type):
+    """An app to offer: shown somewhere (not NoDisplay/Hidden in its own file) and its program installed. One that runs
+    in a terminal (aerc, Neovim) opens in the chosen terminal, as GIO starts it with xdg-terminal-exec: it's offered
+    when it lists the type itself (by_type), not for a category only, which every terminal tool has (vi as TextEditor)."""
     if keys.get("Type", "Application") != "Application": return False
     if keys.get("NoDisplay", "").lower() == "true" or keys.get("Hidden", "").lower() == "true": return False
-    if keys.get("Terminal", "").lower() == "true": return False
+    if keys.get("Terminal", "").lower() == "true" and not by_type: return False
     tryexec = keys.get("TryExec")
     if tryexec and not (os.path.isabs(tryexec) and os.access(tryexec, os.X_OK) or not os.path.isabs(tryexec) and
                         any(os.access(p + "/" + tryexec, os.X_OK) for p in os.environ.get("PATH", "").split(":"))):
@@ -137,9 +138,10 @@ def kinds():
     for kind in KINDS:
         key, name, glyph, more, types, cats = kind
         cur = current_of(kind)
-        offer = sorted((app_info(i, k) for i, k in apps.items()
-                        if usable(k) and (types and types[0] in k.get("MimeType", "").split(";")
-                                          or set(cats) & set(k.get("Categories", "").split(";")))),
+        def offered(k):
+            by_type = bool(types) and types[0] in k.get("MimeType", "").split(";")
+            return usable(k, by_type) and (by_type or bool(set(cats) & set(k.get("Categories", "").split(";"))))
+        offer = sorted((app_info(i, k) for i, k in apps.items() if offered(k)),
                        key=lambda a: a["name"].lower())
         if cur and cur in apps and all(a["id"] != cur for a in offer):   # the current one even when it isn't offered
             offer.insert(0, app_info(cur, apps[cur]))
