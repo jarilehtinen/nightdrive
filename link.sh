@@ -207,14 +207,15 @@ mkdir -p "$HOME/.local/share/voxtype/quickshell"
 link "$repo/config/voxtype/OsdSurface.qml" "$HOME/.local/share/voxtype/quickshell/OsdSurface.qml"   # modified OSD (top centre, no dimming)
 for f in listening.wav done.wav; do link "$repo/config/voxtype/$f" "$HOME/.local/share/voxtype/quickshell/$f"; done   # its sound cues (found next to it)
 
-# Firefox: userChrome.css (tabs below the address bar) and user.js (enables userChrome.css) into the default profile
+# Firefox: userChrome.css (tabs below the address bar) into the default profile, and user.js (enables userChrome.css)
+# with the choices of launcher › Settings › Browser: firefox-prefs writes it, as it isn't a link
 for p in "$HOME"/.config/mozilla/firefox/*.default-release; do
   [[ -d $p ]] || continue
   mkdir -p "$p/chrome"
   link "$repo/config/firefox/userChrome.css" "$p/chrome/userChrome.css"
   link "$repo/config/firefox/userContent.css" "$p/chrome/userContent.css"
-  link "$repo/config/firefox/user.js" "$p/user.js"
 done
+"$repo/config/hypr/scripts/firefox-prefs" apply
 
 # Thunderbird: Nightdrive's userChrome.css (Lucide icons are read straight from the repo's icons/ directory), user.js
 # and the folder-pane toggle button add-on. The toolbar button order lives in xulstore.json (see docs/thunderbird.md).

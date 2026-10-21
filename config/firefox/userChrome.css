@@ -1,4 +1,5 @@
 @import url("nightdrive-colors.css");   /* the look's background (--nd-bg), written by hypr/scripts/theme */
+@import url("nightdrive-tabs.css");     /* the tab bar with one tab (launcher › Settings › Browser), written by hypr/scripts/firefox-prefs */
 
 /* Tabs below the address bar.
    To restore the default: remove this file (symlink) from the profile's chrome folder and restart Firefox. */
@@ -8,13 +9,6 @@
 #nav-bar { order: 1 !important; }                /* address bar on top */
 #PersonalToolbar { order: 2 !important; }        /* bookmarks toolbar */
 #TabsToolbar { order: 3 !important; }            /* tabs below */
-
-/* One tab, no tab bar: the desktop works window by window, so a lone tab is just the window. The bar comes back
-   with a second tab (⌘T, a middle-clicked link), a pinned tab, a tab group or a split view. */
-#TabsToolbar:not(:has(.tabbrowser-tab:not([hidden]) ~ .tabbrowser-tab:not([hidden]),
-                      #pinned-tabs-container .tabbrowser-tab, tab-group, tab-split-view-wrapper)) {
-  visibility: collapse !important;
-}
 
 /* ===== Nightdrive's colours (from Tokyo Night) ===== */
 :root {

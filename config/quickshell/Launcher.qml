@@ -92,7 +92,7 @@ PanelWindow {
     readonly property var ext: extLoader.item
     // Levels from other files, which answer the same questions (items, activate, footer, entered; the optional ones below):
     // SystemLevels (Wi-Fi, Bluetooth, Sound, Tailscale, Status), HomeLevels (Home Assistant), DefaultAppsLevels, AppKeyLevels
-    // (Keyboard Shortcuts), BehaviourLevels (Launcher, Computer name, Notifications, Update channel), InstallLevels,
+    // (Keyboard Shortcuts), BehaviourLevels (Launcher, Browser, Computer name, Notifications, Update channel), InstallLevels,
     // ToolsLevels (Clipboard, Emoji, Snippets), AppearanceLevels (Top bar, Screensaver), DisplayLevels (Display, Battery),
     // RemoveLevels, PasswordLevels (with 1Password), ThemeLevels (Theme, Background), the plugins' and the private
     // extension. A new file goes in this list, not in each question's code
@@ -216,7 +216,7 @@ PanelWindow {
             { kind: "nav", name: "Screensaver", glyph: "monitor-pause", target: "screensaver" },
             { kind: "header", name: "Behaviour" },
             { kind: "nav", name: "Launcher", glyph: "text-search", target: "launcherprefs" }
-        ], defs.settingsItems, akeys.settingsItems, [
+        ], defs.settingsItems, behave.browserItems, akeys.settingsItems, [
             { kind: "nav", name: "Computer name", glyph: "laptop", target: "compname", summary: behave.compName }   // what phones see
         ], home.settingsItems, [   // Home: only while Home Assistant is set up
             { kind: "nav", name: "Notifications", glyph: "bell-ring", target: "sounds" },
@@ -243,6 +243,7 @@ PanelWindow {
                                               "Background": "wallpaper desktop image picture",
                                               "Theme Editor…": "window background terminal kitty opacity transparency border frame shadow inactive",
                                               "Top bar": "waybar panel menu bar",
+                                              "Browser": "firefox tabs tab bar links new window",
                                               "Launcher": "search fuzzy typos shortcuts hints spotlight",
                                               "Computer name": "hostname rename device localsend airplay ferry phone",
                                               "Update channel": "stable development dev beta branch updates",

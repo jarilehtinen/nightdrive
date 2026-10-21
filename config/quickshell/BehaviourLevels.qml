@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell
 
-// The launcher's Settings › Launcher (fuzzy search, shortcut hints), Computer name, Notifications (how long a popup stays,
+// The launcher's Settings › Launcher (fuzzy search, shortcut hints), Browser (Firefox's links and tab bar), Computer name, Notifications (how long a popup stays,
 // the two sounds, FUMonitor's alerts) and Update channel. Startup stays in Launcher.qml: its rows are the app rows.
 // Launcher.qml asks it like DefaultAppsLevels (levels, titles, parents, items, activate, footer, entered), shows compName
 // and channel on Settings' own rows, and calls entered("settings") to read them.
@@ -10,11 +10,12 @@ Item {
     property var launcher: null
 
     readonly property string scripts: Quickshell.env("HOME") + "/.config/hypr/scripts"
-    readonly property var levels: ["launcherprefs", "compname", "sounds", "notiftime", "soundregular", "soundurgent", "channel"]
+    readonly property var levels: ["launcherprefs", "compname", "sounds", "notiftime", "soundregular", "soundurgent", "channel", "browser"]
     readonly property var titles: ({ launcherprefs: "Settings › Launcher", compname: "Settings › Computer name", channel: "Settings › Update channel",
+                                     browser: "Settings › Browser",
                                      sounds: "Settings › Notifications", notiftime: "Notifications › Show for",
                                      soundregular: "Notifications › Regular sound", soundurgent: "Notifications › Urgent sound" })
-    readonly property var parents: ({ launcherprefs: "settings", compname: "settings", channel: "settings", sounds: "settings",
+    readonly property var parents: ({ launcherprefs: "settings", compname: "settings", channel: "settings", sounds: "settings", browser: "settings",
                                       notiftime: "sounds", soundregular: "sounds", soundurgent: "sounds" })
 
     // Settings › Computer name: the pretty host name, or the host name as LocalSend and Ferry show it without one
@@ -38,6 +39,26 @@ Item {
             const l = b.launcher
             if (l.level === "channel" && l.query === "") l.selectWhere(r => r.value === b.channel)
         }
+    }
+    // Settings › Browser (hypr/scripts/firefox-prefs): "" until read, "none" without a Firefox profile, else
+    // { links: window|tab, tabbar: auto|always }. Its row in Settings shows only with a profile.
+    property var firefox: ""
+    readonly property var browserItems: firefox !== "" && firefox !== "none"
+        ? [{ kind: "nav", name: "Browser", glyph: "globe", target: "browser" }] : []
+    Sh {
+        id: firefoxProc
+        command: [b.scripts + "/firefox-prefs", "status"]
+        onResult: text => {
+            const t = text.trim()
+            if (t === "none" || t === "") { b.firefox = t; return }
+            const o = {}
+            t.split(" ").forEach(kv => { const i = kv.indexOf("="); o[kv.slice(0, i)] = kv.slice(i + 1) })
+            b.firefox = o
+        }
+    }
+    function setFirefox(key, value) {
+        const o = Object.assign({}, firefox); o[key] = value; firefox = o
+        Quickshell.execDetached([scripts + "/firefox-prefs", key, value])
     }
     // Settings › Notifications (hypr/scripts/sounds): file name, shown name, icon
     property string soundRegular: ""
@@ -103,7 +124,7 @@ Item {
 
     function footer(level, query) {
         const cur = launcher.results[launcher.selIndex] || {}
-        if (level === "launcherprefs" || cur.kind === "fumon" || cur.kind === "crashreports") return "Enter: on/off"
+        if (level === "launcherprefs" || cur.kind === "firefox" || cur.kind === "fumon" || cur.kind === "crashreports") return "Enter: on/off"
         if (cur.kind === "sound") return "Enter: choose  ·  Shift+Enter: listen"
         if (level === "compname" && query.trim() !== "") return "Enter: rename (asks for your password)"
         return ""
@@ -112,6 +133,7 @@ Item {
     function entered(level) {
         if (level === "settings" || level === "compname") compNameProc.running = true
         if (level === "settings" || level === "channel") channelProc.running = true
+        if (level === "settings" || level === "browser") firefoxProc.running = true
         if (level === "sounds" || level === "soundregular" || level === "soundurgent") soundsProc.running = true
         if (level === "sounds") { fumonProc.running = true; crashReportsProc.running = true }
         if (level === "notiftime") Qt.callLater(() => launcher.selectWhere(r => r.summary === "current"))   // the cursor on the current time
@@ -127,6 +149,15 @@ Item {
                       sub: "An app’s or menu’s keys on its row (Hyper P)", switchOn: launcher.prefs.shortcuts }]
                 .concat(Plugins.has("deck") ? [{ kind: "lpref", key: "deck", name: "Include Deck artists, albums and songs", glyph: "disc-3",
                       sub: "Your shelf and Curated in the search, and a row to search Spotify", switchOn: launcher.prefs.deck }] : [])
+        }
+        if (level === "browser") {
+            // Firefox reads them when it starts (user.js, userChrome.css)
+            if (typeof firefox !== "object") return []
+            return [{ kind: "firefox", key: "links", on: "window", off: "tab", name: "Links from other apps in a new window", glyph: "app-window",
+                      sub: "Off: as a tab in the last Firefox window", switchOn: firefox.links === "window" },
+                    { kind: "firefox", key: "tabbar", on: "auto", off: "always", name: "Tab bar only with several tabs", glyph: "panel-top",
+                      sub: "Off: the tab bar shows also with one tab", switchOn: firefox.tabbar === "auto" },
+                    { kind: "note", name: "Changes apply when Firefox restarts" }]
         }
         if (level === "compname") {
             // Phones see it in LocalSend, AirPlay and Ferry. The name as typed: q is lower-cased
@@ -159,6 +190,7 @@ Item {
     function activate(it) {
         const l = launcher
         if (it.kind === "lpref") { l.keepSelection(); l.setPref(it.key, !l.prefs[it.key]); return true }
+        if (it.kind === "firefox") { l.keepSelection(); setFirefox(it.key, it.switchOn ? it.off : it.on); return true }
         if (it.kind === "notiftime") {   // stays open, like the sounds: the check moves once Notifs has read the file
             l.keepSelection()
             setNotifTime(it.value)

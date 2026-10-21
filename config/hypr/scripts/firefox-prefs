@@ -1,0 +1,66 @@
+#!/bin/bash
+# Firefox's own settings (launcher › Settings › Browser): where links from other apps open, and whether a window with one
+# tab shows the tab bar. The choices live in ~/.config/nightdrive/firefox, outside the repo, and apply writes them into the
+# default profile: user.js (the repo's config/firefox/user.js with the choice after it: Firefox reads only one user.js,
+# so it is a written file, not a link) and chrome/nightdrive-tabs.css (imported by userChrome.css). link.sh runs apply,
+# so a change to the repo's user.js reaches the profile with `nightdrive update`. Firefox reads both when it starts.
+#   firefox-prefs status            links=window|tab tabbar=auto|always, or none (no Firefox profile yet)
+#   firefox-prefs links window|tab  links from other apps: a new window (default) or a tab in the last window
+#   firefox-prefs tabbar auto|always the tab bar: only with several tabs (default) or always
+#   firefox-prefs apply
+repo=$(cd "$(dirname "$(readlink -f "$0")")/../../.." && pwd)
+conf=$HOME/.config/nightdrive/firefox
+profiles=("$HOME"/.config/mozilla/firefox/*.default-release)
+
+get() { local v; v=$(sed -n "s/^$1=//p" "$conf" 2>/dev/null | tail -1); echo "${v:-$2}"; }
+links=$(get links window)
+tabbar=$(get tabbar auto)
+
+# Written next to the target and moved over it, so Firefox starting meanwhile never reads half a file
+put() { cat > "$1.tmp" && mv -f "$1.tmp" "$1"; }
+
+apply() {
+  local p
+  for p in "${profiles[@]}"; do
+    [[ -d $p ]] || continue
+    [[ -L $p/user.js ]] && rm "$p/user.js"   # the link of earlier versions
+    { cat "$repo/config/firefox/user.js"
+      echo
+      echo "// Launcher › Settings › Browser (written by hypr/scripts/firefox-prefs from ~/.config/nightdrive/firefox)"
+      echo "user_pref(\"browser.link.open_newwindow.override.external\", $([[ $links == tab ]] && echo 3 || echo 2));"
+    } | put "$p/user.js"
+    mkdir -p "$p/chrome"
+    if [[ $tabbar == always ]]; then
+      echo "/* Launcher › Settings › Browser: the tab bar always shows */"
+    else
+      # One tab, no tab bar: the desktop works window by window, so a lone tab is just the window. The bar comes back
+      # with a second tab (⌘T, a middle-clicked link), a pinned tab, a tab group or a split view.
+      cat <<'EOF'
+/* Launcher › Settings › Browser: the tab bar only with several tabs */
+#TabsToolbar:not(:has(.tabbrowser-tab:not([hidden]) ~ .tabbrowser-tab:not([hidden]),
+                      #pinned-tabs-container .tabbrowser-tab, tab-group, tab-split-view-wrapper)) {
+  visibility: collapse !important;
+}
+EOF
+    fi | put "$p/chrome/nightdrive-tabs.css"
+  done
+}
+
+set_pref() {
+  mkdir -p "$(dirname "$conf")"
+  { grep -v "^$1=" "$conf" 2>/dev/null; echo "$1=$2"; } | put "$conf"
+}
+
+case ${1:-} in
+  status)
+    [[ -d ${profiles[0]} ]] || { echo none; exit 0; }
+    echo "links=$links tabbar=$tabbar" ;;
+  links)
+    [[ ${2:-} == window || ${2:-} == tab ]] || { echo "links: window or tab" >&2; exit 1; }
+    set_pref links "$2"; links=$2; apply ;;
+  tabbar)
+    [[ ${2:-} == auto || ${2:-} == always ]] || { echo "tabbar: auto or always" >&2; exit 1; }
+    set_pref tabbar "$2"; tabbar=$2; apply ;;
+  apply) apply ;;
+  *) sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+esac
