@@ -363,7 +363,8 @@ LIST
   mkdir -p "$cache"; echo 0 > "$cache/updates"; echo 0 > "$cache/updates-notified"
   # The notes of the releases this update brought in (CHANGELOG.md): last, where they're seen when the update ends
   if ! git -C "$repo" diff --quiet "$was" HEAD -- CHANGELOG.md 2>/dev/null; then
-    echo; echo "==> What's new"; whats_new "$was" | sed 's/^/    /'
+    # A picture in the notes (![…](docs/releases/…)) is for the website and GitHub: not shown in a terminal
+    echo; echo "==> What's new"; whats_new "$was" | sed -E '/^!\[[^]]*\]\([^)]*\)$/d' | cat -s | sed 's/^/    /'
   fi
   echo
   if (( ${#missed[@]} )); then

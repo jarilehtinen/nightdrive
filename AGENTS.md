@@ -38,6 +38,9 @@ check` (exit 1 with the findings) and `nightdrive sandbox shot NAME`, `ipc …` 
 - Release notes are for users, in plain words: what they can now do, what works better, what they need to do. Never
   the commit messages as such. Write them from the commits (`--dry-run` lists them), let the user read them, then
   `nightdrive release … --notes FILE --yes`.
+- When it suits what was released, the notes get a picture of it (a collage of a few redesigned menus, a new window):
+  `docs/releases/<version>-<name>.jpg`, on a line of its own `![What it shows](docs/releases/…)`. The website's
+  Changelog shows it, the GitHub release too (the script points it at the tag), `nightdrive update` leaves it out.
 
 **Conventions**
 - English comments that explain *why*.
