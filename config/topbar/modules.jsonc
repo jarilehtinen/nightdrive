@@ -12,6 +12,8 @@
 //             (a plugin folder's module, plugins/<id>/module.jsonc, has its own id as needs, and these keys too:
 //             after / before = the module it goes right / left of (or a list: the first one in the bar), size = its icon
 //             size, label and glyph for Settings › Top bar › Items; plugins/README.md)
+//   first     optional: true = always at the left end of the modules, whatever the order (for one that comes and goes:
+//             appearing there doesn't shift the others)
 //   drop      optional: a shell command that takes files dropped on the icon as arguments; dragging files over the icon
 //             also opens its menu, so they can be dropped there
 //
@@ -23,6 +25,8 @@
 //   class  optional: off (dimmed), warning (orange), critical (red), active (highlighted background), stale (faded)
 // No icon and no text hides the module.
 [
+  { "name": "camera",        "interval": 2,  "first": true },
+  { "name": "microphone",    "interval": 2,  "first": true },
   { "name": "claude",        "interval": 60, "middle": "xdg-open https://claude.ai/settings/usage" },
   { "name": "system",        "interval": 3 },
   { "name": "bluetooth",     "interval": 5,  "right": "blueman-manager" },

@@ -73,6 +73,13 @@ case $kind in
     emit "" "$(~/.config/topbar/scripts/clock)" ;;
   notifications)
     emit menu "" ;;
+  microphone|camera)
+    # Only while an app is recording (scripts/privacy), in orange like macOS's dot; the microphone's fills up with the
+    # input level (BarModule.qml)
+    key=$([[ $kind == microphone ]] && echo mic || echo camera)
+    if [[ $(~/.config/topbar/scripts/privacy | jq ".$key | length") -gt 0 ]]; then
+      emit "$([[ $kind == microphone ]] && echo mic || echo video)" "" warning
+    else emit "" ""; fi ;;
   *)  # modules of a private overlay: status.local has its own case for them and can use emit
     [[ -f ~/.config/topbar/status.local ]] && source ~/.config/topbar/status.local ;;
 esac

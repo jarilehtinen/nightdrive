@@ -2,6 +2,8 @@ singleton Icons 1.0 Icons.qml
 singleton Theme 1.0 Theme.qml
 Sh 1.0 Sh.qml
 MenuRow 1.0 MenuRow.qml
+PrivacyApps 1.0 PrivacyApps.qml
+MicLevel 1.0 MicLevel.qml
 BusyDots 1.0 BusyDots.qml
 MenuHeader 1.0 MenuHeader.qml
 Slider 1.0 Slider.qml

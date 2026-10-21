@@ -31,6 +31,9 @@ Item {
     readonly property bool active: cls === "active"
     visible: icon !== "" || label !== ""
 
+    readonly property bool isMic: name === "microphone" && icon !== ""
+    MicLevel { id: micLevel; active: mod.isMic; steps: Math.round(mod.isz.size * mod.dpr) }
+
     readonly property var isz: TopBar.size(name)
     readonly property int pad: 8
     readonly property int gap: 5
@@ -62,9 +65,27 @@ Item {
             y: mod.snap((mod.height - height) / 2)
             sourceSize: Qt.size(Math.ceil(width * mod.dpr), Math.ceil(height * mod.dpr))
             source: TopBar.iconUrl(mod.shownIcon, mod.fg)
-            opacity: mod.fg.a
+            opacity: mod.fg.a * (mod.isMic ? 0.45 : 1)   // the microphone's level fills it at full colour
             smooth: true
             cache: false
+        }
+
+        // Microphone in use: the icon fills up from the bottom with the input level (MicLevel), as in macOS's Control Centre
+        Item {
+            visible: mod.isMic
+            clip: true
+            x: img.x; width: img.width
+            height: mod.snap(img.height * micLevel.level)
+            y: img.y + img.height - height
+            Image {
+                y: parent.height - height
+                width: img.width; height: img.height
+                sourceSize: img.sourceSize
+                source: mod.isMic ? img.source : ""
+                opacity: mod.fg.a
+                smooth: true
+                cache: false
+            }
         }
 
         // Claude: a dot on the icon while a session that finished in the background waits for you (Claude.qml)

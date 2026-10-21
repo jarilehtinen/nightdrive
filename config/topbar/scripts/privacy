@@ -1,0 +1,74 @@
+#!/bin/bash
+# Which apps are using the microphone and the camera right now, for the top bar's microphone and camera modules
+# (scripts/status microphone|camera) and their menus (quickshell/PrivacyApps.qml). Prints one line of JSON: {"mic": [app names], "camera": [app names]}.
+# MacBooks have a camera light but no microphone light, so the bar shows both instead.
+#   mic     PipeWire streams recording audio (running), except recordings of an output (a sink's monitor: screen
+#           recorders' system sound), peak meters and the Volume menu's own mic meter (shown only while it is open)
+#   camera  PipeWire video streams, and processes that opened a camera device themselves (/dev/video*: ffmpeg, a browser
+#           using V4L2); devices without :capture: in udev (video decoders) aren't cameras
+# An app's name is its desktop entry's Name (found by the program's file name), else what it calls itself.
+set -uo pipefail
+
+# Our own recorders, by node.name: the Volume menu's level meter (quickshell/VolumeMenu.qml)
+OWN_NODES='["nightdrive-mic-meter"]'
+# PipeWire itself opens the camera for its video streams: those are listed by app name from the streams instead
+SERVERS='^(pipewire|wireplumber)$'
+APP_DIRS=(~/.local/share/applications ~/.local/share/flatpak/exports/share/applications
+          /var/lib/flatpak/exports/share/applications /usr/share/applications)
+
+# app NAME_IT_GIVES PROGRAM: the desktop entry's Name for PROGRAM (Exec's command or StartupWMClass), else NAME_IT_GIVES
+app() {
+  local given=$1 bin=$2 f
+  local entries=() d
+  for d in "${APP_DIRS[@]}"; do entries+=("$d"/*.desktop); done
+  [[ -n $bin ]] && f=$(grep -lsE -m1 "^(Exec=(\S*/)?$bin( |$)|StartupWMClass=$bin$)" "${entries[@]}" | head -1)
+  [[ -n ${f:-} ]] && grep -m1 '^Name=' "$f" | cut -d= -f2- && return
+  echo "${given:-$bin}"
+}
+
+dump=$(pw-dump 2>/dev/null) || dump='[]'
+
+# "<kind>\t<name it gives>\t<program>" per running stream; kind = mic or camera
+streams=$(jq -r --argjson own "$OWN_NODES" '
+  (map(select(.type == "PipeWire:Interface:Node")) | map({key: (.id | tostring), value: .}) | from_entries) as $nodes
+  | (map(select(.type == "PipeWire:Interface:Link")) | map(.info)) as $links
+  | $nodes[] | select(.info.state == "running") | .id as $id | .info.props as $p
+  | select($p["application.name"] != null)
+  | if $p["media.class"] == "Stream/Input/Video" then "camera"
+    elif $p["media.class"] == "Stream/Input/Audio"
+         and ($p["stream.monitor"] // false) != true and $p["media.name"] != "Peak detect"
+         and ($own | index($p["node.name"])) == null
+         and ([ $links[] | select(.["input-node-id"] == $id)
+                | $nodes[(.["output-node-id"] | tostring)].info.props["media.class"] ] | index("Audio/Sink")) == null
+    then "mic" else empty end
+  | [., $p["application.name"], ($p["application.process.binary"] // "")] | @tsv' <<<"$dump" 2>/dev/null)
+
+# Camera devices (by udev's capabilities), then the processes holding one open. Only our own processes' fds are readable,
+# which covers the apps in this session.
+cams=()
+for dev in /dev/video*; do
+  [[ -c $dev ]] || continue
+  read -r maj min < <(stat -c '%t %T' "$dev")
+  grep -q ':capture:' "/run/udev/data/c$((16#$maj)):$((16#$min))" 2>/dev/null && cams+=("$dev")
+done
+if (( ${#cams[@]} )); then
+  # "<device> /proc/<pid>/fd" per open file
+  while read -r dev dir; do
+    [[ " ${cams[*]} " == *" $dev "* ]] || continue
+    pid=${dir#/proc/}; pid=${pid%/fd}
+    comm=$(cat "/proc/$pid/comm" 2>/dev/null) || continue
+    [[ $comm =~ $SERVERS ]] && continue
+    exe=$(readlink "/proc/$pid/exe" 2>/dev/null)
+    streams+=$'\n'"camera"$'\t'"$comm"$'\t'"${exe##*/}"
+  done < <(find /proc/[0-9]*/fd -maxdepth 1 -lname '/dev/video*' -printf '%l %h\n' 2>/dev/null)
+fi
+
+mic=(); camera=()
+while IFS=$'\t' read -r kind given bin; do
+  [[ -n $kind ]] || continue
+  name=$(app "$given" "$bin")
+  if [[ $kind == mic ]]; then mic+=("$name"); else camera+=("$name"); fi
+done < <(sort -u <<<"$streams")
+
+jq -nc --arg mic "$(printf '%s\n' "${mic[@]}")" --arg camera "$(printf '%s\n' "${camera[@]}")" \
+  '{mic: ($mic | split("\n") | map(select(. != "")) | unique), camera: ($camera | split("\n") | map(select(. != "")) | unique)}'

@@ -59,10 +59,11 @@ Singleton {
     }
     // In your order (Items: Ctrl+arrows, or ⌘+drag in the bar), then modules not in it in the files' order (a new one goes
     // to the right end).
-    // A module whose optional part isn't installed ("needs") isn't listed at all.
+    // A module whose optional part isn't installed ("needs") isn't listed at all. One with "first" stays at the left end
+    // whatever the order: it comes and goes (the microphone and camera in use), and there it doesn't shift the others.
     readonly property var allModules: {
         const def = localModules.concat(withPlugins(publicModules)).filter(m => !m.needs || Plugins.has(m.needs))
-        const key = m => { const i = items.order.indexOf(m.name); return i >= 0 ? i : items.order.length + def.indexOf(m) }
+        const key = m => { const i = items.order.indexOf(m.name); return (m.first ? -1e6 : 0) + (i >= 0 ? i : items.order.length + def.indexOf(m)) }
         return def.slice().sort((a, b) => key(a) - key(b))
     }
     // The ones shown: a module turned off isn't run at all
@@ -110,7 +111,8 @@ Singleton {
     readonly property var moduleLabels: ({ claude: ["Claude", "gauge"], system: ["CPU and memory", "cpu"],
                                            bluetooth: ["Bluetooth", "bluetooth"], wifi: ["Wi-Fi", "wifi"],
                                            volume: ["Volume", "volume-2"], headphones: ["Headphones", "headphones"], display: ["Display", "monitor"], battery: ["Battery", "battery-medium"],
-                                           calendar: ["Date and time", "clock"], notifications: ["Notifications", "menu"] })
+                                           calendar: ["Date and time", "clock"], notifications: ["Notifications", "menu"],
+                                           microphone: ["Microphone in use", "mic"], camera: ["Camera in use", "video"] })
     function moduleLabel(m) { return m.label || (moduleLabels[m.name] || [])[0] || m.name.charAt(0).toUpperCase() + m.name.slice(1) }
     function moduleGlyph(m) { return m.glyph || (moduleLabels[m.name] || [])[1] || "panel-top" }
     property var states: ({})          // name -> {icon, text, class}
