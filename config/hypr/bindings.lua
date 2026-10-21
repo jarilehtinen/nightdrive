@@ -292,8 +292,26 @@ end
 hl.bind("ALT + TAB",         function () cycle_app_windows(1) end)
 hl.bind("ALT + SHIFT + TAB", function () cycle_app_windows(-1) end)
 
--- Workspaces ⌘1–⌘0, move window ⌘⇧1–⌘⇧0. With the drawer open ⌘1–⌘0 closes it first, otherwise it stays over the
--- new workspace
+-- ⌘⌥1–⌘⌥0: every window of the active workspace to workspace i (joining the ones there), and focus follows them.
+-- To an empty workspace the whole workspace is renumbered, which keeps its layout as it was: moved one by one, dwindle
+-- splits them anew. Not the laptop's own workspace with an external display: the laptop screen would lose it.
+-- Otherwise one at a time with follow = false, so the source stays active until the last one has gone.
+local function move_all_windows(i)
+    local ws = hl.get_active_workspace()
+    if not ws or ws.id == i then return end
+    if not hl.get_workspace(i) and (ws.id ~= LAPTOP_WORKSPACE or #hl.get_monitors() == 1) then
+        hl.dispatch(hl.dsp.workspace.change_id({ workspace = ws.id, id = i }))
+        hl.dispatch(hl.dsp.exec_cmd("qs ipc call bar workspaces"))   -- no event for the new id: the bar would keep the old one
+        return
+    end
+    for _, w in ipairs(hl.get_workspace_windows(ws.id) or {}) do
+        hl.dispatch(hl.dsp.window.move({ workspace = i, follow = false, window = "address:" .. w.address }))
+    end
+    hl.dispatch(hl.dsp.focus({ workspace = i }))
+end
+
+-- Workspaces ⌘1–⌘0, move window ⌘⇧1–⌘⇧0, move all windows ⌘⌥1–⌘⌥0. With the drawer open ⌘1–⌘0 closes it first,
+-- otherwise it stays over the new workspace
 for i = 1, 10 do
     local key = i % 10
     hl.bind(mod .. " + " .. key, function()
@@ -302,6 +320,7 @@ for i = 1, 10 do
         hl.dispatch(hl.dsp.focus({ workspace = i }))
     end)
     hl.bind(mod .. " + SHIFT + " .. key, hl.dsp.window.move({ workspace = i }))
+    hl.bind(mod .. " + ALT + " .. key, function() move_all_windows(i) end)
 end
 hl.bind(mod .. " + TAB",         hl.dsp.focus({ workspace = "e+1" }))
 hl.bind(mod .. " + SHIFT + TAB", hl.dsp.focus({ workspace = "e-1" }))
