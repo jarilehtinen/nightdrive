@@ -2,9 +2,9 @@ import QtQuick
 import Quickshell
 
 // The launcher's Settings › Display (brightness, night light, Screen Mirroring's rows from SystemLevels.qml, where the
-// laptop's screen is next to an external one, and each output's scales) and Battery (charge and state, then the details, as in the top bar's battery menu).
-// The brightness row is a slider that Launcher.qml draws (bright, setBright) and ←/→ steps (stepBright), also in the root
-// search; Launcher.qml's displayItems() puts it there.
+// laptop's screen is next to an external one, the keyboard's backlight, and each output's scales) and Battery (charge and state, then the details, as in the top bar's battery menu).
+// The brightness rows (screen, keyboard: the row's key) are sliders that Launcher.qml draws (bright, keys, setBright) and
+// ←/→ steps (stepBright), also in the root search; Launcher.qml's displayItems() puts them there.
 // Launcher.qml asks it like DefaultAppsLevels (levels, titles, parents, items, activate, footer, entered).
 Item {
     id: p
@@ -13,7 +13,9 @@ Item {
     property var displays: null               // [{ name, desc, scale, opts: [{ value, size }] }] (hypr/scripts/display list)
     property string side: ""                  // the laptop's screen: left | right | above | below | auto (display side)
     property real bright: -1                  // Brightness: 0..1 (brightnessctl), -1 = no backlight (a VM) or not read yet
-    property real pendingBright: -1           // the slider's value waiting to be applied (throttled, like in BatteryMenu)
+    property real pendingBright: -1           // the slider's value waiting to be applied (throttled)
+    property real keys: -1                    // Keyboard backlight: 0..1, -1 = none (a desktop) or not read yet
+    property real pendingKeys: -1
     property string night: ""                 // Night light: on | off (hypr/scripts/nightlight status)
     property var batt: null                   // Battery: { percent, state, timeText } (upower)
     property var battDetail: null             // and its details (topbar/scripts/sysinfo battery), null on a desktop
@@ -28,9 +30,9 @@ Item {
     // The brightness and night light rows' footers are Launcher.qml's: the root search has them too
     function footer(level, query) { return "" }
     // On every open: the root search has the brightness and night light rows too
-    function opened() { brightProc.running = true; nightProc.running = true }
+    function opened() { brightProc.running = true; keysProc.running = true; nightProc.running = true }
     function entered(level) {
-        if (level === "display") { displayProc.running = true; sideProc.running = true; brightProc.running = true; nightProc.running = true }
+        if (level === "display") { displayProc.running = true; sideProc.running = true; brightProc.running = true; keysProc.running = true; nightProc.running = true }
         if (level === "battery") { battProc.running = true; battDetailProc.running = true }
     }
     function shiftActivate(it) {}
@@ -38,14 +40,12 @@ Item {
     function items(level, q) {
         const l = launcher
         if (level === "display") {
-            // Two sections: Brightness (a slider row, when there is a backlight) and Scale
+            // Brightness (slider rows for the screen and the keyboard, when they have a backlight, and night light), then Scale
             if (displays === null) return l.hint("Loading…")
-            const out = bright < 0 ? [] : [{ kind: "header", name: "Brightness" },
-                                           { kind: "brightness", name: "Screen", glyph: "sun", summary: Math.round(bright * 100) + "%" }]
-            if (night !== "") {
-                if (bright < 0) out.push({ kind: "header", name: "Brightness" })
-                out.push({ kind: "nightlight", name: "Night light", glyph: "moon", switchOn: night === "on" })
-            }
+            const out = bright < 0 ? [] : [{ kind: "brightness", key: "screen", name: "Screen", glyph: "sun", summary: Math.round(bright * 100) + "%" }]
+            if (keys >= 0) out.push({ kind: "brightness", key: "keys", name: "Keyboard", glyph: "keyboard", summary: Math.round(keys * 100) + "%" })
+            if (night !== "") out.push({ kind: "nightlight", name: "Night light", glyph: "moon", switchOn: night === "on" })
+            if (out.length > 0) out.unshift({ kind: "header", name: "Brightness" })
             // Scales the panel divides evenly, shown as the resulting desktop size ("looks like" in macOS); current one marked
             out.push(...l.mirrorRows())   // Screen Mirroring (AirPlay; SystemLevels.qml), empty without doubletake
             // Where the laptop's own screen is, so the pointer crosses where the screens meet: only with both on.
@@ -119,19 +119,24 @@ Item {
     }
 
     // keepSelection: the new percentage rebuilds the rows, which would move the selection to the top
-    function setBright(v) { launcher.keepSelection(); bright = v; pendingBright = v; if (!brightApply.running) brightApply.start() }
+    // key: "keys" = the keyboard's backlight, otherwise the screen's
+    function setBright(v, key) {
+        launcher.keepSelection()
+        if (key === "keys") { keys = v; pendingKeys = v } else { bright = v; pendingBright = v }
+        if (!brightApply.running) brightApply.start()
+    }
     // ←/→: to the next even step, like the brightness keys
-    function stepBright(dir) {
-        const pc = Math.round(bright * 100)
+    function stepBright(dir, key) {
+        const pc = Math.round((key === "keys" ? keys : bright) * 100)
         const n = dir > 0 ? (Math.floor(pc / brightStep) + 1) * brightStep : (pc % brightStep === 0 ? pc - brightStep : Math.floor(pc / brightStep) * brightStep)
-        setBright(Math.max(0, Math.min(100, n)) / 100)
+        setBright(Math.max(0, Math.min(100, n)) / 100, key)
     }
     Timer {
         id: brightApply; interval: 60
         onTriggered: {
-            if (p.pendingBright < 0) return
-            Quickshell.execDetached(["brightnessctl", "-c", "backlight", "-n2", "set", Math.round(p.pendingBright * 100) + "%"])
-            p.pendingBright = -1
+            if (p.pendingBright >= 0) Quickshell.execDetached(["brightnessctl", "-c", "backlight", "-n2", "set", Math.round(p.pendingBright * 100) + "%"])
+            if (p.pendingKeys >= 0) Quickshell.execDetached(["brightnessctl", "-d", "*kbd_backlight*", "set", Math.round(p.pendingKeys * 100) + "%"])
+            p.pendingBright = -1; p.pendingKeys = -1
         }
     }
 
@@ -170,7 +175,18 @@ Item {
             if (first && p.bright >= 0 && l.level === "display" && l.query === "") l.selectFirst()
         }
     }
-    Timer { interval: 2000; repeat: true; running: p.launcher !== null && p.launcher.open && p.launcher.level === "display"; onTriggered: brightProc.running = true }
+    Sh {
+        id: keysProc
+        command: ["brightnessctl", "-m", "-d", "*kbd_backlight*"]
+        onResult: text => {
+            if (p.pendingKeys >= 0) return
+            const f = text.trim().split(",")
+            const v = f.length >= 4 ? parseInt(f[3]) / 100 : -1
+            if (v !== p.keys && p.keys >= 0) p.launcher.keepSelection()   // changed elsewhere (⌘F1/⌘F2)
+            p.keys = v
+        }
+    }
+    Timer { interval: 2000; repeat: true; running: p.launcher !== null && p.launcher.open && p.launcher.level === "display"; onTriggered: { brightProc.running = true; keysProc.running = true } }
     Sh {
         id: nightProc
         script: '"$HOME/.config/hypr/scripts/nightlight" status'

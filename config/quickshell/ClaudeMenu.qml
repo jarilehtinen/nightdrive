@@ -83,12 +83,44 @@ Column {
         }
     }
 
-    Divider { padBottom: 6 }
-    MenuRow {
+    // 10 px above the button on top of the spacing, in place of a divider (a Column skips a zero-height spacer)
+    Item {
         width: parent.width
-        icon: "external-link"
-        action: true
-        label: "Open usage page"
-        onClicked: { Quickshell.execDetached(["xdg-open", "https://claude.ai/settings/usage"]); m.close() }
+        height: openRow.height + 10
+        // A pill like Ferry's Send Clipboard: a soft wash of the theme colour, not a filled button
+        Rectangle {
+            id: openRow
+            property bool navSelected: false
+            readonly property bool navEnabled: true
+            function navActivate() { openArea.clicked(null) }
+            y: 10
+            width: parent.width
+            height: 36; radius: 18
+            color: openArea.containsMouse ? Qt.lighter(Theme.sel, 1.3) : Theme.sel   // under the mouse just brighter
+            border { width: 1; color: navSelected ? Theme.primary : Theme.border }
+            Row {
+                anchors.centerIn: parent
+                spacing: 9
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: Icons.g("external-link")
+                    color: Theme.accent
+                    font { family: Icons.family; pixelSize: 16 }
+                }
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "Open usage page"
+                    color: Theme.accent
+                    font { family: Theme.font; pixelSize: 13; weight: Font.Medium }
+                }
+            }
+            MouseArea {
+                id: openArea
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: { Quickshell.execDetached(["xdg-open", "https://claude.ai/settings/usage"]); m.close() }
+            }
+        }
     }
 }

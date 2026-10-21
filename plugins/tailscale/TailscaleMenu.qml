@@ -119,7 +119,6 @@ Column {
         text: m.message
     }
 
-    Divider { padBottom: 6 }
     MenuRow {
         width: parent.width
         icon: "external-link"

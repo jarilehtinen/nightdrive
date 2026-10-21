@@ -233,7 +233,7 @@ PanelWindow {
     })
 
     readonly property var settingsAliases: ({ "Wi-Fi": "wifi wlan network internet", "Sound": "audio volume output speakers", "Battery": "power charge charging health cycles",
-                                              "Display": "brightness night light warm scale scaling resolution monitor screen retina hidpi zoom size bigger smaller",
+                                              "Display": "brightness keyboard backlight night light warm scale scaling resolution monitor screen retina hidpi zoom size bigger smaller",
                                               "Notifications": "notification sounds alert chime beep ping tone urgent critical popup timeout seconds duration",
                                               "Tailscale": "vpn",
                                               "Default apps": "browser email mail files folders text editor terminal images photos video music player pdf calendar open with",
@@ -251,6 +251,7 @@ PanelWindow {
                                               "Highlight": "top bar waybar panel active workspace",
                                               "Items": "top bar panel modules icons show hide clock date battery",
                                               "Brightness": "screen dim dimmer brighter backlight",
+                                              "Keyboard backlight": "keyboard light lit illumination brightness dim",
                                               "Night light": "night shift warm yellow blue light evening",
                                               "Scale": "scaling resolution monitor screen retina hidpi zoom size bigger smaller",
                                               "Screen Mirroring": "airplay cast mirror apple tv share screen" })
@@ -258,7 +259,8 @@ PanelWindow {
     // Settings › Display for the root search: the brightness slider row itself (←/→ work there too), the night light toggle
     // and Scale (opens Display)
     function displayItems() {
-        return (disp.bright >= 0 ? [{ kind: "brightness", name: "Brightness", glyph: "sun" }] : [])
+        return (disp.bright >= 0 ? [{ kind: "brightness", key: "screen", name: "Brightness", glyph: "sun" }] : [])
+            .concat(disp.keys >= 0 ? [{ kind: "brightness", key: "keys", name: "Keyboard backlight", glyph: "keyboard" }] : [])
             .concat([{ kind: "nightlight", name: "Night light", glyph: "moon" },
                      { kind: "nav", name: "Scale", glyph: "monitor", target: "display" }],
                     sys.mirrorAvail ? [{ kind: "nav", name: "Screen Mirroring", glyph: "screen-share", target: "display" }] : [])
@@ -965,7 +967,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                         } else if (win.extLevel && ctrl && (event.key === Qt.Key_Up || event.key === Qt.Key_Down) && win.extMove(event.key === Qt.Key_Up ? -1 : 1)) {
                             event.accepted = true
                         } else if ((event.key === Qt.Key_Left || event.key === Qt.Key_Right) && (win.results[list.currentIndex] || {}).kind === "brightness") {
-                            disp.stepBright(event.key === Qt.Key_Left ? -1 : 1); event.accepted = true
+                            disp.stepBright(event.key === Qt.Key_Left ? -1 : 1, win.results[list.currentIndex].key); event.accepted = true
                         } else if ((event.key === Qt.Key_Left || event.key === Qt.Key_Right) && (win.results[list.currentIndex] || {}).kind === "slider") {
                             sys.stepSlider(win.results[list.currentIndex].key, event.key === Qt.Key_Left ? -1 : 1); event.accepted = true
                         } else if ((event.key === Qt.Key_Left || event.key === Qt.Key_Right) && (win.results[list.currentIndex] || {}).slider !== undefined) {
@@ -1255,12 +1257,12 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                         z: 1
                         // after the name ("Screen" in Display, "Brightness" in a search), lined up while the name is short
                         anchors { left: slot.right; leftMargin: Math.max(120, 16 + nameText.implicitWidth + 28); right: trailing.left; rightMargin: 20; verticalCenter: parent.verticalCenter }
-                        value: row.modelData.kind === "slider" || row.modelData.kind === "battery" ? row.modelData.value : Math.max(0, disp.bright)
+                        value: row.modelData.kind === "slider" || row.modelData.kind === "battery" ? row.modelData.value : Math.max(0, row.modelData.key === "keys" ? disp.keys : disp.bright)
                         readOnly: row.modelData.kind === "battery"
                         fillColor: row.modelData.charging ? Theme.ok : row.modelData.low ? Theme.danger : Theme.accent
                         dimmed: !!row.modelData.dimmed
                         trackColor: Qt.rgba(1, 1, 1, 0.1)   // the same on and off the selected row (Theme.border nearly matches Theme.sel)
-                        onMoved: v => { list.currentIndex = row.index; row.modelData.kind === "slider" ? sys.setSlider(row.modelData.key, v) : disp.setBright(v) }
+                        onMoved: v => { list.currentIndex = row.index; row.modelData.kind === "slider" ? sys.setSlider(row.modelData.key, v) : disp.setBright(v, row.modelData.key) }
                     }
                     MouseArea {
                         id: rowArea

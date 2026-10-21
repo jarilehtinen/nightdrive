@@ -2,8 +2,8 @@ import QtQuick
 import Quickshell
 
 // Battery: charging state and time remaining (upower), the battery's details (topbar/scripts/sysinfo battery:
-// power draw, temperature, health = capacity left of the original, cycles, voltage, age) and, for now, the keyboard
-// backlight (brightnessctl). Screen brightness is in DisplayMenu.
+// power draw, temperature, health = capacity left of the original, cycles, voltage, age). Screen brightness is in
+// DisplayMenu, the keyboard's backlight in the launcher's Settings › Display.
 Column {
     id: m
     width: parent ? parent.width : 300
@@ -13,8 +13,6 @@ Column {
     property string state: ""
     property string timeText: ""
     property var bat: null           // sysinfo battery
-    property real keys: -1           // -1 = no keyboard backlight
-    property real pendingKeys: -1
     signal close()
 
 
@@ -23,16 +21,9 @@ Column {
         const h = Math.floor(min / 60)
         return h > 0 ? h + " h " + (min % 60) + " min" : min + " min"
     }
-    function refresh() { battProc.running = true; detailProc.running = true; kbdProc.running = true }
+    function refresh() { battProc.running = true; detailProc.running = true }
     Component.onCompleted: refresh()
     Timer { interval: 3000; repeat: true; running: true; onTriggered: m.refresh() }
-
-    Timer {
-        id: apply; interval: 60
-        onTriggered: {
-            if (m.pendingKeys >= 0) { Quickshell.execDetached(["brightnessctl", "-d", "*kbd_backlight*", "set", Math.round(m.pendingKeys * 100) + "%"]); m.pendingKeys = -1 }
-        }
-    }
 
     Sh {
         id: battProc
@@ -53,15 +44,6 @@ Column {
         id: detailProc
         command: ["bash", "-c", "~/.config/topbar/scripts/sysinfo battery"]
         onResult: text => { try { m.bat = JSON.parse(text) } catch (e) { m.bat = null } }
-    }
-    Sh {
-        id: kbdProc
-        command: ["brightnessctl", "-m", "-d", "*kbd_backlight*"]
-        onResult: text => {
-            if (keySlider.pressed || m.pendingKeys >= 0) return
-            const f = text.trim().split(",")
-            m.keys = f.length >= 4 ? parseInt(f[3]) / 100 : -1
-        }
     }
 
     MenuHeader { width: parent.width; title: "Battery" }
@@ -100,7 +82,6 @@ Column {
         }
     }
 
-    Divider { visible: m.bat !== null }
     MenuSection { visible: m.bat !== null; title: "Details" }
     Column {
         visible: m.bat !== null
@@ -126,39 +107,6 @@ Column {
                 detail: modelData.detail
                 danger: !!modelData.danger
             }
-        }
-    }
-
-    Divider { visible: m.keys >= 0 }
-
-    Row {
-        visible: m.keys >= 0
-        width: parent.width
-        spacing: 12
-        Text {
-            id: kbIcon
-            width: 22
-            anchors.verticalCenter: parent.verticalCenter
-            horizontalAlignment: Text.AlignHCenter
-            text: Icons.g("keyboard")
-            color: Theme.text
-            font { family: Icons.family; pixelSize: 18 }
-        }
-        Slider {
-            id: keySlider
-            width: parent.width - kbIcon.width - pctK.width - 24
-            anchors.verticalCenter: parent.verticalCenter
-            value: Math.max(0, m.keys)
-            onMoved: v => { m.keys = v; m.pendingKeys = v; if (!apply.running) apply.start() }
-        }
-        Text {
-            id: pctK
-            width: 44
-            anchors.verticalCenter: parent.verticalCenter
-            horizontalAlignment: Text.AlignRight
-            text: Math.round(Math.max(0, m.keys) * 100) + "%"
-            color: Theme.text
-            font { family: Theme.font; pixelSize: 13 }
         }
     }
 }
