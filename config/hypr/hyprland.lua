@@ -397,6 +397,15 @@ hl.window_rule({
     match = { class = "^(pavucontrol|org.pulseaudio.pavucontrol|blueman-manager|nm-connection-editor)$" },
     float = true,
 })
+-- Thunderbird's calendar reminder: a small dialog, not a window to split the workspace with. It opens titled "Calendar
+-- Reminders" and renames itself "1 Reminder", "2 Reminders"…
+hl.window_rule({
+    name  = "float-thunderbird-reminders",
+    match = { class = "^(net\\.thunderbird\\.Thunderbird|thunderbird)$", title = "^(Calendar Reminders|\\d+ Reminders?)$" },
+    float = true,
+    size  = "600 400",
+    center = true,
+})
 -- File picker (Settings › Background › Add new…, Ferry's +) and the apps' Open/Save dialogs: zenity 4 asks the portal,
 -- whose dialog is xdg-desktop-portal-gtk's window
 hl.window_rule({
