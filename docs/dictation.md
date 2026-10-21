@@ -37,8 +37,10 @@ so give dictation a key of its own in `config/hypr/local.lua`, held like F5:
 
 ```lua
 hl.bind("Insert", hl.dsp.exec_cmd(os.getenv("HOME") .. "/.config/hypr/scripts/dictate start"), { locked = true })
-hl.bind("Insert", hl.dsp.exec_cmd(os.getenv("HOME") .. "/.config/hypr/scripts/dictate stop"), { locked = true, release = true })
+hl.bind("Insert", hl.dsp.exec_cmd(os.getenv("HOME") .. "/.config/hypr/scripts/dictate stop"), { locked = true, release = true, transparent = true })
 ```
+
+(`transparent` keeps the release working when you click with the mouse while holding the key.)
 
 `hyprctl reload` isn't needed: Hyprland reloads on save. Things that got in the way on a Keychron K8:
 

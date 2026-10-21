@@ -73,11 +73,13 @@ hl.bind("XF86Search",               hl.dsp.exec_cmd("qs ipc call launcher toggle
 hl.bind("XF86LaunchA",              hl.dsp.exec_cmd("qs ipc call menu toggle notifications"))   -- F3 (Mission Control, KEY_SCALE): notification centre
 hl.bind(mod .. " + XF86AudioMicMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle ; qs ipc call osd mic"), { locked = true })   -- ⌘F5: mic on/off + toast
 hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd(scripts .. "/dictate start"), { locked = true })               -- F5 (sends KEY_MICMUTE): hold -> speech to text (Voxtype, Parakeet)
-hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd(scripts .. "/dictate stop"),  { locked = true, release = true })    -- release -> transcribe and type
+-- The releases are transparent: a mouse click while the key is held "shadows" the binds of every held key (Hyprland's
+-- shadowKeybinds), and the release would be skipped, so dictation kept recording until the key was pressed again.
+hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd(scripts .. "/dictate stop"),  { locked = true, release = true, transparent = true })    -- release -> transcribe and type
 hl.bind("XF86Fn", hl.dsp.exec_cmd(scripts .. "/dictate fn-down"), { locked = true })                       -- Fn held (over 0.3 s) -> dictation, like F5
-hl.bind("XF86Fn", hl.dsp.exec_cmd(scripts .. "/dictate fn-up"),   { locked = true, release = true })
+hl.bind("XF86Fn", hl.dsp.exec_cmd(scripts .. "/dictate fn-up"),   { locked = true, release = true, transparent = true })
 hl.bind("F19",    hl.dsp.exec_cmd(scripts .. "/dictate fn-down"), { locked = true })                       -- Fn when keyd (Mac Keyboard Shortcuts) runs: keyd sends F19 for it
-hl.bind("F19",    hl.dsp.exec_cmd(scripts .. "/dictate fn-up"),   { locked = true, release = true })
+hl.bind("F19",    hl.dsp.exec_cmd(scripts .. "/dictate fn-up"),   { locked = true, release = true, transparent = true })
 -- Apps open with Hyper (Caps Lock, Mod3: hyprland.lua's kb_options) + a letter: the browser, Files, Email, and the optional
 -- parts' apps below and in the plugins' bindings.lua (Deck M, 1Password P). ⌘ stays for the desktop and the apps' own keys.
 -- These are defaults: your own keys (appKeys, above) replace them.
