@@ -206,14 +206,14 @@ Column {
     MenuButton {
         visible: !!m.info.airpods
         width: parent.width
-        gap: 10   // no divider above the buttons: the room sets them apart
+        gap: 20   // no divider above the buttons: the room sets them apart from the Max volume slider
         icon: "headphones"
         label: "AirPods settings…"
         onClicked: { Quickshell.execDetached(["qs", "ipc", "call", "airpods", "open"]); m.close() }
     }
     MenuButton {
         width: parent.width
-        gap: m.info.airpods ? 0 : 10
+        gap: m.info.airpods ? 0 : 20
         icon: "sliders-horizontal"
         label: "EasyEffects…"
         onClicked: { Quickshell.execDetached(["easyeffects"]); m.close() }
