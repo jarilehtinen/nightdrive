@@ -119,7 +119,7 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
 | | App | How it fits in |
 |---|---|---|
 | Window manager | [Hyprland](https://hypr.land) | Lua config, Mac-style keybindings, rounded screen corners |
-| Bar, menus, launcher | [Quickshell](https://quickshell.org) | one themed shell for the top bar, its menus, launcher, OSD and shelf |
+| Bar, menus, launcher | [Quickshell](https://quickshell.org) | one themed shell for the top bar, its menus, launcher, OSD and shelf; an orange microphone or camera in the bar while an app records (MacBooks have no microphone light), its menu names the apps |
 | Terminal | [kitty](https://sw.kovidgoyal.net/kitty/) | ⌘Enter, opens in `~/Projects`; Mac copy and paste. Another terminal (Ghostty, foot, Alacritty, WezTerm) in Settings › Default apps: it opens everywhere kitty did, with its own settings and colours |
 | Browser | Firefox | tabs below the address bar, themed UI |
 | Mail (optional) | Thunderbird | themed, with a minimal toolbar ([details](docs/thunderbird.md)) |
@@ -361,9 +361,9 @@ The full list is in [`config/hypr/SHORTCUTS.md`](config/hypr/SHORTCUTS.md).
 
 - **Known issues** that have a workaround but no fix in Nightdrive yet are in [docs/known-issues.md](docs/known-issues.md).
 - **Hyprland comes from Nightdrive's own COPR.** Fedora's own repositories have no Hyprland, so on every machine the
-  installer takes the Hyprland packages from [`jarilehtinen/nightdrive`](https://copr.fedorainfracloud.org/coprs/jarilehtinen/nightdrive/)
+  installer takes the Hyprland packages from [`@nightdrive/nightdrive`](https://copr.fedorainfracloud.org/coprs/g/nightdrive/nightdrive/)
   (aarch64 and x86_64; specs in [nightdrive-packages](https://github.com/nightdrive-sh/nightdrive-packages)) and limits
-  that repository to them.
+  that repository to them. Ghostty comes from there too.
 - **Asahi specifics.** The notch area needs the `appledrm.show_notch=1` kernel argument, which the installer sets. The 16 KiB memory
   pages break a few Electron apps, but 1Password works.
 - **The Claude menu** reads your plan's limits with Claude Code's own sign-in, so Claude Code must have been run once.

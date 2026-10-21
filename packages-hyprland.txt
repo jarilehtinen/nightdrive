@@ -1,4 +1,4 @@
-# From Nightdrive's COPR jarilehtinen/nightdrive (setup-hyprland-repo.sh; Fedora 44 has no Hyprland)
+# From Nightdrive's COPR @nightdrive/nightdrive (setup-hyprland-repo.sh; Fedora 44 has no Hyprland)
 hyprland
 hyprlock
 hypridle

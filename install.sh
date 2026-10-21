@@ -195,7 +195,7 @@ fi
 echo "==> System update (a fresh install from an older image would otherwise get a half-updated KDE: file conflicts)"
 sudo dnf upgrade --refresh -y
 
-echo "==> Hyprland (Nightdrive's COPR jarilehtinen/nightdrive, Hyprland's own packages only)"
+echo "==> Hyprland (Nightdrive's COPR @nightdrive/nightdrive, Hyprland's own packages only)"
 "$repo/setup-hyprland-repo.sh"
 sudo dnf install -y $(pkgs "$repo/packages-hyprland.txt")
 
