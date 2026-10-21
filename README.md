@@ -96,6 +96,8 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
 - **Background apps**: ⌘W only hides chat apps and the music player, so they keep running. Their shortcut brings them straight back.
 - **Closed by mistake?** ⌘⇧U opens the window you closed with ⌘W again, in the same place. A terminal comes back in the
   same folder, with Claude Code in the same conversation. Press again for the one before it.
+- **Battery ran out?** When the battery is low (under 20 % as the laptop goes to sleep, and each minute from 5 %), the open
+  windows are kept. If it runs out, the next login asks whether to open them again, each on its workspace.
 - **Web apps**: turn any site into an app window from the launcher (System › Install › Webapp), and remove one in System ›
   Remove › Webapps (its logins go with it). Their notifications come with the web app's own name and icon, not Chromium's.
 - **Default apps**: which app opens links, mail, folders, text, code, images, video, music, PDFs and calendar files, and

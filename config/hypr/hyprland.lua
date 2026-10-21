@@ -208,6 +208,7 @@ end
 function NightdriveUnlocked()
     if not once(UNLOCKED_FLAG) then return end
     hl.exec_cmd(HOME .. "/.config/hypr/scripts/autostart")   -- the user's login apps (launcher › Settings › Startup; 1Password by default)
+    hl.exec_cmd(HOME .. "/.config/hypr/scripts/reopen session offer")   -- the battery ran out: open its windows again?
     update_corners()
 end
 

@@ -5,6 +5,8 @@ import Quickshell.Services.UPower
 // Low battery: a critical notification (it stays until clicked, with the urgent sound) at `warnAt` and again at `lastAt`,
 // with the charge as a red meter on the card (hint value: NotificationCard.qml) and the time left when UPower knows it.
 // Plugging in the charger takes the notification away. A desktop without a battery never gets one.
+// From `lastAt` on, the open windows are kept each minute, so the next login can open them again if the battery runs
+// out (hypr/scripts/reopen session); the charger drops them.
 Scope {
     id: w
 
@@ -23,13 +25,16 @@ Scope {
 
     function check() {
         if (!present) return
-        if (!draining) { if (given.level) { given.level = 0; clear() } return }
+        if (!draining) { if (given.level) { given.level = 0; clear(); session("drop") } return }
         const level = pct <= lastAt ? lastAt : pct <= warnAt ? warnAt : 0
         if (level === 0) { if (pct > warnAt + 2) given.level = 0; return }   // a little margin: no flapping around 10 %
         if (given.level !== 0 && given.level <= level) return
         given.level = level
         clear()   // the 5 % one comes as new (it chimes) rather than as an update of the 10 % one
         warn(level === lastAt)
+    }
+    function session(what) {
+        Quickshell.execDetached([Quickshell.env("HOME") + "/.config/hypr/scripts/reopen", "session", what])
     }
     function clear() { Notifs.history = Notifs.history.filter(h => h.tag !== "Battery\n" + tag) }
     function warn(last) {
@@ -42,6 +47,14 @@ Scope {
             "--object-path", "/org/freedesktop/Notifications", "--method", "org.freedesktop.Notifications.Notify",
             "Battery", "0", "lucide:battery-warning", last ? "Battery almost empty" : "Battery low", body, "[]",
             "{'urgency': <byte 2>, 'x-dunst-stack-tag': <'" + tag + "'>, 'value': <int32 " + pct + ">}", "int32 -1"])
+    }
+
+    Timer {
+        running: w.draining && w.pct <= w.lastAt
+        interval: 60000
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: w.session("save")
     }
 
     onPctChanged: check()

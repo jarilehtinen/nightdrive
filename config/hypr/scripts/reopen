@@ -6,13 +6,21 @@ floating one at its old place and size. Each press opens the one closed before i
                           again, and where it was
   reopen                  opens the last one again
 
+The whole session, for a battery that runs out (the computer asleep, or no charger at hand):
+  reopen session save [--below PCT]   keeps every window in SESSION, only while the battery is under PCT % when given:
+                          hypridle.conf before sleep (20 %), BatteryWatch.qml each minute at 5 %
+  reopen session drop     forgets it: the session is still there (after sleep), or the charger came
+  reopen session offer    at login, when one is kept: asks whether to open its windows again
+  reopen session restore  opens them again, each on its workspace
+
 The program starts anew, so a window comes back as it starts, not as it was:
 - A terminal opens in the same folder (the one chosen in Default apps). What ran in it starts again only when it's in hypr/reopen-commands
   (+ .local): editors and the like, never just anything (rm, a build). Claude Code resumes the same conversation.
 - A browser window, while the browser still has others open: the browser's own key for a closed window, tabs and all.
 - Any other app: its command line, so a file it had open opens too, or its desktop entry when the command line can't
   be run again (a process shared by several windows, a sandbox, a D-Bus service).
-The list is kept in $XDG_RUNTIME_DIR, so it's gone after logging out.
+The list is kept in $XDG_RUNTIME_DIR, so it's gone after logging out. The session is kept on disk: it outlives a
+power loss.
 """
 import fcntl, json, os, re, shutil, subprocess, sys, time
 from importlib.machinery import SourceFileLoader
@@ -35,6 +43,7 @@ SHELLS = {"bash", "zsh", "fish", "sh", "dash", "nu", "xonsh", "elvish"}
 BROWSERS = [(r"^(chromium(-browser)?|google-chrome.*|brave-browser.*|vivaldi.*|microsoft-edge.*)$", "T"),
             (r"^(firefox.*|org\.mozilla\.firefox|librewolf|zen.*)$", "N")]
 SESSIONS = HOME + "/.claude/sessions"   # Claude Code's <pid>.json: the running session's id
+SESSION = HOME + "/.local/state/nightdrive/session.json"
 
 # default-apps reads the desktop entries (no .py: loaded by its path, no __pycache__ in the repo)
 sys.dont_write_bytecode = True
@@ -175,33 +184,42 @@ def browser_key(cls):
     return next((k for r, k in BROWSERS if re.match(r, cls, re.I)), None)
 
 
-def save(address=None):
-    w = next((c for c in hypr("clients") or [] if c.get("address") == address), None) if address else hypr("activewindow")
+def describe(w, clients):
+    """How to open window w again, and where it was; None when it can't be."""
     if not w or not w.get("address"):
-        return
+        return None
     cls, pid = w.get("class") or w.get("initialClass") or "", w.get("pid") or 0
     if not cls:
-        return
+        return None
     ws = w.get("workspace") or {}
     x, y = w.get("at") or [0, 0]
     sw, sh = w.get("size") or [0, 0]
     entry = {"class": cls, "title": w.get("title", ""), "ws": ws.get("id"), "wsname": ws.get("name", ""),
              "floating": bool(w.get("floating")), "x": x, "y": y, "w": sw, "h": sh,
              "fullscreen": bool(w.get("fullscreen")), "closed": int(time.time())}
-    others = [c for c in hypr("clients") or [] if c.get("pid") == pid and c.get("address") != w["address"]]
+    others = [c for c in clients if c.get("pid") == pid and c.get("address") != w["address"]]
     if cls in TERMINALS:
         if w.get("xwayland") or not own_process(pid):
-            return
+            return None
         t = terminal(pid)
         if not t:
-            return
+            return None
         entry["terminal"] = t
     else:
         args = argv(pid)
         if args and os.path.basename(args[0]) in TERMINAL_EXES:
-            return
+            return None
         if not others and not w.get("xwayland") and runnable(pid, args):
             entry["cmd"], entry["cwd"] = args, cwd(pid) or HOME
+    return entry
+
+
+def save(address=None):
+    clients = hypr("clients") or []
+    w = next((c for c in clients if c.get("address") == address), None) if address else hypr("activewindow")
+    entry = describe(w, clients)
+    if not entry:
+        return
     with locked() as stack:
         stack.append(entry)
         del stack[:-MAX_KEPT]
@@ -260,6 +278,11 @@ def reopen():
     if not e:
         notify("No closed windows", "A window closed with ⌘W opens again with ⌘⇧U, the last one first")
         return
+    open_again(e)
+
+
+def open_again(e):
+    """Opens e's window and puts it in its place. False when it didn't open."""
     cls, name = e["class"], e.get("title") or e["class"]
     clients = hypr("clients") or []
     before = {c.get("address") for c in clients}
@@ -291,7 +314,7 @@ def reopen():
         dispatch(f"NIGHTDRIVE_PLACE(nil, {lua(e)}, {target})")   # so it opens there, not somewhere else first
         if not cmd or not launch(cmd, folder):
             notify("Can't open the window again", name)
-            return
+            return False
 
     end = time.time() + wait
     while time.time() < end:
@@ -303,13 +326,117 @@ def reopen():
             dispatch(f'NIGHTDRIVE_PLACE("address:{addr}", {lua(e)}, {target})')
             if e.get("fullscreen"):
                 dispatch("hl.dsp.window.fullscreen()")
-            return
+            return True
     if not key:
         notify("The window didn't open again", name)
+    return bool(key)
+
+
+# The whole session
+def battery():
+    """The laptop battery's charge in %, or None without one."""
+    base = "/sys/class/power_supply"
+    def read(path, default=""):
+        try:
+            return open(path).read().strip()
+        except OSError:
+            return default
+    for d in sorted(os.listdir(base)) if os.path.isdir(base) else []:
+        # scope Device: a mouse's or headphones' battery
+        if read(f"{base}/{d}/type") == "Battery" and read(f"{base}/{d}/scope", "System") != "Device":
+            pct = read(f"{base}/{d}/capacity")
+            if pct.isdigit():
+                return int(pct)
+    return None
+
+
+def session_save(below=None):
+    if below is not None:
+        pct = battery()
+        if pct is None or pct >= below:
+            return
+    clients = hypr("clients") or []
+    # Workspace by workspace, left to right: each tile opens after the ones before it, so they line up as they were.
+    # Not the special workspaces: the background apps (special:bg) start with the login apps, and the drawer's would
+    # open on the screen.
+    shown = sorted((c for c in clients if not (c.get("workspace") or {}).get("name", "").startswith("special:")
+                    and (c.get("workspace") or {}).get("id", 0) > 0),
+                   key=lambda c: (c["workspace"]["id"], (c.get("at") or [0, 0])[0], (c.get("at") or [0, 0])[1]))
+    windows = [e for e in (describe(c, clients) for c in shown) if e]
+    if not windows:
+        return
+    data = {"saved": int(time.time()), "workspace": (hypr("activeworkspace") or {}).get("id"), "windows": windows}
+    os.makedirs(os.path.dirname(SESSION), exist_ok=True)
+    with open(SESSION + ".tmp", "w") as f:
+        json.dump(data, f)
+        f.flush()
+        os.fsync(f.fileno())   # the power may go any moment
+    os.replace(SESSION + ".tmp", SESSION)
+
+
+def session_load():
+    try:
+        return json.load(open(SESSION))
+    except (OSError, ValueError):
+        return None
+
+
+def session_drop():
+    try:
+        os.remove(SESSION)
+    except OSError:
+        pass
+
+
+def session_offer():
+    data = session_load()
+    if not data or not data.get("windows"):
+        session_drop()
+        return
+    n = len(data["windows"])
+    when = time.strftime("%-d.%-m. %H:%M", time.localtime(data.get("saved", 0)))
+    # One question: whatever the answer, the kept session is gone after it
+    answer = subprocess.run(["notify-send", "-a", "Nightdrive", "-i", "lucide:battery-warning", "-A", "restore=Open again",
+                             "The battery ran out", f"{n} window{'s' if n != 1 else ''} open at {when}"],
+                            capture_output=True, text=True).stdout.strip()
+    if answer == "restore":
+        session_restore()
+    else:
+        session_drop()
+
+
+def session_restore():
+    data = session_load()
+    session_drop()
+    if not data:
+        return
+    running = {(c.get("class") or "").lower() for c in hypr("clients") or []}
+    started = set()
+    for e in data.get("windows", []):
+        cls = e["class"].lower()
+        # A terminal always opens. An app already open (a login app) stays as it is, and one without a command line
+        # of its own opens once:
+        # a browser restores its own windows, and a second start of most apps only brings the first window up.
+        if "terminal" not in e and (cls in running or not e.get("cmd") and cls in started):
+            continue
+        started.add(cls)
+        open_again(e)
+    if data.get("workspace"):
+        dispatch(f'hl.dsp.focus({{ workspace = {int(data["workspace"])} }})')
 
 
 if __name__ == "__main__":
-    if sys.argv[1:2] == ["save"] and len(sys.argv) <= 3:
+    if sys.argv[1:2] == ["session"] and len(sys.argv) >= 3:
+        what = sys.argv[2]
+        if what == "save" and sys.argv[3:4] == ["--below"] and len(sys.argv) == 5:
+            session_save(int(sys.argv[4]))
+        elif what == "save" and len(sys.argv) == 3:
+            session_save()
+        elif what in ("drop", "offer", "restore") and len(sys.argv) == 3:
+            {"drop": session_drop, "offer": session_offer, "restore": session_restore}[what]()
+        else:
+            sys.exit(__doc__)
+    elif sys.argv[1:2] == ["save"] and len(sys.argv) <= 3:
         save(*sys.argv[2:])
     elif not sys.argv[1:]:
         reopen()
