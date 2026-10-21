@@ -147,3 +147,26 @@ Undo: `sudo dnf remove wezterm && sudo dnf copr remove wezfurlong/wezterm-nightl
 
 **A fix for everyone could be:** offering the nightly builds in Terminals once they are tried here, or Flathub's
 build again if it is updated.
+
+## EasyEffects stops when an autoload file is broken (headphone EQ)
+
+**Seen:** MacBook (Apple Silicon), Fedora Asahi Remix 44, EasyEffects 8.2.8. Found 2026-10-21, when Sony headphones were
+switched off.
+
+**Symptom:** the headphone EQ stops working, and `coredumpctl list easyeffects` shows a crash (SIGABRT).
+
+**Cause:** EasyEffects, not Nightdrive. It watches its autoload folder (`~/.local/share/easyeffects/autoload/output`)
+and reads every file that appears there. A file that is empty or not valid JSON throws an error that EasyEffects
+doesn't catch, so it aborts (`ListModel::data` → `nlohmann::json parse_error` → `std::terminate` in the backtrace).
+The file can be a half-written one: before 2026-10-21 Nightdrive's EQ (`topbar/scripts/eq`) saved the headphones'
+autoload file in two steps, and switching the headphones off at the wrong moment left EasyEffects reading it in
+between. The EQ now writes the file whole and moves it in place, so Nightdrive no longer causes this, but any other
+broken file there still does. Reported to EasyEffects as
+[#5415](https://github.com/wwmm/easyeffects/issues/5415).
+
+**Workaround:** remove the broken file from the autoload folder (an empty one, or a name ending in `:.json`), then
+choose an EQ in the headphones menu, which starts EasyEffects again, or start it with
+`setsid -f easyeffects --service-mode -w`.
+
+**A fix for everyone could be:** EasyEffects skipping a broken file (the fix suggested in #5415). Once a release with
+it reaches Fedora, this entry can go.
