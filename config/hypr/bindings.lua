@@ -21,6 +21,14 @@ function NIGHTDRIVE_IS_TERMINAL(w)
     return w ~= nil and TERMINAL_CLASSES[(w.class:gsub("^sh%.nightdrive%.", ""))] == true
 end
 
+-- A layer surface with the keyboard (the launcher, a menu): it gets the keys, not the active window behind it
+function NIGHTDRIVE_LAYER_HAS_KEYBOARD()
+    for _, l in ipairs(hl.get_layers()) do
+        if l.mapped and l.interactivity == 1 then return true end   -- 1: exclusive keyboard focus
+    end
+    return false
+end
+
 -- Installed optional parts (plugins.txt, plugins/): a part's keys are bound only when it is there. `nightdrive plugins
 -- installed` writes the list and reloads Hyprland when it changes (an installer from launcher › Install › Plugins).
 local plugins = {}
@@ -149,13 +157,13 @@ hl.bind(mod .. " + X", hl.dsp.send_shortcut({ mods = "CTRL",  key = "X" }))
 -- The apps' own keys, sent as Ctrl+…: undo / redo / select all / save / reload / reload without the cache / find / new tab /
 -- downloads (⌘Z / ⌘⇧Z / ⌘A / ⌘S / ⌘R / ⌘⇧R / ⌘F / ⌘T / ⌘J). Not in terminals (any of them, and their floating windows): there
 -- Ctrl+Z would suspend the running program, Ctrl+A jumps to the start of the line, Ctrl+S freezes the output (XOFF),
--- Ctrl+R searches the shell's history and Ctrl+J is Enter
+-- Ctrl+R searches the shell's history and Ctrl+J is Enter. The launcher over a terminal gets them all the same
 for _, k in ipairs({ { "", "Z" }, { " SHIFT", "Z" }, { "", "A" }, { "", "S" }, { "", "R" }, { " SHIFT", "R" },
                      { "", "F" }, { "", "T" }, { "", "J" } }) do
     local shift, key = k[1], k[2]
     hl.bind(mod .. (shift ~= "" and " +" .. shift or "") .. " + " .. key, function ()
         local w = hl.get_active_window()
-        if NIGHTDRIVE_IS_TERMINAL(w) then return end
+        if NIGHTDRIVE_IS_TERMINAL(w) and not NIGHTDRIVE_LAYER_HAS_KEYBOARD() then return end
         hl.dispatch(hl.dsp.send_shortcut({ mods = "CTRL" .. shift, key = key }))
     end)
 end

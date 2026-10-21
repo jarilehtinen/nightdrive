@@ -368,6 +368,16 @@ PanelWindow {
         return out
     }
 
+    // The next word boundary from `pos` in direction `dir` (-1 / 1): over any spaces and punctuation, then the word
+    function wordPos(s, pos, dir) {
+        const isWord = c => c.toLowerCase() !== c.toUpperCase() || /[0-9_]/.test(c)
+        const at = i => s.charAt(dir < 0 ? i - 1 : i)
+        const inside = i => dir < 0 ? i > 0 : i < s.length
+        while (inside(pos) && !isWord(at(pos))) pos += dir
+        while (inside(pos) && isWord(at(pos))) pos += dir
+        return pos
+    }
+
     function items() {
         const q = query.trim().toLowerCase()
         let all, tail = [], short = false
@@ -966,6 +976,13 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                         else if (event.key === Qt.Key_Delete && win.extDelete()) event.accepted = true
                         // Backspace with an empty search goes back; Ctrl+⌫ (⌥⌫ with keyd: delete a word) doesn't
                         else if (event.key === Qt.Key_Backspace && !ctrl && text === "" && win.level !== "root") { win.back(); event.accepted = true }
+                        // ⌥← / ⌥→ move by word, like in macOS (Hyprland sends them as Alt+arrows); ⇧ selects
+                        else if ((event.modifiers & Qt.AltModifier) && (event.key === Qt.Key_Left || event.key === Qt.Key_Right)) {
+                            const pos = win.wordPos(text, cursorPosition, event.key === Qt.Key_Left ? -1 : 1)
+                            if (event.modifiers & Qt.ShiftModifier) moveCursorSelection(pos, TextInput.SelectCharacters)
+                            else { deselect(); cursorPosition = pos }
+                            event.accepted = true
+                        }
                         else if (win.grid && (event.key === Qt.Key_Left || event.key === Qt.Key_Right)) {
                             win.step(event.key === Qt.Key_Left ? -1 : 1); event.accepted = true
                         } else if (win.grid && (event.key === Qt.Key_Down || event.key === Qt.Key_Up)) {
