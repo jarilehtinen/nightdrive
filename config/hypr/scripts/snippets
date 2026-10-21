@@ -123,6 +123,8 @@ class Xkb:
         x = self.x = ctypes.CDLL("libxkbcommon.so.0")
         x.xkb_context_new.restype = ctypes.c_void_p
         x.xkb_context_new.argtypes = [ctypes.c_int]
+        x.xkb_context_unref.argtypes = [ctypes.c_void_p]
+        x.xkb_keymap_unref.argtypes = [ctypes.c_void_p]
         x.xkb_keymap_new_from_names.restype = ctypes.c_void_p
         x.xkb_keymap_new_from_names.argtypes = [ctypes.c_void_p, ctypes.POINTER(self.Names), ctypes.c_int]
         x.xkb_state_new.restype = ctypes.c_void_p
@@ -131,7 +133,6 @@ class Xkb:
         x.xkb_state_update_key.argtypes = [ctypes.c_void_p, ctypes.c_uint32, ctypes.c_int]
         x.xkb_state_key_get_utf8.argtypes = [ctypes.c_void_p, ctypes.c_uint32, ctypes.c_char_p, ctypes.c_size_t]
         x.xkb_state_mod_name_is_active.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_int]
-        self.ctx = x.xkb_context_new(0)
         self.state = None
         self.load()
 
@@ -144,12 +145,17 @@ class Xkb:
             except (OSError, ValueError):
                 return None
         names = self.Names(opt("kb_rules"), opt("kb_model"), opt("kb_layout"), opt("kb_variant"), opt("kb_options"))
-        keymap = self.x.xkb_keymap_new_from_names(self.ctx, ctypes.byref(names), 0)
+        # A new context each time: a context fixes its include paths when created, so a ~/.config/xkb made after the
+        # service started (a custom layout) would otherwise never be found.
+        ctx = self.x.xkb_context_new(0)
+        keymap = self.x.xkb_keymap_new_from_names(ctx, ctypes.byref(names), 0)
         if not keymap:
-            keymap = self.x.xkb_keymap_new_from_names(self.ctx, ctypes.byref(self.Names()), 0)
+            keymap = self.x.xkb_keymap_new_from_names(ctx, ctypes.byref(self.Names()), 0)
         if self.state:
             self.x.xkb_state_unref(self.state)
         self.state = self.x.xkb_state_new(keymap)
+        self.x.xkb_keymap_unref(keymap)
+        self.x.xkb_context_unref(ctx)
 
     def char(self, code):
         buf = ctypes.create_string_buffer(16)
