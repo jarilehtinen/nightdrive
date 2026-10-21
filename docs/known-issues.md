@@ -170,3 +170,37 @@ choose an EQ in the headphones menu, which starts EasyEffects again, or start it
 
 **A fix for everyone could be:** EasyEffects skipping a broken file (the fix suggested in #5415). Once a release with
 it reaches Fedora, this entry can go.
+
+## The Mac doesn't sleep after an external display was unplugged while it slept
+
+**Seen:** MacBook (Apple Silicon), Fedora Asahi Remix 44, kernel 7.1.13-402.asahi, a 4K display on the HDMI port. Found
+2026-10-21.
+
+**Symptom:** the Mac went to sleep with an external display on HDMI, and the display was unplugged before it woke up. From
+then on, it won't sleep: closing the lid or choosing Sleep turns the screen off for a moment and the Mac stays awake (it shows
+the lock screen, and it is still online, e.g. in Tailscale). With the lid closed, the system tries again every 30 seconds and
+fails each time.
+
+**Cause:** the Asahi display driver, not Nightdrive. On waking up, the driver tries to bring back the picture on the HDMI port,
+which no longer has a display, and that fails (`setmode failed`, `Modeset done, but pipe not enabled`). The port's display
+pipe (CRTC) is left with its old mode while the connector is disconnected. Going to sleep checks every pipe, and
+`dcp_crtc_atomic_check` (drivers/gpu/drm/apple/dcp.c) refuses a disconnected one that isn't being changed, so the display
+driver fails to suspend and the whole sleep is cancelled. In the journal:
+
+```
+apple-dcp 289c00000.dcp: crtc_atomic_check: disconnected but no modeset
+apple-drm soc:display-subsystem: PM: failed to suspend: error -22
+systemd-sleep: Failed to put system to sleep. System resumed again: Invalid argument
+```
+
+Check with `journalctl -b | grep -E 'no modeset|failed to suspend'`; the first `setmode failed` after a wake-up shows when it
+started.
+
+**Workaround:** restart the Mac, which clears it. Plugging the display back in and unplugging it while the Mac is awake
+should clear it too (not tried yet). To avoid it, unplug an external display while the Mac is awake, not while it sleeps.
+
+**A fix for everyone could be:** the driver letting a pipe that is already off pass its check, or turning the pipe off
+when the display is found gone on waking up. Not reported to Asahi yet; the closest reports are
+[AsahiLinux/linux#303](https://github.com/AsahiLinux/linux/issues/303) (HDMI gives no picture after waking up) and
+[#332](https://github.com/AsahiLinux/linux/issues/332) (the same `no modeset` line after waking up, M2 Mac mini). In
+Nightdrive, a notification when sleep fails would at least tell why the Mac is still awake.
