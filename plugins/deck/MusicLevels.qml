@@ -14,7 +14,7 @@ Item {
     readonly property var rootItems: [{ kind: "nav", name: "Music", glyph: "disc-3", target: "music" }]
 
     property var albums: []                   // Deck's shelf and Curated albums [{ uri, name, artist, year, list }]
-    property var spotify: null                // Music › Search: { query, artists, albums, error } (deck search --json)
+    property var spotify: null                // Music › Search: { query, artists, albums, songs, error } (deck search --json)
     property var artist: ({ id: "", name: "", albums: null })   // Music › Search › an artist's albums
 
     readonly property string bin: Quickshell.env("HOME") + "/.local/bin"   // deck, and deck-ctl and deck-open (bin/ here)
@@ -39,6 +39,9 @@ Item {
         return albums.map(a => ({ item: Object.assign(albumItem(a), { summary: undefined, from: "Music" }), text: a.name, extra: a.artist }))
     }
 
+    // 3:45
+    function duration(ms) { const s = Math.round((ms || 0) / 1000); return s > 0 ? Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0") : "" }
+
     function items(level, q) {
         const hint = launcher.hint
         if (level === "music") {
@@ -52,15 +55,20 @@ Item {
             // Results come from `deck search --json` a moment after typing stops; going back from an artist shows them again
             const typed = launcher.query.trim()
             const shown = typed !== "" ? typed : (spotify ? spotify.query : "")
-            if (shown === "") return hint("Type an artist or album")
+            if (shown === "") return hint("Type an artist, album or song")
             const inDeck = { kind: "decksearch", name: "Open “" + shown + "” in Deck", glyph: "external-link", value: shown }
             if (!spotify || spotify.query !== shown) return hint("Searching Spotify…")
             if (spotify.error) return hint(spotify.error).concat([inDeck])
             const artists = spotify.artists.slice(0, 4).map(a => ({ kind: "spotifyartist", name: a.name, glyph: "mic-vocal", id: a.id, chevron: true }))
             const found = spotify.albums.map(a => albumItem(a))
-            if (artists.length + found.length === 0) return hint("Nothing found on Spotify").concat([inDeck])
+            // A song plays its album from that song (deck ctl play-song), as Enter on a song in Deck does
+            const songs = spotify.songs.slice(0, 6).map(s => ({ kind: "spotifysong", name: s.name, glyph: "music", uri: s.uri,
+                                                               album: s.album.uri, artist: s.artist + " · " + s.album.name,
+                                                               summary: duration(s.duration_ms) }))
+            if (artists.length + found.length + songs.length === 0) return hint("Nothing found on Spotify").concat([inDeck])
             return (artists.length ? [{ kind: "header", name: "Artists" }].concat(artists) : [])
-                .concat(found.length ? [{ kind: "header", name: "Albums" }].concat(found) : [], [inDeck])
+                .concat(found.length ? [{ kind: "header", name: "Albums" }].concat(found) : [],
+                        songs.length ? [{ kind: "header", name: "Songs" }].concat(songs) : [], [inDeck])
         }
         if (level === "artist") {
             if (artist.albums === null) return hint("Loading albums…")
@@ -80,6 +88,7 @@ Item {
     function activate(it) {
         const l = launcher
         if (it.kind === "album") { l.open = false; Quickshell.execDetached([bin + "/deck-ctl", "play-album", it.uri]); return true }
+        if (it.kind === "spotifysong") { l.open = false; Quickshell.execDetached([bin + "/deck-ctl", "play-song", it.uri, it.album]); return true }
         if (it.kind === "spotifyartist") {
             artist = { id: it.id, name: it.name, albums: null }
             artistProc.environment = { "ID": it.id }
@@ -119,8 +128,8 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
             try {
                 if (spotifyProc.exitCode !== 0) throw new Error(text.trim().split("\n").pop() || "Search failed")
                 const r = JSON.parse(text)
-                m.spotify = { query: q, artists: r.artists || [], albums: r.albums || [], error: "" }
-            } catch (e) { m.spotify = { query: q, artists: [], albums: [], error: String(e.message || e).replace(/^deck: /, "") } }
+                m.spotify = { query: q, artists: r.artists || [], albums: r.albums || [], songs: r.songs || [], error: "" }
+            } catch (e) { m.spotify = { query: q, artists: [], albums: [], songs: [], error: String(e.message || e).replace(/^deck: /, "") } }
             const l = m.launcher
             if (l.level === "musicsearch" && l.query.trim() !== "" && l.query.trim() !== q) m.searchSpotify()   // typed on meanwhile
         }
