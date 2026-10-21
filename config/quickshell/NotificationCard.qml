@@ -222,7 +222,7 @@ Rectangle {
                     textFormat: Text.PlainText
                     text: card.n ? card.n.summary : card.row.summary
                     color: Theme.title
-                    font { family: Theme.font; pointSize: 9.25; weight: Font.Bold }   // 1 px under mako's 10 pt
+                    font { family: Theme.font; pointSize: 9.25; weight: Font.DemiBold }   // 1 px under mako's 10 pt
                 }
                 Text {
                     width: parent.width
