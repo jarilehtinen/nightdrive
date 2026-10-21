@@ -352,9 +352,17 @@ Rectangle {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         // invoke() itself closes a notification that isn't resident, and its popup and this card go with it
-                        // at once: nothing here may be read after it
+                        // at once: nothing here may be read after it. The history row goes too: an app's own action
+                        // (Delete, Archive, Allow) finishes the notification, unlike a click on the card, which keeps
+                        // the row to come back to (a screenshot). A resident one stays: the app closes it when it's done.
                         onClicked: {
-                            if (btn.modelData.action) { btn.modelData.action.invoke(); return }
+                            if (btn.modelData.action) {
+                                const uid = card.row.uid
+                                const resident = card.n && card.n.resident
+                                btn.modelData.action.invoke()
+                                if (!resident) Notifs.forget(uid)
+                                return
+                            }
                             Quickshell.execDetached(btn.modelData.copy === "image"
                                 ? ["sh", "-c", 'wl-copy --type image/png < "$1"', "sh", card.filePath]
                                 : ["wl-copy", "--", card.filePath])
