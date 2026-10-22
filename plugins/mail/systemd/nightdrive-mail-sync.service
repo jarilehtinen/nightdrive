@@ -3,6 +3,8 @@
 [Unit]
 Description=Nightdrive Mail: fetch mail (mbsync) and index it (notmuch)
 After=network-online.target
+# Mail is installed before its account is set up (its first start offers that): nothing to fetch until then
+ConditionPathExists=%h/.config/isyncrc
 
 [Service]
 Type=oneshot

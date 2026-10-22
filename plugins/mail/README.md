@@ -46,7 +46,7 @@ A quiet mail client: folders, the thread list and the open thread, nothing else 
 
 ## Setting up an account
 
-Mail reads the mail that mbsync has fetched into `~/Mail` and notmuch has indexed, and sends through your provider's SMTP server. These steps set up one account; each command can be run as it is, after putting your own values in place of the examples (you@example.com, mail.example.com, the account name `example`). Claude can do them with you: ask it to set up Nightdrive Mail by this page.
+Mail reads the mail that mbsync has fetched into `~/Mail` and notmuch has indexed, and sends through your provider's SMTP server. These steps set up one account; each command can be run as it is, after putting your own values in place of the examples (you@example.com, mail.example.com, the account name `example`). Claude can do them with you: Mail's first start, before an account, offers Set up with Claude, which opens Claude Code in a terminal to go through them a step at a time (`nightmail setup` does the same, and so does asking Claude to set up Nightdrive Mail by this page). Your password goes only into the login keyring, by a command you run yourself.
 
 1. Install the plugin (launcher › System › Install › Plugins › Mail): it installs notmuch, isync (mbsync), libsecret (secret-tool) and zenity, and says what is still missing. Many providers want an app password for mail apps (Gmail, iCloud, Outlook, Fastmail): make one in the provider's account settings first.
 
@@ -123,7 +123,7 @@ signature = Your Name
   Example Ltd · example.com
 ```
 
-7. Run the plugin's installer again (or `nightmail enable`): Mail joins the apps, the notifications get their hook, and the sync runs every 5 minutes. What is in the inbox now isn't announced as new.
+7. Run `nightmail enable` (or the plugin's installer again): Mail joins the apps, the notifications get their hook, and the sync runs every 5 minutes. What is in the inbox now isn't announced as new.
 
 8. Check it: `nightmail` opens Mail with your inbox. Send yourself a message, then `nightmail sync`: it shows in the inbox and a notification comes.
 
@@ -160,6 +160,7 @@ SyncState *
 | --- | --- |
 | `nightmail` | Opens Mail, or brings it forward |
 | `nightmail new` | Writes a new message |
+| `nightmail setup` | Sets up an email account with Claude, in a terminal |
 | `nightmail sync` | Fetches new mail now and shows it |
 | `nightmail show ID`, `reply ID`, `claude ID`, `delete ID` | A message by its notmuch id, as the notifications use them |
 | `nightmail enable`, `disable` | Mail among the apps, its notifications and the sync, on or off (your mail and settings stay) |

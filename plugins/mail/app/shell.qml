@@ -563,17 +563,25 @@ ShellRoot {
                 const old = t.split("\n").filter(x => x.indexOf(undoTag) === 0)
                 if (old.length) nm.tag(old.map(x => "-" + x), old.map(x => "tag:" + x).join(" or "))
             })
+            loadAccounts()
+            list.forceActiveFocus()
+        }
+        // Without an account yet (no account.conf), Mail offers to set one up (setupPanel), and looks again with each
+        // round of the timer below, so the inbox shows once the setup has written it.
+        property bool needsAccount: false
+        function loadAccounts() {
             nm.compose(["accounts"], r => {
-                if (r.error) { say(r.error); reload(false); return }
+                if (r.error) { needsAccount = true; reload(false); return }
+                needsAccount = false
                 accounts = r.accounts
                 acct = Math.max(0, accounts.findIndex(a => a.id === settings.account))
                 reload(false)
             })
-            list.forceActiveFocus()
         }
+        onNeedsAccountChanged: if (needsAccount) setupPanel.forceActiveFocus(); else list.forceActiveFocus()
 
         // Picks up what the mail sync brought in.
-        Timer { interval: 30000; running: true; repeat: true; onTriggered: win.reload(true) }
+        Timer { interval: 30000; running: true; repeat: true; onTriggered: win.needsAccount ? win.loadAccounts() : win.reload(true) }
 
         // Mac Mail's keys, with ⌘⇧C (Ctrl+Shift+C) for Claude's reply. Nightdrive sends ⌘Z ⌘R ⌘F to apps as Ctrl+…, which are also the PC mail apps' keys;
         // ⌘N, ⌘B and ⌘⇧C arrive as Super (Meta) + the key. ⌘⏎ opens a terminal, so sending stays Ctrl+⏎.
@@ -1130,6 +1138,58 @@ ShellRoot {
                                 TapHandler { onTapped: win.confirm = null }
                             }
                         }
+                    }
+                }
+            }
+        }
+
+        // Mail's first start, before an account: Enter (or the button) opens Claude Code in a terminal, which sets it up
+        // with you by README.md (`nightmail setup`).
+        property bool setupStarted: false
+        function startSetup() { setupStarted = true; nm.nightmail(["setup"], () => {}) }
+        Rectangle {
+            id: setupPanel
+            anchors.fill: parent
+            visible: win.needsAccount
+            color: c.scrim
+            TapHandler {}       // nothing behind it to click yet
+            Keys.onPressed: e => {
+                if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) win.startSetup()
+                e.accepted = true
+            }
+            Rectangle {
+                anchors.centerIn: parent
+                width: 560
+                height: setupCol.implicitHeight + 72
+                radius: 14
+                color: c.solid
+                border.color: c.line
+                Column {
+                    id: setupCol
+                    x: 40; y: 36
+                    width: parent.width - 80
+                    spacing: 18
+                    Text { text: "Set up your email account"; color: c.title; font.family: c.font; font.pixelSize: 15; font.weight: Font.Medium }
+                    Text {
+                        width: parent.width; wrapMode: Text.Wrap; lineHeight: 1.2; color: c.text; font.family: c.font; font.pixelSize: 12
+                        text: win.setupStarted
+                            ? "Claude opens in a terminal and goes through it with you. When it's done, your inbox shows here."
+                            : "Mail keeps your mail on this computer, fetched from your provider. Claude can set up the account with you in a terminal, a step at a time: it asks your address and writes the settings. Your password goes only into the login keyring, never to Claude."
+                    }
+                    Row {
+                        spacing: 8
+                        KeyCap { anchors.verticalCenter: parent.verticalCenter; c: win.look; keys: "⏎"; tint: win.look.faint }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: win.setupStarted ? "Open Claude again" : "Set up with Claude"
+                            color: setupHover.hovered ? c.title : c.primary; font.family: c.font; font.pixelSize: 12
+                            HoverHandler { id: setupHover; cursorShape: Qt.PointingHandCursor }
+                            TapHandler { onTapped: win.startSetup() }
+                        }
+                    }
+                    Text {
+                        width: parent.width; wrapMode: Text.Wrap; color: c.faint; font.family: c.font; font.pixelSize: 11
+                        text: "To do it yourself: launcher › System › Install › Plugins › Mail has the steps."
                     }
                 }
             }

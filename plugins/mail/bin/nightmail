@@ -88,6 +88,26 @@ disable() {
   uninstall_app
 }
 
+# Setting up an account with Claude (Mail's first start offers it): Claude Code in a terminal goes through README.md ›
+# Setting up an account with you. The password goes in by a command you run yourself (! secret-tool …), so it never
+# passes through Claude.
+setup() {
+  local claude=$HOME/.local/bin/claude
+  [[ -x $claude ]] || claude=$(command -v claude) || { echo "Claude Code is not installed: README.md › Setting up an account has the steps." >&2; return 1; }
+  # Clear inherited CLAUDE* variables, so the new Claude doesn't think it's a child session (as terminal-or-claude does)
+  for v in $(compgen -e | grep '^CLAUDE'); do unset "$v"; done
+  local prompt="Set up my email account for Nightdrive Mail, by the steps in $APP_DIR/README.md, section \"Setting up an account\" \
+(and \"More accounts\" if I have more than one). Read it first, then go through it with me one step at a time, saying in plain \
+words what each step is for: I may not know mbsync or notmuch. Mail's plugin is installed, so step 1 is only the app password, \
+if my provider needs one. Start by asking my email address and name, then work out the servers and folder names yourself \
+(\`mbsync -l CHANNEL\` lists the server's folders). Never ask me to type a password into this chat: for step 2, give me the \
+secret-tool command to run myself with ! in front of it, which asks for the password in the terminal. If ~/.config/isyncrc, \
+notmuch's config or ~/.config/nightmail/account.conf is already there, add to it instead of replacing it. The first mbsync of a \
+big mailbox can take long: run it in the background and tell me how it goes. Finish with \`nightmail enable\`, \
+\`nightmail restart\` and step 8's check."
+  setsid -f "$HOME/.config/hypr/scripts/terminal" --dir "$HOME" -- "$claude" -- "$prompt" >/dev/null 2>&1
+}
+
 stop() {
   running || return 0
   qs kill -p "$QS_DIR" >/dev/null 2>&1
@@ -156,6 +176,7 @@ Usage: nightmail [command]
   (none), open   open Mail, or bring it forward if it is open
   new            write a new message
   mailto:…       write to a mailto: link's address (the desktop entry's handler for mailto links)
+  setup          set up an email account with Claude, in a terminal
   sync           fetch new mail now and show it
   restart        close and open again (after a change to the app)
   quit           close Mail
@@ -202,6 +223,7 @@ case ${1:-open} in
   claude-draft)  claude_draft "$2" ;;
   claude-reply)  claude_reply "$2" ;;
   claude-cancel) claude_cancel "$2" ;;
+  setup)     setup ;;
   enable)    enable ;;
   disable)   disable ;;
   help|-h|--help) usage ;;
