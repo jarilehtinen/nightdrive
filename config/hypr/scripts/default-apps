@@ -89,7 +89,7 @@ def entries():
     return {k: v["keys"] for k, v in found.items()}
 
 
-def usable(keys, by_type):
+def usable(keys, by_type=False):
     """An app to offer: shown somewhere (not NoDisplay/Hidden in its own file) and its program installed. One that runs
     in a terminal (aerc, Neovim) opens in the chosen terminal, as GIO starts it with xdg-terminal-exec: it's offered
     when it lists the type itself (by_type), not for a category only, which every terminal tool has (vi as TextEditor)."""
