@@ -1,0 +1,18 @@
+#!/bin/bash
+# The connection the traffic goes out on, as one JSON object (the top bar's wifi icon and WifiMenu.qml show it):
+#   {dev, type, ip, speed}   type as nmcli names it (ethernet, wifi…); speed in Mb/s for a wired link, otherwise null
+# NetworkManager gives each connection's default route a metric (ethernet 100, Wi-Fi 600) and the lowest one wins, so with
+# a cable plugged in the traffic goes over it while Wi-Fi stays connected as a standby, as in macOS's service order.
+# The main table only: Tailscale's routes are in a table of their own.
+dev=$(ip -4 route show default table main | awk '{
+  m = 0; d = ""
+  for (i = 1; i < NF; i++) { if ($i == "metric") m = $(i + 1); if ($i == "dev") d = $(i + 1) }
+  if (d != "") print m, d
+}' | sort -n | awk '{ print $2; exit }')
+[[ -z $dev ]] && { echo '{}'; exit 0; }
+type=$(nmcli -g GENERAL.TYPE device show "$dev" 2>/dev/null)
+ip=$(ip -4 -o addr show dev "$dev" | awk '{ sub(/\/.*/, "", $4); print $4; exit }')
+speed=$(cat "/sys/class/net/$dev/speed" 2>/dev/null)   # -1 or unreadable on Wi-Fi
+
+jq -nc --arg dev "$dev" --arg type "$type" --arg ip "$ip" --arg speed "$speed" \
+  '{dev: $dev, type: $type, ip: $ip, speed: ($speed | tonumber? // null | if . != null and . > 0 then . else null end)}'

@@ -35,14 +35,20 @@ Column {
     function sigIcon(s) { return s >= 75 ? "wifi" : s >= 50 ? "wifi-high" : s >= 25 ? "wifi-low" : "wifi-zero" }
 
     readonly property var activeNet: nets.find(n => n.active) || null
+    // The connection the traffic goes out on (hypr/scripts/net-primary): with a cable plugged in, the cable, and Wi-Fi
+    // stays connected as a standby (NetworkManager's route metrics, as in macOS's service order)
+    property var primary: ({})
+    readonly property bool onCable: primary.type === "ethernet"
+    readonly property bool wifiUp: wifiOn && activeNet !== null
     readonly property var otherNets: nets.filter(n => !n.active)
 
     // Public IP (external service api.ipify.org): fetched when the menu opens, every minute and when the connected network changes
     property string publicIp: ""
     property bool ipFailed: false
     readonly property string activeSsid: activeNet ? activeNet.ssid : ""
-    onActiveSsidChanged: { publicIp = ""; ipFailed = false; if (activeSsid !== "") ipProc.running = true }
-    Timer { interval: 60000; repeat: true; running: m.activeSsid !== ""; onTriggered: ipProc.running = true }
+    readonly property string route: onCable ? primary.dev : activeSsid   // what the public IP depends on
+    onRouteChanged: { publicIp = ""; ipFailed = false; if (route !== "") ipProc.running = true }
+    Timer { interval: 60000; repeat: true; running: m.route !== ""; onTriggered: ipProc.running = true }
     Sh {
         id: ipProc
         script: 'curl -s --max-time 5 https://api.ipify.org'
@@ -67,7 +73,8 @@ Column {
     readonly property string linkLine: [link.band, link.gen, link.rate].filter(x => x).join(" · ") || "…"
     readonly property string localLine: [link.ip, ms(link.ping)].filter(x => x).join(" · ") || "…"
 
-    // Live throughput: read the wifi interface's byte counters every second (only while the menu is open)
+    // Live throughput: read the byte counters of the interface in use (the cable's or Wi-Fi's) every second (only while
+    // the menu is open)
     property real rxRate: 0
     property real txRate: 0
     // Shown values roll towards the measured ones over the second until the next reading (no jumps)
@@ -78,6 +85,7 @@ Column {
     property real lastRx: -1
     property real lastTx: -1
     property real lastT: 0
+    property string lastDev: ""
     function fmtRate(b) {
         const bits = b * 8
         if (bits >= 1e9) return (bits / 1e9).toFixed(2) + " Gb/s"
@@ -85,14 +93,21 @@ Column {
         if (bits >= 1e3) return Math.round(bits / 1e3) + " kb/s"
         return Math.round(bits) + " b/s"
     }
-    Timer { interval: 1000; repeat: true; running: true; triggeredOnStart: true; onTriggered: rateProc.running = true }
+    Timer {
+        interval: 1000; repeat: true; running: true; triggeredOnStart: true
+        onTriggered: { rateProc.environment = { "DEV": m.onCable ? m.primary.dev : "" }; rateProc.running = true }
+    }
     Sh {
         id: rateProc
-        script: 'for d in /sys/class/net/*/wireless; do i=${d%/wireless}; echo "$(cat $i/statistics/rx_bytes) $(cat $i/statistics/tx_bytes)"; break; done'
+        script: 'if [ -n "$DEV" ]; then i=/sys/class/net/$DEV; else for d in /sys/class/net/*/wireless; do i=${d%/wireless}; break; done; fi
+[ -n "$i" ] && echo "$(cat $i/statistics/rx_bytes) $(cat $i/statistics/tx_bytes) ${i##*/}"'
         onResult: text => {
-            const f = text.trim().split(/\s+/).map(Number)
-            if (f.length < 2 || isNaN(f[0])) return
+            const w = text.trim().split(/\s+/)
+            const f = w.slice(0, 2).map(Number)
+            if (w.length < 3 || isNaN(f[0])) return
             const now = Date.now()
+            // Another interface (the cable plugged in or out) starts its counters from scratch, not as a jump from the old one's
+            if (w[2] !== m.lastDev) { m.lastDev = w[2]; m.lastRx = -1; m.rxRate = 0; m.txRate = 0 }
             if (m.lastRx >= 0 && now > m.lastT) {
                 const dt = (now - m.lastT) / 1000
                 m.rxRate = Math.max(0, (f[0] - m.lastRx) / dt)
@@ -102,7 +117,7 @@ Column {
         }
     }
 
-    function refresh() { radioProc.running = true; knownProc.running = true; listProc.running = true }
+    function refresh() { radioProc.running = true; knownProc.running = true; listProc.running = true; primaryProc.running = true }
     function rescan() { Quickshell.execDetached(["nmcli", "device", "wifi", "rescan"]) }
     Component.onCompleted: { refresh(); rescan() }
 
@@ -128,6 +143,11 @@ Column {
         }
     }
 
+    Sh {
+        id: primaryProc
+        command: [Quickshell.env("HOME") + "/.config/hypr/scripts/net-primary"]
+        onResult: text => { try { m.primary = JSON.parse(text) } catch (e) {} }
+    }
     Sh {
         id: radioProc
         command: ["nmcli", "radio", "wifi"]
@@ -209,7 +229,7 @@ done; true'
         property string text
         property string value                     // what a click copies; "" = nothing to copy yet
         property bool copied: false
-        visible: m.wifiOn && m.activeNet !== null
+        visible: m.wifiUp
         x: 27                                     // the text stays under the network's name (33) with 6 px padding
         width: line.width + 12
         height: line.height + 4
@@ -243,7 +263,8 @@ done; true'
 
     MenuHeader {
         width: parent.width
-        title: "Wi-Fi"
+        title: m.onCable ? "Network" : "Wi-Fi"
+        subtitle: m.onCable ? "Wi-Fi" : ""   // what the toggle turns on and off
         showToggle: true
         checked: m.wifiOn
         onToggled: {
@@ -254,17 +275,44 @@ done; true'
         }
     }
 
-    // Connected network at the top (an information row), throughput and public IP below it, then Disconnect and Forget
+    // A cable in use first: Ethernet with its link speed, throughput, public and local IP. Wi-Fi below it is the standby.
     MenuRow {
-        visible: m.wifiOn && m.activeNet !== null
+        visible: m.onCable
+        width: parent.width
+        icon: "cable"
+        label: "Ethernet"
+        detail: !m.primary.speed ? "" : m.primary.speed >= 1000 ? (m.primary.speed / 1000) + " Gb/s" : m.primary.speed + " Mb/s"
+        interactive: false
+        iconFilled: true
+    }
+    Rates { visible: m.onCable }
+    CopyLine {
+        visible: m.onCable
+        icon: "globe"
+        text: m.publicIp !== "" ? m.publicIp : (m.ipFailed ? "public IP unavailable" : "…")
+        value: m.publicIp
+    }
+    CopyLine {
+        visible: m.onCable
+        icon: "router"
+        text: m.primary.ip || "…"
+        value: m.primary.ip || ""
+    }
+    Item { visible: m.onCable && m.wifiUp; width: 1; height: 6 }
+
+    // Connected network at the top (an information row), throughput and public IP below it, then Disconnect and Forget.
+    // Behind a cable only its own link: the traffic and the public IP are the cable's.
+    MenuRow {
+        visible: m.wifiUp
         width: parent.width
         icon: m.sigIcon(m.activeNet ? m.activeNet.signal : 0)
         label: m.activeSsid
+        detail: m.onCable ? "standby" : ""
         interactive: false
-        iconFilled: true   // connected (as in macOS: no highlighted row)
+        iconFilled: !m.onCable   // connected and in use (as in macOS: no highlighted row)
     }
-    Row {
-        visible: m.wifiOn && m.activeNet !== null
+    Rates { visible: m.wifiUp && !m.onCable }
+    component Rates: Row {
         leftPadding: 33   // under the network's name (circle inset 3 + icon 20 + gap 10)
         spacing: 18
         Row {
@@ -279,6 +327,7 @@ done; true'
         }
     }
     CopyLine {
+        visible: m.wifiUp && !m.onCable
         icon: "globe"
         text: m.publicIp !== "" ? m.publicIp : (m.ipFailed ? "public IP unavailable" : "…")
         value: m.publicIp

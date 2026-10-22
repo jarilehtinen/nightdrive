@@ -48,8 +48,9 @@ a name in the bar instead of its number, for as long as it has windows.
 
 ### Menus you want to click
 
-Click an icon and a small menu opens under it: sound and output devices, Wi-Fi, Bluetooth, battery and brightness, Tailscale,
-headphone EQ, system load and temperatures, the calendar, notifications, music, and **Claude**: your Claude Code sessions (a
+Click an icon and a small menu opens under it: sound and output devices, Wi-Fi (and Ethernet while a cable is in use),
+Bluetooth, battery and brightness, Tailscale, headphone EQ, system load and temperatures, the calendar, notifications,
+music, and **Claude**: your Claude Code sessions (a
 dot on the icon when one finished while you were elsewhere; a click goes to its window) and your usage limits. When a
 session waits for you, its notification says which one and what it wants, and a permission request can be answered
 right there (Allow, Deny). ⌘⇧Space lets you walk through the menus with the arrow keys.
