@@ -92,7 +92,7 @@ explains every key), with a few differences:
 
 ```jsonc
 // Ferry's top bar module; its state: ./status; a click opens FerryMenu.qml; files dropped on the icon go to the box.
-{ "interval": 5, "drop": "bin/ferry add", "after": "system", "size": 17, "label": "Ferry (phone mailbox)", "glyph": "inbox" }
+{ "interval": 5, "drop": "bin/ferry add", "after": "system", "size": 17, "label": "Ferry – Device mailbox", "glyph": "inbox" }
 ```
 
 `status` is an executable script in the folder (the module runs it without a `status` key). It prints one line of JSON,
