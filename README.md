@@ -90,7 +90,7 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
   with a warning if it deletes, overwrites or needs root; it runs only when you press Enter. To give it context, select
   the message you're answering together with your draft. launcher › Settings › Claude writes (and the Claude menu) sets
   the model (Sonnet by default) and your own instructions, sent with every request ("a relaxed tone", "end emails with
-  my name"): type one there, or turn on an example.
+  my name"): type one there, or turn on an example. Apps of your own can be left out there too.
 - **Snippets**: text snippets in launcher › Tools › Snippets; Enter pastes one. Turn on auto-expand and typing a trigger
   anywhere replaces it with the text.
 - **From your phone** (experimental plugins): [LocalSend](plugins/localsend/README.md) receives files from a phone after

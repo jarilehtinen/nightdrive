@@ -9,9 +9,12 @@
 #   claude-write edit        open your instructions in the text editor (made with a few examples the first time)
 #   claude-write instructions   JSON { on: [lines], examples: [the commented-out ones] } (launcher › Settings › Claude writes)
 #   claude-write add TEXT, remove TEXT   an instruction line on or off (an example goes back to being one)
+#   claude-write block CLASS, unblock CLASS   an app of your own left out, or back in (launcher › Settings › Claude writes)
+#   claude-write always      the classes that are always left out (a regex), so the launcher doesn't offer them
 # What Claude gets: the selection, the window's class and title, nothing else. It has no tools and no saved session, so
 # the worst a selection that tries to steer it can do is write the wrong text, which the preview shows before anything
-# is written. Settings: ~/.local/state/nightdrive/claude-write.json { "model": "sonnet", "terminals": false }. Your own
+# is written. Settings: ~/.local/state/nightdrive/claude-write.json { "model": "sonnet", "terminals": false, "blocked":
+# [window classes you left out] }. Your own
 # instructions, sent with every request: ~/.config/nightdrive/claude-write.txt (the Claude menu opens it).
 set -uo pipefail
 
@@ -49,7 +52,8 @@ start() {
     exit 0
   fi
   shopt -s nocasematch
-  if [[ $class =~ $BLOCKED_CLASSES || $title =~ $BLOCKED_TITLES ]]; then
+  if [[ $class =~ $BLOCKED_CLASSES || $title =~ $BLOCKED_TITLES ]] \
+     || jq -e --arg c "$class" '(.blocked // []) | map(ascii_downcase) | index($c | ascii_downcase)' "$SETTINGS" >/dev/null 2>&1; then
     notify "Not in this window: nothing was sent."
     exit 0
   fi
@@ -232,6 +236,17 @@ change_instruction() {
     END { if (what == "add" && !done) print line }' "$INSTRUCTIONS" >"$tmp" && mv "$tmp" "$INSTRUCTIONS"
 }
 
+# Your own left-out apps, by window class
+block_app() {
+  local what=$1 class=$2 cur
+  [[ -z $class ]] && { echo "claude-write $what: a window class" >&2; exit 2; }
+  mkdir -p "${SETTINGS%/*}"
+  cur=$(cat "$SETTINGS" 2>/dev/null); [[ -z $cur ]] && cur='{}'
+  jq --arg c "$class" --arg w "$what" \
+     '.blocked = ((.blocked // []) - [$c] + (if $w == "block" then [$c] else [] end))' <<<"$cur" >"$SETTINGS.tmp" \
+    && mv "$SETTINGS.tmp" "$SETTINGS"
+}
+
 set_setting() {
   local key=$1 value=$2 cur
   case "$key=$value" in
@@ -252,5 +267,7 @@ case "${1:-}" in
   edit) edit_instructions ;;
   instructions) list_instructions ;;
   add|remove) change_instruction "$1" "${2:-}" ;;
-  *) echo "usage: claude-write [draft DIR | replace DIR | set KEY VALUE | edit | instructions | add TEXT | remove TEXT]" >&2; exit 2 ;;
+  block|unblock) block_app "$1" "${2:-}" ;;
+  always) printf '%s\n' "$BLOCKED_CLASSES" ;;
+  *) echo "usage: claude-write [draft DIR | replace DIR | set KEY VALUE | edit | instructions | add TEXT | remove TEXT | block CLASS | unblock CLASS | always]" >&2; exit 2 ;;
 esac
