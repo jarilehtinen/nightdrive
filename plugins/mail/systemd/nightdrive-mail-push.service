@@ -1,0 +1,14 @@
+# Mail's push (plugins/mail): keeps an IMAP IDLE connection to each account's INBOX and runs `nightmail sync` as soon
+# as new mail comes (lib/push.py), so it doesn't wait for nightdrive-mail-sync.timer's 5 minutes.
+[Unit]
+Description=Nightdrive Mail: fetch new mail as it arrives (IMAP IDLE)
+After=network-online.target
+ConditionPathExists=%h/.config/isyncrc
+
+[Service]
+ExecStart=%h/.local/bin/nightmail push
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=default.target

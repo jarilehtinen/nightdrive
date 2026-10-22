@@ -5,6 +5,8 @@ set -u
 APP_DIR=$(dirname "$(dirname "$(readlink -f "$0")")")   # the plugin's folder
 QS_DIR=$APP_DIR/app                                     # Mail's own Quickshell config, apart from the desktop's shell
 SYNC_UNIT=nightdrive-mail-sync.service                  # fetches and indexes mail (systemd/, `nightmail enable`)
+PUSH_UNIT=nightdrive-mail-push.service                  # runs the sync as soon as mail comes (IMAP IDLE)
+FETCH_LOCK=${XDG_RUNTIME_DIR:-/tmp}/nightdrive/mail-fetch.lock
 
 running() { qs list -p "$QS_DIR" 2>/dev/null | grep -q 'Process ID'; }
 pid() { qs list -p "$QS_DIR" 2>/dev/null | awk '/Process ID/ { print $3; exit }'; }
@@ -82,9 +84,14 @@ enable() {
   install_app
   systemctl --user link "$APP_DIR/systemd/$SYNC_UNIT" >/dev/null
   systemctl --user enable --now "$APP_DIR/systemd/${SYNC_UNIT%.service}.timer"
+  # Without an account yet its condition keeps it from starting: the setup's `nightmail enable` starts it, and restarts
+  # it to read a changed isyncrc
+  systemctl --user enable "$APP_DIR/systemd/$PUSH_UNIT"
+  systemctl --user restart "$PUSH_UNIT"
 }
 disable() {
   systemctl --user disable --now "${SYNC_UNIT%.service}.timer" 2>/dev/null
+  systemctl --user disable --now "$PUSH_UNIT" 2>/dev/null
   uninstall_app
 }
 
@@ -107,6 +114,14 @@ big mailbox can take long: run it in the background and tell me how it goes. Fin
 \`nightmail restart\` and step 8's check. Once that account works, ask whether I want to add another one: if so, set it up the \
 same way by \"More accounts\", and ask again after each."
   setsid -f "$HOME/.config/hypr/scripts/terminal" --dir "$HOME" -- "$claude" -- "$prompt" >/dev/null 2>&1
+}
+
+# The timer's full round and push's inbox-only one wait here for each other: two mbsyncs on the same folders would
+# fail on its locks, and notmuch on its database's.
+fetch() {
+  mkdir -p "$(dirname "$FETCH_LOCK")"
+  (($#)) || set -- -a
+  flock "$FETCH_LOCK" sh -c 'mbsync -q "$@" && notmuch new --quiet' sh "$@"
 }
 
 stop() {
@@ -180,6 +195,8 @@ Usage: nightmail [command]
   mailto:…       write to a mailto: link's address (the desktop entry's handler for mailto links)
   setup          set up an email account with Claude, in a terminal
   sync           fetch new mail now and show it
+  sync CHANNEL…  the same for only these mbsync channels (or channel:box, e.g. an inbox)
+  fetch [CHANNEL…]  mbsync and notmuch new, one fetch at a time (the sync's service runs it)
   restart        close and open again (after a change to the app)
   quit           close Mail
   log            follow the app's log (QML errors show up here)
@@ -189,6 +206,7 @@ Usage: nightmail [command]
   delete ID      move a message to Trash
   notify         notify of new mail (notmuch's post-new hook runs it)
   keyring-locked exit 0 if the login keyring is locked (the sync skips its round then)
+  push           sync as soon as new mail comes to an inbox (IMAP IDLE; its service runs it)
   enable         Mail among the desktop's apps, its notifications and the sync every 5 minutes (the installer)
   disable        take them away again (your mail and settings stay)
   help           this text
@@ -201,12 +219,16 @@ case ${1:-open} in
   settings) if running; then focus; else start; ready; fi; qs ipc -p "$QS_DIR" call mail openSettings >/dev/null ;;
   mailto:*) running || { start; ready; }; qs ipc -p "$QS_DIR" call mail mailto "$1" >/dev/null ;;
   sync)
-    if systemctl --user cat "$SYNC_UNIT" >/dev/null 2>&1; then
+    if (($# > 1)); then
+      fetch "${@:2}"
+    elif systemctl --user cat "$SYNC_UNIT" >/dev/null 2>&1; then
       systemctl --user start "$SYNC_UNIT"
     else
       notmuch new --quiet
     fi
+    status=$?
     running && qs ipc -p "$QS_DIR" call mail refresh >/dev/null
+    exit $status
     ;;
   restart) stop; start ;;
   quit)    stop ;;
@@ -223,7 +245,9 @@ case ${1:-open} in
     running && qs ipc -p "$QS_DIR" call mail refresh >/dev/null
     ;;
   notify)    python3 "$APP_DIR/lib/notify.py" ;;
+  fetch)     fetch "${@:2}" ;;
   keyring-locked) python3 "$APP_DIR/lib/keyring.py" ;;
+  push)      exec python3 "$APP_DIR/lib/push.py" ;;
   ask-claude)    ask_claude "$2" "$3" "$4" "$5" ;;   # Mail's ⌘⇧C (the commands below are the card's)
   claude-draft)  claude_draft "$2" ;;
   claude-reply)  claude_reply "$2" ;;

@@ -12,5 +12,5 @@ Type=oneshot
 # secret-tool would otherwise pop up gnome-keyring's own password prompt. Without a keyring the round runs. Not a bare
 # `busctl get-property`: a read as a connection's first message can abort gnome-keyring (lib/keyring.py says why).
 ExecCondition=/bin/sh -c '! %h/.local/bin/nightmail keyring-locked'
-ExecStart=/usr/bin/mbsync -a -q
-ExecStartPost=/usr/bin/notmuch new --quiet
+# mbsync -a, then notmuch new, taking turns with the push's inbox fetches (nightmail fetch)
+ExecStart=%h/.local/bin/nightmail fetch
