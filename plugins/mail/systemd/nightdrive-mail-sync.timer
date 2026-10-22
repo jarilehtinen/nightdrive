@@ -1,0 +1,10 @@
+# Mail's sync every 5 minutes (plugins/mail; `nightmail enable` turns it on, the plugin's installer runs that)
+[Unit]
+Description=Nightdrive Mail: fetch mail every 5 minutes
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target

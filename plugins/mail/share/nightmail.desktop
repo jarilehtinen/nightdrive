@@ -1,0 +1,19 @@
+[Desktop Entry]
+# `nightmail enable` copies this to ~/.local/share/applications with Exec's full path filled in (the compositor's
+# PATH may not have ~/.local/bin), and the icon to ~/.local/share/icons/hicolor/scalable/apps.
+Type=Application
+Name=Mail
+GenericName=Nightdrive Mail
+Comment=Read and write mail
+Keywords=nightmail;email;mail;
+Icon=nightmail
+Exec=nightmail %u
+MimeType=x-scheme-handler/mailto;
+Terminal=false
+Categories=Network;Email;
+StartupNotify=false
+Actions=new;
+
+[Desktop Action new]
+Name=New Message
+Exec=nightmail new

@@ -46,8 +46,8 @@ start() {
   addr=$(jq -r '.address // ""' <<<"$win"); class=$(jq -r '.class // ""' <<<"$win")
   title=$(jq -r '.title // ""' <<<"$win"); pid=$(jq -r '.pid // 0' <<<"$win")
   [[ -z $addr ]] && exit 0
-  # Nightdrive Mail has its own ⌘⇧C, which knows the whole thread: the key goes to it
-  if tr '\0' ' ' <"/proc/$pid/cmdline" 2>/dev/null | grep -q 'nightdrive-mail'; then
+  # Mail (plugins/mail: qs -p …/plugins/mail/app) has its own ⌘⇧C, which knows the whole thread: the key goes to it
+  if tr '\0' ' ' <"/proc/$pid/cmdline" 2>/dev/null | grep -q '/plugins/mail/app'; then
     hyprctl dispatch 'hl.dsp.send_shortcut({ mods = "SUPER SHIFT", key = "C" })' >/dev/null
     exit 0
   fi

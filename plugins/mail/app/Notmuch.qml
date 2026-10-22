@@ -1,0 +1,172 @@
+import QtQuick
+import Quickshell
+import Quickshell.Io
+
+// The only part that talks to notmuch, and the only Quickshell import besides the window:
+// a later native host replaces this file and keeps the same functions.
+QtObject {
+    id: nm
+
+    readonly property Component proc: Component {
+        Process {
+            id: p
+            property var done: null
+            running: true
+            stdout: StdioCollector {
+                onStreamFinished: {
+                    if (p.done) p.done(text)
+                    p.destroy()
+                }
+            }
+        }
+    }
+
+    function run(args, done) {
+        proc.createObject(nm, { command: ["notmuch"].concat(args), done: done })
+    }
+
+    // Threads matching the query, newest first.
+    function search(query, done) {
+        run(["search", "--format=json", "--limit=500", query], t => {
+            try { done(JSON.parse(t)) } catch (e) { done([]) }
+        })
+    }
+
+    // The thread's messages in order, each { from, to, date, subject, tags, body } with the body as plain text.
+    function show(thread, done) {
+        run(["show", "--format=json", "--include-html", "--entire-thread=true", "thread:" + thread], t => {
+            let out = []
+            try { flatten(JSON.parse(t), out) } catch (e) {}
+            done(out)
+        })
+    }
+
+    // The writing side (lib/compose.py): every command answers with one JSON object.
+    // lib/ is beside Mail's config (app/), where Qt.resolvedUrl doesn't reach: Quickshell keeps URLs inside the config
+    readonly property string composer: Quickshell.shellDir + "/../lib/compose.py"
+    function compose(args, done) {
+        proc.createObject(nm, { command: ["python3", composer].concat(args), done: t => {
+            let r
+            try { r = JSON.parse(t) } catch (e) { r = { error: t.trim() || "No answer from compose.py" } }
+            done(r)
+        } })
+    }
+
+    // Moves a query's messages to a folder of their account (lib/move.py), e.g. "Trash".
+    readonly property string mover: composer.replace(/compose\.py$/, "move.py")
+    function move(folder, query, done) {
+        proc.createObject(nm, { command: ["python3", mover, folder, query], done: t => {
+            let r
+            try { r = JSON.parse(t) } catch (e) { r = { error: t.trim() } }
+            if (done) done(r)
+        } })
+    }
+
+    // An attachment of a message being read (lib/parts.py): "open" copies it where it can be opened from, "save" to
+    // the downloads folder. done gets { path } or { error }.
+    readonly property string parter: composer.replace(/compose\.py$/, "parts.py")
+    function part(cmd, msgid, part, name, done) {
+        proc.createObject(nm, { command: ["python3", parter, cmd, msgid, String(part), name], done: t => {
+            let r
+            try { r = JSON.parse(t) } catch (e) { r = { error: t.trim() || "No answer from parts.py" } }
+            done(r)
+        } })
+    }
+
+    // Files to attach, from the desktop's file picker; done gets their paths (none when cancelled).
+    function pick(done) {
+        proc.createObject(nm, { command: ["zenity", "--file-selection", "--multiple", "--separator=\n", "--title=Attach files"],
+                                done: t => done(t.split("\n").filter(p => p !== "")) })
+    }
+
+    // Everyone in the mail, for completing To and Cc: { name, address, nameAddr }, the most written with first.
+    function addresses(done) {
+        run(["address", "--format=json", "--output=sender", "--output=recipients", "--output=count", "--deduplicate=address", "*"], t => {
+            let list = []
+            try { list = JSON.parse(t) } catch (e) {}
+            done(list.filter(a => a.address.indexOf("@") > 0)
+                     .sort((a, b) => b.count - a.count)
+                     .map(a => ({ name: a.name, address: a.address, nameAddr: a["name-addr"] })))
+        })
+    }
+
+    function tag(changes, query, done) {
+        run(["tag"].concat(changes, ["--", query]), () => { if (done) done() })
+    }
+
+    // notmuch nests a thread as [[message, [replies]]]; walk it in reading order.
+    function flatten(node, out) {
+        if (!Array.isArray(node)) return
+        for (const n of node) {
+            if (Array.isArray(n) && n.length === 2 && n[0] && n[0].headers) {
+                out.push(message(n[0]))
+                flatten(n[1], out)
+            } else {
+                flatten(n, out)
+            }
+        }
+    }
+
+    function message(m) {
+        const parts = { plain: "", html: "", files: [] }
+        collect(m.body || [], parts, "")
+        return {
+            id: m.id,
+            from: m.headers.From || "",
+            to: m.headers.To || "",
+            subject: m.headers.Subject || "",
+            timestamp: m.timestamp,
+            tags: m.tags || [],
+            draft: (m.filename || []).some(f => /\/Drafts\/(cur|new)\//.test(f)),
+            body: (parts.plain !== "" ? parts.plain : htmlToText(parts.html)).replace(/^\s+|\s+$/g, ""),
+            html: parts.html !== "" ? safeHtml(parts.html) : "",
+            files: parts.files      // attachments: { part, name, size } (size in bytes, or -1)
+        }
+    }
+
+    // The first plain and HTML text, and the attachments: parts sent as attachments or with a file name. Pictures an
+    // HTML text points at (in multipart/related, with a Content-ID) belong to the HTML and are left out.
+    function collect(list, parts, parent) {
+        for (const part of list) {
+            const type = (part["content-type"] || "").toLowerCase()
+            if (Array.isArray(part.content)) { collect(part.content, parts, type); continue }
+            if (part["content-disposition"] === "attachment" || part.filename && type.indexOf("text/") !== 0) {
+                if (parent === "multipart/related" && part["content-id"] && part["content-disposition"] !== "attachment") continue
+                parts.files.push({ part: part.id, name: part.filename || "attachment", size: part["content-length"] || (part.content || "").length || -1 })
+            }
+            else if (type === "text/plain" && parts.plain === "") parts.plain = part.content || ""
+            else if (type === "text/html" && parts.html === "") parts.html = part.content || ""
+            else if (part.filename) parts.files.push({ part: part.id, name: part.filename, size: part["content-length"] || -1 })
+        }
+    }
+
+    // HTML for Qt's rich text: no scripts, styles or head, and no images, which would load from the sender's server
+    // (and tell it the message was opened). An image keeps its alt text.
+    function safeHtml(h) {
+        return h.replace(/<(style|script|head|title)[\s\S]*?<\/\1>/gi, "")
+                .replace(/<img\b[^>]*?\balt\s*=\s*"([^"]+)"[^>]*>/gi, "[$1]")
+                .replace(/<img\b[^>]*>/gi, "")
+                .replace(/\sbackground\s*=\s*"[^"]*"/gi, "")
+                .replace(/url\([^)]*\)/gi, "none")
+    }
+
+    // The same HTML for a dark page: the sender's text and background colours go, so the text takes the window's own
+    // light colour; links get the accent.
+    function darken(h, link) {
+        return h.replace(/\s(bgcolor|color|background)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+                .replace(/\sstyle\s*=\s*"([^"]*)"/gi, (m, css) =>
+                    ' style="' + css.replace(/(^|;)\s*(color|background(-color|-image)?)\s*:[^;]*/gi, "$1") + '"')
+                .replace(/<a\b/gi, '<a style="color:' + link + '"')
+    }
+
+    // Enough to read an HTML-only message as text; a real renderer comes later.
+    function htmlToText(h) {
+        return h.replace(/<(style|script|head)[\s\S]*?<\/\1>/gi, "")
+                .replace(/<br\s*\/?>/gi, "\n")
+                .replace(/<\/(p|div|tr|h\d|li)>/gi, "\n\n")
+                .replace(/<[^>]+>/g, "")
+                .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<")
+                .replace(/&gt;/g, ">").replace(/&quot;/g, "\"").replace(/&#39;/g, "'")
+                .replace(/\n{3,}/g, "\n\n").trim()
+    }
+}

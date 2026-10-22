@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Mail's app icon: Lucide's mail as a neon sign, made like Ferry's (inbox, sunset colours on violet) but on near
+       black in cool colours (cyan, blue, violet), so the two don't mix up side by side -->
+  <defs>
+    <radialGradient id="bg" cx=".5" cy=".5" r=".75"><stop offset="0" stop-color="#16141f"/><stop offset="1" stop-color="#0a090f"/></radialGradient>
+    <linearGradient id="neon" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5cf2ff"/><stop offset=".5" stop-color="#5b8cff"/><stop offset="1" stop-color="#b56bff"/></linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="16"/></filter>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <g transform="translate(76 76) scale(15)" fill="none" stroke="url(#neon)" stroke-linecap="round" stroke-linejoin="round">
+    <g stroke-width="2.2" filter="url(#glow)">
+      <path d="m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7"/>
+      <rect x="2" y="4" width="20" height="16" rx="2"/>
+    </g>
+    <g stroke-width="1.5">
+      <path d="m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7"/>
+      <rect x="2" y="4" width="20" height="16" rx="2"/>
+    </g>
+  </g>
+</svg>

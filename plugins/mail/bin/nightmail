@@ -1,0 +1,150 @@
+#!/bin/bash
+# nightmail: open Nightdrive Mail and look after it (plugins/mail, README.md).
+set -u
+
+APP_DIR=$(dirname "$(dirname "$(readlink -f "$0")")")   # the plugin's folder
+QS_DIR=$APP_DIR/app                                     # Mail's own Quickshell config, apart from the desktop's shell
+SYNC_UNIT=nightdrive-mail-sync.service                  # fetches and indexes mail (systemd/, `nightmail enable`)
+
+running() { qs list -p "$QS_DIR" 2>/dev/null | grep -q 'Process ID'; }
+pid() { qs list -p "$QS_DIR" 2>/dev/null | awk '/Process ID/ { print $3; exit }'; }
+
+start() { setsid -f qs -p "$QS_DIR" >/dev/null 2>&1; }
+
+# A Mail just started answers over IPC once it has loaded: wait for that (3 s at most).
+ready() {
+  for _ in $(seq 30); do
+    qs ipc -p "$QS_DIR" show 2>/dev/null | grep -q 'target mail' && return 0
+    sleep 0.1
+  done
+  return 1
+}
+
+# On Hyprland, a second `nightmail` brings the open window forward instead of starting another one.
+# Without a window to bring forward (one closed before Mail quit by itself on closing), it starts again.
+focus() {
+  command -v hyprctl >/dev/null || return 0
+  local addr
+  addr=$(hyprctl -j clients | jq -r --argjson pid "$(pid)" '[.[] | select(.pid == $pid and .title == "Mail")] | first | .address // empty')
+  if [[ -n $addr ]]; then
+    hyprctl dispatch "hl.dsp.focus({ window = \"address:$addr\" })" >/dev/null
+  else
+    stop; start
+  fi
+}
+
+# Puts Mail among the desktop's apps (share/nightmail.desktop); link.sh has put `nightmail` in ~/.local/bin.
+install_app() {
+  local data=${XDG_DATA_HOME:-$HOME/.local/share}
+  local bin=$HOME/.local/bin apps=$data/applications icons=$data/icons/hicolor/scalable/apps
+  mkdir -p "$apps" "$icons"
+  cp "$APP_DIR/share/nightmail.svg" "$icons/nightmail.svg"
+  sed "s|^Exec=nightmail|Exec=$bin/nightmail|" "$APP_DIR/share/nightmail.desktop" > "$apps/nightmail.desktop"
+  install_hook
+  command -v update-desktop-database >/dev/null && update-desktop-database "$apps" 2>/dev/null
+  echo "Installed: $apps/nightmail.desktop"
+}
+
+# Notifications of new mail come from notmuch's post-new hook, so they arrive with Mail closed too. A hook of
+# your own stays: then it is up to you to run `nightmail notify` from it.
+HOOK_MARK="# nightmail: notifications of new mail"
+hook_path() {
+  local dir
+  dir=$(notmuch config get database.hook_dir 2>/dev/null)
+  [[ -n $dir ]] || return 1
+  echo "$dir/post-new"
+}
+install_hook() {
+  local hook
+  hook=$(hook_path) || { echo "No notmuch database: no notifications of new mail." >&2; return 0; }
+  if [[ -e $hook ]] && ! grep -qF "$HOOK_MARK" "$hook"; then
+    echo "$hook is your own: add \`$APP_DIR/bin/nightmail notify\` to it for notifications of new mail." >&2
+    return 0
+  fi
+  mkdir -p "$(dirname "$hook")"
+  printf '#!/bin/sh\n%s\nexec "%s" notify\n' "$HOOK_MARK" "$APP_DIR/bin/nightmail" > "$hook"
+  chmod +x "$hook"
+  # What is in the inbox now is not new: tag it, so the first sync after this announces nothing old.
+  notmuch tag +notified -- 'folder:/INBOX$/ and tag:inbox and tag:unread and not tag:notified' 2>/dev/null
+}
+
+uninstall_app() {
+  local hook
+  hook=$(hook_path) && [[ -e $hook ]] && grep -qF "$HOOK_MARK" "$hook" && rm -f "$hook"
+  local data=${XDG_DATA_HOME:-$HOME/.local/share}
+  rm -f "$data/applications/nightmail.desktop" "$data/icons/hicolor/scalable/apps/nightmail.svg"
+  echo "Removed Mail's desktop entry and notifications."
+}
+
+# The sync's units in the plugin's folder, enabled by their path: that links them again after a disable (systemctl
+# disable removes a linked unit's link too).
+enable() {
+  install_app
+  systemctl --user link "$APP_DIR/systemd/$SYNC_UNIT" >/dev/null
+  systemctl --user enable --now "$APP_DIR/systemd/${SYNC_UNIT%.service}.timer"
+}
+disable() {
+  systemctl --user disable --now "${SYNC_UNIT%.service}.timer" 2>/dev/null
+  uninstall_app
+}
+
+stop() {
+  running || return 0
+  qs kill -p "$QS_DIR" >/dev/null 2>&1
+  for _ in 1 2 3 4 5 6 7 8 9 10; do running || return 0; sleep 0.1; done
+}
+
+usage() {
+  cat <<USAGE
+Usage: nightmail [command]
+
+  (none), open   open Mail, or bring it forward if it is open
+  new            write a new message
+  mailto:…       write to a mailto: link's address (the desktop entry's handler for mailto links)
+  sync           fetch new mail now and show it
+  restart        close and open again (after a change to the app)
+  quit           close Mail
+  log            follow the app's log (QML errors show up here)
+  show ID        open Mail on a message (notmuch message id)
+  reply ID       open Mail on a message and reply to it
+  claude ID      the same, with Claude writing the reply
+  delete ID      move a message to Trash
+  notify         notify of new mail (notmuch's post-new hook runs it)
+  enable         Mail among the desktop's apps, its notifications and the sync every 5 minutes (the installer)
+  disable        take them away again (your mail and settings stay)
+  help           this text
+USAGE
+}
+
+case ${1:-open} in
+  open)    if running; then focus; else start; fi ;;
+  new)     running || { start; ready; }; qs ipc -p "$QS_DIR" call mail compose >/dev/null ;;
+  mailto:*) running || { start; ready; }; qs ipc -p "$QS_DIR" call mail mailto "$1" >/dev/null ;;
+  sync)
+    if systemctl --user cat "$SYNC_UNIT" >/dev/null 2>&1; then
+      systemctl --user start "$SYNC_UNIT"
+    else
+      notmuch new --quiet
+    fi
+    running && qs ipc -p "$QS_DIR" call mail refresh >/dev/null
+    ;;
+  restart) stop; start ;;
+  quit)    stop ;;
+  log)     running || { echo "Mail is not running." >&2; exit 1; }; qs log -p "$QS_DIR" -f ;;
+  show|reply|claude)
+    [[ -n ${2:-} ]] || { usage >&2; exit 2; }
+    if running; then focus; else start; ready; fi
+    case $1 in show) fn=openMessage ;; reply) fn=replyTo ;; claude) fn=claudeReply ;; esac
+    qs ipc -p "$QS_DIR" call mail "$fn" "$2" >/dev/null
+    ;;
+  delete)
+    [[ -n ${2:-} ]] || { usage >&2; exit 2; }
+    python3 "$APP_DIR/lib/move.py" Trash "id:\"$2\"" >/dev/null && notmuch tag -inbox -- "id:\"$2\""
+    running && qs ipc -p "$QS_DIR" call mail refresh >/dev/null
+    ;;
+  notify)    python3 "$APP_DIR/lib/notify.py" ;;
+  enable)    enable ;;
+  disable)   disable ;;
+  help|-h|--help) usage ;;
+  *)       usage >&2; exit 2 ;;
+esac
