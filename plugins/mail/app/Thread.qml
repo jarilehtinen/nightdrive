@@ -1,4 +1,5 @@
 import QtQuick
+import qs
 
 // The open thread: its subject, then each message with its attachments. Mail's reading pane, and a message window's.
 Flickable {
@@ -11,6 +12,11 @@ Flickable {
     property int htmlMode: 0            // 0 text, 1 HTML on the dark page, 2 HTML on light paper
     signal cycleHtml()
     signal resumeDraft()
+    // Buttons above the thread, for the mouse: [{ id, icon, text, short, tip, keys }]; a click sends act(id). Where they
+    // don't all fit beside the view button, the short names show, and where those don't either, only the icons. Held
+    // under the pointer, a button says what it does and its key (tip, keys).
+    property var actions: []
+    signal act(string id)
     // Light paper for HTML as sent: senders pick their colours for a white page, whatever the desktop's theme
     readonly property color paperBg: "#f4f1f6"
     readonly property color paperText: "#1d1a21"
@@ -58,8 +64,65 @@ Flickable {
     contentHeight: page.implicitHeight + 96
     boundsBehavior: Flickable.StopAtBounds
     TouchScroll { view: root }
+    component ActButton: Rectangle {
+        id: btn
+        property string icon
+        property string label
+        property string tip
+        property string keys
+        property bool compact: false
+        signal clicked()
+        Tip { y: btn.height + 6; c: root.c; text: btn.tip; keys: btn.keys; hovered: bh.hovered }
+        implicitWidth: btnRow.implicitWidth + 20
+        implicitHeight: 30
+        radius: 8
+        color: bh.hovered ? c.hover : "transparent"
+        HoverHandler { id: bh; cursorShape: Qt.PointingHandCursor }
+        TapHandler { onTapped: btn.clicked() }
+        Row {
+            id: btnRow
+            anchors.centerIn: parent
+            spacing: 7
+            Text { anchors.verticalCenter: parent.verticalCenter; text: Icons.g(btn.icon); font.family: Icons.family; font.pixelSize: 14; color: bh.hovered ? c.text : c.dim }
+            Text { visible: !btn.compact; anchors.verticalCenter: parent.verticalCenter; text: btn.label; font.family: c.font; font.pixelSize: 12; color: bh.hovered ? c.text : c.dim }
+        }
+    }
+    // The buttons measured with their names and short names, to see which fit left of the view button
+    Row {
+        id: fullBar
+        visible: false
+        spacing: 2
+        Repeater { model: root.actions; delegate: ActButton { required property var modelData; icon: modelData.icon; label: modelData.text } }
+    }
+    Row {
+        id: shortBar
+        visible: false
+        spacing: 2
+        Repeater { model: root.actions; delegate: ActButton { required property var modelData; icon: modelData.icon; label: modelData.short || modelData.text } }
+    }
+    Row {
+        id: bar
+        z: 2                            // the tips lie over the thread
+        visible: root.messages.length > 0 && root.actions.length > 0
+        readonly property real room: (viewButton.visible ? viewButton.x : page.x + page.width + 12) - x - 12
+        readonly property bool full: fullBar.implicitWidth <= room
+        readonly property bool compact: !full && shortBar.implicitWidth > room
+        x: page.x - 10
+        y: 12
+        spacing: 2
+        Repeater {
+            model: root.actions
+            delegate: ActButton {
+                required property var modelData
+                icon: modelData.icon; label: bar.full ? modelData.text : modelData.short || modelData.text; compact: bar.compact
+                tip: modelData.tip || ""; keys: modelData.keys || ""
+                onClicked: root.act(modelData.id)
+            }
+        }
+    }
     // Plain text first; the HTML version is a press away when the message has one.
     Rectangle {
+        id: viewButton
         visible: root.messages.some(m => m.html !== "")
         x: page.x + page.width - width + 12
         y: 12
@@ -81,7 +144,7 @@ Flickable {
         id: page
         width: Math.max(240, Math.min(640, root.width - 80))
         x: Math.max(24, (root.width - width) / 2)
-        y: 48
+        y: bar.visible ? 64 : 48
         // The gaps are the messages' own, so folded ones lie close together
         spacing: 0
         Text {

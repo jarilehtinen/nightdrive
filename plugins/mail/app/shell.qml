@@ -408,6 +408,24 @@ ShellRoot {
             nm.tag([read ? "-unread" : "+unread"], ts.map(t => "thread:" + t.thread).join(" or "), () => reload(true))
         }
 
+        // ⇧U, or ✓ on a folder: every unread message in it read (with a search on, the results only), in the next sync on
+        // the server too. ⌘Z makes the same ones unread again: they carry a tag of their own until then (undoTag), so the
+        // step doesn't keep thousands of ids.
+        readonly property string undoTag: "nightmail-read-"
+        function markAllRead(i) {
+            const q = "(" + (i === folder ? query() : folderQuery(i)) + ") and tag:unread"
+            nm.run(["count", "--output=threads", q], t => {
+                const n = parseInt(t) || 0
+                if (!n) { say("Nothing unread here"); return }
+                const mark = undoTag + Date.now()
+                nm.tag(["-unread", "+" + mark], q, () => {
+                    done({ text: "Marked " + n + (n === 1 ? " thread" : " threads") + " read",
+                           undo: () => nm.tag(["+unread", "-" + mark], "tag:" + mark, () => reload(true)) })
+                    reload(true)
+                })
+            })
+        }
+
         // Threads dragged from the list onto a folder move there, as the keys move them (⌘Z too). Inbox, Archive, Spam
         // and Trash take them; Sent and Drafts hold what you wrote, and the folder being looked at is where they are.
         property var dragged: null          // the threads being dragged (a picked one drags all the picked)
@@ -431,6 +449,29 @@ ShellRoot {
                            : folders[folder].dir === "Spam" ? "Not spam: moved to Inbox" : "Moved to Inbox", t)
         }
         function archive() { moveThread("Archive", "Archived") }
+        // The reading pane's buttons, for the mouse: what the keys do (a archive, d delete, ! spam, r reply …)
+        readonly property var readerActions: {
+            const dir = folders[folder].dir
+            return [{ id: "reply", icon: "reply", text: "Reply", tip: "Reply to all", keys: "r" },
+                    { id: "claude", icon: "sparkles", text: "Reply with Claude", short: "Claude", tip: "Claude writes the reply", keys: "⌘⇧C" },
+                    { id: "forward", icon: "forward", text: "Forward", tip: "Forward with the attachments", keys: "f" }]
+                .concat(dir === "Archive" ? [] : [{ id: "archive", icon: "archive", text: "Archive", tip: "Archive", keys: "a" }])
+                .concat([{ id: "trash", icon: "trash-2", text: dir === "Trash" ? "Delete for good" : "Delete", short: "Delete",
+                           tip: dir === "Trash" ? "Delete for good (asks first)" : "Move to Trash", keys: "d" },
+                         { id: "spam", icon: dir === "Spam" ? "inbox" : "ban", text: dir === "Spam" ? "Not spam" : "Spam",
+                           tip: dir === "Spam" ? "Not spam: back to the Inbox" : "Mark as spam", keys: "!" }])
+        }
+        readonly property var windowActions: readerActions.slice(0, 3)
+        function act(id, msgs) {
+            if (id === "reply") compose("all", msgs)
+            else if (id === "claude") compose("claude", msgs)
+            else if (id === "forward") compose("forward", msgs)
+            else if (id === "archive") archive()
+            else if (id === "trash") trash()
+            else if (id === "spam") spam()
+            else if (id === "unread") toggleRead()
+            else if (id === "single") open(current)
+        }
         // ! marks the thread as spam, or in Spam as not spam.
         function spam() {
             if (folders[folder].dir === "Spam") moveThread("INBOX", "Not spam: moved to Inbox")
@@ -509,6 +550,11 @@ ShellRoot {
         }
 
         Component.onCompleted: {
+            // Marks of mark-all-read steps that can't be undone any more (the last run's)
+            nm.run(["search", "--output=tags", "tag:/^" + undoTag + "/"], t => {
+                const old = t.split("\n").filter(x => x.indexOf(undoTag) === 0)
+                if (old.length) nm.tag(old.map(x => "-" + x), old.map(x => "tag:" + x).join(" or "))
+            })
             nm.compose(["accounts"], r => {
                 if (r.error) { say(r.error); reload(false); return }
                 accounts = r.accounts
@@ -542,6 +588,7 @@ ShellRoot {
             // Folders
             Rectangle {
                 Layout.preferredWidth: win.width < 900 ? 168 : 208
+                z: 1        // a folder's tip lies over the list
                 visible: win.showFolders
                 Layout.fillHeight: true
                 color: "transparent"
@@ -582,8 +629,21 @@ ShellRoot {
                             }
                             Text {
                                 anchors.right: parent.right; anchors.rightMargin: 16; anchors.verticalCenter: parent.verticalCenter
+                                visible: !readButton.visible
                                 text: win.unreadCounts[index] > 0 ? win.unreadCounts[index] : ""
                                 font.family: c.font; font.pixelSize: 11; color: c.dim
+                            }
+                            // Under the pointer, the unread count gives way to ✓: mark all read
+                            Rectangle {
+                                id: readButton
+                                visible: fh.hovered && win.unreadCounts[index] > 0
+                                anchors.right: parent.right; anchors.rightMargin: 6; anchors.verticalCenter: parent.verticalCenter
+                                width: 26; height: 26; radius: 6
+                                color: rh.hovered ? c.sel : "transparent"
+                                HoverHandler { id: rh; cursorShape: Qt.PointingHandCursor }
+                                TapHandler { onTapped: { win.markAllRead(index); list.forceActiveFocus() } }
+                                Text { anchors.centerIn: parent; text: Icons.g("check-check"); font.family: Icons.family; font.pixelSize: 14; color: rh.hovered ? c.text : c.dim }
+                                Tip { x: parent.width + 8; anchors.verticalCenter: parent.verticalCenter; c: win.look; text: "Mark all read"; keys: "⇧U"; hovered: rh.hovered }
                             }
                         }
                     }
@@ -737,6 +797,7 @@ ShellRoot {
                             else if ((k === Qt.Key_Backspace || k === Qt.Key_Delete) && shift && (ctrl || e.modifiers & Qt.MetaModifier)) win.emptyTrash()
                             else if (k === Qt.Key_D || k === Qt.Key_NumberSign) win.trash()
                             else if (k === Qt.Key_Exclam) win.spam()
+                            else if (k === Qt.Key_U && shift) win.markAllRead(win.folder)
                             else if (k === Qt.Key_U) win.toggleRead()
                             else if (k >= Qt.Key_1 && k < Qt.Key_1 + win.folders.length) win.pickFolder(k - Qt.Key_1)
                             else if (k === Qt.Key_Space) win.scrollMessage((e.modifiers & Qt.ShiftModifier ? -1 : 1) * (reader.height - 80))
@@ -859,6 +920,8 @@ ShellRoot {
                     htmlMode: win.htmlMode
                     onCycleHtml: win.htmlMode = (win.htmlMode + 1) % 3
                     onResumeDraft: win.compose("resume")
+                    actions: win.readerActions
+                    onAct: id => win.act(id)
                 }
                 Column {
                     anchors.centerIn: parent
@@ -871,18 +934,29 @@ ShellRoot {
                     }
                     Column {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        spacing: 12
+                        spacing: 2
                         Repeater {
-                            model: [["a", "Archive"], ["d", win.folders[win.folder].dir === "Trash" ? "Delete for good" : "Move to Trash"], ["!", win.folders[win.folder].dir === "Spam" ? "Not spam" : "Spam"],
-                                    ["u", "Read or unread"], ["Esc", "Select only one"]]
-                            delegate: Row {
+                            // A click does what the key does
+                            model: [["a", "Archive", "archive"], ["d", win.folders[win.folder].dir === "Trash" ? "Delete for good" : "Move to Trash", "trash"],
+                                    ["!", win.folders[win.folder].dir === "Spam" ? "Not spam" : "Spam", "spam"],
+                                    ["u", "Read or unread", "unread"], ["Esc", "Select only one", "single"]]
+                            delegate: Rectangle {
                                 required property var modelData
-                                spacing: 14
-                                Item {
-                                    width: 44; height: cap.implicitHeight
-                                    KeyCap { id: cap; anchors.right: parent.right; c: win.look; keys: modelData[0]; tint: win.look.faint }
+                                implicitWidth: pickRow.implicitWidth + 24; implicitHeight: 32
+                                radius: 8
+                                color: ph.hovered ? c.hover : "transparent"
+                                HoverHandler { id: ph; cursorShape: Qt.PointingHandCursor }
+                                TapHandler { onTapped: { win.act(modelData[2]); list.forceActiveFocus() } }
+                                Row {
+                                    id: pickRow
+                                    x: 12; anchors.verticalCenter: parent.verticalCenter
+                                    spacing: 14
+                                    Item {
+                                        width: 44; height: cap.implicitHeight
+                                        KeyCap { id: cap; anchors.right: parent.right; c: win.look; keys: modelData[0]; tint: win.look.faint }
+                                    }
+                                    Text { anchors.verticalCenter: parent.verticalCenter; text: modelData[1]; color: ph.hovered ? c.text : c.dim; font.family: c.font; font.pixelSize: 13 }
                                 }
-                                Text { anchors.verticalCenter: parent.verticalCenter; text: modelData[1]; color: c.dim; font.family: c.font; font.pixelSize: 13 }
                             }
                         }
                     }
@@ -1058,7 +1132,7 @@ ShellRoot {
         readonly property var keyHelp: [
             { title: "Read", keys: [["⌥↑ ⌥↓  j k", "Previous, next"], ["⏎", "Open in a window"], ["↑ ↓", "Scroll the message"], ["Space  ⇧Space", "Page down, up"], ["h", "HTML or text"],
                                     ["⌘F  /", "Search"], ["Esc", "Clear the search"]] },
-            { title: "Act", keys: [["a", "Archive"], ["d", "Move to Trash (in Trash: delete)"], ["!", "Spam (in Spam: not spam)"], ["⌘Z", "Undo"], ["u", "Unread (again: read)"], ["⌘R", "Refresh"],
+            { title: "Act", keys: [["a", "Archive"], ["d", "Move to Trash (in Trash: delete)"], ["!", "Spam (in Spam: not spam)"], ["⌘Z", "Undo"], ["u", "Unread (again: read)"], ["⇧U", "Mark all read"], ["⌘R", "Refresh"],
                                    ["⇧↑ ⇧↓  ⇧-click", "Select several"], ["Ctrl-click", "Select or leave out"], ["⌘A", "Select all"]] },
             { title: "Write", keys: [["⌘N  c", "New message"], ["r", "Reply to all"], ["⇧R", "Reply to the sender only"], ["f", "Forward"],
                                      ["⏎", "Continue a draft (in Drafts)"], ["⌘⇧C", "Claude writes the reply"], ["⌘⇧C", "…from the selected text"],
@@ -1132,6 +1206,8 @@ ShellRoot {
                 htmlMode: mw.htmlMode
                 onCycleHtml: mw.htmlMode = (mw.htmlMode + 1) % 3
                 onResumeDraft: win.compose("resume", mw.msgs)
+                actions: win.windowActions
+                onAct: id => win.act(id, mw.msgs)
                 focus: true
                 Keys.onReleased: e => keys.released(e)
                 Keys.onPressed: e => {
