@@ -79,8 +79,10 @@ ShellRoot {
             { name: "Inbox", dir: "INBOX", query: "folder:/INBOX$/ and tag:inbox" },
             { name: "Sent", dir: "Sent", query: "folder:/Sent$/" },
             { name: "Drafts", dir: "Drafts", query: "folder:/Drafts$/" },
-            // Archived before archive moved mail to the Archive folder: in the inbox's folder without the inbox tag.
-            { name: "Archive", dir: "Archive", query: "folder:/Archive$/ or (folder:/INBOX$/ and not tag:inbox)" },
+            // Archived before archive moved mail to the Archive folder: in the inbox's folder without the inbox tag. Gmail's
+            // Archive (All Mail) holds the inbox's messages too, and Trash and Spam lose theirs only at the next sync.
+            { name: "Archive", dir: "Archive", query: "(folder:/Archive$/ and not folder:/INBOX$/ and not folder:/Trash$/ and not folder:/Spam$/)"
+                                                      + " or (folder:/INBOX$/ and not tag:inbox)" },
             { name: "Spam", dir: "Spam", query: "folder:/Spam$/" },
             { name: "Trash", dir: "Trash", query: "folder:/Trash$/" }
         ]
@@ -91,7 +93,23 @@ ShellRoot {
         property int folder: 0
         property bool showFolders: true
         property int htmlMode: 0            // h cycles: 0 text, 1 HTML on the dark page, 2 HTML on light paper; each thread opens in settings.view
-        property var account: ({ address: "" })
+        // The accounts (compose.py accounts: { id, name, address, maildir, signature }), each with its own folders: Mail
+        // shows one at a time, its mail being what lies under its folder in ~/Mail. Tab changes it.
+        property var accounts: []
+        property int acct: 0
+        readonly property var account: accounts[acct] || { id: "", address: "", maildir: "", signature: "" }
+        property var inboxUnread: ({})      // unread threads in each account's inbox, by id
+        function pickAccount(i) {
+            if (i === acct || i < 0 || i >= accounts.length) return
+            acct = i
+            setting("account", accounts[i].id)
+            pickFolder(0)
+        }
+        // A folder's query in the account shown (or another one)
+        function folderQuery(i, a) {
+            const dir = (a || account).maildir
+            return dir ? "path:" + dir + "/** and (" + folders[i].query + ")" : folders[i].query
+        }
         property var threads: []
         property int current: -1
         property var messages: []
@@ -99,31 +117,45 @@ ShellRoot {
 
         function query() {
             const q = search.text.trim()
-            return q === "" ? folders[folder].query : "(" + folders[folder].query + ") and (" + q + ")"
+            return q === "" ? folderQuery(folder) : "(" + folderQuery(folder) + ") and (" + q + ")"
         }
 
-        function reload(keep) {
+        // keep: the open thread stays open; at: where to open one when it has gone (the one after a moved thread)
+        function reload(keep, at) {
             const id = keep && current >= 0 && threads[current] ? threads[current].thread : ""
             nm.search(query(), list => {
                 threads = list
                 let i = list.findIndex(t => t.thread === id)
-                if (i < 0) i = list.length > 0 ? 0 : -1
+                if (i < 0) i = list.length > 0 ? Math.min(at || 0, list.length - 1) : -1
+                // Threads picked stay picked through the sync's reload, and nothing opens (it would mark one read)
+                if (keep && picked.length) {
+                    picked = picked.filter(p => list.some(t => t.thread === p))
+                    if (picked.length > 1) { current = i; return }
+                    open(i); return
+                }
                 if (!keep || i !== current) open(i)
             })
             for (let f = 0; f < folders.length; f++) {
                 const n = f
-                nm.run(["count", "--output=threads", "(" + folders[f].query + ") and tag:unread"], t => {
+                nm.run(["count", "--output=threads", "(" + folderQuery(f) + ") and tag:unread"], t => {
                     const u = Object.assign({}, unreadCounts); u[n] = parseInt(t) || 0; unreadCounts = u
+                })
+            }
+            for (const a of accounts) {
+                nm.run(["count", "--output=threads", "(" + folderQuery(0, a) + ") and tag:unread"], t => {
+                    const u = Object.assign({}, inboxUnread); u[a.id] = parseInt(t) || 0; inboxUnread = u
                 })
             }
         }
 
         function open(i, then) {
             current = i
+            picked = []; anchorId = ""
             htmlMode = settings.view
             if (i < 0) { messages = []; return }
             const t = threads[i]
-            nm.show(t.thread, m => { if (threads[current] === t) { messages = m; if (then) then() } })
+            // By id: marking it read reloads the list (new objects) before a long thread has come back
+            nm.show(t.thread, m => { if (threads[current] && threads[current].thread === t.thread) { messages = m; if (then) then() } })
             if (t.tags.indexOf("unread") >= 0)
                 nm.tag(["-unread"], "thread:" + t.thread, () => reload(true))
         }
@@ -134,7 +166,12 @@ ShellRoot {
         function compose(mode, msgs, fields) {
             const all = msgs || messages
             if (composeWin.visible) return
-            if (mode === "new") { composer.start("New message", fields || {}); showCompose(); return }
+            if (mode === "new") {
+                // From the account shown, with its signature under the text
+                const f = Object.assign({}, fields || {}, { account: account.id })
+                if (account.signature) f.body = (f.body || "") + "\n\n" + account.signature
+                composer.start("New message", f); showCompose(); return
+            }
             if (mode === "resume") {
                 const d = draft(all)
                 if (!d) return
@@ -183,7 +220,7 @@ ShellRoot {
         // The addresses to complete from are read again each time, so the newest are there.
         function showCompose() {
             composeWin.opening = true; composeWin.visible = true
-            nm.addresses(list => composer.book = list.filter(a => a.address !== account.address))
+            nm.addresses(list => composer.book = list.filter(a => !accounts.some(x => x.address === a.address)))
         }
         // The open thread's draft, newest first, if it has one.
         function draft(msgs) { return (msgs || messages).filter(m => m.draft).pop() }
@@ -252,16 +289,48 @@ ShellRoot {
             reader.contentY = Math.max(0, Math.min(reader.contentHeight - reader.height, reader.contentY + dy))
         }
 
-        // Delete, archive and spam move the open thread to the account's Trash, Archive or Spam folder (on the server too,
-        // at the next sync, so a phone sees it the same way and the server's spam filter learns from it) and open the next
-        // one. Not spam moves it back to the inbox.
+        // Several threads picked (⇧-click, Ctrl-click, ⇧↑ ⇧↓, ⌘A): archive, delete, spam, u and a drag act on them all,
+        // and the reading pane says how many. Without any, they act on the open thread. current is then where the
+        // keyboard is, and the open thread's messages stay as they were (opening one would mark it read).
+        property var picked: []             // the picked threads' ids; empty: only the open thread
+        property string anchorId: ""        // the thread a ⇧ range starts from
+        function isPicked(t) { return picked.indexOf(t.thread) >= 0 }
+        function targets() { return picked.length ? threads.filter(isPicked) : threads[current] ? [threads[current]] : [] }
+        function pickRange(i) {
+            if (i < 0 || i >= threads.length) return
+            let a = threads.findIndex(t => t.thread === anchorId)
+            if (a < 0) a = current
+            if (a === i) { open(i); return }
+            picked = threads.slice(Math.min(a, i), Math.max(a, i) + 1).map(t => t.thread)
+            anchorId = threads[a].thread
+            current = i
+        }
+        function togglePick(i) {
+            const id = threads[i].thread
+            const base = picked.length ? picked : threads[current] ? [threads[current].thread] : []
+            const next = base.indexOf(id) >= 0 ? base.filter(p => p !== id) : base.concat([id])
+            if (next.length <= 1) { open(next.length ? threads.findIndex(t => t.thread === next[0]) : i); return }
+            picked = next; anchorId = id; current = i
+        }
+        function pickAll() {
+            if (threads.length < 2) return
+            picked = threads.map(t => t.thread); anchorId = threads[0].thread
+        }
+
+        // Delete, archive and spam move the open thread (or the picked ones) to the account's Trash, Archive or Spam
+        // folder (on the server too, at the next sync, so a phone sees it the same way and the server's spam filter
+        // learns from it) and open the next one. Not spam moves it back to the inbox.
         function moveThread(to, text, which) {
-            const t = which || threads[current]
-            if (!t || folders[folder].dir === to) return
-            // Another thread than the open one (dragged to a folder): the open one stays open
-            const keep = t !== threads[current]
+            const ts = which || targets()
+            if (!ts.length || folders[folder].dir === to) return
+            // Other threads than the open one (dragged to a folder): the open one stays open
+            const openId = threads[current] ? threads[current].thread : ""
+            const keep = !ts.some(t => t.thread === openId)
+            const at = Math.min.apply(null, ts.map(t => threads.findIndex(x => x.thread === t.thread)))
+            if (ts.length > 1) text += ": " + ts.length + " threads"
+            const tq = ts.map(t => "thread:" + t.thread).join(" or ")
             // Only the messages in the folder being looked at: your own replies stay in Sent.
-            const q = "thread:" + t.thread + " and (" + folders[folder].query + ")"
+            const q = "(" + tq + ") and (" + folderQuery(folder) + ")"
             const back = folders[folder].dir
             // In the inbox's folder a message shows in Inbox by its inbox tag; anywhere else it loses the tag.
             const inbox = dir => [dir === "INBOX" ? "+inbox" : "-inbox"]
@@ -269,14 +338,53 @@ ShellRoot {
                 if (r.error) { say(r.error); return }
                 const ids = (r.ids || []).map(i => "id:\"" + i + "\"").join(" or ")
                 if (ids) done({ text: text, undo: () => nm.move(back, ids, () => nm.tag(inbox(back), ids, () => reload(keep))) })
-                nm.tag(inbox(to), to === "INBOX" && ids ? ids : "thread:" + t.thread, () => reload(keep))
+                nm.tag(inbox(to), to === "INBOX" && ids ? ids : tq, () => reload(keep, at))
             })
         }
-        function trash() { moveThread("Trash", "Moved to Trash") }
+        // d: to Trash, and in Trash deleted for good (after asking)
+        function trash() { if (folders[folder].dir === "Trash") eraseThreads(); else moveThread("Trash", "Moved to Trash") }
 
-        // A thread dragged from the list onto a folder moves there, as the keys move it (⌘Z too). Inbox, Archive, Spam
-        // and Trash take one; Sent and Drafts hold what you wrote, and the folder being looked at is where it is.
-        property var dragged: null          // the thread being dragged
+        // Deleting for good, in Trash: the files go, and the next sync deletes them on the server. There is no ⌘Z, so it
+        // asks first (the confirm panel: Enter deletes, Esc doesn't).
+        property var confirm: null          // { title, detail, action, run }
+        onConfirmChanged: if (confirm) confirmPanel.forceActiveFocus(); else list.forceActiveFocus()
+        function erase(query, n) {
+            nm.erase(query, r => {
+                if (r.error) { say(r.error); return }
+                say(r.erased ? "Deleted for good: " + n + (n === 1 ? " thread" : " threads") : "Nothing deleted")
+                reload(false, current)
+            })
+        }
+        function eraseThreads() {
+            const ts = targets()
+            if (!ts.length) return
+            const n = ts.length
+            const q = "(" + ts.map(t => "thread:" + t.thread).join(" or ") + ") and (" + folderQuery(folder) + ")"
+            confirm = { title: n === 1 ? "Delete this thread for good?" : "Delete " + n + " threads for good?",
+                        detail: (n === 1 ? "It is" : "They are") + " deleted here and, at the next sync, on the server. This can't be undone.",
+                        action: "Delete", run: () => erase(q, n) }
+        }
+        function emptyTrash() {
+            const t = folders.findIndex(f => f.dir === "Trash"), q = folderQuery(t)
+            nm.run(["count", "--output=threads", "--exclude=false", q], out => {
+                const n = parseInt(out) || 0
+                if (!n) { say("Trash is empty"); return }
+                confirm = { title: "Empty Trash?", detail: (n === 1 ? "The thread" : "All " + n + " threads") + " in Trash (" + account.address
+                                + (n === 1 ? ") is" : ") are") + " deleted here and, at the next sync, on the server. This can't be undone.",
+                            action: "Empty Trash", run: () => erase(q, n) }
+            })
+        }
+        // u: read threads (or a mix) become unread, and unread ones read
+        function toggleRead() {
+            const ts = targets()
+            if (!ts.length) return
+            const read = ts.every(t => t.tags.indexOf("unread") >= 0)
+            nm.tag([read ? "-unread" : "+unread"], ts.map(t => "thread:" + t.thread).join(" or "), () => reload(true))
+        }
+
+        // Threads dragged from the list onto a folder move there, as the keys move them (⌘Z too). Inbox, Archive, Spam
+        // and Trash take them; Sent and Drafts hold what you wrote, and the folder being looked at is where they are.
+        property var dragged: null          // the threads being dragged (a picked one drags all the picked)
         property int dropFolder: -1         // the folder under it, if it takes it
         function takesDrop(i) { return ["INBOX", "Archive", "Spam", "Trash"].indexOf(folders[i].dir) >= 0 && i !== folder }
         function dragOver(pos) {
@@ -287,6 +395,7 @@ ShellRoot {
                 if (f && takesDrop(i) && f.contains(f.mapFromItem(null, pos.x, pos.y))) dropFolder = i
             }
         }
+        function startDrag(t) { dragged = isPicked(t) ? targets() : [t] }
         function drop() {
             const t = dragged, i = dropFolder
             dragged = null; dropFolder = -1
@@ -320,29 +429,33 @@ ShellRoot {
 
         // Opens the thread of a message in the inbox (or wherever it is now, if it has left it), then calls then().
         function openMessage(id, then) {
-            nm.run(["search", "--output=threads", "--exclude=false", "id:\"" + id + "\""], t => {
-                const thread = t.trim().replace(/^thread:/, "")
-                if (thread === "") { say("That message is gone"); return }
-                folder = 0
-                search.text = ""
-                nm.search(query(), list => {
-                    let i = list.findIndex(x => x.thread === thread)
-                    if (i < 0) {
-                        // Not in the inbox any more: its thread, searched for in the folder the message is in now (the
-                        // inbox's folder without the inbox tag is Archive).
-                        nm.run(["search", "--output=files", "--exclude=false", "id:\"" + id + "\""], files => {
-                            const dir = (files.split("\n")[0].match(/([^\/]+)\/(cur|new)\/[^\/]+$/) || [])[1] || ""
-                            const f = folders.findIndex((x, n) => n > 0 && x.dir === (dir === "INBOX" ? "Archive" : dir))
+            const q = "id:\"" + id + "\""
+            nm.run(["search", "--output=files", "--exclude=false", q], files => {
+                // …/<account>/<folder>/cur/<file>: the account shown becomes the message's
+                const m = files.split("\n")[0].match(/([^\/]+)\/([^\/]+)\/(cur|new)\/[^\/]+$/)
+                if (!m) { say("That message is gone"); return }
+                const a = accounts.findIndex(x => x.maildir === m[1])
+                if (a >= 0 && a !== acct) { acct = a; setting("account", accounts[a].id) }
+                nm.run(["search", "--output=threads", "--exclude=false", q], t => {
+                    const thread = t.trim().replace(/^thread:/, "")
+                    folder = 0
+                    search.text = ""
+                    nm.search(query(), list => {
+                        let i = list.findIndex(x => x.thread === thread)
+                        if (i < 0) {
+                            // Not in the inbox any more: its thread, searched for in the folder the message is in now
+                            // (the inbox's folder without the inbox tag is Archive).
+                            const f = folders.findIndex((x, n) => n > 0 && x.dir === (m[2] === "INBOX" ? "Archive" : m[2]))
                             folder = f >= 0 ? f : folders.findIndex(x => x.name === "Archive")
                             search.text = "thread:" + thread
                             nm.search(query(), l2 => { threads = l2; open(l2.length ? 0 : -1, then) })
-                        })
-                        return
-                    }
-                    threads = list
-                    open(i, then)
+                            return
+                        }
+                        threads = list
+                        open(i, then)
+                    })
+                    list.forceActiveFocus()
                 })
-                list.forceActiveFocus()
             })
         }
 
@@ -368,8 +481,13 @@ ShellRoot {
         }
 
         Component.onCompleted: {
-            reload(false); list.forceActiveFocus()
-            nm.compose(["account"], r => { if (!r.error) account = r })
+            nm.compose(["accounts"], r => {
+                if (r.error) { say(r.error); reload(false); return }
+                accounts = r.accounts
+                acct = Math.max(0, accounts.findIndex(a => a.id === settings.account))
+                reload(false)
+            })
+            list.forceActiveFocus()
         }
 
         // Picks up what the mail sync brought in.
@@ -442,8 +560,51 @@ ShellRoot {
                         }
                     }
                     Item { Layout.fillHeight: true }
+                    // More than one account: each with its inbox's unread count; a click or Tab shows another one's folders
+                    Row {
+                        visible: win.accounts.length > 1
+                        Layout.leftMargin: 28
+                        Layout.bottomMargin: 6
+                        spacing: 8
+                        Text { anchors.verticalCenter: parent.verticalCenter; text: "Accounts"; color: c.faint; font.family: c.font; font.pixelSize: 11 }
+                        KeyCap { anchors.verticalCenter: parent.verticalCenter; c: win.look; keys: "tab"; tint: win.look.faint }
+                    }
+                    Repeater {
+                        model: win.accounts.length > 1 ? win.accounts : []
+                        delegate: Rectangle {
+                            required property var modelData
+                            required property int index
+                            Layout.fillWidth: true
+                            Layout.leftMargin: 12
+                            Layout.rightMargin: 12
+                            implicitHeight: 30
+                            radius: 8
+                            color: ah.hovered ? c.hover : "transparent"
+                            HoverHandler { id: ah; cursorShape: Qt.PointingHandCursor }
+                            TapHandler { onTapped: { win.pickAccount(index); list.forceActiveFocus() } }
+                            Rectangle {
+                                visible: index === win.acct
+                                x: 6; anchors.verticalCenter: parent.verticalCenter
+                                width: 3; height: 14; radius: 1.5; color: c.primary
+                            }
+                            Text {
+                                anchors.left: parent.left; anchors.leftMargin: 16; anchors.right: count.left; anchors.rightMargin: 8
+                                anchors.verticalCenter: parent.verticalCenter
+                                elide: Text.ElideRight
+                                text: modelData.address; font.family: c.font; font.pixelSize: 12
+                                color: index === win.acct ? c.title : c.dim
+                            }
+                            Text {
+                                id: count
+                                anchors.right: parent.right; anchors.rightMargin: 16; anchors.verticalCenter: parent.verticalCenter
+                                text: win.inboxUnread[modelData.id] > 0 ? win.inboxUnread[modelData.id] : ""
+                                font.family: c.font; font.pixelSize: 11; color: c.dim
+                            }
+                        }
+                    }
                     Row {
                         Layout.leftMargin: 28
+                        Layout.topMargin: win.accounts.length > 1 ? 18 : 0
                         Layout.bottomMargin: 14
                         spacing: 8
                         KeyCap { anchors.verticalCenter: parent.verticalCenter; c: win.look; keys: "⌘,"; tint: win.look.faint }
@@ -457,6 +618,7 @@ ShellRoot {
                     }
                     Text {
                         Layout.leftMargin: 28
+                        visible: win.accounts.length < 2
                         text: win.account.address; color: c.faint; font.family: c.font; font.pixelSize: 11
                     }
                 }
@@ -517,7 +679,16 @@ ShellRoot {
                             if (win.cheats && k !== Qt.Key_Question) win.cheats = false
                             const ctrl = e.modifiers & Qt.ControlModifier
                             const alt = e.modifiers & Qt.AltModifier
-                            if (ctrl && k === Qt.Key_Down && win.folder < win.folders.length - 1) win.pickFolder(win.folder + 1)
+                            const shift = e.modifiers & Qt.ShiftModifier
+                            // ⇧↑ ⇧↓ (⇧K ⇧J) pick threads from the open one on; ⌘A (Ctrl+A) picks them all, Esc none
+                            if (shift && (k === Qt.Key_Down || k === Qt.Key_J)) win.pickRange(win.current + 1)
+                            else if (shift && (k === Qt.Key_Up || k === Qt.Key_K)) win.pickRange(win.current - 1)
+                            else if ((ctrl || e.modifiers & Qt.MetaModifier) && k === Qt.Key_A) win.pickAll()
+                            else if (k === Qt.Key_Escape && win.picked.length) win.open(win.current)
+                            // Tab and ⇧Tab show the next and previous account's folders
+                            else if (k === Qt.Key_Tab && win.accounts.length > 1) win.pickAccount((win.acct + 1) % win.accounts.length)
+                            else if (k === Qt.Key_Backtab && win.accounts.length > 1) win.pickAccount((win.acct + win.accounts.length - 1) % win.accounts.length)
+                            else if (ctrl && k === Qt.Key_Down && win.folder < win.folders.length - 1) win.pickFolder(win.folder + 1)
                             else if (ctrl && k === Qt.Key_Up && win.folder > 0) win.pickFolder(win.folder - 1)
                             else if (ctrl && (k === Qt.Key_Up || k === Qt.Key_Down)) {}
                             // ⌥ arrows (and j k) move in the list; plain arrows scroll the message.
@@ -534,9 +705,10 @@ ShellRoot {
                             // r answers everyone, ⇧R only the sender; ⌘⇧C (Ctrl+Shift+C) has Claude write the reply.
                             else if (k === Qt.Key_R && !alt) win.compose(e.modifiers & Qt.ShiftModifier ? "reply" : "all")
                             else if (k === Qt.Key_A || k === Qt.Key_E) win.archive()
+                            else if ((k === Qt.Key_Backspace || k === Qt.Key_Delete) && shift && (ctrl || e.modifiers & Qt.MetaModifier)) win.emptyTrash()
                             else if (k === Qt.Key_D || k === Qt.Key_NumberSign) win.trash()
                             else if (k === Qt.Key_Exclam) win.spam()
-                            else if (k === Qt.Key_U && win.threads[win.current]) nm.tag(["+unread"], "thread:" + win.threads[win.current].thread, () => win.reload(true))
+                            else if (k === Qt.Key_U) win.toggleRead()
                             else if (k >= Qt.Key_1 && k < Qt.Key_1 + win.folders.length) win.pickFolder(k - Qt.Key_1)
                             else if (k === Qt.Key_Space) win.scrollMessage((e.modifiers & Qt.ShiftModifier ? -1 : 1) * (reader.height - 80))
                             else return
@@ -547,23 +719,31 @@ ShellRoot {
                             required property var modelData
                             required property int index
                             readonly property bool unread: modelData.tags.indexOf("unread") >= 0
+                            readonly property bool picked: win.picked.indexOf(modelData.thread) >= 0
                             width: ListView.view.width
                             implicitHeight: col.implicitHeight + 36
                             radius: 8
-                            color: index === win.current ? c.sel : th.hovered ? c.hover : "transparent"
+                            color: picked || index === win.current && !win.picked.length ? c.sel : th.hovered ? c.hover : "transparent"
+                            // With threads picked, the keyboard's place among them
+                            border.color: index === win.current && win.picked.length ? c.line : "transparent"
                             HoverHandler { id: th; cursorShape: Qt.PointingHandCursor }
                             // Dragged sideways (towards the folders) it moves; up and down the list scrolls as before.
                             DragHandler {
                                 target: null
                                 grabPermissions: PointerHandler.TakeOverForbidden
                                 cursorShape: Qt.ClosedHandCursor
-                                onActiveChanged: if (active) win.dragged = row.modelData; else win.drop()
+                                onActiveChanged: if (active) win.startDrag(row.modelData); else win.drop()
                                 onCentroidChanged: if (active) win.dragOver(centroid.scenePosition)
                             }
                             TapHandler {
+                                acceptedModifiers: Qt.NoModifier
                                 onTapped: { win.open(row.index); list.forceActiveFocus() }
                                 onDoubleTapped: if (win.draft()) win.compose("resume"); else win.openWindow(row.index)
                             }
+                            // ⇧-click picks the threads from the open one to this; Ctrl-click picks this one or leaves it
+                            // out (⌘-click is the desktop's: it moves the window)
+                            TapHandler { acceptedModifiers: Qt.ShiftModifier; onTapped: { win.pickRange(row.index); list.forceActiveFocus() } }
+                            TapHandler { acceptedModifiers: Qt.ControlModifier; onTapped: { win.togglePick(row.index); list.forceActiveFocus() } }
                             Column {
                                 id: col
                                 anchors.left: parent.left; anchors.right: parent.right
@@ -609,6 +789,22 @@ ShellRoot {
                             text: "Nothing here"; color: c.faint; font.family: c.font; font.pixelSize: 12
                         }
                     }
+                    // In Trash: emptying it, which asks first
+                    Row {
+                        Layout.leftMargin: 28
+                        Layout.topMargin: 8
+                        Layout.bottomMargin: win.note === "" ? 24 : 0
+                        visible: win.folders[win.folder].dir === "Trash" && win.threads.length > 0
+                        spacing: 8
+                        KeyCap { anchors.verticalCenter: parent.verticalCenter; c: win.look; keys: "⌘⇧⌫"; tint: win.look.faint }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "Empty Trash"; font.family: c.font; font.pixelSize: 12
+                            color: eh.hovered ? c.danger : c.dim
+                            HoverHandler { id: eh; cursorShape: Qt.PointingHandCursor }
+                            TapHandler { onTapped: win.emptyTrash() }
+                        }
+                    }
                     Text {
                         Layout.fillWidth: true
                         Layout.margins: 28
@@ -621,16 +817,52 @@ ShellRoot {
                 Rectangle { anchors.right: parent.right; width: 1; height: parent.height; color: c.line }
             }
 
-            // The open thread
-            Thread {
-                id: reader
+            // The open thread, or how many are picked and what can be done to them
+            Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                app: win; c: app.look; nm: app.mailer
-                messages: win.messages
-                htmlMode: win.htmlMode
-                onCycleHtml: win.htmlMode = (win.htmlMode + 1) % 3
-                onResumeDraft: win.compose("resume")
+                Thread {
+                    id: reader
+                    anchors.fill: parent
+                    visible: win.picked.length === 0
+                    app: win; c: app.look; nm: app.mailer
+                    messages: win.messages
+                    htmlMode: win.htmlMode
+                    onCycleHtml: win.htmlMode = (win.htmlMode + 1) % 3
+                    onResumeDraft: win.compose("resume")
+                }
+                Column {
+                    anchors.centerIn: parent
+                    visible: win.picked.length > 0
+                    spacing: 28
+                    Text {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: win.picked.length + " threads selected"
+                        color: c.title; font.family: c.font; font.pixelSize: 22; font.weight: Font.Medium
+                    }
+                    Column {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        spacing: 12
+                        Repeater {
+                            model: [["a", "Archive"], ["d", win.folders[win.folder].dir === "Trash" ? "Delete for good" : "Move to Trash"], ["!", win.folders[win.folder].dir === "Spam" ? "Not spam" : "Spam"],
+                                    ["u", "Read or unread"], ["Esc", "Select only one"]]
+                            delegate: Row {
+                                required property var modelData
+                                spacing: 14
+                                Item {
+                                    width: 44; height: cap.implicitHeight
+                                    KeyCap { id: cap; anchors.right: parent.right; c: win.look; keys: modelData[0]; tint: win.look.faint }
+                                }
+                                Text { anchors.verticalCenter: parent.verticalCenter; text: modelData[1]; color: c.dim; font.family: c.font; font.pixelSize: 13 }
+                            }
+                        }
+                    }
+                    Text {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: "Or drag them to a folder"
+                        color: c.faint; font.family: c.font; font.pixelSize: 12
+                    }
+                }
             }
         }
 
@@ -647,7 +879,7 @@ ShellRoot {
                 anchors.fill: parent; anchors.leftMargin: 14; anchors.rightMargin: 14
                 verticalAlignment: Text.AlignVCenter
                 elide: Text.ElideRight
-                text: win.dragged ? win.dragged.subject || "(no subject)" : ""
+                text: !win.dragged ? "" : win.dragged.length > 1 ? win.dragged.length + " threads" : win.dragged[0].subject || "(no subject)"
                 color: c.title; font.family: c.font; font.pixelSize: 12
             }
         }
@@ -738,16 +970,71 @@ ShellRoot {
             }
         }
 
+        // Asks before what can't be undone (deleting for good): Enter does it, Esc or a click outside doesn't.
+        Rectangle {
+            id: confirmPanel
+            anchors.fill: parent
+            visible: win.confirm !== null
+            color: c.scrim
+            TapHandler { onTapped: win.confirm = null }
+            Keys.onPressed: e => {
+                if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { const run = win.confirm.run; win.confirm = null; run() }
+                else if (e.key === Qt.Key_Escape) win.confirm = null
+                e.accepted = true
+            }
+            Rectangle {
+                anchors.centerIn: parent
+                width: 520
+                height: confirmCol.implicitHeight + 72
+                radius: 14
+                color: c.solid
+                border.color: c.line
+                TapHandler {}       // a click inside keeps it open
+                Column {
+                    id: confirmCol
+                    x: 40; y: 36
+                    width: parent.width - 80
+                    spacing: 18
+                    Text { text: win.confirm ? win.confirm.title : ""; color: c.title; font.family: c.font; font.pixelSize: 15; font.weight: Font.Medium }
+                    Text { width: parent.width; wrapMode: Text.Wrap; lineHeight: 1.2; text: win.confirm ? win.confirm.detail : ""; color: c.text; font.family: c.font; font.pixelSize: 12 }
+                    Row {
+                        spacing: 18
+                        Row {
+                            spacing: 8
+                            KeyCap { anchors.verticalCenter: parent.verticalCenter; c: win.look; keys: "⏎"; tint: win.look.faint }
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: win.confirm ? win.confirm.action : ""; color: dh.hovered ? c.title : c.danger; font.family: c.font; font.pixelSize: 12
+                                HoverHandler { id: dh; cursorShape: Qt.PointingHandCursor }
+                                TapHandler { onTapped: { const run = win.confirm.run; win.confirm = null; run() } }
+                            }
+                        }
+                        Row {
+                            spacing: 8
+                            KeyCap { anchors.verticalCenter: parent.verticalCenter; c: win.look; keys: "esc"; tint: win.look.faint }
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: "Cancel"; color: ch.hovered ? c.text : c.dim; font.family: c.font; font.pixelSize: 12
+                                HoverHandler { id: ch; cursorShape: Qt.PointingHandCursor }
+                                TapHandler { onTapped: win.confirm = null }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         property alias cheats: sheet.shown
 
         readonly property var keyHelp: [
             { title: "Read", keys: [["⌥↑ ⌥↓  j k", "Previous, next"], ["⏎", "Open in a window"], ["↑ ↓", "Scroll the message"], ["Space  ⇧Space", "Page down, up"], ["h", "HTML or text"],
                                     ["⌘F  /", "Search"], ["Esc", "Clear the search"]] },
-            { title: "Act", keys: [["a", "Archive"], ["d", "Move to Trash"], ["!", "Spam (in Spam: not spam)"], ["⌘Z", "Undo"], ["u", "Mark unread"], ["⌘R", "Refresh"]] },
+            { title: "Act", keys: [["a", "Archive"], ["d", "Move to Trash (in Trash: delete)"], ["!", "Spam (in Spam: not spam)"], ["⌘Z", "Undo"], ["u", "Unread (again: read)"], ["⌘R", "Refresh"],
+                                   ["⇧↑ ⇧↓  ⇧-click", "Select several"], ["Ctrl-click", "Select or leave out"], ["⌘A", "Select all"]] },
             { title: "Write", keys: [["⌘N  c", "New message"], ["r", "Reply to all"], ["⇧R", "Reply to the sender only"], ["f", "Forward"],
                                      ["⏎", "Continue a draft (in Drafts)"], ["⌘⇧C", "Claude writes the reply"], ["⌘⇧C", "…from the selected text"],
                                      ["⌘⇧A", "Attach files"], ["Ctrl ⏎", "Send"], ["⌘S", "Save in Drafts"], ["Esc", "Close (Esc Esc: throw away)"]] },
-            { title: "Folders", keys: [["Ctrl ↑ ↓", "Previous, next"], ["1 – 6", "Go to a folder"], ["⌘B", "Hide or show"], ["⌘,", "Settings"]] }
+            { title: "Folders", keys: [["Ctrl ↑ ↓", "Previous, next"], ["1 – 6", "Go to a folder"], ["Tab  ⇧Tab", "Next, previous account"], ["⌘⇧⌫", "Empty Trash"], ["⌘B", "Hide or show"], ["⌘,", "Settings"]] }
         ]
 
         KeySheet { id: sheet; c: win.look; groups: win.keyHelp }
@@ -781,6 +1068,7 @@ ShellRoot {
             onSend: f => win.sendMail(f)
             onSuggest: (request, x, y) => win.suggest(request, x, y)
             claudeReads: win.settings.claudeReads || ""
+            accounts: win.accounts
             onChooseReads: v => win.setting("claudeReads", v)
             onSave: (f, close) => win.saveDraft(f, close)
             onDismiss: win.dismissCompose()

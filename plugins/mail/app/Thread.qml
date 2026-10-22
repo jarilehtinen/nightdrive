@@ -15,6 +15,45 @@ Flickable {
     readonly property color paperBg: "#f4f1f6"
     readonly property color paperText: "#1d1a21"
     readonly property color paperSelection: "#d9c6e6"
+    // Long threads: from foldFrom messages on, the read ones before the last show folded (sender, first line, date), and
+    // a click opens one. The quote at the end of a message hides behind "…" only when all its text is in an earlier
+    // message of the thread, so nothing that is only there is ever out of sight.
+    readonly property int foldFrom: 3
+    property var unfolded: ({})         // message ids opened by a click
+    property var quotesShown: ({})      // message ids whose quote "…" shows
+    onMessagesChanged: { unfolded = ({}); quotesShown = ({}) }
+    function folded(m, i) {
+        return messages.length >= foldFrom && i < messages.length - 1 && !m.draft && m.tags.indexOf("unread") < 0 && !unfolded[m.id]
+    }
+    function unfold(m) { const u = Object.assign({}, unfolded); u[m.id] = true; unfolded = u }
+    function showQuote(m) { const q = Object.assign({}, quotesShown); q[m.id] = true; quotesShown = q }
+    // The text without quote marks, whitespace as single spaces: a quote compared with the message it quotes
+    function plain(t) { return t.replace(/^[ \t]*(>[ \t]?)+/gm, "").replace(/\s+/g, " ").trim() }
+    // The first line of what the message itself says, for a folded one
+    function firstLine(m, i) {
+        const q = split(m, i)
+        return ((q ? q.own : m.body).split("\n").find(l => l.trim() !== "" && !/^\s*>/.test(l)) || "").trim()
+    }
+    // The message's own text and the quote it ends with ({ own, quote }), or null when there is none or when some of
+    // it can't be found in an earlier message. The quote is the > lines at the end, with blank lines among them, and
+    // the one or two "On … wrote:" lines just before them.
+    function split(m, i) {
+        const lines = m.body.split("\n")
+        let end = lines.length
+        while (end > 0 && lines[end - 1].trim() === "") end--
+        let start = end
+        while (start > 0 && (/^\s*>/.test(lines[start - 1]) || lines[start - 1].trim() === "")) start--
+        while (start < end && lines[start].trim() === "") start++
+        const quoted = lines.slice(start, end).filter(l => /^\s*>/.test(l))
+        const q = plain(quoted.join("\n"))
+        if (q === "") return null
+        const earlier = messages.filter((x, j) => j !== i && x.timestamp <= m.timestamp)
+        if (!earlier.some(x => plain(x.body).indexOf(q) >= 0)) return null
+        for (let n = 1; n <= 2 && start - n >= 0; n++) {
+            if (/(wrote|kirjoitti|skrev|schrieb|a écrit|escribió|scrive):?\s*$/i.test(lines[start - n])) { start -= n; break }
+        }
+        return { own: lines.slice(0, start).join("\n").replace(/\s+$/, ""), quote: lines.slice(start, end).join("\n") }
+    }
     clip: true
     contentHeight: page.implicitHeight + 96
     boundsBehavior: Flickable.StopAtBounds
@@ -43,9 +82,11 @@ Flickable {
         width: Math.max(240, Math.min(640, root.width - 80))
         x: Math.max(24, (root.width - width) / 2)
         y: 48
-        spacing: 32
+        // The gaps are the messages' own, so folded ones lie close together
+        spacing: 0
         Text {
             width: parent.width
+            bottomPadding: 32
             visible: root.messages.length > 0
             text: root.messages.length ? root.messages[0].subject : ""
             wrapMode: Text.Wrap
@@ -58,10 +99,43 @@ Flickable {
             delegate: Column {
                 id: msgCol
                 required property var modelData
+                required property int index
+                readonly property bool isFolded: root.folded(modelData, index)
+                // The quote at the end, when it can hide (text view only)
+                readonly property var cut: root.htmlMode > 0 && modelData.html ? null : root.split(modelData, index)
                 width: page.width
-                spacing: 28
+                spacing: isFolded ? 0 : 28
+                // An open message after a folded one gets its gap above
+                Item { visible: !msgCol.isFolded && msgCol.index > 0 && root.folded(root.messages[msgCol.index - 1], msgCol.index - 1); width: 1; height: 4 }
+                // Folded: one line, a click opens it
+                Item {
+                    visible: msgCol.isFolded
+                    width: parent.width; height: visible ? 44 : 0
+                    HoverHandler { id: foldHover; cursorShape: Qt.PointingHandCursor }
+                    TapHandler { onTapped: root.unfold(msgCol.modelData) }
+                    Text {
+                        id: foldName
+                        anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
+                        width: Math.min(implicitWidth, parent.width * 0.3); elide: Text.ElideRight
+                        text: app.name(msgCol.modelData.from); color: c.accent; font.family: c.font; font.pixelSize: 13
+                    }
+                    Text {
+                        anchors.left: foldName.right; anchors.leftMargin: 16; anchors.right: foldDate.left; anchors.rightMargin: 16
+                        anchors.baseline: foldName.baseline
+                        elide: Text.ElideRight
+                        text: msgCol.isFolded ? root.firstLine(msgCol.modelData, msgCol.index) : ""
+                        color: foldHover.hovered ? c.text : c.dim; font.family: c.font; font.pixelSize: 13
+                    }
+                    Text {
+                        id: foldDate
+                        anchors.right: parent.right; anchors.baseline: foldName.baseline
+                        text: app.when(msgCol.modelData.timestamp); color: c.faint; font.family: c.font; font.pixelSize: 12
+                    }
+                    Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: c.line }
+                }
                 Item {
                     id: head
+                    visible: !msgCol.isFolded
                     // In a narrow pane the date goes under the address instead of beside the name.
                     readonly property bool wide: width >= 520
                     width: parent.width; height: hdr.implicitHeight + 28
@@ -98,13 +172,13 @@ Flickable {
                     Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: c.line }
                 }
                 TextEdit {
-                    visible: !(root.htmlMode > 0 && modelData.html)
+                    visible: !msgCol.isFolded && !(root.htmlMode > 0 && modelData.html)
                     width: parent.width
                     readOnly: true
                     selectByMouse: true
                     wrapMode: TextEdit.Wrap
                     textFormat: TextEdit.RichText
-                    text: visible ? app.rich(modelData.body) : ""
+                    text: !visible ? "" : app.rich(msgCol.cut && !root.quotesShown[modelData.id] ? msgCol.cut.own : modelData.body)
                     font.family: c.font; font.pixelSize: 14
                     color: c.body
                     selectionColor: c.sel
@@ -113,9 +187,20 @@ Flickable {
                 }
                 // The HTML version: on the dark page with the sender's colours taken out, or on light paper as sent
                 // (senders pick their colours for a white page).
+                // The hidden quote: … shows it
+                Rectangle {
+                    visible: !msgCol.isFolded && msgCol.cut !== null && !root.quotesShown[msgCol.modelData.id]
+                    implicitWidth: 44; implicitHeight: 24
+                    radius: 8
+                    color: quoteHover.hovered ? c.hover : "transparent"
+                    border.color: c.line
+                    HoverHandler { id: quoteHover; cursorShape: Qt.PointingHandCursor }
+                    TapHandler { onTapped: root.showQuote(msgCol.modelData) }
+                    Text { anchors.centerIn: parent; text: "•••"; color: c.dim; font.family: c.font; font.pixelSize: 11 }
+                }
                 Rectangle {
                     readonly property bool paper: root.htmlMode === 2
-                    visible: root.htmlMode > 0 && modelData.html !== ""
+                    visible: !msgCol.isFolded && root.htmlMode > 0 && modelData.html !== ""
                     width: parent.width
                     height: visible ? html.implicitHeight + (paper ? 48 : 0) : 0
                     radius: 10
@@ -139,7 +224,7 @@ Flickable {
                 // Attachments: a click opens one, "Save" puts it in the downloads folder.
                 Flow {
                     width: parent.width
-                    visible: modelData.files.length > 0
+                    visible: !msgCol.isFolded && modelData.files.length > 0
                     spacing: 8
                     Repeater {
                         model: modelData.files
@@ -177,7 +262,7 @@ Flickable {
                 }
                 // A draft is written on in the writing window.
                 Rectangle {
-                    visible: modelData.draft
+                    visible: !msgCol.isFolded && modelData.draft
                     implicitWidth: draftRow.implicitWidth + 28
                     implicitHeight: 34
                     radius: 8
@@ -193,7 +278,7 @@ Flickable {
                         Text { anchors.verticalCenter: parent.verticalCenter; text: "Continue writing"; color: c.accent; font.family: c.font; font.pixelSize: 12 }
                     }
                 }
-                Item { width: 1; height: 24 }
+                Item { visible: !msgCol.isFolded; width: 1; height: 56 }
             }
         }
     }

@@ -1,23 +1,25 @@
 #!/usr/bin/env python3
 """Writing side of Nightdrive Mail: reply templates, sending and drafts.
 
-    compose.py account                 the account as JSON (name, address)
+    compose.py accounts                the accounts as JSON: {"accounts": [{id, name, address, maildir, signature}]}
     compose.py reply MSGID [all]       a reply's fields as JSON: to, cc, subject, in_reply_to, references, body
     compose.py forward MSGID           a forward's fields as JSON: subject, body and the message's attachments
     compose.py resume MSGID            a saved draft's fields as JSON, to write on (draft_id is the draft)
     compose.py send JSON               send the message, then file a copy in Sent
     compose.py draft JSON              file the message in Drafts
     compose.py suggest MSGID [HINT]    Claude's reply to the thread up to MSGID, as {"text": ..., "read": messages read}
-    compose.py write TEXT              Claude writes out TEXT (the selection) as a reply, reading nothing else: {"text"}
+    compose.py write TEXT [ACCOUNT]    Claude writes out TEXT (the selection) as a reply, reading nothing else: {"text"}
 
-JSON holds to, cc, subject, body, attachments (file paths) and, for a reply, in_reply_to and references; draft_id is
+reply, forward and resume say which account the message came to ("account": the one whose folder under ~/Mail it is
+in), and send and draft use the account the JSON names. JSON holds account, to, cc, subject, body, attachments (file
+paths) and, for a reply, in_reply_to and references; draft_id is
 the copy saved in Drafts before, which a new save or sending removes. A forward's or a draft's attachments are copied
 out of the message into ~/.cache/nightmail/parts/ first, so a message is always built from files. Every command prints one JSON object;
 failures are {"error": "..."}, so the window can show them.
 
-The account is read from ~/.config/nightmail/account.conf:
+The accounts are read from ~/.config/nightmail/account.conf, one section each ([account] alone for one account):
 
-    [account]
+    [account example]
     name = Your Name
     address = you@example.com
     smtp = mail.example.com:465
@@ -25,6 +27,10 @@ The account is read from ~/.config/nightmail/account.conf:
     password-cmd = secret-tool lookup service example user login@example.com
     sent = example/Sent
     drafts = example/Drafts
+    maildir = example                 (optional: the account's folder under ~/Mail; by default the one sent is in)
+    all-mail = yes                    (optional: Archive is Gmail's All Mail, which move.py only copies out of)
+    signature = Your Name             (optional: added to new messages and replies; more lines indented)
+      Example Ltd
     suggest-model = sonnet            (optional: the Claude model that writes suggested replies)
 """
 
@@ -52,11 +58,46 @@ the point, no filler, no subject line, no quote of the thread, no placeholders u
 [like this]). End with the sign-off "{first}" on its own line. Output only the reply's text."""
 
 
-def account():
-    cp = configparser.ConfigParser()
+def accounts():
+    """The accounts in the order of the file, as {id: section}. An account's id is its section's NAME, or its folder."""
+    cp = configparser.ConfigParser(interpolation=None)
     if not cp.read(CONFIG):
         raise SystemExit(json.dumps({"error": f"No account: {CONFIG} is missing"}))
-    return cp["account"]
+    out = {}
+    for sec in cp.sections():
+        if sec == "account" or sec.startswith("account "):
+            acc = cp[sec]
+            if not acc.get("maildir"):
+                sent = acc.get("sent", "")
+                acc["maildir"] = sent.split("/")[0] if "/" in sent else ""
+            out[sec.partition(" ")[2].strip() or acc["maildir"] or "account"] = acc
+    if not out:
+        raise SystemExit(json.dumps({"error": f"No [account] in {CONFIG}"}))
+    return out
+
+
+def account(name=None):
+    """The named account, or the first one."""
+    accs = accounts()
+    return accs.get(name) or next(iter(accs.values()))
+
+
+def account_id(msgid):
+    """The account a message belongs to: the one whose folder under ~/Mail holds its file."""
+    root = subprocess.run(["notmuch", "config", "get", "database.path"], capture_output=True, text=True).stdout.strip()
+    files = subprocess.run(["notmuch", "search", "--output=files", "--exclude=false", f'id:"{msgid}"'],
+                           capture_output=True, text=True, check=True).stdout.split("\n")
+    accs = accounts()
+    for path in filter(None, files):
+        top = os.path.relpath(path, root).split(os.sep)[0]
+        for name, acc in accs.items():
+            if acc["maildir"] == top:
+                return name
+    return next(iter(accs))
+
+
+def signature(acc):
+    return acc.get("signature", "").strip()
 
 
 def plain_text(parts):
@@ -74,6 +115,8 @@ def plain_text(parts):
 
 
 def reply(msgid, to_all):
+    aid = account_id(msgid)
+    acc = account(aid)
     out = subprocess.run(["notmuch", "reply", "--format=json", "--reply-to=" + ("all" if to_all else "sender"),
                           "id:" + msgid], capture_output=True, text=True, check=True).stdout
     data = json.loads(out)
@@ -87,8 +130,15 @@ def reply(msgid, to_all):
         "subject": h.get("Subject", ""),
         "in_reply_to": h.get("In-reply-to", ""),
         "references": h.get("References", ""),
-        "body": f"\n\nOn {when}, {name or addr} wrote:\n{quoted}\n",
+        "body": f"\n\n{signed(acc)}On {when}, {name or addr} wrote:\n{quoted}\n",
+        "account": aid,
     }
+
+
+def signed(acc):
+    """The signature and the gap after it, above a quote or a forwarded message."""
+    sig = signature(acc)
+    return sig + "\n\n" if sig else ""
 
 
 def parsed(msgid):
@@ -119,13 +169,15 @@ def body_text(msg):
 
 
 def forward(msgid):
+    aid = account_id(msgid)
     msg = parsed(msgid)
     subject = str(msg.get("Subject", ""))
     header = "\n".join(f"{k}: {msg[k]}" for k in ("From", "Date", "Subject", "To", "Cc") if msg.get(k))
     return {
         "subject": subject if subject.lower().startswith(("fwd:", "fw:")) else "Fwd: " + subject,
-        "body": f"\n\n---------- Forwarded message ----------\n{header}\n\n{body_text(msg).rstrip()}\n",
+        "body": f"\n\n{signed(account(aid))}---------- Forwarded message ----------\n{header}\n\n{body_text(msg).rstrip()}\n",
         "attachments": attachments(msgid, msg),
+        "account": aid,
     }
 
 
@@ -140,6 +192,7 @@ def resume(msgid):
         "body": body_text(msg),
         "attachments": attachments(msgid, msg),
         "draft_id": msgid,
+        "account": account_id(msgid),
     }
 
 
@@ -170,7 +223,7 @@ def file_in(folder, msg, tags):
 
 
 def send(f):
-    acc = account()
+    acc = account(f.get("account"))
     msg = build(acc, f)
     rcpts = [a for _, a in getaddresses([f.get("to", ""), f.get("cc", "")]) if a]
     if not rcpts:
@@ -205,7 +258,7 @@ def drop(msgid):
 
 def draft(f):
     """Files the message in Drafts, in place of the copy saved before (draft_id)."""
-    acc = account()
+    acc = account(f.get("account"))
     msg = build(acc, f)
     file_in(acc["drafts"], msg, ["+draft"])
     drop(f.get("draft_id"))
@@ -236,8 +289,7 @@ def thread_text(msgid):
     return "\n\n---\n\n".join(parts), len(parts)
 
 
-def ask_claude(system, text):
-    acc = account()
+def ask_claude(acc, system, text):
     # No tools and no saved session: Claude only writes the text.
     cmd = ["claude", "-p", "--tools", "", "--no-session-persistence", "--system-prompt", system,
            "--model", acc.get("suggest-model", "sonnet")]
@@ -245,41 +297,47 @@ def ask_claude(system, text):
                           timeout=SUGGEST_TIMEOUT, cwd=os.path.expanduser("~")).stdout.strip()
 
 
-def prompt():
-    acc = account()
+def prompt(acc):
     name = acc.get("name", "")
     first = name.split()[0] if name else acc["address"].split("@")[0]
-    return SUGGEST_PROMPT.format(name=name, address=acc["address"], first=first), first
+    system = SUGGEST_PROMPT.format(name=name, address=acc["address"], first=first)
+    if signature(acc):
+        # The signature is in the message already, below where the reply goes
+        system = system.replace(f'End with the sign-off "{first}" on its own line.',
+                                f"Don't sign it: no name or signature at the end, {first}'s signature follows the reply.")
+    return system, first
 
 
 def suggest(msgid, hint):
     """The reply, from the whole thread up to msgid (and the draft, if any)."""
-    system, first = prompt()
+    acc = account(account_id(msgid))
+    system, first = prompt(acc)
     if hint:
         system += (f"\n\n{first} has drafted the reply: notes, bullet points or part of it. Write it out as the full reply, "
                    f"keeping everything it says and its tone. The draft:\n\n{hint}")
     thread, read = thread_text(msgid)
-    out = ask_claude(system, thread)
+    out = ask_claude(acc, system, thread)
     return {"text": out, "read": read} if out else {"error": "Claude wrote nothing"}
 
 
-def write(text):
+def write(text, aid=None):
     """The reply from the selected text alone: the thread stays on this computer."""
-    system, first = prompt()
+    acc = account(aid)
+    system, first = prompt(acc)
     # The thread part of the prompt doesn't apply: there is only the selection.
     system = system.replace("You get an email thread, oldest message first.", "").replace("the last message", "the text")
     system += (f"\n\nYou don't get the thread, only what {first} selected: notes, a draft or a part of the email. Write it "
                "out as the finished reply, keeping everything it says and its tone; if it is a message to answer, answer it.")
-    out = ask_claude(system, text)
+    out = ask_claude(acc, system, text)
     return {"text": out} if out else {"error": "Claude wrote nothing"}
 
 
 def main():
     cmd, args = sys.argv[1], sys.argv[2:]
     try:
-        if cmd == "account":
-            acc = account()
-            result = {"name": acc.get("name", ""), "address": acc["address"]}
+        if cmd == "accounts":
+            result = {"accounts": [{"id": k, "name": a.get("name", ""), "address": a["address"], "maildir": a["maildir"],
+                                    "signature": signature(a)} for k, a in accounts().items()]}
         elif cmd == "reply":
             result = reply(args[0], len(args) > 1 and args[1] == "all")
         elif cmd == "forward":
@@ -291,7 +349,7 @@ def main():
         elif cmd == "suggest":
             result = suggest(args[0], " ".join(args[1:]))
         elif cmd == "write":
-            result = write(args[0])
+            result = write(args[0], args[1] if len(args) > 1 else None)
         elif cmd == "draft":
             result = draft(json.loads(args[0]))
         else:

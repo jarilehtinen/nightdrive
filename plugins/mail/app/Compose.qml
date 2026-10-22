@@ -16,6 +16,11 @@ Item {
     property string forwardId: ""       // the message a forward passes on
     property var attachments: []        // file paths
     property var book: []               // addresses to complete To and Cc from (Notmuch.addresses)
+    // The account it is sent from (compose.py accounts: { id, name, address, signature }), and its signature
+    property var accounts: []
+    property string account: ""
+    readonly property var from: accounts.find(a => a.id === account) || accounts[0] || { address: "", signature: "" }
+    readonly property string signature: from.signature || ""
     readonly property int bookShown: 6  // completions shown at once
 
     signal send(var fields)
@@ -32,7 +37,7 @@ Item {
         gen++
         // By the mouse when it is over the window, else by the caret
         const p = pointer.hovered ? pointer.point.position : body.mapToItem(root, body.cursorRectangle.x, body.cursorRectangle.y + body.cursorRectangle.height)
-        suggest({ gen: gen, msgid: replyId, hint: req.hint, thread: req.thread,
+        suggest({ gen: gen, msgid: replyId, account: from.id || "", hint: req.hint, thread: req.thread,
                   sent: req.thread ? "the thread" + (req.hint ? " and your draft: " + req.hint : "") : req.hint,
                   accept: req.from >= 0 ? "Replace selection" : "Insert reply" }, p.x, p.y)
     }
@@ -44,7 +49,7 @@ Item {
             body.text = before.slice(0, ask.from) + text + before.slice(ask.to)
             body.cursorPosition = ask.from + text.length
         } else {
-            body.text = text + quote()
+            body.text = text + (signed() ? "\n\n" + signature : "") + quote()
             body.cursorPosition = 0
         }
         gen++
@@ -80,16 +85,35 @@ Item {
     function detach(i) { attachments = attachments.filter((p, j) => j !== i) }
     property string draftId: ""         // the copy in Drafts, replaced by each save
 
-    // The quote a reply starts with, and what was written above it.
-    function quote() { const m = body.text.match(/\n*On .* wrote:\n(>.*(\n|$))*\s*$/); return m ? "\n\n" + m[0].replace(/^\n+/, "") : "" }
-    function own() { return body.text.replace(/\n*On .* wrote:\n(>.*(\n|$))*\s*$/, "").trim() }
+    // The quote a reply starts with, and what was written above it (without the signature, which stays where it is).
+    function quoteRe() { return /\n*On .* wrote:\n(>.*(\n|$))*\s*$/ }
+    function quote() { const m = body.text.match(quoteRe()); return m ? "\n\n" + m[0].replace(/^\n+/, "") : "" }
+    function signed() { return signature !== "" && body.text.replace(quoteRe(), "").trim().endsWith(signature) }
+    function own() {
+        const t = body.text.replace(quoteRe(), "").trim()
+        return signed() ? t.slice(0, t.length - signature.length).trim() : t
+    }
 
-    // Nothing written: empty fields, or a reply with only the quote.
+    // Nothing written: empty fields (the signature alone is nothing), or a reply with only the quote.
     function untouched() {
         const f = fields()
-        const own = f.body.replace(/\n*On .* wrote:\n(>.*(\n|$))*\s*$/, "").trim()
-        return f.to.trim() === "" && f.subject.trim() === "" && f.body.trim() === "" && f.attachments.length === 0
-            || f.in_reply_to !== "" && own === "" && f.attachments.length === 0
+        return f.to.trim() === "" && f.subject.trim() === "" && own() === "" && f.attachments.length === 0
+            || f.in_reply_to !== "" && own() === "" && f.attachments.length === 0
+    }
+    // A click on From sends from the next account; its signature takes the old one's place, or goes above the quote
+    // (or the forwarded message) when there was none.
+    function nextAccount() {
+        const old = signature
+        const i = accounts.findIndex(a => a.id === from.id)
+        account = accounts[(i + 1) % accounts.length].id
+        if (signature === old) return
+        const t = body.text
+        let at = old ? t.indexOf("\n\n" + old) : -1, len = old.length + 2
+        if (at < 0) {
+            const q = t.search(/\n*(On .* wrote:\n>|---------- Forwarded message ----------)/)
+            at = q >= 0 ? q : t.trimEnd().length; len = 0
+        }
+        body.text = t.slice(0, at) + (signature ? "\n\n" + signature : "") + t.slice(at + len)
     }
 
     // Esc: a saved draft is saved again and closed. Unsaved writing asks once more, as Esc drops it.
@@ -104,13 +128,14 @@ Item {
     }
 
     function fields() {
-        return { to: to.text, cc: cc.text, subject: subject.text, body: body.text,
+        return { account: from.id || "", to: to.text, cc: cc.text, subject: subject.text, body: body.text,
                  in_reply_to: inReplyTo, references: references, draft_id: draftId, attachments: attachments }
     }
 
     // Fills the form; a reply starts in the text, above the quote, a new message in To.
     function start(h, f) {
         heading = h
+        account = f.account || ""
         to.text = f.to || ""; cc.text = f.cc || ""; subject.text = f.subject || ""; body.text = f.body || ""
         inReplyTo = f.in_reply_to || ""; references = f.references || ""; replyId = ""; gen++
         draftId = f.draft_id || ""; forwardId = ""; attachments = f.attachments || []
@@ -262,6 +287,17 @@ Item {
             Layout.fillWidth: true
             z: 1        // completions lie over the text below
             spacing: 14
+            // With more than one account: which one it goes from (a click changes it)
+            RowLayout {
+                visible: root.accounts.length > 1
+                spacing: 0
+                Text { Layout.preferredWidth: 88; text: "From"; color: root.c.faint; font.family: root.c.font; font.pixelSize: 13 }
+                Text {
+                    text: root.from.address; color: fromHover.hovered ? root.c.title : root.c.text; font.family: root.c.font; font.pixelSize: 13
+                    HoverHandler { id: fromHover; cursorShape: Qt.PointingHandCursor }
+                    TapHandler { onTapped: root.nextAccount() }
+                }
+            }
             Field { id: toRow; label: "To"; completes: true }
             Field { id: ccRow; label: "Cc"; visible: root.showCc; completes: true }
             Field { id: subjectRow; label: "Subject" }

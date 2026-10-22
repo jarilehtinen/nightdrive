@@ -67,6 +67,16 @@ QtObject {
         } })
     }
 
+    // Deletes a query's messages in Trash for good (lib/erase.py); done gets { erased } or { error }.
+    readonly property string eraser: composer.replace(/compose\.py$/, "erase.py")
+    function erase(query, done) {
+        proc.createObject(nm, { command: ["python3", eraser, query], done: t => {
+            let r
+            try { r = JSON.parse(t) } catch (e) { r = { error: t.trim() || "No answer from erase.py" } }
+            done(r)
+        } })
+    }
+
     // An attachment of a message being read (lib/parts.py): "open" copies it where it can be opened from, "save" to
     // the downloads folder. done gets { path } or { error }.
     readonly property string parter: composer.replace(/compose\.py$/, "parts.py")

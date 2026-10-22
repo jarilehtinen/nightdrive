@@ -7,15 +7,21 @@ A quiet mail client: folders, the thread list and the open thread, nothing else 
 - Hold ⌘ (or press `?`) in Mail to see its keys. The ⌘ keys follow Mac Mail; on a PC keyboard they are Ctrl (Ctrl+R, Ctrl+N…), as in Thunderbird and Outlook.
 - `j` / `k` or ⌥↑ / ⌥↓ move in the list, the arrows scroll the message, `Space` and ⇧Space page through it. `/` or ⌘F searches (notmuch's query syntax), `Esc` clears the search.
 - `1`–`6` or Ctrl+↑ / Ctrl+↓ pick a folder: Inbox, Sent, Drafts, Archive, Spam, Trash. ⌘B hides the folders.
+- With more than one account, each has its own folders: `Tab` / ⇧Tab (or a click on an address under the folders) shows the next one. A notification's message opens in its own account.
+- In a thread of three messages or more, the read ones before the last show as one line each (who, the first line, when): a click opens one. The quote at the end of a message hides behind `•••` when all of it is in an earlier message of the thread; when any of it isn't, it shows.
 - `h` shows a message as text, as HTML on the dark page, or as HTML on light paper as it was sent; which one comes first is a setting (text by default). Remote images stay off.
-- `Enter` or a double click opens the thread in a window of its own (in Drafts, it goes on writing the draft). Opening an unread thread marks it read; `u` marks it unread again.
+- `Enter` or a double click opens the thread in a window of its own (in Drafts, it goes on writing the draft). Opening an unread thread marks it read; `u` marks it unread again (and read again after that).
 - `a` archives, `d` moves to Trash, `!` marks spam (in Spam: not spam, back to the Inbox), ⌘Z undoes them. The next sync makes the same move on the server, so your phone and webmail see it too.
-- A message dragged sideways from the list onto Inbox, Archive, Spam or Trash moves there in the same way (⌘Z undoes it too).
+- ⇧-click, ⇧↑ / ⇧↓ or ⌘A select several threads, Ctrl-click adds one or leaves it out: archive, delete, spam, `u` and a drag then move or mark them all, and ⌘Z takes them all back. `Esc` selects only one again.
+- In Trash, `d` deletes a thread for good, and ⌘⇧⌫ (or Empty Trash under the list) empties it. Both ask first, as there is no ⌘Z for them; the next sync deletes them on the server too.
+- A message (or the selected ones) dragged sideways from the list onto Inbox, Archive, Spam or Trash moves there in the same way (⌘Z undoes it too).
 - Attachments show under their message: a click opens one, Save puts it in Downloads.
 
 ## Writing
 
 - `c` or ⌘N writes a new message, `r` replies to all, ⇧R to the sender only, `f` forwards (with the attachments).
+- A reply or a forward goes from the account the message came to, a new message from the account shown. With more than one account, a click on From changes it.
+- Your signature (`signature` in `account.conf`, below) is put under what you write, above the quote.
 - Writing opens in a window of its own: Ctrl+Enter sends, ⌘S saves it in Drafts. `Esc` closes it (a message saved before is saved again; with something new written, the second `Esc` throws it away). Closing the window with ⌘W keeps what you wrote in Drafts.
 - To and Cc offer the addresses in your mail as you type, the ones you use most first: ↑ / ↓ choose, `Tab` or `Enter` takes one.
 - ⌘⇧A or Attach picks files to attach, files dropped on the window are attached too, and × takes one off.
@@ -23,7 +29,7 @@ A quiet mail client: folders, the thread list and the open thread, nothing else 
 
 ## Claude writes the reply
 
-- ⌘⇧C on a message has Claude write the reply, in the message's language, signed with your first name. In the writing window, ⌘⇧C writes out what you started: select your draft (a start, a few points, "say yes, but next week") and Claude's reply takes its place.
+- ⌘⇧C on a message has Claude write the reply, in the message's language, signed with your first name (with a signature of your own, Claude leaves the end to it). In the writing window, ⌘⇧C writes out what you started: select your draft (a start, a few points, "say yes, but next week") and Claude's reply takes its place.
 - The reply shows first in a card by the mouse, with what Claude read: `Enter` puts it in place, ⌘⇧C writes another version, `Esc` cancels. Nothing is sent before you press Ctrl+Enter.
 - What Claude reads is your choice, asked the first time you press ⌘⇧C: the whole thread (the best replies), or only the text you select, so the thread stays on your computer. Settings (⌘,) changes it later.
 - It needs Claude Code signed in (`claude`): the reply is written by `claude -p` with no tools.
@@ -101,10 +107,10 @@ mbsync -a
 notmuch new
 ```
 
-6. Tell Mail how to send: `~/.config/nightmail/account.conf`. `sent` and `drafts` are the folders under `~/Mail` that mbsync made (a copy of each sent message goes there, and the next sync uploads it). `suggest-model` is optional: the Claude model that writes replies (sonnet by default).
+6. Tell Mail how to send: `~/.config/nightmail/account.conf`. `sent` and `drafts` are the folders under `~/Mail` that mbsync made (a copy of each sent message goes there, and the next sync uploads it). `signature` is optional: its further lines are indented, and it goes under what you write. `suggest-model` is optional too: the Claude model that writes replies (sonnet by default).
 
 ```
-[account]
+[account example]
 name = Your Name
 address = you@example.com
 smtp = mail.example.com:465
@@ -112,6 +118,8 @@ user = you@example.com
 password-cmd = secret-tool lookup service mail.example.com user you@example.com
 sent = example/Sent
 drafts = example/Drafts
+signature = Your Name
+  Example Ltd · example.com
 ```
 
 7. Run the plugin's installer again (or `nightmail enable`): Mail joins the apps, the notifications get their hook, and the sync runs every 5 minutes. What is in the inbox now isn't announced as new.
@@ -129,7 +137,21 @@ Expunge Both
 SyncState *
 ```
 
-Mail shows one account. More than one can be fetched into `~/Mail`, but sending, Sent and Drafts follow `account.conf`.
+### More accounts
+
+Each account gets its own folder under `~/Mail` and its own section in `account.conf`: repeat steps 2, 3 and 6 with another name in place of `example` (`[account work]`, `~/Mail/work/`, `sent = work/Sent`), then `mbsync -a` and `notmuch new`. Mail finds an account's mail by its folder (the one `sent` is in, or `maildir = …`), shows the first account in the file when it opens, and remembers the one you looked at last. In notmuch's config, `primary_email` is one of your addresses and `other_email` lists the rest (`other_email=work@example.com`), so replies to all leave every one of them out.
+
+A Gmail or Google Workspace account (with an app password, if the Workspace allows them) is `imap.gmail.com` and `smtp.gmail.com:465`, with a channel per folder in place of `Patterns *`: `INBOX`, and `[Gmail]/Sent Mail`, `[Gmail]/Drafts`, `[Gmail]/Spam` and `[Gmail]/Trash` as `Sent`, `Drafts`, `Spam` and `Trash`. The names follow the language of the Gmail account (`[Gmail]/Lähetetyt viestit`, `[Gmail]/Roskakori` …): `mbsync -l CHANNEL` shows them. Archive is `[Gmail]/All Mail`, which holds every message, so a message deleted there is gone for good. Its channel only brings mail down and sends read marks up, and `all-mail = yes` in the account's section of `account.conf` tells Mail to copy messages out of it and never move them. Archiving is then leaving the inbox, as in Gmail:
+
+```
+Channel example-archive
+Far ":example-remote:[Gmail]/All Mail"
+Near :example-local:Archive
+Create Near
+Sync Pull PushFlags
+Expunge Near
+SyncState *
+```
 
 ## In a terminal
 
