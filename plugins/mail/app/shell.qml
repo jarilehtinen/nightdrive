@@ -255,9 +255,11 @@ ShellRoot {
         // Delete, archive and spam move the open thread to the account's Trash, Archive or Spam folder (on the server too,
         // at the next sync, so a phone sees it the same way and the server's spam filter learns from it) and open the next
         // one. Not spam moves it back to the inbox.
-        function moveThread(to, text) {
-            const t = threads[current]
+        function moveThread(to, text, which) {
+            const t = which || threads[current]
             if (!t || folders[folder].dir === to) return
+            // Another thread than the open one (dragged to a folder): the open one stays open
+            const keep = t !== threads[current]
             // Only the messages in the folder being looked at: your own replies stay in Sent.
             const q = "thread:" + t.thread + " and (" + folders[folder].query + ")"
             const back = folders[folder].dir
@@ -266,11 +268,33 @@ ShellRoot {
             nm.move(to, q, r => {
                 if (r.error) { say(r.error); return }
                 const ids = (r.ids || []).map(i => "id:\"" + i + "\"").join(" or ")
-                if (ids) done({ text: text, undo: () => nm.move(back, ids, () => nm.tag(inbox(back), ids, () => reload(false))) })
-                nm.tag(inbox(to), to === "INBOX" && ids ? ids : "thread:" + t.thread, () => reload(false))
+                if (ids) done({ text: text, undo: () => nm.move(back, ids, () => nm.tag(inbox(back), ids, () => reload(keep))) })
+                nm.tag(inbox(to), to === "INBOX" && ids ? ids : "thread:" + t.thread, () => reload(keep))
             })
         }
         function trash() { moveThread("Trash", "Moved to Trash") }
+
+        // A thread dragged from the list onto a folder moves there, as the keys move it (⌘Z too). Inbox, Archive, Spam
+        // and Trash take one; Sent and Drafts hold what you wrote, and the folder being looked at is where it is.
+        property var dragged: null          // the thread being dragged
+        property int dropFolder: -1         // the folder under it, if it takes it
+        function takesDrop(i) { return ["INBOX", "Archive", "Spam", "Trash"].indexOf(folders[i].dir) >= 0 && i !== folder }
+        function dragOver(pos) {
+            ghost.x = pos.x + 12; ghost.y = pos.y - ghost.height / 2
+            dropFolder = -1
+            for (let i = 0; i < folders.length; i++) {
+                const f = folderRows.itemAt(i)
+                if (f && takesDrop(i) && f.contains(f.mapFromItem(null, pos.x, pos.y))) dropFolder = i
+            }
+        }
+        function drop() {
+            const t = dragged, i = dropFolder
+            dragged = null; dropFolder = -1
+            if (!t || i < 0) return
+            const to = folders[i].dir
+            moveThread(to, to === "Trash" ? "Moved to Trash" : to === "Archive" ? "Archived" : to === "Spam" ? "Marked as spam"
+                           : folders[folder].dir === "Spam" ? "Not spam: moved to Inbox" : "Moved to Inbox", t)
+        }
         function archive() { moveThread("Archive", "Archived") }
         // ! marks the thread as spam, or in Spam as not spam.
         function spam() {
@@ -391,6 +415,7 @@ ShellRoot {
                         Rectangle { width: 7; height: 14; color: c.primary; anchors.verticalCenter: parent.verticalCenter }
                     }
                     Repeater {
+                        id: folderRows
                         model: win.folders
                         delegate: Rectangle {
                             required property var modelData
@@ -400,7 +425,8 @@ ShellRoot {
                             Layout.rightMargin: 12
                             implicitHeight: 34
                             radius: 8
-                            color: index === win.folder ? c.sel : fh.hovered ? c.hover : "transparent"
+                            color: index === win.folder ? c.sel : fh.hovered || index === win.dropFolder ? c.hover : "transparent"
+                            border.color: index === win.dropFolder ? c.primary : "transparent"
                             HoverHandler { id: fh; cursorShape: Qt.PointingHandCursor }
                             TapHandler { onTapped: win.pickFolder(index) }
                             Text {
@@ -526,6 +552,14 @@ ShellRoot {
                             radius: 8
                             color: index === win.current ? c.sel : th.hovered ? c.hover : "transparent"
                             HoverHandler { id: th; cursorShape: Qt.PointingHandCursor }
+                            // Dragged sideways (towards the folders) it moves; up and down the list scrolls as before.
+                            DragHandler {
+                                target: null
+                                grabPermissions: PointerHandler.TakeOverForbidden
+                                cursorShape: Qt.ClosedHandCursor
+                                onActiveChanged: if (active) win.dragged = row.modelData; else win.drop()
+                                onCentroidChanged: if (active) win.dragOver(centroid.scenePosition)
+                            }
                             TapHandler {
                                 onTapped: { win.open(row.index); list.forceActiveFocus() }
                                 onDoubleTapped: if (win.draft()) win.compose("resume"); else win.openWindow(row.index)
@@ -597,6 +631,24 @@ ShellRoot {
                 htmlMode: win.htmlMode
                 onCycleHtml: win.htmlMode = (win.htmlMode + 1) % 3
                 onResumeDraft: win.compose("resume")
+            }
+        }
+
+        // What is being dragged: the thread's subject, by the pointer
+        Rectangle {
+            id: ghost
+            visible: win.dragged !== null
+            width: Math.min(320, ghostText.implicitWidth + 28); height: 34
+            radius: 8
+            color: c.solid
+            border.color: win.dropFolder >= 0 ? c.primary : c.line
+            Text {
+                id: ghostText
+                anchors.fill: parent; anchors.leftMargin: 14; anchors.rightMargin: 14
+                verticalAlignment: Text.AlignVCenter
+                elide: Text.ElideRight
+                text: win.dragged ? win.dragged.subject || "(no subject)" : ""
+                color: c.title; font.family: c.font; font.pixelSize: 12
             }
         }
 
