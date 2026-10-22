@@ -188,6 +188,7 @@ Usage: nightmail [command]
   claude ID      the same, with Claude writing the reply
   delete ID      move a message to Trash
   notify         notify of new mail (notmuch's post-new hook runs it)
+  keyring-locked exit 0 if the login keyring is locked (the sync skips its round then)
   enable         Mail among the desktop's apps, its notifications and the sync every 5 minutes (the installer)
   disable        take them away again (your mail and settings stay)
   help           this text
@@ -222,6 +223,7 @@ case ${1:-open} in
     running && qs ipc -p "$QS_DIR" call mail refresh >/dev/null
     ;;
   notify)    python3 "$APP_DIR/lib/notify.py" ;;
+  keyring-locked) python3 "$APP_DIR/lib/keyring.py" ;;
   ask-claude)    ask_claude "$2" "$3" "$4" "$5" ;;   # Mail's ⌘⇧C (the commands below are the card's)
   claude-draft)  claude_draft "$2" ;;
   claude-reply)  claude_reply "$2" ;;

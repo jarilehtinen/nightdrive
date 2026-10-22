@@ -9,8 +9,8 @@ ConditionPathExists=%h/.config/isyncrc
 [Service]
 Type=oneshot
 # Skip the round while the login keyring is locked (an autologin start before the lock's password): a PassCmd's
-# secret-tool would otherwise pop up gnome-keyring's own password prompt. Without a keyring the property can't be read,
-# and the round runs.
-ExecCondition=/bin/sh -c '[ "$(busctl --user get-property org.freedesktop.secrets /org/freedesktop/secrets/collection/login org.freedesktop.Secret.Collection Locked 2>/dev/null)" != "b true" ]'
+# secret-tool would otherwise pop up gnome-keyring's own password prompt. Without a keyring the round runs. Not a bare
+# `busctl get-property`: a read as a connection's first message can abort gnome-keyring (lib/keyring.py says why).
+ExecCondition=/bin/sh -c '! %h/.local/bin/nightmail keyring-locked'
 ExecStart=/usr/bin/mbsync -a -q
 ExecStartPost=/usr/bin/notmuch new --quiet
