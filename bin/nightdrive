@@ -255,6 +255,15 @@ update() {
   echo "==> Fonts, ble.sh, GTK, default apps"
   "$repo/setup-user.sh" >/dev/null || { echo "    failed: run $repo/setup-user.sh to see why"; missed+=("Fonts, ble.sh, GTK: $repo/setup-user.sh"); }
 
+  # Claude Code, as install.sh puts it in: an install from before that (19.10.2026) gets it here. Not when it's there
+  # some other way (npm, a package); once in, its own installer keeps it up to date.
+  if [[ ! -x $HOME/.local/bin/claude ]] && ! command -v claude >/dev/null; then
+    echo "==> Claude Code"
+    curl -fsSL https://claude.ai/install.sh | bash \
+      && echo "    run claude once and log in (⌘⌥Enter and the top bar's usage menu use that sign-in)" \
+      || missed+=("Claude Code: curl -fsSL https://claude.ai/install.sh | bash")
+  fi
+
   # The Hyprland stack's COPR (setup-hyprland-repo.sh): set up again only when it isn't as the repo wants, e.g. still
   # arcaneon/arcos (until 19.10.2026). Before New packages and the System update, which then take the packages from it.
   if ! "$repo/setup-hyprland-repo.sh" --check; then
