@@ -57,7 +57,7 @@ Variants {
             // The logo (N█) opens the launcher, for those who don't know ⌘Space yet
             Rectangle {
                 width: logo.width + 20; height: 27; radius: 8
-                // Like the drawer's dot: dimmed, highlighted while the launcher is open on this screen
+                // Bright like the bar's text (a grey N looked disabled), highlighted while the launcher is open on this screen
                 readonly property bool open: bar.launcherOpen && win.focused
                 color: open ? TopBar.c("wsBg") : "transparent"
                 // logo/nightdrive-icon-small.svg without its square: the N and the block, cut to their ink
@@ -70,8 +70,8 @@ Variants {
                     sourceSize { width: Math.round(width * win.dpr); height: Math.round(height * win.dpr) }
                     source: "data:image/svg+xml;utf8," + encodeURIComponent(
                         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="6.88 8.97 19.42 14.13">'
-                        + '<path fill="' + rgb(parent.open ? TopBar.c("hlFg") : TopBar.c("dim")) + '" d="M6.88 22.84H9.39V16.76C9.39 15.45 9.24 13.32 9.12 12.11L12.68 22.84H16V8.97H13.49V14.67C13.49 15.98 13.66 18.32 13.8 19.7L10.21 8.97H6.88Z"/>'
-                        + '<rect x="18.3" y="9.0" width="8.0" height="14.1" fill="' + rgb(Theme.primary) + '" opacity="' + (parent.open ? 1 : 0.8) + '"/></svg>')
+                        + '<path fill="' + rgb(TopBar.c("hlFg")) + '" d="M6.88 22.84H9.39V16.76C9.39 15.45 9.24 13.32 9.12 12.11L12.68 22.84H16V8.97H13.49V14.67C13.49 15.98 13.66 18.32 13.8 19.7L10.21 8.97H6.88Z"/>'
+                        + '<rect x="18.3" y="9.0" width="8.0" height="14.1" fill="' + rgb(Theme.primary) + '" opacity="' + (parent.open ? 1 : 0.9) + '"/></svg>')
                 }
                 MouseArea {
                     anchors.fill: parent
