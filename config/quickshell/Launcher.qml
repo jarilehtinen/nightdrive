@@ -380,6 +380,11 @@ PanelWindow {
         return out
     }
 
+    // Typed in the root search, a certain old command (only its hash is here) and Enter start hypr/shaders/warp
+    readonly property string basicKey: "c6a812e51728d75227cd473fd4d23ff0"
+    readonly property var basicRow: ({ kind: "action", name: "SEARCHING FOR *", sub: "LOADING", glyph: "save",
+                                       cmd: ["bash", "-c", "pgrep -f '^qs -p .*/shaders/warp' >/dev/null || exec qs -p ~/.config/hypr/shaders/warp"] })
+
     // The next word boundary from `pos` in direction `dir` (-1 / 1): over any spaces and punctuation, then the word
     function wordPos(s, pos, dir) {
         const isWord = c => c.toLowerCase() !== c.toUpperCase() || /[0-9_]/.test(c)
@@ -393,6 +398,7 @@ PanelWindow {
     function items() {
         const q = query.trim().toLowerCase()
         let all, tail = [], short = false
+        if (level === "root" && Qt.md5(q.replace(/\s+/g, "").replace(/[“”„]/g, '"')) === basicKey) return [basicRow]
         if (level === "root") {
             all = rootItems.map(r => ({ item: r, text: r.name, extra: r.extra || "" }))
             // When searching, the root level also finds rows from the sublevels, so there's no need to open a menu first.

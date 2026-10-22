@@ -1,0 +1,232 @@
+#!/usr/bin/env python3
+"""Three voices in the manner of the SID chip, for shell.qml next to this file: pulse, triangle, sawtooth and noise
+waves with an envelope each, a tune, and sound effects that take over voice 3 the way games did. Commands come one a
+line on stdin; the sound goes to pw-play, written just ahead of real time so an effect is heard as it happens.
+
+    music title | music off          the tune (loops) / silence
+    sfx NAME [N]                     paddle, brick N (its row), steel, wall, power, lose, start, clear,
+                                     key, warp
+"""
+import math
+from array import array
+import os
+import random
+import select
+import subprocess
+import sys
+import time
+
+RATE = 22050
+AHEAD = 0.04          # seconds of sound written ahead of the clock: the delay before an effect is heard, about
+BLOCK = 128           # samples per block; envelopes and slides move once a block
+STEP = 0.118          # seconds per sixteenth note in the tune
+FRAME = 1 / 50        # an effect's step: the 50 Hz of a PAL machine's screen, which drove the sound in its games
+VOLUME = 5200         # one voice at full level, of 32767
+
+def hz(note):
+    """'A4', 'C#5' … → Hz"""
+    names = {"C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11}
+    n = names[note[0]] + (1 if "#" in note else 0)
+    return 440 * 2 ** ((n - 9) / 12 + int(note[-1]) - 4)
+
+
+class Voice:
+    def __init__(self):
+        self.wave, self.freq, self.width = "pulse", 440.0, 0.5
+        self.phase, self.noise = 0.0, 0.0
+        self.level, self.stage = 0.0, "off"     # attack, decay, sustain, release, off
+        self.adsr = (0.005, 0.1, 0.6, 0.15)
+        self.slide = 0.0                        # Hz per second
+        self.vibrato = 0.0                      # depth, in semitones
+
+    def on(self, wave, freq, adsr, width=0.5, slide=0.0, vibrato=0.0):
+        self.wave, self.freq, self.adsr, self.width, self.slide, self.vibrato = wave, freq, adsr, width, slide, vibrato
+        self.stage, self.level = "attack", 0.0   # a hard restart, as the chip's players did: every note starts clean
+
+    def off(self):
+        if self.stage != "off":
+            self.stage = "release"
+
+    def block(self, n, t):
+        a, d, s, r = self.adsr
+        dt = n / RATE
+        if self.stage == "attack":
+            self.level += dt / max(a, 1e-4)
+            if self.level >= 1:
+                self.level, self.stage = 1.0, "decay"
+        elif self.stage == "decay":
+            self.level -= dt * (1 - s) / max(d, 1e-4)
+            if self.level <= s:
+                self.level, self.stage = s, "sustain"
+        elif self.stage == "release":
+            self.level -= dt / max(r, 1e-4)
+            if self.level <= 0:
+                self.level, self.stage = 0.0, "off"
+        if self.stage == "off":
+            return None
+        self.freq = max(20.0, self.freq + self.slide * dt)
+        f = self.freq * (2 ** (self.vibrato * math.sin(t * 2 * math.pi * 6) / 12) if self.vibrato else 1)
+        inc, ph, lv, out = f / RATE, self.phase, self.level, [0.0] * n
+        w = self.wave
+        for i in range(n):
+            ph += inc
+            if ph >= 1:
+                ph -= 1
+                if w == "noise":
+                    self.noise = random.uniform(-1, 1)
+            if w == "pulse":
+                v = 1.0 if ph < self.width else -1.0
+            elif w == "tri":
+                v = 4 * ph - 1 if ph < 0.5 else 3 - 4 * ph
+            elif w == "saw":
+                v = 2 * ph - 1
+            else:
+                v = self.noise
+            out[i] = v * lv
+        self.phase = ph
+        return out
+
+
+# The tune: eight bars of A minor, F, C, G, an eighth note each (8 a bar): a note name, or - to hold the one before.
+LEAD = ("E5.E5.A5.G5.E5.D5.C5.-." "C5.C5.F5.E5.C5.A4.C5.-." "G4.C5.E5.G5.E5.C5.E5.G5." "B4.D5.G5.-.F5.E5.D5.-."
+        "E5.E5.A5.G5.E5.D5.C5.E5." "F5.E5.F5.A5.C6.A5.F5.E5." "G5.E5.C5.E5.G5.C6.B5.G5." "B5.A5.G5.F5.E5.D5.B4.-.")
+ROOTS = ["A2", "F2", "C3", "G2", "A2", "F2", "C3", "G2"]   # one a bar; the bass bounces between it and its octave
+
+
+def parse(s):
+    """'E5.E5.-.' → ['E5', 'E5', '-']"""
+    return [x for x in s.split(".") if x]
+
+
+def lead_steps():
+    """The lead as sixteenths: each written note is an eighth (the note, then holds it)"""
+    out = []
+    for x in parse(LEAD):
+        out += [x, "-"] if x != "-" else ["-", "-"]
+    return out
+
+
+class Machine:
+    def __init__(self):
+        self.v = [Voice(), Voice(), Voice()]
+        self.music = False
+        self.step, self.next_step = 0, 0.0
+        self.lead = lead_steps()
+        self.fx, self.fx_next = [], 0.0       # the effect's remaining frames on voice 3
+        self.t = 0.0
+        self.lp = 0.0                          # a gentle low-pass, as the chip's output was
+
+    def command(self, line):
+        p = line.split()
+        if not p:
+            return
+        if p[0] == "music":
+            self.music = p[1:] == ["title"]
+            self.step, self.next_step = 0, self.t
+            if not self.music:
+                for v in self.v[:2]:
+                    v.off()
+        elif p[0] == "sfx":
+            self.fx = EFFECTS.get(p[1], lambda n: [])(int(p[2]) if len(p) > 2 else 0)
+            self.fx_next = self.t
+
+    def tick_music(self):
+        i = self.step % len(self.lead)
+        bar = (self.step // 16) % len(ROOTS)
+        # Voice 1, the bass: root and octave in eighths, a thin pulse
+        if self.step % 2 == 0:
+            root = hz(ROOTS[bar]) * (2 if self.step % 4 == 2 else 1)
+            self.v[0].on("pulse", root, (0.002, 0.08, 0.5, 0.05), width=0.25)
+        # Voice 2, the lead: a square with a little vibrato
+        n = self.lead[i]
+        if n == ".":
+            self.v[1].off()
+        elif n != "-":
+            self.v[1].on("pulse", hz(n), (0.004, 0.12, 0.55, 0.1), width=0.5, vibrato=0.12)
+        # Voice 3, the drums, unless an effect has it: a dropping triangle for the kick, noise for the snare and hats
+        if not self.fx:
+            s = self.step % 16
+            if s in (0, 8, 10):
+                self.v[2].on("tri", 160, (0.001, 0.09, 0, 0.02), slide=-1400)
+            elif s in (4, 12):
+                self.v[2].on("noise", 3200, (0.001, 0.12, 0, 0.03))
+            elif s % 2 == 1:
+                self.v[2].on("noise", 7000, (0.001, 0.025, 0, 0.01))
+        self.step += 1
+
+    def render(self, n):
+        if self.music and self.t >= self.next_step:
+            self.tick_music()
+            self.next_step += STEP
+        while self.fx and self.t >= self.fx_next:
+            frame = self.fx.pop(0)
+            if frame is None:
+                self.v[2].off()
+            elif frame is not False:           # False: the frame keeps the one before
+                self.v[2].on(*frame)
+            self.fx_next += FRAME
+        mix = [0.0] * n
+        for v in self.v:
+            out = v.block(n, self.t)
+            if out:
+                for i in range(n):
+                    mix[i] += out[i]
+        lp, out = self.lp, array("h", bytes(2 * n))
+        for i, x in enumerate(mix):
+            lp += (x - lp) * 0.55
+            out[i] = max(-32767, min(32767, int(lp * VOLUME)))
+        self.lp = lp
+        self.t += n / RATE
+        return out.tobytes()
+
+
+SHORT = (0.001, 0.05, 0, 0.02)
+# Effects: a list of 50 Hz frames for voice 3, each (wave, Hz, envelope[, width, slide, vibrato]), False to hold or None to
+# let go
+EFFECTS = {
+    "paddle": lambda n: [("pulse", 392, (0.001, 0.07, 0, 0.03), 0.5), ("pulse", 784, (0.001, 0.07, 0, 0.03), 0.5), None],
+    "brick":  lambda n: [("tri", hz("C6") * 2 ** (-n * 2 / 12), (0.001, 0.09, 0, 0.04)),
+                         ("pulse", hz("G6") * 2 ** (-n * 2 / 12), (0.001, 0.06, 0, 0.03), 0.3), None],
+    "wall":   lambda n: [("pulse", 196, SHORT, 0.5), None],
+    "lose":   lambda n: [("saw", 660, (0.002, 0.2, 0.7, 0.3), 0.5, -900)] + [False] * 30 + [None],
+    "start":  lambda n: [("pulse", hz(x), (0.002, 0.08, 0.4, 0.05), 0.5) for x in ("C5", "E5", "G5", "C6", "E6", "G6", "C7")]
+                        + [False] * 6 + [None],
+    "clear":  lambda n: [("pulse", hz(x), (0.002, 0.08, 0.5, 0.08), 0.5) for x in ("A4", "C5", "E5", "A5") * 3]
+                        + [("tri", hz("A6"), (0.002, 0.3, 0.6, 0.3))] + [False] * 15 + [None],
+    "key":    lambda n: [("noise", 9000, (0.001, 0.015, 0, 0.005)), None],
+    "power":  lambda n: [("pulse", hz(x), (0.001, 0.05, 0.6, 0.05), 0.25) for x in ("C5", "G5", "C6", "E6", "G6", "C7")] + [None],
+    "steel":  lambda n: [("pulse", 1568, (0.001, 0.12, 0, 0.05), 0.12), ("tri", 3136, (0.001, 0.08, 0, 0.04)), None],
+    "warp":   lambda n: [("saw", 1400, (0.02, 2.6, 0, 0.2), 0.5, -480, 0.8)] + [False] * 125 + [None],
+}
+
+
+def main():
+    play = subprocess.Popen(["pw-play", "--raw", "--rate", str(RATE), "--channels", "1", "--format", "s16",
+                             "--latency", "20ms", "-"], stdin=subprocess.PIPE)
+    m = Machine()
+    start, written, pending = time.monotonic(), 0, b""
+    fd = sys.stdin.fileno()
+    while True:
+        r, _, _ = select.select([fd], [], [], 0.005)
+        if r:
+            data = os.read(fd, 4096)
+            if not data:
+                break                          # shell.qml has gone
+            pending += data
+            *lines, pending = pending.split(b"\n")
+            for line in lines:
+                m.command(line.decode(errors="ignore"))
+        target = (time.monotonic() - start + AHEAD) * RATE
+        try:
+            while written < target:
+                play.stdin.write(m.render(BLOCK))
+                written += BLOCK
+            play.stdin.flush()
+        except BrokenPipeError:
+            break
+    play.stdin.close()
+    play.wait(timeout=2)
+
+
+if __name__ == "__main__":
+    main()
