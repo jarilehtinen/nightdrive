@@ -36,14 +36,19 @@ Item {
     property bool intro: true
     onMainChanged: if (main) input.forceActiveFocus()
 
-    function beep(name) { if (view.main && view.intro) Quickshell.execDetached(["pw-play", "--volume", "0.7", view.sounds + name + ".wav"]) }
+    // node.dont-move: EasyEffects (started with the session, under this lock) moves every stream into its own sink, and at
+    // boot that sink isn't linked to the output yet, so the startup sound went nowhere. These go straight to the output.
+    function beep(name) {
+        if (view.main && view.intro)
+            Quickshell.execDetached(["pw-play", "--volume", "0.7", "-P", "{ node.dont-move = true }", view.sounds + name + ".wav"])
+    }
     // The startup sound as the screen appears (it swells in slowly while the logo's cursor waits), a PC's power-on beep
     // as the prompt is printed
     onPromptShownChanged: if (promptShown) beep("prompt")
 
     // At boot the screen comes up before PipeWire has its outputs, and a sound started then went nowhere: the startup
-    // sound waits (at most 4 s) for the default output, on a Mac (asahi-audio) for the speakers' filter or headphones,
-    // which come after the raw outputs. The logo is timed to the sound, so it starts typing as the sound starts.
+    // sound waits (at most 4 s) for the default output, on a Mac (asahi-audio) for the speakers' filter, the headphone jack
+    // or Bluetooth: the raw speakers come before the filter. The logo is timed to the sound, so it starts typing as the sound starts.
     property bool soundStarted: false
     Process {
         id: startupSound
@@ -51,14 +56,14 @@ Item {
             i=0
             while [ $i -lt 40 ]; do
                 case $(wpctl inspect @DEFAULT_AUDIO_SINK@ 2>/dev/null | sed -n 's/^.* node.name = "\\(.*\\)"$/\\1/p') in
-                    audio_effect.*|bluez_*) break ;;
+                    audio_effect.*|bluez_*|*Headphones*) break ;;
                     ?*) [ -d /usr/share/asahi-audio ] || break ;;
                 esac
                 sleep 0.1; i=$((i + 1))
             done
             [ $i -gt 0 ] && sleep 0.3    # just came up: a moment for it to be linked to the speakers
             echo playing
-            exec pw-play --volume 0.7 "$1"`, "sh", view.sounds + "startup.wav"]
+            exec pw-play --volume 0.7 -P "{ node.dont-move = true }" "$1"`, "sh", view.sounds + "startup.wav"]
         stdout: SplitParser { onRead: view.soundStarted = true }
     }
     Timer { interval: 4500; running: !view.soundStarted; onTriggered: view.soundStarted = true }
