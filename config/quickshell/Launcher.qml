@@ -92,7 +92,7 @@ PanelWindow {
     readonly property var ext: extLoader.item
     // Levels from other files, which answer the same questions (items, activate, footer, entered; the optional ones below):
     // SystemLevels (Wi-Fi, Bluetooth, Sound, Tailscale, Status), HomeLevels (Home Assistant), DefaultAppsLevels, AppKeyLevels
-    // (Keyboard Shortcuts), BehaviourLevels (Launcher, Browser, Computer name, Notifications, Update channel), InstallLevels,
+    // (Keyboard Shortcuts), BehaviourLevels (Mouse, Launcher, Browser, Computer name, Notifications, Update channel), InstallLevels,
     // ToolsLevels (Clipboard, Emoji, Snippets), AppearanceLevels (Top bar, Screensaver), DisplayLevels (Display, Battery),
     // RemoveLevels, PasswordLevels (with 1Password), ThemeLevels (Theme, Background), ClaudeWriteLevels, the plugins' and the private
     // extension. A new file goes in this list, not in each question's code
@@ -208,7 +208,8 @@ PanelWindow {
             { kind: "header", name: "Hardware" },
             { kind: "nav", name: "Sound", glyph: "volume-2", target: "sound" },
             { kind: "nav", name: "Headphones", glyph: "headphones", target: "headphones" },
-            { kind: "nav", name: "Display", glyph: "monitor", target: "display" }
+            { kind: "nav", name: "Display", glyph: "monitor", target: "display" },
+            { kind: "nav", name: "Mouse", glyph: "mouse", target: "mousescroll", summary: behave.mouseScroll ? behave.mouseScroll + "× scroll" : undefined }
         ], disp.hasBattery ? [{ kind: "nav", name: "Battery", glyph: "battery-medium", target: "battery" }] : [], [
             { kind: "header", name: "Appearance" },
             { kind: "nav", name: "Theme", glyph: "palette", target: "theme" },
@@ -237,7 +238,7 @@ PanelWindow {
     readonly property var settingsAliases: ({ "Wi-Fi": "wifi wlan network internet", "Sound": "audio volume output speakers", "Battery": "power charge charging health cycles",
                                               "Display": "brightness keyboard backlight night light warm scale scaling resolution monitor screen retina hidpi zoom size bigger smaller",
                                               "Notifications": "notification sounds alert chime beep ping tone urgent critical popup timeout seconds duration",
-                                              "Tailscale": "vpn",
+                                              "Tailscale": "vpn", "Mouse": "scroll scrolling wheel speed fast slow",
                                               "Claude writes": "ai write rewrite polish text draft reply tone instructions prompt model",
                                               "Default apps": "browser email mail files folders text editor terminal images photos video music player pdf calendar open with",
                                               "Keyboard Shortcuts": "hyper caps lock keys keybindings hotkeys open app", "Theme": "appearance style look colors",

@@ -332,6 +332,11 @@ hl.config({
 -----------------------
 ---- KEYBOARD AND TRACKPAD ----
 -----------------------
+-- The mouse wheel's speed (launcher › Settings › Mouse): a number in the state file, 1.0 without one. The trackpad has its
+-- own (scroll_factor below)
+local mouseScroll = 1.0
+local ms = io.open(HOME .. "/.local/state/nightdrive/mouse-scroll")
+if ms then mouseScroll = tonumber(ms:read("l") or "") or 1.0; ms:close() end
 hl.config({
     input = {
         kb_layout  = KB_LAYOUT,
@@ -343,6 +348,7 @@ hl.config({
         follow_mouse = 1,
         mouse_refocus = false,   -- focus follows the mouse only when it crosses into another window (a jittery trackpad no longer steals focus from a new window)
         sensitivity  = 0,
+        scroll_factor = mouseScroll,
         touchpad = {
             natural_scroll       = false,
             clickfinger_behavior = true,  -- two-finger click = right click

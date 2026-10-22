@@ -118,6 +118,8 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
 - **Keyboard Shortcuts**: which app Hyper + a letter or digit opens, in the launcher (Settings › Keyboard Shortcuts, or
   `~/.config/hypr/scripts/app-keys`). Your choice replaces a default, Nightdrive's or a plugin's, and the key list shows
   it. The other shortcuts are in the config files ([Make it yours](#make-it-yours)).
+- **Mouse**: the mouse wheel's scroll speed, from 0.5× to 3×, in the launcher (Settings › Mouse). It applies right away
+  and leaves the trackpad's speed as it is.
 - **Login apps**: you choose what starts at login in the launcher (Settings › Startup, or ⌥Enter on an app). Background
   apps start hidden. Only 1Password (if installed) is on by default, because its SSH agent and the Passwords level need it.
 - **Login screen**: a password-only greeter that matches the theme (`--no-greeter` keeps the distribution's own).

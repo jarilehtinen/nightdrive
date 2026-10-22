@@ -1,21 +1,21 @@
 import QtQuick
 import Quickshell
 
-// The launcher's Settings › Launcher (fuzzy search, shortcut hints), Browser (Firefox's links and tab bar), Computer name, Notifications (how long a popup stays,
+// The launcher's Settings › Mouse (the wheel's scroll speed), Launcher (fuzzy search, shortcut hints), Browser (Firefox's links and tab bar), Computer name, Notifications (how long a popup stays,
 // the two sounds, FUMonitor's alerts) and Update channel. Startup stays in Launcher.qml: its rows are the app rows.
 // Launcher.qml asks it like DefaultAppsLevels (levels, titles, parents, items, activate, footer, entered), shows compName
-// and channel on Settings' own rows, and calls entered("settings") to read them.
+// channel and the mouse's speed on Settings' own rows, and calls entered("settings") to read them.
 Item {
     id: b
     property var launcher: null
 
     readonly property string scripts: Quickshell.env("HOME") + "/.config/hypr/scripts"
-    readonly property var levels: ["launcherprefs", "compname", "sounds", "notiftime", "soundregular", "soundurgent", "channel", "browser"]
+    readonly property var levels: ["launcherprefs", "compname", "sounds", "notiftime", "soundregular", "soundurgent", "channel", "browser", "mousescroll"]
     readonly property var titles: ({ launcherprefs: "Settings › Launcher", compname: "Settings › Computer name", channel: "Settings › Update channel",
-                                     browser: "Settings › Browser",
+                                     browser: "Settings › Browser", mousescroll: "Settings › Mouse",
                                      sounds: "Settings › Notifications", notiftime: "Notifications › Show for",
                                      soundregular: "Notifications › Regular sound", soundurgent: "Notifications › Urgent sound" })
-    readonly property var parents: ({ launcherprefs: "settings", compname: "settings", channel: "settings", sounds: "settings", browser: "settings",
+    readonly property var parents: ({ launcherprefs: "settings", compname: "settings", channel: "settings", sounds: "settings", browser: "settings", mousescroll: "settings",
                                       notiftime: "sounds", soundregular: "sounds", soundurgent: "sounds" })
 
     // Settings › Computer name: the pretty host name, or the host name as LocalSend and Ferry show it without one
@@ -59,6 +59,27 @@ Item {
     function setFirefox(key, value) {
         const o = Object.assign({}, firefox); o[key] = value; firefox = o
         Quickshell.execDetached([scripts + "/firefox-prefs", key, value])
+    }
+    // Settings › Mouse: the wheel's scroll speed, a multiplier in a state file that hyprland.lua reads when it loads (input
+    // scroll_factor; the trackpad has its own). "" = not read yet
+    readonly property string mouseScrollFile: Quickshell.env("HOME") + "/.local/state/nightdrive/mouse-scroll"
+    readonly property var mouseScrolls: [0.5, 0.75, 1, 1.5, 2, 3]
+    property string mouseScroll: ""
+    Sh {
+        id: mouseScrollProc
+        script: 'v=$(cat "$HOME/.local/state/nightdrive/mouse-scroll" 2>/dev/null); echo "${v:-1}"'
+        onResult: text => {
+            b.mouseScroll = String(Number(text.trim()) || 1)
+            const l = b.launcher
+            if (l.level === "mousescroll" && l.query === "") l.selectWhere(r => r.value === Number(b.mouseScroll))
+        }
+    }
+    // Saved, then set in the running Hyprland: no reload needed
+    function setMouseScroll(v) {
+        mouseScroll = String(v)
+        Quickshell.execDetached(["bash", "-c",
+            'mkdir -p "$(dirname "$2")" && printf "%s\\n" "$1" > "$2.tmp" && mv "$2.tmp" "$2" && hyprctl eval "hl.config({ input = { scroll_factor = $1 } })" >/dev/null',
+            "_", String(v), mouseScrollFile])
     }
     // Settings › Notifications (hypr/scripts/sounds): file name, shown name, icon
     property string soundRegular: ""
@@ -125,6 +146,7 @@ Item {
     function footer(level, query) {
         const cur = launcher.results[launcher.selIndex] || {}
         if (level === "launcherprefs" || cur.kind === "firefox" || cur.kind === "fumon" || cur.kind === "crashreports") return "Enter: on/off"
+        if (cur.kind === "mousescroll") return "Enter: choose, then try the wheel"
         if (cur.kind === "sound") return "Enter: choose  ·  Shift+Enter: listen"
         if (level === "compname" && query.trim() !== "") return "Enter: rename (asks for your password)"
         return ""
@@ -134,6 +156,7 @@ Item {
         if (level === "settings" || level === "compname") compNameProc.running = true
         if (level === "settings" || level === "channel") channelProc.running = true
         if (level === "settings" || level === "browser") firefoxProc.running = true
+        if (level === "settings" || level === "mousescroll") mouseScrollProc.running = true
         if (level === "sounds" || level === "soundregular" || level === "soundurgent") soundsProc.running = true
         if (level === "sounds") { fumonProc.running = true; crashReportsProc.running = true }
         if (level === "notiftime") Qt.callLater(() => launcher.selectWhere(r => r.summary === "current"))   // the cursor on the current time
@@ -149,6 +172,12 @@ Item {
                       sub: "An app’s or menu’s keys on its row (Hyper P)", switchOn: launcher.prefs.shortcuts }]
                 .concat(Plugins.has("deck") ? [{ kind: "lpref", key: "deck", name: "Include Deck artists, albums and songs", glyph: "disc-3",
                       sub: "Your shelf and Curated in the search, and a row to search Spotify", switchOn: launcher.prefs.deck }] : [])
+        }
+        if (level === "mousescroll") {
+            const cur = Number(mouseScroll)
+            return [{ kind: "header", name: "Scroll speed" }].concat(mouseScrolls.map(v => ({ kind: "mousescroll", value: v, name: v + "× " + (v < 1 ? "slower" : v > 1 ? "faster" : "(normal)"),
+                glyph: v === cur ? "check" : "mouse", summary: v === cur ? "current" : (v === 1 ? "default" : undefined) })))
+                .concat([{ kind: "note", name: "The mouse wheel’s speed. The trackpad keeps its own" }])
         }
         if (level === "browser") {
             // Firefox reads them when it starts (user.js, userChrome.css)
@@ -191,6 +220,7 @@ Item {
         const l = launcher
         if (it.kind === "lpref") { l.keepSelection(); l.setPref(it.key, !l.prefs[it.key]); return true }
         if (it.kind === "firefox") { l.keepSelection(); setFirefox(it.key, it.switchOn ? it.off : it.on); return true }
+        if (it.kind === "mousescroll") { l.keepSelection(); setMouseScroll(it.value); return true }   // stays open: try it, then another
         if (it.kind === "notiftime") {   // stays open, like the sounds: the check moves once Notifs has read the file
             l.keepSelection()
             setNotifTime(it.value)
