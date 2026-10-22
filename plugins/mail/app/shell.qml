@@ -532,7 +532,7 @@ ShellRoot {
                 color: "transparent"
                 ColumnLayout {
                     anchors.fill: parent
-                    anchors.topMargin: 28
+                    anchors.topMargin: 18
                     anchors.bottomMargin: 24
                     spacing: 0
                     // The title's line and the search's are as high (headerHeight) and as far from the top, so the first
@@ -649,6 +649,7 @@ ShellRoot {
                     RowLayout {
                         Layout.fillWidth: true
                         Layout.margins: 28
+                        Layout.topMargin: 18
                         Layout.preferredHeight: win.headerHeight
                         Layout.bottomMargin: win.headerGap
                         spacing: 10

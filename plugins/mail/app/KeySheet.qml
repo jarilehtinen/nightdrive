@@ -71,7 +71,7 @@ Rectangle {
                         model: modelData.keys
                         delegate: Row {
                             required property var modelData
-                            spacing: 10
+                            spacing: 20
                             Item {
                                 width: group.keyWidth; height: 22
                                 KeyCap {
