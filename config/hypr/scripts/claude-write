@@ -5,7 +5,7 @@
 #   claude-write             read the selection and the window, open the preview (the key)
 #   claude-write draft DIR   ask Claude (the preview runs this): JSON {text, warning} or {error}
 #   claude-write replace DIR the preview's Enter: DIR/result goes in place of the selection
-#   claude-write set model sonnet|opus|haiku, set terminals true|false   (the Claude menu)
+#   claude-write set model sonnet|opus|haiku, set terminals true|false   (launcher › Settings › Claude writes)
 #   claude-write edit        open your instructions in the text editor (made with a few examples the first time)
 #   claude-write instructions   JSON { on: [lines], examples: [the commented-out ones] } (launcher › Settings › Claude writes)
 #   claude-write add TEXT, remove TEXT   an instruction line on or off (an example goes back to being one)
@@ -15,7 +15,7 @@
 # the worst a selection that tries to steer it can do is write the wrong text, which the preview shows before anything
 # is written. Settings: ~/.local/state/nightdrive/claude-write.json { "model": "sonnet", "terminals": false, "blocked":
 # [window classes you left out] }. Your own
-# instructions, sent with every request: ~/.config/nightdrive/claude-write.txt (the Claude menu opens it).
+# instructions, sent with every request: ~/.config/nightdrive/claude-write.txt (launcher › Settings › Claude writes).
 set -uo pipefail
 
 readonly SETTINGS="$HOME/.local/state/nightdrive/claude-write.json"
@@ -59,7 +59,7 @@ start() {
   fi
   if is_terminal "$class"; then
     if [[ $(setting terminals) != true ]]; then
-      notify "Off in terminals. The Claude menu turns it on."
+      notify "Off in terminals. Launcher › Settings › Claude writes turns it on."
       exit 0
     fi
     terminal=true

@@ -4,8 +4,8 @@ import Quickshell.Io
 
 // Claude: the Claude Code sessions on this desktop (Claude.qml: a click goes to its window; the ones that finished while
 // you were elsewhere first) and a new one, then the plan's usage: 5-hour session, week and per-model week
-// (topbar/scripts/claude-usage, Claude Code's own sign-in). In between, Claude writes' settings (⌘⇧C, ClaudeWrite.qml):
-// its model, your own instructions and whether it works in terminals.
+// (topbar/scripts/claude-usage, Claude Code's own sign-in). Claude writes' settings (⌘⇧C) live in the launcher
+// (ClaudeWriteLevels.qml): the button at the bottom opens them.
 Column {
     id: m
     width: parent ? parent.width : 300
@@ -14,40 +14,6 @@ Column {
     property var usage: null          // { plan, windows: [{ key, percent, resetsAt, model }], fetchedAt }
     property bool loaded: false
     signal close()
-
-    // Claude writes: hypr/scripts/claude-write keeps them in its settings file and sets them (claude-write set)
-    readonly property string writeScript: Quickshell.env("HOME") + "/.config/hypr/scripts/claude-write"
-    readonly property var models: [["sonnet", "Sonnet"], ["opus", "Opus"], ["haiku", "Haiku"]]
-    property string writeModel: "sonnet"
-    property bool writeTerminals: false
-    FileView {
-        path: Quickshell.env("HOME") + "/.local/state/nightdrive/claude-write.json"
-        watchChanges: true; onFileChanged: reload(); printErrors: false
-        onLoaded: {
-            let v = {}
-            try { v = JSON.parse(text()) || {} } catch (e) {}
-            m.writeModel = v.model || "sonnet"
-            m.writeTerminals = v.terminals === true
-        }
-    }
-    // Your own instructions (claude-write.txt): set once a line isn't a # comment. Edited in launcher › Settings › Claude writes
-    property bool ownInstructions: false
-    FileView {
-        path: Quickshell.env("HOME") + "/.config/nightdrive/claude-write.txt"
-        watchChanges: true; onFileChanged: reload(); printErrors: false
-        onLoaded: m.ownInstructions = text().split("\n").some(l => l.trim() !== "" && !/^\s*#/.test(l))
-        onLoadFailed: m.ownInstructions = false
-    }
-    function modelName(id) { const f = models.find(x => x[0] === id); return f ? f[1] : id }
-    function nextModel() {
-        const i = models.findIndex(x => x[0] === writeModel)
-        writeModel = models[(i + 1) % models.length][0]
-        Quickshell.execDetached([writeScript, "set", "model", writeModel])
-    }
-    function toggleTerminals() {
-        writeTerminals = !writeTerminals
-        Quickshell.execDetached([writeScript, "set", "terminals", writeTerminals ? "true" : "false"])
-    }
 
     function refresh() { proc.running = true }
     Component.onCompleted: refresh()
@@ -107,61 +73,6 @@ Column {
         onClicked: { Claude.newSession(); m.close() }
     }
 
-    MenuSection { apart: true; title: "Claude writes · ⌘⇧C" }
-    MenuRow {
-        width: parent.width
-        icon: "cpu"
-        label: "Model"
-        detail: m.modelName(m.writeModel)
-        hoverCheckIcon: "refresh-cw"
-        onClicked: m.nextModel()
-    }
-    MenuRow {
-        width: parent.width
-        icon: "pen-line"
-        label: "Your instructions"
-        detail: m.ownInstructions ? "On" : "None"
-        hoverCheckIcon: "chevron-right"
-        onClicked: { Quickshell.execDetached(["qs", "ipc", "call", "launcher", "openLevel", "claudewriteinstr"]); m.close() }
-    }
-    // In terminals: laid out like the rows, with a switch on the right (DisplayMenu's Night light)
-    Rectangle {
-        id: termRow
-        width: parent.width
-        height: 34
-        radius: 5
-        color: termArea.containsMouse || navSelected ? Theme.hover : "transparent"
-        property bool navSelected: false
-        readonly property bool navEnabled: true
-        function navActivate() { m.toggleTerminals() }
-        MouseArea { id: termArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: m.toggleTerminals() }
-        Text {
-            id: termIcon
-            x: 10; width: 20
-            anchors.verticalCenter: parent.verticalCenter
-            horizontalAlignment: Text.AlignHCenter
-            text: Icons.g("terminal")
-            color: Theme.dim
-            font { family: Icons.family; pixelSize: 16 }
-        }
-        Text {
-            anchors { left: termIcon.right; leftMargin: 10; verticalCenter: parent.verticalCenter }
-            text: "In terminals"
-            color: Theme.text
-            font { family: Theme.font; pixelSize: 13 }
-        }
-        Toggle {
-            anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
-            checked: m.writeTerminals
-            navSelected: termRow.navSelected
-            onToggled: m.toggleTerminals()
-        }
-    }
-    MenuNote {
-        text: m.writeTerminals ? "In a terminal, select what you want done: the command goes on the command line, and runs only when you press Enter."
-                               : "Select text in any app and press ⌘⇧C: Claude writes it out."
-    }
-
     MenuSection { apart: true; title: "Usage" }
 
     MenuNote {
@@ -208,5 +119,10 @@ Column {
         icon: "external-link"
         label: "Open usage page"
         onClicked: { Quickshell.execDetached(["xdg-open", "https://claude.ai/settings/usage"]); m.close() }
+    }
+    MenuButton {
+        icon: "settings"
+        label: "Claude writes settings…"
+        onClicked: { Quickshell.execDetached(["qs", "ipc", "call", "launcher", "openLevel", "claudewrite"]); m.close() }
     }
 }

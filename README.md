@@ -85,10 +85,10 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
 - **Claude writes**: select your notes or a rough draft in any app (a chat, a form, a mail) and press ⌘⇧C. Claude writes
   it out in a tone that fits the place, in the same language, and shows it next to the mouse: Enter puts it in place of
   the selection, ⌘⇧C again writes another version, Esc cancels. Only the selection and the window's name and title are
-  sent, never from password managers or private browser windows. In a terminal (turn it on in the Claude menu) you
+  sent, never from password managers or private browser windows. In a terminal (turn it on in Claude writes' settings) you
   select what you want done, like "find the text files that mention jari", and get the command on the command line,
   with a warning if it deletes, overwrites or needs root; it runs only when you press Enter. To give it context, select
-  the message you're answering together with your draft. launcher › Settings › Claude writes (and the Claude menu) sets
+  the message you're answering together with your draft. launcher › Settings › Claude writes (or the Claude menu's button) sets
   the model (Sonnet by default) and your own instructions, sent with every request ("a relaxed tone", "end emails with
   my name"): type one there, or turn on an example. Apps of your own can be left out there too.
 - **Snippets**: text snippets in launcher › Tools › Snippets; Enter pastes one. Turn on auto-expand and typing a trigger

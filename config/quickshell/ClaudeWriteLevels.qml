@@ -8,7 +8,7 @@ import Quickshell.Wayland
 // lines of ~/.config/nightdrive/claude-write.txt: type one and Enter adds it, an example is turned on with Enter, ⌘⌫
 // twice turns one off; the file opens in the text editor too.
 // hypr/scripts/claude-write reads and writes them all (set, instructions, add, remove, edit, block, unblock, always).
-// The Claude menu has the same model and terminal settings.
+// The Claude menu's Claude writes settings… button opens this level.
 Item {
     id: w
     property var launcher: null
