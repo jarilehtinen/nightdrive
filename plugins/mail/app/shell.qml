@@ -391,7 +391,7 @@ ShellRoot {
                             implicitHeight: 34
                             radius: 8
                             color: index === win.folder ? c.sel : fh.hovered ? c.hover : "transparent"
-                            HoverHandler { id: fh }
+                            HoverHandler { id: fh; cursorShape: Qt.PointingHandCursor }
                             TapHandler { onTapped: win.pickFolder(index) }
                             Text {
                                 anchors.left: parent.left; anchors.leftMargin: 16; anchors.verticalCenter: parent.verticalCenter
@@ -515,7 +515,7 @@ ShellRoot {
                             implicitHeight: col.implicitHeight + 36
                             radius: 8
                             color: index === win.current ? c.sel : th.hovered ? c.hover : "transparent"
-                            HoverHandler { id: th }
+                            HoverHandler { id: th; cursorShape: Qt.PointingHandCursor }
                             TapHandler {
                                 onTapped: { win.open(row.index); list.forceActiveFocus() }
                                 onDoubleTapped: if (win.draft()) win.compose("resume"); else win.openWindow(row.index)
