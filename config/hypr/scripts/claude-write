@@ -20,8 +20,9 @@ readonly INSTRUCTIONS="$HOME/.config/nightdrive/claude-write.txt"
 readonly WORK="${XDG_RUNTIME_DIR:-/tmp}/nightdrive/claude-write"
 readonly TIMEOUT=90           # seconds Claude may take
 readonly RESTORE_DELAY=0.8    # seconds before the clipboard gets its old content back: the app reads it when it pastes
-# Never sent from these apps (window class, a regex): password managers, the polkit and keyring prompts
-readonly BLOCKED_CLASSES='^(com\.onepassword\.OnePassword|1Password|org\.keepassxc\.KeePassXC|KeePassXC|org\.gnome\.World\.Secrets|hyprpolkitagent|polkit-.*|gcr-prompter|pinentry.*|org\.kde\.polkit-kde-authentication-agent-1)$'
+# Never sent from these apps (window class, a regex, any case): password managers, two-factor codes, keyrings and wallets,
+# the polkit and keyring prompts
+readonly BLOCKED_CLASSES='^(com\.onepassword\.onepassword|1password|org\.keepassxc\.keepassxc|keepassxc|bitwarden|com\.bitwarden\.desktop|proton[ .-]?pass|me\.proton\.pass|enpass|io\.enpass\.enpass|org\.gnome\.world\.secrets|org\.gnome\.seahorse\.application|seahorse|org\.kde\.kwalletmanager[0-9]*|kwalletmanager[0-9]*|com\.belmoussaoui\.authenticator|hyprpolkitagent|polkit-.*|gcr-prompter|pinentry.*|org\.kde\.polkit-kde-authentication-agent-1)$'
 # …nor from private browser windows, which say so in their title
 readonly BLOCKED_TITLES='(Private Browsing|Incognito|InPrivate)'
 
@@ -47,6 +48,7 @@ start() {
     hyprctl dispatch 'hl.dsp.send_shortcut({ mods = "SUPER SHIFT", key = "C" })' >/dev/null
     exit 0
   fi
+  shopt -s nocasematch
   if [[ $class =~ $BLOCKED_CLASSES || $title =~ $BLOCKED_TITLES ]]; then
     notify "Not in this window: nothing was sent."
     exit 0
