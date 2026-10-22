@@ -97,14 +97,15 @@ setup() {
   # Clear inherited CLAUDE* variables, so the new Claude doesn't think it's a child session (as terminal-or-claude does)
   for v in $(compgen -e | grep '^CLAUDE'); do unset "$v"; done
   local prompt="Set up my email account for Nightdrive Mail, by the steps in $APP_DIR/README.md, section \"Setting up an account\" \
-(and \"More accounts\" if I have more than one). Read it first, then go through it with me one step at a time, saying in plain \
+(and \"More accounts\" for the ones after it). Read it first, then go through it with me one step at a time, saying in plain \
 words what each step is for: I may not know mbsync or notmuch. Mail's plugin is installed, so step 1 is only the app password, \
 if my provider needs one. Start by asking my email address and name, then work out the servers and folder names yourself \
 (\`mbsync -l CHANNEL\` lists the server's folders). Never ask me to type a password into this chat: for step 2, give me the \
 secret-tool command to run myself with ! in front of it, which asks for the password in the terminal. If ~/.config/isyncrc, \
 notmuch's config or ~/.config/nightmail/account.conf is already there, add to it instead of replacing it. The first mbsync of a \
 big mailbox can take long: run it in the background and tell me how it goes. Finish with \`nightmail enable\`, \
-\`nightmail restart\` and step 8's check."
+\`nightmail restart\` and step 8's check. Once that account works, ask whether I want to add another one: if so, set it up the \
+same way by \"More accounts\", and ask again after each."
   setsid -f "$HOME/.config/hypr/scripts/terminal" --dir "$HOME" -- "$claude" -- "$prompt" >/dev/null 2>&1
 }
 
