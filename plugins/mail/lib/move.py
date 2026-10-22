@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """Moves the messages of a notmuch query to a sibling folder of the one they are in (the account's Trash, Archive …).
 
-    move.py FOLDER QUERY      e.g. move.py Trash thread:0000000000000005
+    move.py FOLDER QUERY [FROM …]     e.g. move.py Trash thread:0000000000000005 example/INBOX
+
+FROM are the folders files may move from: "account/INBOX" (under ~/Mail), or "INBOX" for that folder in any account.
+A message's files elsewhere stay: one mailed between two of your accounts is in both, and only the account being
+looked at moves its copy. Without FROM, every file of the message moves.
 
 Each file moves from <account>/<folder>/{cur,new}/ to <account>/FOLDER/cur/, without the ,U= (UID) part of its name
 so the sync tool uploads it as a new message there and removes it from where it was. Files already in FOLDER stay, and
@@ -56,7 +60,13 @@ def target(path, dest):
 
 
 def main():
-    dest, query = sys.argv[1], sys.argv[2]
+    dest, query, sources = sys.argv[1], sys.argv[2], sys.argv[3:]
+    root = notmuch("config", "get", "database.path").strip()
+
+    def source(f):
+        where = os.path.relpath(os.path.dirname(os.path.dirname(f)), root)      # account/folder
+        return not sources or any(s == where or "/" not in s and s == folder(f) for s in sources)
+
     ids = notmuch("search", "--output=messages", "--exclude=false", query).split()
     kept = all_mail_dirs()
     moved = 0
@@ -65,8 +75,11 @@ def main():
         files = [f for f in found if f and os.path.exists(f)]
         for acc in {account_dir(f) for f in files}:
             mine = [f for f in files if account_dir(f) == acc]
-            protected = [f for f in mine if folder(f) == ARCHIVE and os.path.basename(acc) in kept]
-            movable = [f for f in mine if folder(f) != dest and f not in protected]
+            src = [f for f in mine if source(f)]
+            if not src:
+                continue
+            protected = [f for f in src if folder(f) == ARCHIVE and os.path.basename(acc) in kept]
+            movable = [f for f in src if folder(f) != dest and f not in protected]
             if any(folder(f) == dest for f in mine):
                 for f in movable:
                     os.remove(f)

@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Deletes the messages of a notmuch query for good: their files in a Trash folder are removed.
 
-    erase.py QUERY      e.g. erase.py 'path:example/** and folder:/Trash$/'
+    erase.py QUERY [FROM …]     e.g. erase.py 'path:"example/Trash/**"' example/Trash
 
-Only files in a folder named Trash are touched, whatever the query matches, so a wrong query can't reach the inbox.
+Only files in a folder named Trash are touched, whatever the query matches, so a wrong query can't reach the inbox;
+with FROM ("account/Trash"), only those in it, so another account's copy of the same message stays.
 The sync tool (mbsync's Expunge Both) then deletes them on the server too. There is no undo.
 Prints {"erased": N} or {"error": "..."}.
 """
@@ -17,12 +18,17 @@ FOLDER = "Trash"
 
 
 def main():
+    sources = sys.argv[2:]
+    root = subprocess.run(["notmuch", "config", "get", "database.path"], capture_output=True, text=True).stdout.strip()
     files = subprocess.run(["notmuch", "search", "--output=files", "--exclude=false", sys.argv[1]],
                            capture_output=True, text=True, check=True).stdout.split("\n")
     erased = 0
     for path in filter(None, files):
         # …/<account>/Trash/{cur,new}/<file>
-        if os.path.basename(os.path.dirname(os.path.dirname(path))) != FOLDER or not os.path.exists(path):
+        where = os.path.dirname(os.path.dirname(path))
+        if os.path.basename(where) != FOLDER or not os.path.exists(path):
+            continue
+        if sources and os.path.relpath(where, root) not in sources:
             continue
         os.remove(path)
         erased += 1

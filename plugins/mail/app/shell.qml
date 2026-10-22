@@ -75,16 +75,16 @@ ShellRoot {
             function claudeCancel(gen: string): void { if (parseInt(gen) === composer.gen) composer.bodyEdit.forceActiveFocus() }
         }
 
+        // @NAME in a query is the account's folder NAME (folderQuery)
         readonly property var folders: [
-            { name: "Inbox", dir: "INBOX", query: "folder:/INBOX$/ and tag:inbox" },
-            { name: "Sent", dir: "Sent", query: "folder:/Sent$/" },
-            { name: "Drafts", dir: "Drafts", query: "folder:/Drafts$/" },
+            { name: "Inbox", dir: "INBOX", query: "@INBOX and tag:inbox" },
+            { name: "Sent", dir: "Sent", query: "@Sent" },
+            { name: "Drafts", dir: "Drafts", query: "@Drafts" },
             // Archived before archive moved mail to the Archive folder: in the inbox's folder without the inbox tag. Gmail's
             // Archive (All Mail) holds the inbox's messages too, and Trash and Spam lose theirs only at the next sync.
-            { name: "Archive", dir: "Archive", query: "(folder:/Archive$/ and not folder:/INBOX$/ and not folder:/Trash$/ and not folder:/Spam$/)"
-                                                      + " or (folder:/INBOX$/ and not tag:inbox)" },
-            { name: "Spam", dir: "Spam", query: "folder:/Spam$/" },
-            { name: "Trash", dir: "Trash", query: "folder:/Trash$/" }
+            { name: "Archive", dir: "Archive", query: "(@Archive and not @INBOX and not @Trash and not @Spam) or (@INBOX and not tag:inbox)" },
+            { name: "Spam", dir: "Spam", query: "@Spam" },
+            { name: "Trash", dir: "Trash", query: "@Trash" }
         ]
         readonly property int arrowStep: 80     // px an arrow key scrolls the message
         readonly property int headerHeight: 22  // the folders' title line and the list's search line
@@ -105,10 +105,20 @@ ShellRoot {
             setting("account", accounts[i].id)
             pickFolder(0)
         }
-        // A folder's query in the account shown (or another one)
+        // A folder's query in the account shown (or another one). The account and the folder are one path term: notmuch
+        // matches each term against any of a message's files, so "path:account/** and folder:INBOX" would also take a
+        // message mailed between two of your accounts, from the other one's inbox.
         function folderQuery(i, a) {
-            const dir = (a || account).maildir
-            return dir ? "path:" + dir + "/** and (" + folders[i].query + ")" : folders[i].query
+            return "(" + folders[i].query.replace(/@(\w+)/g, (m, d) => folderTerm(d, a)) + ")"
+        }
+        function folderTerm(dir, a) {
+            const m = (a || account).maildir
+            return m ? "path:\"" + m + "/" + dir + "/**\"" : "folder:/" + dir + "$/"
+        }
+        // Where the files of the folder being looked at are, for move.py and erase.py: only those move
+        function sources(i) {
+            const m = account.maildir, d = folders[i].dir
+            return (d === "Archive" ? ["Archive", "INBOX"] : [d]).map(x => m ? m + "/" + x : x)
         }
         property var threads: []
         property int current: -1
@@ -334,10 +344,11 @@ ShellRoot {
             const back = folders[folder].dir
             // In the inbox's folder a message shows in Inbox by its inbox tag; anywhere else it loses the tag.
             const inbox = dir => [dir === "INBOX" ? "+inbox" : "-inbox"]
-            nm.move(to, q, r => {
+            const from = sources(folder), there = [account.maildir ? account.maildir + "/" + to : to]
+            nm.move(to, q, from, r => {
                 if (r.error) { say(r.error); return }
                 const ids = (r.ids || []).map(i => "id:\"" + i + "\"").join(" or ")
-                if (ids) done({ text: text, undo: () => nm.move(back, ids, () => nm.tag(inbox(back), ids, () => reload(keep))) })
+                if (ids) done({ text: text, undo: () => nm.move(back, ids, there, () => nm.tag(inbox(back), ids, () => reload(keep))) })
                 nm.tag(inbox(to), to === "INBOX" && ids ? ids : tq, () => reload(keep, at))
             })
         }
@@ -349,7 +360,7 @@ ShellRoot {
         property var confirm: null          // { title, detail, action, run }
         onConfirmChanged: if (confirm) confirmPanel.forceActiveFocus(); else list.forceActiveFocus()
         function erase(query, n) {
-            nm.erase(query, r => {
+            nm.erase(query, sources(folders.findIndex(f => f.dir === "Trash")), r => {
                 if (r.error) { say(r.error); return }
                 say(r.erased ? "Deleted for good: " + n + (n === 1 ? " thread" : " threads") : "Nothing deleted")
                 reload(false, current)
@@ -431,8 +442,10 @@ ShellRoot {
         function openMessage(id, then) {
             const q = "id:\"" + id + "\""
             nm.run(["search", "--output=files", "--exclude=false", q], files => {
-                // …/<account>/<folder>/cur/<file>: the account shown becomes the message's
-                const m = files.split("\n")[0].match(/([^\/]+)\/([^\/]+)\/(cur|new)\/[^\/]+$/)
+                // …/<account>/<folder>/cur/<file>: the account shown becomes the message's (the one whose inbox has it,
+                // when it was mailed between two of your accounts)
+                const list = files.split("\n").filter(f => f !== "")
+                const m = (list.find(f => /\/INBOX\/(cur|new)\//.test(f)) || list[0] || "").match(/([^\/]+)\/([^\/]+)\/(cur|new)\/[^\/]+$/)
                 if (!m) { say("That message is gone"); return }
                 const a = accounts.findIndex(x => x.maildir === m[1])
                 if (a >= 0 && a !== acct) { acct = a; setting("account", accounts[a].id) }

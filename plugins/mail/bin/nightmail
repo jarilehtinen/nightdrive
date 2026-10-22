@@ -194,7 +194,7 @@ case ${1:-open} in
     ;;
   delete)
     [[ -n ${2:-} ]] || { usage >&2; exit 2; }
-    python3 "$APP_DIR/lib/move.py" Trash "id:\"$2\"" >/dev/null && notmuch tag -inbox -- "id:\"$2\""
+    python3 "$APP_DIR/lib/move.py" Trash "id:\"$2\"" INBOX >/dev/null && notmuch tag -inbox -- "id:\"$2\""
     running && qs ipc -p "$QS_DIR" call mail refresh >/dev/null
     ;;
   notify)    python3 "$APP_DIR/lib/notify.py" ;;
