@@ -128,7 +128,7 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
 
 | | App | How it fits in |
 |---|---|---|
-| Window manager | [Hyprland](https://hypr.land) | Lua config, Mac-style keybindings, rounded screen corners |
+| Window manager | [Hyprland](https://hypr.land) | Lua config, Mac-style keybindings |
 | Bar, menus, launcher | [Quickshell](https://quickshell.org) | one themed shell for the top bar, its menus, launcher, OSD and shelf; an orange microphone and camera in the bar while an app uses them (MacBooks have no microphone light), the microphone filling up with the input level, their menus name the apps |
 | Terminal | [kitty](https://sw.kovidgoyal.net/kitty/) | ⌘Enter, opens in `~/Projects`; Mac copy and paste. Another terminal (Ghostty, foot, Alacritty, WezTerm) in Settings › Default apps: it opens everywhere kitty did, with its own settings and colours |
 | Browser | Firefox | tabs below the address bar, no tab bar while a window has one tab, links from other apps in a new window (both in launcher › Settings › Browser), themed UI |
@@ -327,6 +327,7 @@ The full list is in [`config/hypr/SHORTCUTS.md`](config/hypr/SHORTCUTS.md).
   set, in a VM settings for it, on a Mac the layout unless it's Finnish. The login screen uses the same layout. A scale picked in the
   launcher (Settings › Display) wins over both.
 - **Per-machine overrides** go to `config/hypr/local.lua`, which git ignores.
+  Rounded screen corners (tuned for the MacBook's display) are off; `NIGHTDRIVE = { corners = true }` there turns them on.
 - **Keybindings** are in [`config/hypr/bindings.lua`](config/hypr/bindings.lua), a plugin's in its own folder. Apps
   open with Hyper (Caps Lock, `MOD3`) + a letter, chosen in the launcher (Settings › Keyboard Shortcuts); a Hyper key
   bound in `local.lua` (`hl.bind("MOD3 + D", …)`) is a default that a choice there replaces.

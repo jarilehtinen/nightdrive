@@ -495,7 +495,9 @@ hl.window_rule({
     opacity = "0.97 0.94",
 })
 
--- Rounded corners off when a window is fullscreen (bar hidden), and under the login screen (no bar either)
+-- The screen's rounded corners: off by default (square edges look cleaner); `NIGHTDRIVE = { corners = true }` in local.lua
+-- turns them on. The shader is tuned for the MacBook's 3024×1964 display (scale 2.0). Even then they are off when a window
+-- is fullscreen (bar hidden), and under the login screen (no bar either).
 -- Top bar opacity (Settings › Top bar opacity, hypr/scripts/bar-style): below 100 % we use a copy of the shader written by
 -- the script, in which the top corners are as transparent as the bar. The change is applied with `hyprctl reload`.
 local function corner_shader_path()
@@ -576,7 +578,7 @@ end
 update_corners = function()
     local ws = hl.get_active_workspace()
     local fullscreen = ws ~= nil and ws.has_fullscreen and ws.fullscreen_mode == 2
-    local corners = not fullscreen and not session_locked() and not corners_hidden and not (NIGHTDRIVE and NIGHTDRIVE.corners == false)   -- local.lua can turn the rounding off
+    local corners = not fullscreen and not session_locked() and not corners_hidden and NIGHTDRIVE ~= nil and NIGHTDRIVE.corners == true
     hl.config({ decoration = { screen_shader = per_screen(night and night_shader(corners) or (corners and corner_shader or "")) } })
 end
 hl.on("window.fullscreen", update_corners)
