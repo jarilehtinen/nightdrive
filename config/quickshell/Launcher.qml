@@ -126,13 +126,14 @@ PanelWindow {
         : extOf(level) ? extOf(level).footer(level, query)   // not extLevel: it can lag a level change by one update
         : ""
     // The footer as key caps: "Ctrl+Enter: show in Apps  ·  Esc: back" → [{ keys: ["Ctrl", "Enter"], text: "show in Apps" }, ...].
-    // "Enter creates …" (no colon) works too; a part that doesn't start with a key is plain text.
+    // "Enter creates …" (no colon) works too, and a letter alone with a colon ("C: set up"); a part that doesn't start with a
+    // key is plain text.
     readonly property var keyGlyphs: ({ Enter: "corner-down-left", Ctrl: "chevron-up", Shift: "arrow-big-up", Alt: "option", Cmd: "command",
                                         Up: "arrow-up", Down: "arrow-down", Left: "arrow-left", Right: "arrow-right",
                                         Backspace: "delete", Space: "space" })
     readonly property var keySymbolNames: ({ "⌘": "Cmd", "⇧": "Shift", "⌥": "Alt", "⌃": "Ctrl", "⌫": "Backspace" })   // SHORTCUTS.md symbols → keyGlyphs
     readonly property var footerParts: footer === "" ? [] : footer.split(/\s+·\s+/).map(part => {
-        const m = part.match(/^((?:Ctrl|Shift|Alt|Cmd|Enter|Esc|Tab|Space|Backspace|Up|Down|Left|Right)(?:\+(?:Ctrl|Shift|Alt|Cmd|Enter|Esc|Tab|Space|Backspace|Up|Down|Left|Right|[A-Z]))*)(?::\s*|\s+)(.*)$/)
+        const m = part.match(/^((?:Ctrl|Shift|Alt|Cmd|Enter|Esc|Tab|Space|Backspace|Up|Down|Left|Right|[A-Z](?=:))(?:\+(?:Ctrl|Shift|Alt|Cmd|Enter|Esc|Tab|Space|Backspace|Up|Down|Left|Right|[A-Z]))*)(?::\s*|\s+)(.*)$/)
         return m ? { keys: m[1].split("+"), text: m[2] } : { keys: [], text: part }
     })
     property var lastMouse: null              // last mouse position (window coordinates); null = not seen yet since opening
@@ -978,10 +979,11 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                         if (ctrl && (event.key === Qt.Key_Insert || event.key === Qt.Key_C) && copyRow && copyRow.copy !== undefined && selectedText === "") {
                             sys.copyText(copyRow.copy); event.accepted = true; return
                         }
-                        if (win.detail !== null) {         // details: Enter installs / removes, arrows scroll, typing does nothing
+                        if (win.detail !== null) {         // details: Enter installs / removes, C sets up with Claude, arrows scroll, typing does nothing
                             if (event.key === Qt.Key_Escape || event.key === Qt.Key_Backspace) win.back()
                             else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) details.confirm()
                             else if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) details.switchSource()
+                            else if (event.key === Qt.Key_C && !ctrl) details.setup()
                             else if (event.key === Qt.Key_Down || (ctrl && (event.key === Qt.Key_N || event.key === Qt.Key_J))) details.scroll(win.rowHeight)
                             else if (event.key === Qt.Key_Up || (ctrl && (event.key === Qt.Key_P || event.key === Qt.Key_K))) details.scroll(-win.rowHeight)
                             else if (event.key === Qt.Key_PageDown || event.key === Qt.Key_Space) details.scroll(details.height - win.rowHeight)

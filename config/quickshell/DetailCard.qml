@@ -3,10 +3,10 @@ import Quickshell
 import Quickshell.Widgets
 
 // The launcher's details card for a package (Install › Software, Remove) or a plugin (Install › Recommended, Plugins):
-// header (icon, name, summary, the plugin's on/off switch, the Install / Remove / Run again button), facts, screenshot and
+// header (icon, name, summary, the plugin's on/off switch, the Install / Remove / Run installer again and Set up with Claude buttons), facts, screenshot and
 // description, from hypr/scripts/pkg-info or plugin-info. The results stay as they were behind it.
 // Enter installs or removes in a terminal (confirm), Tab takes the app from the other source or turns a plugin off or on
-// (switchSource), the arrows scroll (scroll). Launcher.qml shows it in place of the list while `item` is set, widens the
+// (switchSource), C runs a plugin's setup with Claude (setup), the arrows scroll (scroll). Launcher.qml shows it in place of the list while `item` is set, widens the
 // card and shows `footer`.
 Flickable {
     id: card
@@ -22,7 +22,10 @@ Flickable {
                                                       : info && info.installed ? "Already installed" : "Enter: install")
           + (item.alt ? "  ·  Tab: get it from " + (item.alt.src === "flatpak" ? "Flathub" : "Fedora") : "")
           + (item.src === "plugin" && info && info.installed ? "  ·  Tab: turn " + (info.off ? "on" : "off") : "")
+          + (canSetup ? "  ·  C: set up with Claude" : "")
           + "  ·  Esc: back"
+    // A plugin whose plugin.conf has `setup` (a command that sets it up with Claude, e.g. Mail's account), once installed
+    readonly property bool canSetup: item !== null && item.src === "plugin" && info !== null && info.installed && !!info.setup
 
     visible: item !== null
     height: visible ? Math.min(contentHeight, launcher.maxRows * launcher.rowHeight + 60) : 0
@@ -47,6 +50,12 @@ Flickable {
         if (!item.remove && !item.rerun && info && info.installed) { launcher.shakeNow(); return }
         launcher.open = false
         Quickshell.execDetached(item.cmd)
+    }
+    // C: plugin.conf's setup, run in the plugin's folder (it opens Claude Code in a terminal)
+    function setup() {
+        if (!canSetup) { launcher.shakeNow(); return }
+        launcher.open = false
+        Quickshell.execDetached(info.setup)
     }
     // Tab: the same app from the other source (Fedora ↔ Flathub); on a plugin's page, turns it off or on
     function switchSource() {
@@ -84,6 +93,45 @@ Flickable {
         }
     }
 
+    // The header's buttons: grey and still when `off` (already installed)
+    component CardButton: Rectangle {
+        id: cb
+        property bool off: false
+        property string glyph: ""
+        property string label: ""
+        signal clicked()
+        width: cbRow.implicitWidth + 32
+        height: 40
+        radius: 10
+        color: off ? "transparent" : cbArea.containsMouse ? Theme.primary : Theme.sel
+        border.width: off ? 1 : 0
+        border.color: Theme.border
+        Row {
+            id: cbRow
+            anchors.centerIn: parent
+            spacing: 8
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: Icons.g(cb.glyph)
+                color: cb.off ? Theme.dim : cbArea.containsMouse ? Theme.bg : Theme.accent
+                font { family: Icons.family; pixelSize: 17 }
+            }
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: cb.label
+                color: cb.off ? Theme.dim : cbArea.containsMouse ? Theme.bg : Theme.accent
+                font { family: Theme.font; pixelSize: launcher.fontSize - 1; weight: Font.Normal }
+            }
+        }
+        MouseArea {
+            id: cbArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: cb.off ? Qt.ArrowCursor : Qt.PointingHandCursor
+            onClicked: cb.clicked()
+        }
+    }
+
     Column {
         id: detailCol
         width: card.width
@@ -97,7 +145,7 @@ Flickable {
             Item {
                 id: headIcon
                 width: 64; height: 64
-                anchors { left: parent.left; leftMargin: 10; verticalCenter: parent.verticalCenter }
+                anchors { left: parent.left; leftMargin: 10; top: parent.top }      // the name beside its middle (headText), the buttons below
                 Image {
                     id: headImg
                     anchors.fill: parent
@@ -116,9 +164,11 @@ Flickable {
             }
             Column {
                 id: headText
-                anchors { left: headIcon.right; leftMargin: 20; right: onSwitch.visible ? onSwitch.left : button.left; rightMargin: 20; verticalCenter: parent.verticalCenter }
+                anchors { left: headIcon.right; leftMargin: 20; right: onSwitch.visible ? onSwitch.left : parent.right; rightMargin: 20; top: parent.top
+                          topMargin: Math.max(0, (headIcon.height - headName.height) / 2) }      // the name on the icon's middle
                 spacing: 4
                 Text {
+                    id: headName
                     width: parent.width
                     elide: Text.ElideRight
                     textFormat: Text.PlainText
@@ -136,12 +186,34 @@ Flickable {
                     color: Theme.dim
                     font { family: Theme.font; pixelSize: launcher.fontSize - 2; weight: launcher.fontWeight }
                 }
+                // Under the text, where a longer label fits: Install / Remove / Run installer again (= Enter), and a
+                // plugin's Set up with Claude (= C, plugin.conf's setup)
+                Row {
+                    topPadding: 10
+                    spacing: 10
+                    CardButton {
+                        id: button
+                        readonly property bool installed: !card.pkg.remove && card.info !== null && card.info.installed
+                        readonly property bool again: installed && !!card.pkg.rerun
+                        off: installed && !again
+                        glyph: off ? "check" : again ? "rotate-cw" : card.pkg.remove ? "trash-2" : "download"
+                        label: off ? "Installed" : again ? "Run installer again" : card.pkg.remove ? "Remove" : "Install"
+                        onClicked: card.confirm()
+                    }
+                    CardButton {
+                        visible: card.canSetup
+                        glyph: "sparkles"
+                        label: "Set up with Claude"
+                        onClicked: card.setup()
+                    }
+                }
             }
             Item {      // an installed plugin's on/off switch (= Tab), like a launcher row's
                 id: onSwitch
                 readonly property bool on: card.info !== null && !card.info.off
                 visible: card.pkg.src === "plugin" && card.info !== null && card.info.installed
-                anchors { right: button.left; rightMargin: 18; verticalCenter: parent.verticalCenter }
+                anchors { right: parent.right; rightMargin: 6 }
+                y: headText.y + headName.y + (headName.height - height) / 2      // level with the name (not a sibling: no anchor)
                 width: switchRow.implicitWidth; height: 40
                 Row {
                     id: switchRow
@@ -169,43 +241,6 @@ Flickable {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
                     onClicked: card.pluginToggle()
-                }
-            }
-            Rectangle {      // Install / Remove / Run again (= Enter); grey when already installed
-                id: button
-                readonly property bool installed: !card.pkg.remove && card.info !== null && card.info.installed
-                readonly property bool again: installed && !!card.pkg.rerun
-                readonly property bool off: installed && !again
-                anchors { right: parent.right; rightMargin: 6; verticalCenter: parent.verticalCenter }
-                width: buttonRow.implicitWidth + 32
-                height: 40
-                radius: 10
-                color: off ? "transparent" : buttonArea.containsMouse ? Theme.primary : Theme.sel
-                border.width: off ? 1 : 0
-                border.color: Theme.border
-                Row {
-                    id: buttonRow
-                    anchors.centerIn: parent
-                    spacing: 8
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: Icons.g(button.off ? "check" : button.again ? "rotate-cw" : card.pkg.remove ? "trash-2" : "download")
-                        color: button.off ? Theme.dim : buttonArea.containsMouse ? Theme.bg : Theme.accent
-                        font { family: Icons.family; pixelSize: 17 }
-                    }
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: button.off ? "Installed" : button.again ? "Run again" : card.pkg.remove ? "Remove" : "Install"
-                        color: button.off ? Theme.dim : buttonArea.containsMouse ? Theme.bg : Theme.accent
-                        font { family: Theme.font; pixelSize: launcher.fontSize - 1; weight: Font.Normal }
-                    }
-                }
-                MouseArea {
-                    id: buttonArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: button.off ? Qt.ArrowCursor : Qt.PointingHandCursor
-                    onClicked: card.confirm()
                 }
             }
         }

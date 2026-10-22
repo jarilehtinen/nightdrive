@@ -2,9 +2,10 @@
 """Details of an optional part (plugins.txt, or a plugin folder's plugin.conf) for the launcher's detail view, as JSON on
 stdout: the same shape as pkg-info's, so Install › Recommended and Plugins open the same page as Install › Software.
   plugin-info <id>
-Output: { name, summary, installed, off, external, icon, screenshot, paragraphs: [text | {code: [line]} | {heading}], fields: [[label, value]] }
+Output: { name, summary, installed, off, external, icon, screenshot, paragraphs: [text | {code: [line]} | {heading}], fields: [[label, value]], setup }
 (a plugin folder's fields include its Version and Author from plugin.conf, for bug reports)
-(off: turned off with `nightdrive plugins off`; external: added with `nightdrive plugins add`, from Source)
+(off: turned off with `nightdrive plugins off`; external: added with `nightdrive plugins add`, from Source;
+setup: plugin.conf's setup as a command line, or null)
 The long text is the folder's README.md, or docs/plugins/<id>.md for a plugins.txt line (GitHub shows the same file): the
 # title is left out, paragraphs are split at blank lines, a "- " item is a paragraph of its own, a code block (indented or
 in ``` fences) is one with its lines as they are ({code: [line]}, shown in a box), the first image ![…](file)
@@ -39,7 +40,7 @@ def row(pid):
             continue
         c = dict(l.split("=", 1) for l in lines if re.match(r"[a-z]+=", l))
         defaults = {"name": pid, "icon": "puzzle", "default": "off", "install": "true", "installed": "false", "group": "plugin"}
-        return [pid] + [c.get(k, defaults.get(k, "")) for k in KEYS] + [c.get("version", ""), c.get("author", "")], d, os.path.join(d, "README.md")
+        return [pid] + [c.get(k, defaults.get(k, "")) for k in KEYS] + [c.get("version", ""), c.get("author", ""), c.get("setup", "")], d, os.path.join(d, "README.md")
     return None, REPO, ""
 
 
@@ -159,5 +160,7 @@ if external:      # where it came from: the clone's origin (plugins add), else j
     origin = subprocess.run(["git", "-C", folder, "remote", "get-url", "origin"], capture_output=True, text=True).stdout.strip()
     fields.append(["Source", "external, " + (origin or folder)])
 fields += extra + [["Installer", installer(inst)]]
+# setup: plugin.conf's command that sets the plugin up with Claude, as the command line the page runs (in the folder)
+setup = ["bash", "-c", 'cd "$1" && ' + p[10], "setup", folder] if len(p) > 10 and p[10] else None
 print(json.dumps({ "name": name, "summary": desc, "installed": installed, "off": off, "external": external, "icon": "",
-                   "screenshot": shot, "paragraphs": paragraphs, "fields": fields }))
+                   "screenshot": shot, "paragraphs": paragraphs, "fields": fields, "setup": setup }))

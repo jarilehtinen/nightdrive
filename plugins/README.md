@@ -69,6 +69,7 @@ author=@jarilehtinen
 | `group` | Where it is listed: `plugin` (default, Install › Plugins: a feature of the desktop), `recommended` (Install › Recommended: an app Nightdrive sets up) or `webapp` |
 | `version` | `MAJOR.MINOR.PATCH`, e.g. `1.0.0` (`0.x` while it's experimental). It shows on the plugin's page in the launcher and on the website, so a bug report can name it. See [Versions](#versions) |
 | `author` | Who made it: a GitHub user (`@name`) or a name |
+| `setup` | A shell command, run in the folder, that sets the installed plugin up with Claude: Claude Code in a terminal, going through the README's steps with the user. The plugin's page gets a button Set up with Claude (and the key C) for it. For a plugin whose use needs more than its installer can ask, such as Mail's account (`bin/nightmail setup`) |
 | `order` | A number, default 50: `install.sh` installs the plugins in this order, and the lists show them in it. Lower goes first; the same order keeps the folders' (alphabetical) order, then `plugins.txt`'s lines. Home Assistant has 90: its installer asks for addresses, so it runs last |
 
 Pick `installed` so it follows what the installer did: a unit that is enabled, a command that exists. A plugin with
