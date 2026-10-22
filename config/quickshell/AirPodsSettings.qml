@@ -4,7 +4,7 @@ import Quickshell.Io
 import Quickshell.Wayland
 
 // AirPods settings in the middle of the screen, over everything: the AirPods' own settings (each with a short explanation)
-// and Nightdrive's ear detection. Opened by the headphones menu and the launcher (Settings › Headphones): qs ipc call airpods open
+// and Nightdrive's ear detection. Opened by the headphones menu and the launcher (Settings › Sound › Headphones): qs ipc call airpods open
 // Values from topbar/scripts/eq info (hypr/scripts/headphones-ctl reads them from the AirPods); a change goes through
 // eq airpods <setting> <value> and shows at once. Esc or a click outside closes.
 // (Not named *Menu.qml: shell.qml treats those as top bar menus.)

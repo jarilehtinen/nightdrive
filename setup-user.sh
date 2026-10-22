@@ -39,7 +39,7 @@ gsettings set org.gnome.desktop.wm.preferences button-layout ':' 2>/dev/null || 
 gsettings set org.gnome.nm-applet disable-connected-notifications true 2>/dev/null || true
 
 echo "==> Default apps: images open in Loupe (instead of the browser); Markdown in Apostrophe, if chosen (its installer)"
-# Only while images are unchosen: this runs at every update, and would undo a choice in Settings › Default apps (the same
+# Only while images are unchosen: this runs at every update, and would undo a choice in Settings › Apps › Default apps (the same
 # script, which writes ~/.config/mimeapps.list itself: no xdg-mime, which from Plasma (install.sh) went to Qt5's qtpaths)
 "$repo/config/hypr/scripts/default-apps" set images org.gnome.Loupe.desktop --if-unset
 # The terminal: kitty (Nightdrive's settings and colours) until another is chosen; unset, xdg-terminal-exec would pick any

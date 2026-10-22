@@ -18,13 +18,13 @@ QtObject {
     property var pending: ({})       // id -> on: a toggle sent, shown until HA reports it (or a few seconds pass)
     property var pendingBright: ({}) // id -> 0..1: a brightness sent (or waiting to be sent), shown the same way
     readonly property var favorites: states.filter(e => e.fav)
-    // Settings › Home: kinds left out of the launcher (rooms, search, counts); pinned devices show anyway.
+    // Settings › Apps › Home Assistant: kinds left out of the launcher (rooms, search, counts); pinned devices show anyway.
     // ~/.local/state/nightdrive/home.json { hidden: [domains] }; no file = automations and buttons hidden (maintenance
     // buttons like Restart / Identify, and automations are logic, not things to press)
     readonly property var defaultHidden: ["automation", "button", "input_button"]
     property var hidden: defaultHidden
     readonly property var shown: states.filter(e => hidden.indexOf(e.domain) < 0)
-    // The kinds in Settings › Home, in the launcher's section order; Buttons covers both button domains
+    // The kinds in Settings › Apps › Home Assistant, in the launcher's section order; Buttons covers both button domains
     readonly property var kinds: [["Lights", ["light"]], ["Switches", ["switch"]], ["Fans", ["fan"]], ["Covers", ["cover"]],
                                   ["Climate", ["climate"]], ["Media", ["media_player"]], ["Locks", ["lock"]], ["Helpers", ["input_boolean"]],
                                   ["Scenes", ["scene"]], ["Scripts", ["script"]], ["Automations", ["automation"]], ["Buttons", ["button", "input_button"]]]
@@ -134,7 +134,7 @@ QtObject {
         Quickshell.execDetached([bin, "fav", e.id, on ? "on" : "off"])
     }
 
-    // A kind's icon in Settings › Home (a device's own icon, on)
+    // A kind's icon in Settings › Apps › Home Assistant (a device's own icon, on)
     function kindIcon(domain) { return domain === "input_boolean" ? "sliders-horizontal" : domain === "button" ? "circle-dot" : icon({ domain: domain, id: "", on: true }) }
     function icon(e) {
         const on = isOn(e)

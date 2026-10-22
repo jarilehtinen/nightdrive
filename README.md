@@ -25,7 +25,7 @@ Nightdrive puts all of that together into one opinionated desktop.
   ⌘C / ⌘V / ⌘X work in every app, including the terminal. ⌘S saves, ⌘W closes, ⌘Q quits, ⌘Space opens the launcher.
 - **Caps Lock is Hyper, the app key.** Hyper + a letter opens an app or brings it to the front: Hyper+B the browser,
   Hyper+F Files, Hyper+M music. No app uses Hyper itself, so the keys are yours: pick the app for any letter or digit
-  in the launcher (Settings › Keyboard Shortcuts).
+  in the launcher (Settings › Apps › App shortcuts).
 - **Fits the machine it's on.** The installer recognises an Apple Silicon Mac, a PC or a virtual machine and sets it up to
   match: the keyboard layout you picked when installing Fedora, the graphics driver (NVIDIA too), the display scale. On a
   MacBook the top bar sits in the notch area, the top-row keys control volume, brightness, the keyboard backlight and
@@ -114,16 +114,16 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
 - **Web apps**: turn any site into an app window from the launcher (System › Install › Webapp), and remove one in System ›
   Remove › Webapps (its logins go with it). Their notifications come with the web app's own name and icon, not Chromium's.
 - **Default apps**: which app opens links, mail, folders, text, code, images, video, music, PDFs and calendar files, and
-  which terminal ⌘Enter opens, in the launcher (Settings › Default apps, or `nightdrive defaults`). Hyper B, F and E open
+  which terminal ⌘Enter opens, in the launcher (Settings › Apps › Default apps, or `nightdrive defaults`). Hyper B, F and E open
   the browser, Files and Email you chose.
-- **Keyboard Shortcuts**: which app Hyper + a letter or digit opens, in the launcher (Settings › Keyboard Shortcuts, or
+- **App shortcuts**: which app Hyper + a letter or digit opens, in the launcher (Settings › Apps › App shortcuts, or
   `~/.config/hypr/scripts/app-keys`). Your choice replaces a default, Nightdrive's or a plugin's, and the key list shows
   it. The other shortcuts are in the config files ([Make it yours](#make-it-yours)).
 - **Mouse**: the mouse wheel's scroll speed, from 0.5× to 3×, in the launcher (Settings › Mouse). It applies right away
   and leaves the trackpad's speed as it is.
 - **Remote login**: SSH into this computer from another one, off by default like on a Mac. Turn it on in the launcher
   (Settings › Remote login); the page shows the address to use.
-- **Login apps**: you choose what starts at login in the launcher (Settings › Startup, or ⌥Enter on an app). Background
+- **Login apps**: you choose what starts at login in the launcher (Settings › Apps › Startup, or ⌥Enter on an app). Background
   apps start hidden. Only 1Password (if installed) is on by default, because its SSH agent and the Passwords level need it.
 - **Login screen**: a password-only greeter that matches the theme (`--no-greeter` keeps the distribution's own).
 
@@ -135,8 +135,8 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
 |---|---|---|
 | Window manager | [Hyprland](https://hypr.land) | Lua config, Mac-style keybindings |
 | Bar, menus, launcher | [Quickshell](https://quickshell.org) | one themed shell for the top bar, its menus, launcher, OSD and shelf; an orange microphone and camera in the bar while an app uses them (MacBooks have no microphone light), the microphone filling up with the input level, their menus name the apps |
-| Terminal | [kitty](https://sw.kovidgoyal.net/kitty/) | ⌘Enter, opens in `~/Projects`; Mac copy and paste. Another terminal (Ghostty, foot, Alacritty, WezTerm) in Settings › Default apps: it opens everywhere kitty did, with its own settings and colours |
-| Browser | Firefox | tabs below the address bar, no tab bar while a window has one tab, links from other apps in a new window (both in launcher › Settings › Browser), themed UI |
+| Terminal | [kitty](https://sw.kovidgoyal.net/kitty/) | ⌘Enter, opens in `~/Projects`; Mac copy and paste. Another terminal (Ghostty, foot, Alacritty, WezTerm) in Settings › Apps › Default apps: it opens everywhere kitty did, with its own settings and colours |
+| Browser | Firefox | tabs below the address bar, no tab bar while a window has one tab, links from other apps in a new window (both in launcher › Settings › Apps › Firefox), themed UI |
 | Mail (optional) | Thunderbird | themed, with a minimal toolbar ([details](docs/thunderbird.md)) |
 | Music (optional) | [Deck](plugins/deck/README.md) (Spotify in the terminal, needs Spotify Premium) | bar icon, music menu, player row in the launcher, media keys |
 | Passwords (optional) | [1Password](plugins/1password/README.md) + `op` CLI | Passwords level in the launcher, SSH agent |
@@ -145,7 +145,7 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
 | Network | NetworkManager, BlueZ, [Tailscale](plugins/tailscale/README.md) (optional) | Wi-Fi, Bluetooth and Tailscale menus |
 | Audio | PipeWire, [EasyEffects](https://github.com/wwmm/easyeffects) | output switching (AirPlay speakers too), EQ presets for headphones; the headphone jack asks whether headphones or speakers went in, keeps a volume for each and starts quiet until you answer; Sony and AirPods listening mode, AirPods battery per pod and case and their own settings; the headphones' microphone in the Sound menus or Use for › Calls in the headphones menu (headset mode; another microphone or Use for › Music switches back to music mode, and music started in headset mode offers it in a notification) |
 | Screen Mirroring (optional) | [doubletake](https://github.com/omarroth/doubletake) (AirPlay, built by `plugins/mirroring/install.sh`) | Settings › Display; experimental, picture limited to 1080p (no hardware encoder on Asahi) |
-| Notifications | Quickshell | app icon and time on every notification, its app's buttons in the popup and in the history (until the app closes it), history and do not disturb in the bar; a warning with the charge left when the battery drops to 10 % and 5 % (gone once the charger is in); how long they show and their sounds in launcher › Settings › Notifications, where crash reports can be turned on: when an app crashes, Ask Claude finds out why |
+| Notifications | Quickshell | app icon and time on every notification, its app's buttons in the popup and in the history (until the app closes it), history and do not disturb in the bar; a warning with the charge left when the battery drops to 10 % and 5 % (gone once the charger is in); how long they show and their sounds in launcher › Settings › Notifications; with Settings › Crash reports on, a crashed app's notification has Ask Claude, which finds out why |
 | Files and images | Nautilus, Loupe | images open in Loupe, a simple viewer like Preview |
 | Markdown (optional) | [Apostrophe](https://apps.gnome.org/Apostrophe/) (Flatpak) | `.md` files open in it, themed editor |
 | Messaging | [Telegram Desktop](https://desktop.telegram.org) (Flatpak, install it from Install › Software) | native Wayland app, keeps running in the background like 1Password |
@@ -298,7 +298,7 @@ The same `nightdrive` command reaches the settings from a terminal (`nightdrive`
 ## Keys
 
 ⌘ is the Super key (Command on a Mac, the Windows key on a PC). Hyper is Caps Lock: Hyper + a letter opens an app, and
-which app is yours to choose (launcher › Settings › Keyboard Shortcuts).
+which app is yours to choose (launcher › Settings › Apps › App shortcuts).
 
 | Keys | Action |
 |---|---|
@@ -337,7 +337,7 @@ The full list is in [`config/hypr/SHORTCUTS.md`](config/hypr/SHORTCUTS.md).
 - **Per-machine overrides** go to `config/hypr/local.lua`, which git ignores.
   Rounded screen corners (tuned for the MacBook's display) are off; `NIGHTDRIVE = { corners = true }` there turns them on.
 - **Keybindings** are in [`config/hypr/bindings.lua`](config/hypr/bindings.lua), a plugin's in its own folder. Apps
-  open with Hyper (Caps Lock, `MOD3`) + a letter, chosen in the launcher (Settings › Keyboard Shortcuts); a Hyper key
+  open with Hyper (Caps Lock, `MOD3`) + a letter, chosen in the launcher (Settings › Apps › App shortcuts); a Hyper key
   bound in `local.lua` (`hl.bind("MOD3 + D", …)`) is a default that a choice there replaces.
 - **Optional parts** (recommended apps, ready-made web apps, plugins): a one-line part, such as a web app or an app from
   dnf or Flathub, is a line in [`plugins.txt`](plugins.txt), with its keybinding in `bindings.lua`'s `optional` list and

@@ -208,7 +208,7 @@ link "$repo/config/voxtype/OsdSurface.qml" "$HOME/.local/share/voxtype/quickshel
 for f in listening.wav done.wav; do link "$repo/config/voxtype/$f" "$HOME/.local/share/voxtype/quickshell/$f"; done   # its sound cues (found next to it)
 
 # Firefox: userChrome.css (tabs below the address bar) into the default profile, and user.js (enables userChrome.css)
-# with the choices of launcher › Settings › Browser: firefox-prefs writes it, as it isn't a link
+# with the choices of launcher › Settings › Apps › Firefox: firefox-prefs writes it, as it isn't a link
 for p in "$HOME"/.config/mozilla/firefox/*.default-release; do
   [[ -d $p ]] || continue
   mkdir -p "$p/chrome"

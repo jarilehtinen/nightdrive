@@ -141,14 +141,17 @@ Flickable {
 
         Item {      // header
             width: parent.width
-            height: Math.max(72, headText.implicitHeight)
+            // the name sits lower than the top (headText's topMargin): counted, with room under the buttons
+            height: Math.max(72, headText.anchors.topMargin + headText.implicitHeight + 10)
             Item {
                 id: headIcon
                 width: 64; height: 64
                 anchors { left: parent.left; leftMargin: 10; top: parent.top }      // the name beside its middle (headText), the buttons below
                 Image {
                     id: headImg
-                    anchors.fill: parent
+                    // as big as the glyph below looks (an app's picture fills its square, a glyph doesn't), so both sit
+                    // the same beside the name
+                    anchors { fill: parent; margins: 8 }
                     source: card.info && card.info.icon ? "file://" + card.info.icon
                           : card.pkg.iconFile ? "file://" + card.pkg.iconFile : ""
                     sourceSize: Qt.size(128, 128)

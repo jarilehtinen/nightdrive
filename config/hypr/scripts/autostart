@@ -1,5 +1,5 @@
 #!/bin/bash
-# Apps started at login, chosen by the user in the launcher (Settings › Startup, or ⌥Enter on an app).
+# Apps started at login, chosen by the user in the launcher (Settings › Apps › Startup, or ⌥Enter on an app).
 # The list is per user, one .desktop id per line, in ~/.local/state/nightdrive/autostart.
 # Background apps (hypr/background-apps) start hidden in special:bg, the rest open normally.
 #   autostart              start the listed apps (hyprland.lua runs this at login)

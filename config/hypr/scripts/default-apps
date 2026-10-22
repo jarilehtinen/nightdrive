@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Default apps: which app opens links, mail, folders, images… (nightdrive defaults; launcher › Settings › Default apps).
+"""Default apps: which app opens links, mail, folders, images… (nightdrive defaults; launcher › Settings › Apps › Default apps).
 
   default-apps                      the kinds, each one's app and the apps that could take its place
   default-apps --json               the same for the launcher (DefaultAppsLevels.qml)
@@ -246,7 +246,7 @@ def open_kind(kind, focus=False):
     apps = entries()
     if app_id not in apps:
         subprocess.run(["notify-send", "-a", "Default apps", f"No {k[1].lower()} app",
-                        "Choose one in the launcher: Settings › Default apps"])
+                        "Choose one in the launcher: Settings › Apps › Default apps"])
         sys.exit(1)
     launch(app_id, apps[app_id], focus)
 

@@ -14,11 +14,11 @@ Item {
     property string room: ""                 // Home › <room>: the room that is open
 
     readonly property var levels: ["home", "homeroom", "homeprefs"]
-    readonly property var titles: ({ home: "Home", homeroom: "Home › " + room, homeprefs: "Settings › Home" })
-    readonly property var parents: ({ homeroom: "home", homeprefs: "settings" })
+    readonly property var titles: ({ home: "Home", homeroom: "Home › " + room, homeprefs: "Apps › Home Assistant" })
+    readonly property var parents: ({ homeroom: "home", homeprefs: "appsettings" })
     readonly property bool on: Home.configured && Plugins.has("home-assistant")
-    // Settings › Home, in Launcher.qml's Settings list (Behaviour) while Home Assistant is set up
-    readonly property var settingsItems: on ? [{ kind: "nav", name: "Home", glyph: "house", target: "homeprefs" }] : []
+    // Settings › Apps › Home Assistant, in Launcher.qml's Settings › Apps while Home Assistant is set up
+    readonly property var settingsItems: on ? [{ kind: "nav", name: "Home Assistant", glyph: "house", target: "homeprefs" }] : []
     readonly property var rootItems: on ? [{ kind: "nav", name: "Home", glyph: "house", target: "home", extra: "home assistant hass lights rooms" }] : []
 
     function footer(level, query) {

@@ -8,7 +8,7 @@
 local scripts     = os.getenv("HOME") .. "/.config/hypr/scripts"
 -- The terminal chosen in Default apps (kitty unless changed): scripts/terminal
 local terminal    = scripts .. "/terminal --dir " .. os.getenv("HOME") .. "/Projects"
--- The default apps (launcher › Settings › Default apps, nightdrive defaults): a new choice is used at the next press
+-- The default apps (launcher › Settings › Apps › Default apps, nightdrive defaults): a new choice is used at the next press
 local browser     = scripts .. "/default-apps open browser"
 local fileManager = scripts .. "/default-apps open files"
 local email       = scripts .. "/default-apps open email --focus"   -- one mail window: brought up when it's open
@@ -50,7 +50,7 @@ local mod = "SUPER"
 -- Every binding (also local.lua's and local.d's) is recorded, so that the top bar menu's submap (qsmenu, below) can repeat
 -- them: inside a submap only its own keys work, and ⌘Enter, the volume keys etc. would be dead while a menu is open.
 NIGHTDRIVE_BINDS = {}
--- Your own Hyper keys (launcher › Settings › Keyboard Shortcuts, scripts/app-keys): KEY<TAB>app.desktop, or - for a key
+-- Your own Hyper keys (launcher › Settings › Apps › App shortcuts, scripts/app-keys): KEY<TAB>app.desktop, or - for a key
 -- that does nothing. They win over every other Hyper + KEY binding, Nightdrive's, a plugin's or local.lua's, which are
 -- left out here: those are the defaults.
 local appKeys = {}

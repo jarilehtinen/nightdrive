@@ -1,5 +1,5 @@
 #!/bin/bash
-# Opens the terminal chosen in launcher › Settings › Default apps (nightdrive terminal; kitty unless changed). Every part of
+# Opens the terminal chosen in launcher › Settings › Apps › Default apps (nightdrive terminal; kitty unless changed). Every part of
 # Nightdrive that opens a terminal comes here: ⌘Enter, the floating windows of an update or an install, Deck…
 #
 #   terminal [--dir DIR] [--class CLASS] [--hold] [-- COMMAND ARGS…]

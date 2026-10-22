@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell
 
-// The launcher's Settings › Keyboard Shortcuts: which app Hyper (Caps Lock) + a letter or digit opens. One row per key
+// The launcher's Settings › Apps › App shortcuts: which app Hyper (Caps Lock) + a letter or digit opens. One row per key
 // in use, yours and the defaults (Nightdrive's, the plugins', your config's). "Add a shortcut" asks for the app, then a
 // free key. Enter on a key in use asks for its new key (the free ones), and below them offers to change its app, put its
 // default back or leave it free. Only these keys: the other shortcuts stay in the config files (hypr/bindings.lua, local.lua).
@@ -12,17 +12,17 @@ Item {
     property var launcher: null
     property var info: null                  // app-keys --json: { keys: [{ key, set, default, app }], free, apps }
     property bool adding: false              // Add a shortcut (app, then key) rather than changing a key in use
-    property string key: ""                  // the key being changed (Keyboard Shortcuts › Hyper B)
+    property string key: ""                  // the key being changed (App shortcuts › Hyper B)
     property var app: ({ id: "", name: "" }) // Add a shortcut: the app chosen
     property string done: ""                 // the key just set: the cursor goes to it back in the list
 
     readonly property string script: Quickshell.env("HOME") + "/.config/hypr/scripts/app-keys"
     readonly property var levels: ["appkeys", "appkeyapp", "appkeykey"]
-    readonly property var titles: ({ appkeys: "Settings › Keyboard Shortcuts",
-                                     appkeyapp: adding ? "Keyboard Shortcuts › New" : "Hyper " + key + " › App",
-                                     appkeykey: adding ? "Keyboard Shortcuts › " + app.name : "Keyboard Shortcuts › Hyper " + key })
-    readonly property var parents: ({ appkeys: "settings", appkeyapp: adding ? "appkeys" : "appkeykey", appkeykey: adding ? "appkeyapp" : "appkeys" })
-    readonly property var settingsItems: [{ kind: "nav", name: "Keyboard Shortcuts", glyph: "keyboard", target: "appkeys" }]
+    readonly property var titles: ({ appkeys: "Apps › App shortcuts",
+                                     appkeyapp: adding ? "App shortcuts › New" : "Hyper " + key + " › App",
+                                     appkeykey: adding ? "App shortcuts › " + app.name : "App shortcuts › Hyper " + key })
+    readonly property var parents: ({ appkeys: "appsettings", appkeyapp: adding ? "appkeys" : "appkeykey", appkeykey: adding ? "appkeyapp" : "appkeys" })
+    readonly property var settingsItems: [{ kind: "nav", name: "App shortcuts", glyph: "keyboard", target: "appkeys" }]
 
     function footer(level, query) {
         const cur = launcher.results[launcher.selIndex] || {}
@@ -124,7 +124,7 @@ Item {
     Sh {
         id: setProc   // then back to the list, which is read again (entered)
         onResult: text => {
-            if (text.trim() !== "") Quickshell.execDetached(["notify-send", "-u", "critical", "-a", "Keyboard Shortcuts", "Couldn't change it", text.trim()])
+            if (text.trim() !== "") Quickshell.execDetached(["notify-send", "-u", "critical", "-a", "App shortcuts", "Couldn't change it", text.trim()])
             d.launcher.go("appkeys")
         }
     }

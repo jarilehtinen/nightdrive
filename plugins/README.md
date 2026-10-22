@@ -213,7 +213,7 @@ feature, such as a menu, is ⌘⇧ or ⌘⌥ + a letter. ⌘ + a letter alone be
 In SHORTCUTS.md Hyper is written `Hyper M`.
 
 A plugin's Hyper key is a default: when the user picks an app for the same key (launcher › Settings › Keyboard
-Shortcuts), the core leaves the plugin's binding out and its line out of the key list. Settings › Keyboard Shortcuts names
+Shortcuts), the core leaves the plugin's binding out and its line out of the key list. Settings › Apps › App shortcuts names
 the plugin by its SHORTCUTS.md section, so give the key's line the app's name (`Hyper M  Music (Deck, …)`).
 
 ```lua

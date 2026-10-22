@@ -1,6 +1,6 @@
 #!/bin/bash
 # 1Password: the app (the tarball for this machine's architecture, signature verified) and the op CLI (1Password's RPM
-# repo). Starts at login (launcher › Settings › Startup): the SSH agent, `op` and the launcher's Passwords need it running.
+# repo). Starts at login (launcher › Settings › Apps › Startup): the SSH agent, `op` and the launcher's Passwords need it running.
 # Run as a regular user; sudo asks for the password.
 set -euo pipefail
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT

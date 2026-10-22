@@ -92,7 +92,7 @@ PanelWindow {
     readonly property var ext: extLoader.item
     // Levels from other files, which answer the same questions (items, activate, footer, entered; the optional ones below):
     // SystemLevels (Wi-Fi, Bluetooth, Sound, Tailscale, Status), HomeLevels (Home Assistant), DefaultAppsLevels, AppKeyLevels
-    // (Keyboard Shortcuts), BehaviourLevels (Mouse, Launcher, Browser, Computer name, Remote login, Notifications, Update channel), InstallLevels,
+    // (App shortcuts), BehaviourLevels (Mouse, Launcher, Firefox, Computer name, Remote login, Notifications, Crash reports, Update channel), InstallLevels,
     // ToolsLevels (Clipboard, Emoji, Snippets), AppearanceLevels (Top bar, Screensaver), DisplayLevels (Display, Battery),
     // RemoveLevels, PasswordLevels (with 1Password), ThemeLevels (Theme, Background), ClaudeWriteLevels, the plugins' and the private
     // extension. A new file goes in this list, not in each question's code
@@ -109,7 +109,7 @@ PanelWindow {
     function search(target, text) { go(target); input.text = text }   // a level with its query typed (Default apps › Find more)
     readonly property var swCats: inst.swCats                          // Install › Software's categories (Default apps › Find more)
     function openCategory(key, name) { inst.openCategory(key, name) }
-    readonly property var parents: Object.assign({ install: "system", screenshot: "tools", startup: "settings" }, ...exts.map(e => e.parents))
+    readonly property var parents: Object.assign({ install: "system", screenshot: "tools", startup: "appsettings", appsettings: "settings" }, ...exts.map(e => e.parents))
     // Search found nothing: hint below ⌘⌥⏎ (icons) → send the text to Claude
     readonly property bool noHit: (level === "root" || level === "apps") && query.trim() !== "" && results.length === 0
     // The selected row is an app: ⌃Enter shows it in Apps (the list with an empty query) or hides it from there.
@@ -140,7 +140,7 @@ PanelWindow {
     readonly property string scripts: Quickshell.env("HOME") + "/.config/hypr/scripts"
     signal openMenu(string name)              // Settings: opens a Quickshell menu (wifi, bluetooth, ...)
 
-    readonly property var titles: Object.assign({ apps: "Apps", keys: "Keybindings", screenshot: "Tools › Screenshot", settings: "Settings", startup: "Settings › Startup", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
+    readonly property var titles: Object.assign({ apps: "Apps", keys: "Keybindings", screenshot: "Tools › Screenshot", settings: "Settings", startup: "Apps › Startup", appsettings: "Settings › Apps", theme: "Settings › Theme", themecolor: "Settings › Theme › Color", background: "Settings › Theme › Background",
                                      system: "System", install: "System › Install", power: "Power",
                                      tools: "Tools" }, ...exts.map(e => e.titles))
 
@@ -199,16 +199,15 @@ PanelWindow {
             { kind: "nav", name: "Recommended", glyph: "star", target: "recommended", summary: "apps set up for Nightdrive" },
             { kind: "nav", name: "Plugins", glyph: "puzzle", target: "plugins", summary: "desktop features" }
         ],
-        // In groups like macOS's System Settings: the often used first (connections, hardware), then the look, then
-        // what is set once (behaviour)
+        // In groups like macOS's System Settings: the often used first (connections, hardware), then the look, the apps' own
+        // settings (one row, as on iOS: appsettings), Claude, and what is set once (system)
         settings: [
             { kind: "header", name: "Connections" },
             { kind: "nav", name: "Wi-Fi", glyph: "wifi", target: "wifi" },
             { kind: "nav", name: "Bluetooth", glyph: "bluetooth", target: "bluetooth" }
         ].concat(Plugins.has("tailscale") ? [{ kind: "nav", name: "Tailscale", glyph: "shield-check", target: "tailscale" }] : [], [
             { kind: "header", name: "Hardware" },
-            { kind: "nav", name: "Sound", glyph: "volume-2", target: "sound" },
-            { kind: "nav", name: "Headphones", glyph: "headphones", target: "headphones" },
+            { kind: "nav", name: "Sound", glyph: "volume-2", target: "sound" },   // Headphones are a row there, while connected
             { kind: "nav", name: "Display", glyph: "monitor", target: "display" },
             { kind: "nav", name: "Mouse", glyph: "mouse", target: "mousescroll", summary: behave.mouseScroll ? behave.mouseScroll + "× scroll" : undefined }
         ], disp.hasBattery ? [{ kind: "nav", name: "Battery", glyph: "battery-medium", target: "battery" }] : [], [
@@ -216,17 +215,26 @@ PanelWindow {
             { kind: "nav", name: "Theme", glyph: "palette", target: "theme" },
             { kind: "nav", name: "Top bar", glyph: "panel-top", target: "topbar" },   // its look and what it shows
             { kind: "nav", name: "Screensaver", glyph: "monitor-pause", target: "screensaver" },
-            { kind: "header", name: "Behaviour" },
-            { kind: "nav", name: "Launcher", glyph: "text-search", target: "launcherprefs" },
-            { kind: "nav", name: "Claude writes", glyph: "sparkles", target: "claudewrite", summary: cwrite.modelName(cwrite.model) }
-        ], defs.settingsItems, behave.browserItems, akeys.settingsItems, [
-            { kind: "nav", name: "Computer name", glyph: "laptop", target: "compname", summary: behave.compName }   // what phones see
-        ], behave.remoteLoginItems, home.settingsItems, [   // Home: only while Home Assistant is set up
             { kind: "nav", name: "Notifications", glyph: "bell-ring", target: "sounds" },
-            { kind: "nav", name: "Startup", glyph: "rocket", target: "startup" },
+            { kind: "header", name: "Apps" },
+            { kind: "nav", name: "App settings", glyph: "layout-grid", target: "appsettings" },
+            { kind: "header", name: "Claude" },
+            { kind: "nav", name: "Claude writes", glyph: "sparkles", target: "claudewrite", summary: cwrite.modelName(cwrite.model) }
+        ], behave.crashReportItems, [
+            { kind: "header", name: "System" },
+            { kind: "nav", name: "Launcher", glyph: "text-search", target: "launcherprefs" },
+            { kind: "nav", name: "Computer name", glyph: "laptop", target: "compname", summary: behave.compName }   // what phones see
+        ], behave.remoteLoginItems, [
             { kind: "nav", name: "Update channel", glyph: "git-branch", target: "channel",
               summary: behave.channel === "dev" ? "development" : (behave.channel === "custom" ? behave.channelBranch || "custom" : behave.channel || undefined) }
         ]),
+        // Settings › Apps: what is about apps in general first, then each app's own settings (only those installed)
+        appsettings: defs.settingsItems.concat(akeys.settingsItems, [
+            { kind: "nav", name: "Startup", glyph: "rocket", target: "startup" }
+        ], behave.browserItems.length || home.settingsItems.length || Plugins.has("mail") ? [{ kind: "header", name: "Installed apps" }] : [],
+           behave.browserItems.concat(home.settingsItems,
+               Plugins.has("mail") ? [{ kind: "action", name: "Mail", glyph: "mail", cmd: [Quickshell.env("HOME") + "/.local/bin/nightmail", "settings"] }] : [])
+               .map(t => Object.assign({}, t, { appName: t.name }))),   // an app's own: "Mail settings" in the root search
         power: [
             { kind: "action", name: "Lock", glyph: "lock", cmd: ["loginctl", "lock-session"] },
             { kind: "action", name: "Sleep", glyph: "moon", cmd: ["systemctl", "suspend"] },
@@ -236,23 +244,26 @@ PanelWindow {
         ]
     })
 
-    readonly property var settingsAliases: ({ "Wi-Fi": "wifi wlan network internet", "Sound": "audio volume output speakers", "Battery": "power charge charging health cycles",
+    readonly property var settingsAliases: ({ "Wi-Fi": "wifi wlan network internet", "Sound": "audio volume output speakers headphones airpods noise cancelling equalizer", "Battery": "power charge charging health cycles",
                                               "Display": "brightness keyboard backlight night light warm scale scaling resolution monitor screen retina hidpi zoom size bigger smaller",
                                               "Notifications": "notification sounds alert chime beep ping tone urgent critical popup timeout seconds duration",
+                                              "Crash reports": "crash crashes bug report claude app quit coredump",
                                               "Tailscale": "vpn", "Mouse": "scroll scrolling wheel speed fast slow",
                                               "Claude writes": "ai write rewrite polish text draft reply tone instructions prompt model",
                                               "Default apps": "browser email mail files folders text editor terminal images photos video music player pdf calendar open with",
-                                              "Keyboard Shortcuts": "hyper caps lock keys keybindings hotkeys open app", "Theme": "appearance style look colors",
+                                              "App shortcuts": "keyboard shortcuts hyper caps lock keys keybindings hotkeys open app", "Theme": "appearance style look colors",
                                               "Color": "theme accent violet purple blue teal green amber rose graphite gray",
                                               "Background": "wallpaper desktop image picture",
                                               "Theme Editor…": "window background terminal kitty opacity transparency border frame shadow inactive",
                                               "Top bar": "waybar panel menu bar",
-                                              "Browser": "firefox tabs tab bar links new window",
+                                              "Firefox": "browser tabs tab bar links new window",
                                               "Launcher": "search fuzzy typos shortcuts hints spotlight",
                                               "Computer name": "hostname rename device localsend airplay ferry phone",
                                               "Remote login": "ssh sshd server remote access terminal sharing",
                                               "Update channel": "stable development dev beta branch updates",
-                                              "Home": "home assistant automations buttons lights types",
+                                              "Home Assistant": "home automations buttons lights types",
+                                              "App settings": "apps applications preferences",
+                                              "Mail": "email settings preferences",
                                               "Opacity": "top bar waybar panel transparency transparent",
                                               "Icon colors": "top bar waybar panel white black light dark text",
                                               "Highlight": "top bar waybar panel active workspace",
@@ -323,7 +334,7 @@ PanelWindow {
         return out
     }
     // Rows that can't be selected: section headers, and notes (kind "note": a line of help in small text, e.g. Settings ›
-    // Keyboard Shortcuts' "the others are in the config files"), unlike a hint, which stands in for the rows ("Loading…")
+    // App shortcuts' "the others are in the config files"), unlike a hint, which stands in for the rows ("Loading…")
     function fixedRow(it) { return it.kind === "header" || it.kind === "note" }
     function firstSelectable() {
         for (let i = 0; i < results.length; i++) if (!fixedRow(results[i])) return i
@@ -413,6 +424,11 @@ PanelWindow {
                 statics.screenshot.map(t => ({ item: Object.assign({}, t, { from: "Screenshot" }), text: t.name, extra: "screenshot capture screen" })),
                 // Settings items ("wallpaper" → Background, "wifi" → Wi-Fi) plus Theme and Top bar sub-items ("opacity")
                 statics.settings.filter(t => t.kind !== "header").map(t => ({ item: Object.assign({}, t, { from: "Settings" }), text: t.name, extra: "settings " + (settingsAliases[t.name] || "") })),
+                // (an app's own settings named so, not to come before the app: "mail" finds Mail first, then Mail settings)
+                statics.appsettings.filter(t => t.kind !== "header").map(t => {
+                    const name = t.appName ? t.appName + " settings" : t.name
+                    return { item: Object.assign({}, t, { from: "Settings", name: name }), text: name, extra: "settings apps " + (settingsAliases[t.name] || "") }
+                }),
                 themes.themeItems().map(t => ({ item: Object.assign({}, t, { from: "Theme", summary: undefined }), text: t.name, extra: "theme " + (settingsAliases[t.name] || "") })),
                 look.topbarItems().map(t => ({ item: Object.assign({}, t, { from: "Top bar", summary: undefined }), text: t.name, extra: settingsAliases[t.name] || "" })),
                 // Display and Screensaver sub-items ("night" → Night light, "dim" → Brightness, "saver" → Start after)
@@ -503,7 +519,7 @@ PanelWindow {
         hiddenProc.running = true
         if (target === "keys") keysProc.running = true     // re-read SHORTCUTS.md: changes show up immediately
         list.currentIndex = firstSelectable()
-        if (target === "settings") behave.entered("settings")   // the computer name and channel on its rows
+        if (target === "settings" || target === "appsettings") behave.entered("settings")   // the computer name and channel on its rows, Firefox's
         if (target === "display") sys.entered("display")   // Screen Mirroring's rows there
         if (extOf(target)) extOf(target).entered(target)
     }
@@ -594,7 +610,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
         onResult: { hiddenProc.running = true; pinSettle.restart() }   // (prunePins runs when the lists change)
     }
 
-    // Login apps (Settings › Startup, ⌥Enter on an app): hypr/scripts/autostart keeps the list and starts them at login
+    // Login apps (Settings › Apps › Startup, ⌥Enter on an app): hypr/scripts/autostart keeps the list and starts them at login
     property var autostartIds: []
     Sh {
         id: autostartProc
@@ -760,7 +776,9 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                                               "clipboard": "clipboard history", "emoji": "emoji picker", "keybindings": "this help" })
     function shortcutFor(it) {
         if (!it || !it.name || (it.kind !== "app" && it.kind !== "nav")) return ""
-        if (it.kind === "nav" && parents[it.target] === "settings") return ""   // settings pages: "Notifications" is not the ⌘Esc panel
+        if (level === "startup") return ""      // there the rows are switches, not apps to open
+        // settings pages: "Notifications" is not the ⌘Esc panel, Apps › "Firefox" not Hyper B
+        if (it.kind === "nav" && (parents[it.target] === "settings" || parents[it.target] === "appsettings")) return ""
         const n = it.name.toLowerCase()
         return keyIndex[n] || keyIndex[shortcutAliases[n] || ""] || ""
     }
@@ -1187,7 +1205,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                                letterSpacing: nameText.subLine ? 0 : 1 }
                     }
                     Rectangle {      // the row's shortcut (shortcutFor) in a key frame like the footer's, before the › of a submenu;
-                        id: shortcut     // not where the right side is taken. capKeys: a row's own keys (Settings › Keyboard Shortcuts)
+                        id: shortcut     // not where the right side is taken. capKeys: a row's own keys (Settings › Apps › App shortcuts)
                         readonly property string keys: row.modelData.capKeys !== undefined ? row.modelData.capKeys
                             : !win.prefs.shortcuts || trailing.tag || row.modelData.keys !== undefined || row.armedNow
                             || (row.modelData.summary !== undefined && row.modelData.summary !== "") ? "" : win.shortcutFor(row.modelData)
@@ -1290,7 +1308,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                             NumberAnimation { to: 1; duration: 350; easing.type: Easing.InOutSine }
                         }
                     }
-                    Text {           // row.modelData.note: small dim text after the name (Settings › Home: how many there are)
+                    Text {           // row.modelData.note: small dim text after the name (Settings › Apps › Home Assistant: how many there are)
                         id: note
                         visible: row.modelData.note !== undefined
                         x: nameText.x + Math.min(nameText.contentWidth, nameText.width) + 10
@@ -1310,7 +1328,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                         font { family: Icons.family; pixelSize: win.fontSize - 2 }
                     }
                     Slider {         // Settings › Display › Brightness, Sound: above the row's MouseArea, so it gets the drag
-                        // Settings › Headphones › Battery: a meter (no knob, not draggable), green while charging, red when low
+                        // Sound › Headphones › Battery: a meter (no knob, not draggable), green while charging, red when low
                         visible: row.modelData.kind === "brightness" || row.modelData.kind === "slider" || row.modelData.kind === "battery"
                         z: 1
                         // after the name ("Screen" in Display, "Brightness" in a search), lined up while the name is short

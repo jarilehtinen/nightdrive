@@ -26,7 +26,7 @@ A quiet mail client: folders, the thread list and the open thread, nothing else 
 - Writing opens in a window of its own: Ctrl+Enter sends, ⌘S saves it in Drafts. `Esc` closes it (a message saved before is saved again; with something new written, the second `Esc` throws it away). Closing the window with ⌘W keeps what you wrote in Drafts.
 - To and Cc offer the addresses in your mail as you type, the ones you use most first: ↑ / ↓ choose, `Tab` or `Enter` takes one.
 - ⌘⇧A or Attach picks files to attach, files dropped on the window are attached too, and × takes one off.
-- Mail opens mailto: links when you pick it as the email app (launcher › Settings › Default apps): then Hyper E opens Mail too.
+- Mail opens mailto: links when you pick it as the email app (launcher › Settings › Apps › Default apps): then Hyper E opens Mail too.
 
 ## Claude writes the reply
 
@@ -42,7 +42,7 @@ A quiet mail client: folders, the thread list and the open thread, nothing else 
 
 ## Settings
 
-⌘, (or Settings under the folders): whether writing and message windows float (the default) or open in the grid beside Mail, how a message opens (text, HTML on the dark page, or HTML as it was sent), and what Claude reads. They are kept in `~/.config/nightmail/settings.json`. Mail's colours follow the desktop's theme.
+⌘, (or Settings under the folders, or launcher › Settings › Apps › Mail): whether writing and message windows float (the default) or open in the grid beside Mail, how a message opens (text, HTML on the dark page, or HTML as it was sent), and what Claude reads. They are kept in `~/.config/nightmail/settings.json`. Mail's colours follow the desktop's theme.
 
 ## Setting up an account
 
@@ -161,6 +161,7 @@ SyncState *
 | `nightmail` | Opens Mail, or brings it forward |
 | `nightmail new` | Writes a new message |
 | `nightmail setup` | Sets up an email account with Claude, in a terminal |
+| `nightmail settings` | Opens Mail's settings |
 | `nightmail sync` | Fetches new mail now and shows it |
 | `nightmail show ID`, `reply ID`, `claude ID`, `delete ID` | A message by its notmuch id, as the notifications use them |
 | `nightmail enable`, `disable` | Mail among the apps, its notifications and the sync, on or off (your mail and settings stay) |

@@ -176,6 +176,7 @@ Usage: nightmail [command]
 
   (none), open   open Mail, or bring it forward if it is open
   new            write a new message
+  settings       open Mail's settings (launcher › Settings › Apps › Mail)
   mailto:…       write to a mailto: link's address (the desktop entry's handler for mailto links)
   setup          set up an email account with Claude, in a terminal
   sync           fetch new mail now and show it
@@ -196,6 +197,7 @@ USAGE
 case ${1:-open} in
   open)    if running; then focus; else start; fi ;;
   new)     running || { start; ready; }; qs ipc -p "$QS_DIR" call mail compose >/dev/null ;;
+  settings) if running; then focus; else start; ready; fi; qs ipc -p "$QS_DIR" call mail openSettings >/dev/null ;;
   mailto:*) running || { start; ready; }; qs ipc -p "$QS_DIR" call mail mailto "$1" >/dev/null ;;
   sync)
     if systemctl --user cat "$SYNC_UNIT" >/dev/null 2>&1; then

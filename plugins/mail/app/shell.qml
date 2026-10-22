@@ -64,7 +64,9 @@ ShellRoot {
             target: "mail"
             function refresh(): void { win.reload(true) }
             function compose(): void { win.compose("new") }
-            // A mailto: link (`nightmail mailto:…`, when Mail is the email app: launcher › Settings › Default apps)
+            // Settings › Apps › Mail (`nightmail settings`)
+            function openSettings(): void { win.showSettings = true }
+            // A mailto: link (`nightmail mailto:…`, when Mail is the email app: launcher › Settings › Apps › Default apps)
             function mailto(url: string): void { win.compose("new", null, win.mailtoFields(url)) }
             // A notification's click and Reply button (lib/notify.py, through `nightmail show` and `reply`).
             // (Not "show": `qs ipc call` takes that word for its own command.)

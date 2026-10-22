@@ -1,8 +1,8 @@
 import QtQuick
 import Quickshell
 
-// The launcher's Settings › Mouse (the wheel's scroll speed), Launcher (fuzzy search, shortcut hints), Browser (Firefox's links and tab bar), Computer name, Remote login (sshd), Notifications (how long a popup stays,
-// the two sounds, FUMonitor's alerts) and Update channel. Startup stays in Launcher.qml: its rows are the app rows.
+// The launcher's Settings › Mouse (the wheel's scroll speed), Launcher (fuzzy search, shortcut hints), Firefox (its links and tab bar), Computer name, Remote login (sshd), Notifications (how long a popup stays,
+// the two sounds, FUMonitor's alerts), Crash reports and Update channel. Startup stays in Launcher.qml: its rows are the app rows.
 // Launcher.qml asks it like DefaultAppsLevels (levels, titles, parents, items, activate, footer, entered), shows compName
 // channel and the mouse's speed on Settings' own rows, and calls entered("settings") to read them.
 Item {
@@ -10,12 +10,12 @@ Item {
     property var launcher: null
 
     readonly property string scripts: Quickshell.env("HOME") + "/.config/hypr/scripts"
-    readonly property var levels: ["launcherprefs", "compname", "remotelogin", "sounds", "notiftime", "soundregular", "soundurgent", "channel", "browser", "mousescroll"]
+    readonly property var levels: ["launcherprefs", "compname", "remotelogin", "sounds", "notiftime", "soundregular", "soundurgent", "channel", "browser", "mousescroll", "crashreports"]
     readonly property var titles: ({ launcherprefs: "Settings › Launcher", compname: "Settings › Computer name", remotelogin: "Settings › Remote login", channel: "Settings › Update channel",
-                                     browser: "Settings › Browser", mousescroll: "Settings › Mouse",
+                                     browser: "Apps › Firefox", mousescroll: "Settings › Mouse", crashreports: "Settings › Crash reports",
                                      sounds: "Settings › Notifications", notiftime: "Notifications › Show for",
                                      soundregular: "Notifications › Regular sound", soundurgent: "Notifications › Urgent sound" })
-    readonly property var parents: ({ launcherprefs: "settings", compname: "settings", remotelogin: "settings", channel: "settings", sounds: "settings", browser: "settings", mousescroll: "settings",
+    readonly property var parents: ({ launcherprefs: "settings", compname: "settings", remotelogin: "settings", channel: "settings", sounds: "settings", browser: "appsettings", mousescroll: "settings", crashreports: "settings",
                                       notiftime: "sounds", soundregular: "sounds", soundurgent: "sounds" })
 
     // Settings › Computer name: the pretty host name, or the host name as LocalSend and Ferry show it without one
@@ -69,11 +69,11 @@ Item {
             if (l.level === "channel" && l.query === "") l.selectWhere(r => r.value === b.channel)
         }
     }
-    // Settings › Browser (hypr/scripts/firefox-prefs): "" until read, "none" without a Firefox profile, else
+    // Settings › Apps › Firefox (hypr/scripts/firefox-prefs): "" until read, "none" without a Firefox profile, else
     // { links: window|tab, tabbar: auto|always }. Its row in Settings shows only with a profile.
     property var firefox: ""
     readonly property var browserItems: firefox !== "" && firefox !== "none"
-        ? [{ kind: "nav", name: "Browser", glyph: "globe", target: "browser" }] : []
+        ? [{ kind: "nav", name: "Firefox", glyph: "globe", target: "browser" }] : []
     Sh {
         id: firefoxProc
         command: [b.scripts + "/firefox-prefs", "status"]
@@ -136,9 +136,6 @@ Item {
         ].concat(fumon === "on" || fumon === "off" ? [   // only where uwsm has fumon (up to 0.26)
             { kind: "fumon", name: "Failed service alerts", glyph: "triangle-alert", switchOn: fumon === "on",
               sub: "FUMonitor’s “Failed unit detected” and “Unit recovered”" }] : [])
-        .concat(crashReports !== "" ? [   // hypr/scripts/crash-report
-            { kind: "crashreports", name: "Crash reports to Claude", glyph: "bug", switchOn: crashReports === "on",
-              sub: "When an app crashes: a notification, and Ask Claude finds out why" }] : [])
     }
     // ⇧Enter on a sound: plays it without choosing it ("None" has nothing to play)
     function listenSound(it) {
@@ -158,8 +155,10 @@ Item {
                 l.selectWhere(r => r.value === (l.level === "soundregular" ? b.soundRegular : b.soundUrgent))
         }
     }
-    // Settings › Notifications: whether crash reports are on
+    // Settings › Crash reports (hypr/scripts/crash-report): on | off, "" = not read yet (its row shows once read)
     property string crashReports: ""
+    readonly property var crashReportItems: crashReports !== ""
+        ? [{ kind: "nav", name: "Crash reports", glyph: "bug", target: "crashreports", summary: crashReports }] : []
     Sh {
         id: crashReportsProc
         command: [b.scripts + "/crash-report", "status"]
@@ -188,7 +187,8 @@ Item {
         if (level === "settings" || level === "browser") firefoxProc.running = true
         if (level === "settings" || level === "mousescroll") mouseScrollProc.running = true
         if (level === "sounds" || level === "soundregular" || level === "soundurgent") soundsProc.running = true
-        if (level === "sounds") { fumonProc.running = true; crashReportsProc.running = true }
+        if (level === "sounds") fumonProc.running = true
+        if (level === "settings" || level === "crashreports") crashReportsProc.running = true
         if (level === "notiftime") Qt.callLater(() => launcher.selectWhere(r => r.summary === "current"))   // the cursor on the current time
     }
     function shiftActivate(it) { if (it.kind === "sound") listenSound(it) }
@@ -229,6 +229,10 @@ Item {
                       sub: "Log in to this computer from another one with SSH" },
                     { kind: "note", name: remoteLogin === "on" ? "ssh " + sshAddress + " from the same network"
                                                               : "Off by default. Turning it on asks for your password" }]
+        }
+        if (level === "crashreports") {
+            return [{ kind: "crashreports", name: "Crash reports to Claude", glyph: "bug", switchOn: crashReports === "on",
+                      sub: "When an app crashes: a notification, and Ask Claude finds out why" }]
         }
         if (level === "sounds") return { all: soundsItems().map(t => ({ item: t, text: t.name })) }
         if (level === "notiftime") {

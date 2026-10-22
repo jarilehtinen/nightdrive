@@ -36,7 +36,10 @@ Item {
         }
         if (level === "removesw") {
             if (!removeLoaded) return [{ kind: "hint", name: "Loading packages…" }]
-            return { all: removeList.map(p => ({ item: p, text: p.name, extra: p.summary })) }
+            // The apps first, then the other packages (libraries, tools without a window); a search looks in both
+            const appRows = removeList.filter(p => p.app), other = removeList.filter(p => !p.app)
+            if (q === "") return [{ kind: "header", name: "Apps" }].concat(appRows, [{ kind: "header", name: "Other packages" }], other)
+            return { all: appRows.concat(other).map(p => ({ item: p, text: p.name, extra: p.summary })) }
         }
         if (level === "removeweb") {
             if (webappList.length === 0) return [{ kind: "hint", name: "No webapps (add one in System › Install › Webapp)" }]
@@ -57,15 +60,29 @@ Item {
     // Software: packages the user installed, then the user's Flatpak apps (after a "--flatpak--" line, tab-separated)
     Sh {
         id: removeProc
-        script: 'dnf repoquery --userinstalled -q --queryformat "%{name}|%{summary}\\n" 2>/dev/null | sort -u; echo --flatpak--; flatpak list --app --user --columns=application,name,description 2>/dev/null'
+        // After the Flatpak apps, each package's app (its .desktop file, not a hidden one): package, icon, name
+        script: 'dnf repoquery --userinstalled -q --queryformat "%{name}|%{summary}\\n" 2>/dev/null | sort -u; echo --flatpak--; flatpak list --app --user --columns=application,name,description 2>/dev/null; '
+              + 'echo --apps--; f=$(grep -L "^NoDisplay=true" /usr/share/applications/*.desktop); '
+              + 'paste <(rpm -qf --qf "%{NAME}\\n" $f) <(for d in $f; do printf "%s\\t%s\\n" "$(sed -n "s/^Icon=//p" "$d" | head -1)" "$(sed -n "s/^Name=//p" "$d" | head -1)"; done)'
         onResult: text => {
             const term = r.launcher.term
-            const [dnf, fp] = text.split("--flatpak--\n")
+            const [dnf, rest] = text.split("--flatpak--\n")
+            const [fp, desk] = (rest || "").split("--apps--\n")
             const apps = (fp || "").split("\n").map(l => l.split("\t")).filter(f => f[1])
-            r.removeList = r.parsePackages(dnf).map(p => ({ kind: "action", name: p.name, summary: p.summary, glyph: "package-minus",
-                                                             src: "dnf", id: p.name, remove: true, cmd: term('sudo dnf remove "$1"', p.name) }))
-                .concat(apps.map(([id, name, desc]) => ({ kind: "action", name: name, summary: (desc || "") + "  ·  Flatpak", glyph: "package-minus",
-                                                            src: "flatpak", id: id, remove: true, cmd: term('flatpak uninstall --user "$1"', id) })))
+            // package → its app: { icon, name }. Of a package's several, the one with the package's own icon (blueman:
+            // Bluetooth Manager, not Bluetooth Adapters), else the first
+            const appOf = {}
+            for (const [pkg, icon, name] of (desk || "").split("\n").map(l => l.split("\t")))
+                if (pkg && name && !/ is not owned/.test(pkg) && (!appOf[pkg] || (icon === pkg && appOf[pkg].icon !== pkg))) appOf[pkg] = { icon: icon, name: name }
+            // A package with an app shows as the app (its name and icon, the package's name after the summary)
+            r.removeList = r.parsePackages(dnf).map(p => {
+                const a = appOf[p.name]
+                return { kind: "action", name: a ? a.name : p.name, summary: a && a.name.toLowerCase() !== p.name ? p.summary + "  ·  " + p.name : p.summary,
+                         iconFile: a && a.icon ? a.icon : undefined, glyph: a && a.icon ? undefined : "package-minus", app: !!a,
+                         src: "dnf", id: p.name, remove: true, cmd: term('sudo dnf remove "$1"', p.name) }
+            }).concat(apps.map(([id, name, desc]) => ({ kind: "action", name: name, summary: (desc || "") + "  ·  Flatpak", iconFile: id, app: true,
+                                                        src: "flatpak", id: id, remove: true, cmd: term('flatpak uninstall --user "$1"', id) })))
+                .sort((a, b) => a.name.localeCompare(b.name))
             r.removeLoaded = true
         }
     }

@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell
 
-// The launcher's Settings › Default apps: which app opens links, mail, folders, images… One row per kind with its app;
+// The launcher's Settings › Apps › Default apps: which app opens links, mail, folders, images… One row per kind with its app;
 // Enter opens the kind's apps (Default apps › Browser), whose Enter makes one the default. The last row there goes to
 // Install › Software for apps that aren't installed yet: a search ("document viewer") or a category (Browsers).
 // Data and changes: hypr/scripts/default-apps (nightdrive defaults), which also starts the apps behind Hyper B / F / I.
@@ -14,8 +14,8 @@ Item {
 
     readonly property string script: Quickshell.env("HOME") + "/.config/hypr/scripts/default-apps"
     readonly property var levels: ["defaults", "defaultpick"]
-    readonly property var titles: ({ defaults: "Settings › Default apps", defaultpick: "Default apps › " + kind.name })
-    readonly property var parents: ({ defaults: "settings", defaultpick: "defaults" })
+    readonly property var titles: ({ defaults: "Apps › Default apps", defaultpick: "Default apps › " + kind.name })
+    readonly property var parents: ({ defaults: "appsettings", defaultpick: "defaults" })
     readonly property var settingsItems: [{ kind: "nav", name: "Default apps", glyph: "layout-grid", target: "defaults" }]
 
     function footer(level, query) {

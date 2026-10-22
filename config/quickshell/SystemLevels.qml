@@ -13,8 +13,8 @@ Item {
 
     readonly property var levels: ["wifi", "wifipw", "bluetooth", "sound", "headphones", "tailscale", "status", "mirrorpin"]
     readonly property var titles: ({ status: "System › Status", mirrorpin: "Screen Mirroring › Code", wifi: "Settings › Wi-Fi", wifipw: "Wi-Fi › Password", bluetooth: "Settings › Bluetooth",
-                                     sound: "Settings › Sound", headphones: "Settings › Headphones", tailscale: "Settings › Tailscale" })
-    readonly property var parents: ({ status: "system", mirrorpin: "display", wifi: "settings", wifipw: "wifi", bluetooth: "settings", sound: "settings", headphones: "settings", tailscale: "settings" })
+                                     sound: "Settings › Sound", headphones: "Sound › Headphones", tailscale: "Settings › Tailscale" })
+    readonly property var parents: ({ status: "system", mirrorpin: "display", wifi: "settings", wifipw: "wifi", bluetooth: "settings", sound: "settings", headphones: "sound", tailscale: "settings" })
     readonly property string level: launcher ? launcher.level : ""
     readonly property bool shown: launcher !== null && launcher.open && levels.indexOf(level) >= 0
 
@@ -537,6 +537,9 @@ done; true'
             r.push({ kind: "btmic", card: d.card, name: d.name, glyph: "headphones", extra: "input microphone headphones",
                      summary: btMicBusy === d.card ? "switching…" : btMicFailed === d.card ? "didn't switch" : "headset mode" })
         r.push({ kind: "header", name: "More" })
+        // Bluetooth headphones' own page (modes, battery, equalizer), while they are connected
+        const bt = sinks.find(d => d.bt)
+        if (bt) r.push({ kind: "nav", name: "Headphones", glyph: "headphones", target: "headphones", summary: bt.name, extra: "headphones airpods noise" })
         r.push({ kind: "action", name: "Sound settings…", glyph: "settings", cmd: ["pavucontrol"] })
         return r
     }
@@ -827,13 +830,19 @@ done; true'
     Timer { interval: 2000; repeat: true; running: s.launcher !== null && s.launcher.open && (s.level === "display" || s.level === "mirrorpin"); onTriggered: mirrorProc.running = true }
     Sh {
         id: mirrorProc
-        script: 'c="$HOME/.local/bin/doubletake-ctl"; [ -x "$c" ] || exit 0; "$c" status; echo; "$c" devices'
+        script: 'c="$HOME/.local/bin/doubletake-ctl"; [ -x "$c" ] || exit 0; "$c" status; echo; "$c" devices; echo; printf "{\\"self\\": \\"%s\\"}\\n" "$(hostname -I)"'
         onResult: text => {
-            const parts = text.trim().split(/\n(?=\{)/)   // two JSON objects: status, then devices
+            const parts = text.trim().split(/\n(?=\{)/)   // three JSON objects: status, devices, and this computer's addresses
             let st = null, dev = null
-            try { st = JSON.parse(parts[0]); dev = JSON.parse(parts[1]) } catch (e) {}
+            let self = []
+            try { st = JSON.parse(parts[0]); dev = JSON.parse(parts[1]); self = JSON.parse(parts[2]).self.trim().split(/\s+/) } catch (e) {}
             const avail = Plugins.has("mirroring") && st !== null && st.ok === true   // off: hidden, though doubletake runs
-            const devices = dev && dev.devices ? dev.devices.map(d => ({ name: d.name, model: d.model || "", ip: d.ip })) : []
+            // Only what can show a screen: not this computer's own receiver (AirPlay Receiver), nor a speaker. AirPlay's
+            // listing doesn't say which can show video, so speakers are told by their model: Sonos (One, Era 300…),
+            // HomePods, receivers
+            const speaker = /^(One|One SL|Era \d+|Five|Play:\d|Move|Roam|Beam|Arc|Ray|Sub|Port|Amp|Connect)\b|HomePod|AudioAccessory|STR-/i
+            const devices = dev && dev.devices ? dev.devices.filter(d => !self.includes(d.ip) && !speaker.test(d.model || ""))
+                                                            .map(d => ({ name: d.name, model: d.model || "", ip: d.ip })) : []
             const state = st && st.state ? st.state : "idle"
             const ip = st && st.device_ip ? st.device_ip : ""
             if (avail === s.mirrorAvail && state === s.mirrorState && ip === s.mirrorIp && JSON.stringify(devices) === JSON.stringify(s.mirrorDevices)) return
