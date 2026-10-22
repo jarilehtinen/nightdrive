@@ -1,10 +1,13 @@
 #!/bin/bash
-# Display scale and arrangement (launcher Settings › Display). Chosen: ~/.local/state/nightdrive/display ("<output>
-# <scale>" per line, and "builtin <side>"), which hyprland.lua reads on every (re)load, so a choice survives a reboot
-# and wins over MONITOR_SCALE and local.lua.
+# Display scale, refresh rate and arrangement (launcher Settings › Display). Chosen: ~/.local/state/nightdrive/display
+# ("<output> <scale>" per line, "mode <output> <width>x<height>@<hz>" and "builtin <side>"), which hyprland.lua reads on
+# every (re)load, so a choice survives a reboot and wins over MONITOR_SCALE and local.lua.
 #   display list              one line per output: name, description, current scale, then "scale:width×height" for every scale
 #                             that divides the panel evenly (Hyprland adjusts any other value, which blurs text)
 #   display scale <out> <s>   saves the scale for that output and reloads Hyprland
+#   display rates             one line per output: name, current refresh rate, the chosen one (or auto: the display's
+#                             preferred mode, often 60 Hz on a TV that does 120), then every rate at its current resolution
+#   display rate <out> <hz>   saves that rate (at the current resolution) or auto for that output and reloads Hyprland
 #   display side [<side>]     where the laptop's own screen is next to the external one: left, right, above, below or
 #                             auto (Hyprland's choice: side by side); without one, prints the saved side
 set -euo pipefail
@@ -30,6 +33,22 @@ case ${1:-} in
     mkdir -p "${state%/*}"
     { grep -v "^$out " "$state" 2>/dev/null || true; echo "$out $s"; } > "$state.tmp" && mv "$state.tmp" "$state"
     hyprctl reload >/dev/null ;;
+  rates)
+    hyprctl -j monitors | jq -r --slurpfile chosen <(awk '$1 == "mode" { print "{\"" $2 "\": \"" $3 "\"}" }' "$state" 2>/dev/null || true) '
+      ($chosen | add // {}) as $c | .[] | . as $m |
+      # One rate per whole number (60.00 and 59.94 Hz are both 60), the highest; below 50 Hz only for films
+      [.availableModes[] | capture("^(?<w>[0-9]+)x(?<h>[0-9]+)@(?<r>[0-9.]+)Hz$") |
+       select((.w | tonumber) == $m.width and (.h | tonumber) == $m.height) | .r | tonumber | select(. >= 50)] |
+      group_by(round) | map(max) | sort | reverse |
+      [$m.name, ($m.refreshRate * 100 | round / 100 | tostring), ($c[$m.name] // "auto" | sub("^.*@"; ""))] + map(tostring) | @tsv' ;;
+  rate)
+    out=${2:?output}; hz=${3:?rate}
+    [[ $hz == auto || $hz =~ ^[0-9]+(\.[0-9]+)?$ ]] || { echo "bad rate: $hz" >&2; exit 1; }
+    size=$(hyprctl -j monitors | jq -r --arg o "$out" '.[] | select(.name == $o) | "\(.width)x\(.height)"')
+    [[ -n $size ]] || { echo "no output: $out" >&2; exit 1; }
+    mkdir -p "${state%/*}"
+    { grep -v "^mode $out " "$state" 2>/dev/null || true; [[ $hz == auto ]] || echo "mode $out $size@$hz"; } > "$state.tmp" && mv "$state.tmp" "$state"
+    hyprctl reload >/dev/null ;;
   side)
     if [[ -z ${2:-} ]]; then
       awk '$1 == "builtin" { s = $2 } END { print s ? s : "auto" }' "$state" 2>/dev/null || echo auto
@@ -40,5 +59,5 @@ case ${1:-} in
     mkdir -p "${state%/*}"
     { grep -v "^builtin " "$state" 2>/dev/null || true; [[ $side == auto ]] || echo "builtin $side"; } > "$state.tmp" && mv "$state.tmp" "$state"
     hyprctl reload >/dev/null ;;
-  *) sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+  *) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
 esac

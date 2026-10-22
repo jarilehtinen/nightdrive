@@ -3,7 +3,7 @@ import Quickshell
 
 // Display: screen brightness (brightnessctl), night light (hypr/scripts/nightlight), Screen Mirroring over AirPlay
 // (the mirroring plugin: plugins/mirroring, bin/mirroring; hidden without it or while it's off) and the scale of each output (hypr/scripts/display: only scales the
-// panel divides evenly, shown as the resulting desktop size).
+// panel divides evenly, shown as the resulting desktop size) and its refresh rate.
 // The launcher's Settings › Display has the same settings.
 Column {
     id: m
@@ -14,6 +14,7 @@ Column {
     property real pending: -1
     property string night: ""        // on | off
     property var displays: []        // [{ name, desc, scale, opts: [{ value, size }] }]
+    property var rates: ({})         // { output: { chosen: hz or "auto", hz: [...] } } (display rates)
     property bool mirrorAvail: false
     property var mirrorDevices: []   // [{ name, model, ip }] (doubletake-ctl devices)
     property string mirrorState: "idle"   // idle | connecting | pin_required | streaming
@@ -22,7 +23,7 @@ Column {
     signal close()
 
     function refresh() { briProc.running = true; nightProc.running = true; mirrorProc.running = true }
-    Component.onCompleted: { refresh(); displayProc.running = true }
+    Component.onCompleted: { refresh(); displayProc.running = true; ratesProc.running = true }
     Timer { interval: 3000; repeat: true; running: true; onTriggered: m.refresh() }
 
     Timer {
@@ -68,6 +69,16 @@ Column {
             m.displays = text.split("\n").map(l => l.split("\t")).filter(f => f.length >= 4).map(f => ({
                 name: f[0], desc: f[1], scale: parseFloat(f[2]),
                 opts: f.slice(3).map(o => { const [v, size] = o.split(":"); return { value: parseFloat(v), size: size.replace("×", " × ") } }) }))
+        }
+    }
+    Sh {
+        id: ratesProc
+        script: '"$HOME/.config/hypr/scripts/display" rates'
+        onResult: text => {
+            const r = {}
+            for (const f of text.split("\n").map(l => l.split("\t")).filter(f => f.length >= 3))
+                r[f[0]] = { chosen: f[2] === "auto" ? "auto" : parseFloat(f[2]), hz: f.slice(3).map(parseFloat) }
+            m.rates = r
         }
     }
 
@@ -205,6 +216,34 @@ Column {
                         Quickshell.execDetached([Quickshell.env("HOME") + "/.config/hypr/scripts/display", "scale", name, String(value)])
                         // Shown as chosen at once; Hyprland reloads with the new scale and the menu follows
                         m.displays = m.displays.map(x => x.name === name ? Object.assign({}, x, { scale: value }) : x)
+                    }
+                }
+            }
+            // Its refresh rates, only with a choice: Automatic is the display's preferred mode (a TV's is often 60 Hz)
+            readonly property var r: m.rates[d.name] || null
+            readonly property var rateRows: r && r.hz.length > 1
+                ? r.hz.map(hz => ({ value: String(hz), label: Math.round(hz) + " Hz", detail: +hz.toFixed(2) + " Hz",
+                                    cur: r.chosen !== "auto" && Math.abs(hz - r.chosen) < 0.01 }))
+                      .concat([{ value: "auto", label: "Automatic", detail: "preferred mode", cur: r.chosen === "auto" }])
+                : []
+            MenuSection { visible: rateRows.length > 0; title: "Refresh rate" }
+            Repeater {
+                model: rateRows
+                delegate: MenuRow {
+                    required property var modelData
+                    width: parent.width
+                    icon: laptop ? "laptop" : "monitor"
+                    label: modelData.label
+                    detail: modelData.detail
+                    active: modelData.cur
+                    checkIcon: modelData.cur ? "check" : ""
+                    onClicked: {
+                        if (modelData.cur) return
+                        const name = d.name, value = modelData.value
+                        Quickshell.execDetached([Quickshell.env("HOME") + "/.config/hypr/scripts/display", "rate", name, value])
+                        const r = Object.assign({}, m.rates)
+                        r[name] = Object.assign({}, r[name], { chosen: value === "auto" ? "auto" : parseFloat(value) })
+                        m.rates = r
                     }
                 }
             }

@@ -2,7 +2,7 @@ import QtQuick
 import Quickshell
 
 // The launcher's Settings › Display (brightness, night light, Screen Mirroring's rows from SystemLevels.qml, where the
-// laptop's screen is next to an external one, the keyboard's backlight, and each output's scales) and Battery (charge and state, then the details, as in the top bar's battery menu).
+// laptop's screen is next to an external one, the keyboard's backlight, and each output's scales and refresh rates) and Battery (charge and state, then the details, as in the top bar's battery menu).
 // The brightness rows (screen, keyboard: the row's key) are sliders that Launcher.qml draws (bright, keys, setBright) and
 // ←/→ steps (stepBright), also in the root search; Launcher.qml's displayItems() puts them there.
 // Launcher.qml asks it like DefaultAppsLevels (levels, titles, parents, items, activate, footer, entered).
@@ -11,6 +11,7 @@ Item {
     property var launcher: null
 
     property var displays: null               // [{ name, desc, scale, opts: [{ value, size }] }] (hypr/scripts/display list)
+    property var rates: ({})                  // { output: { current, chosen: hz or "auto", hz: [...] } } (display rates)
     property string side: ""                  // the laptop's screen: left | right | above | below | auto (display side)
     property real bright: -1                  // Brightness: 0..1 (brightnessctl), -1 = no backlight (a VM) or not read yet
     property real pendingBright: -1           // the slider's value waiting to be applied (throttled)
@@ -32,7 +33,7 @@ Item {
     // On every open: the root search has the brightness and night light rows too
     function opened() { brightProc.running = true; keysProc.running = true; nightProc.running = true }
     function entered(level) {
-        if (level === "display") { displayProc.running = true; sideProc.running = true; brightProc.running = true; keysProc.running = true; nightProc.running = true }
+        if (level === "display") { displayProc.running = true; ratesProc.running = true; sideProc.running = true; brightProc.running = true; keysProc.running = true; nightProc.running = true }
         if (level === "battery") { battProc.running = true; battDetailProc.running = true }
     }
     function shiftActivate(it) {}
@@ -66,6 +67,19 @@ Item {
                     const cur = Math.abs(o.value - d.scale) < 0.01
                     out.push({ kind: "scale", output: d.name, value: o.value, name: o.size, glyph: cur ? "check" : "monitor",
                                summary: (cur ? "current · " : "") + "scale " + +o.value.toFixed(2) })
+                }
+                // Refresh rates at its resolution, only with a choice: Automatic is the display's preferred mode
+                const r = rates[d.name]
+                if (r && r.hz.length > 1) {
+                    out.push({ kind: "header", name: "Refresh rate" + (displays.length > 1 ? " · " + d.name : "") })
+                    for (const hz of r.hz) {
+                        const cur = r.chosen !== "auto" && Math.abs(hz - r.chosen) < 0.01
+                        out.push({ kind: "rate", output: d.name, value: String(hz), name: Math.round(hz) + " Hz", glyph: cur ? "check" : "monitor",
+                                   summary: (cur ? "current · " : "") + +hz.toFixed(2) + " Hz" })
+                    }
+                    const auto = r.chosen === "auto"
+                    out.push({ kind: "rate", output: d.name, value: "auto", name: "Automatic", glyph: auto ? "check" : "monitor",
+                               summary: (auto ? "current · " : "") + "the display's preferred mode" })
                 }
             }
             return out
@@ -109,6 +123,14 @@ Item {
             Quickshell.execDetached([scripts + "/display", "side", it.value])
             return true
         }
+        if (it.kind === "rate") {         // stays open like the scale rows; Hyprland reloads with the new mode
+            l.keepSelection()
+            const r = Object.assign({}, rates)
+            r[it.output] = Object.assign({}, r[it.output], { chosen: it.value === "auto" ? "auto" : parseFloat(it.value) })
+            rates = r
+            Quickshell.execDetached([scripts + "/display", "rate", it.output, it.value])
+            return true
+        }
         if (it.kind === "scale") {        // stays open like the theme rows; Hyprland reloads with the new scale
             l.keepSelection()
             displays = displays.map(d => d.name === it.output ? Object.assign({}, d, { scale: it.value }) : d)
@@ -150,6 +172,17 @@ Item {
                 name: f[0], desc: f[1], scale: parseFloat(f[2]),
                 opts: f.slice(3).map(o => { const [v, size] = o.split(":"); return { value: parseFloat(v), size: size.replace("×", " × ") } }) }))
             if (first && p.launcher.level === "display" && p.launcher.query === "") p.launcher.selectFirst()   // was the Loading… hint
+        }
+    }
+    Sh {
+        id: ratesProc
+        script: '"$HOME/.config/hypr/scripts/display" rates'
+        onResult: text => {
+            const r = {}
+            for (const f of text.split("\n").map(l => l.split("\t")).filter(f => f.length >= 3))
+                r[f[0]] = { current: parseFloat(f[1]), chosen: f[2] === "auto" ? "auto" : parseFloat(f[2]), hz: f.slice(3).map(parseFloat) }
+            p.launcher.keepSelection()
+            p.rates = r
         }
     }
     Sh {

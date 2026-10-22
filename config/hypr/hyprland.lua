@@ -33,15 +33,18 @@ hl.monitor({
     position = "auto",
     scale    = MONITOR_SCALE,
 })
--- Chosen in the launcher (Settings › Display, hypr/scripts/display): "<output> <scale>" per line, and "builtin <side>"
--- for where the laptop's own screen is next to the external one. A named output's rule wins over the "" rules above and
--- in local.lua.
-local scales, builtinSide = {}, nil
+-- Chosen in the launcher (Settings › Display, hypr/scripts/display): "<output> <scale>" per line, "mode <output>
+-- <width>x<height>@<hz>" for a refresh rate other than the display's preferred one (a TV's is often 60 Hz though it does
+-- 120), and "builtin <side>" for where the laptop's own screen is next to the external one. A named output's rule wins
+-- over the "" rules above and in local.lua.
+local scales, modes, builtinSide = {}, {}, nil
 local state = io.open(HOME .. "/.local/state/nightdrive/display")
 if state then
     for line in state:lines() do
         local output, scale = line:match("^(%S+)%s+([%d.]+)$")
         if output then scales[output] = tonumber(scale) end
+        local mo, mode = line:match("^mode%s+(%S+)%s+(%S+)$")
+        if mo then modes[mo] = mode end
         builtinSide = line:match("^builtin%s+(%a+)$") or builtinSide
     end
     state:close()
@@ -71,11 +74,20 @@ do
         end
     end
 end
-for output, scale in pairs(scales) do
-    if not positions[output] then hl.monitor({ output = output, mode = "preferred", position = "auto", scale = scale }) end
+-- An output with only a rate keeps the scale it has (MONITOR_SCALE or local.lua's), since its own rule replaces those
+local current = {}
+for _, m in ipairs(hl.get_monitors()) do current[m.name] = m.scale end
+local named = {}
+for output in pairs(scales) do named[output] = true end
+for output in pairs(modes) do named[output] = true end
+for output in pairs(named) do
+    if not positions[output] then
+        hl.monitor({ output = output, mode = modes[output] or "preferred", position = "auto",
+                     scale = scales[output] or current[output] or "auto" })
+    end
 end
 for output, p in pairs(positions) do
-    hl.monitor({ output = output, mode = "preferred", position = p.pos, scale = scales[output] or p.m.scale })
+    hl.monitor({ output = output, mode = modes[output] or "preferred", position = p.pos, scale = scales[output] or p.m.scale })
 end
 -- Lid closed with an external display (logind: docked, so it doesn't suspend): the built-in screen is turned off, so the
 -- windows, workspaces and the pointer move to the external one instead of staying under the lid. scripts/lid follows

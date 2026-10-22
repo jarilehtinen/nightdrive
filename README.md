@@ -329,7 +329,8 @@ The full list is in [`config/hypr/SHORTCUTS.md`](config/hypr/SHORTCUTS.md).
   MacBook's display (scale 2) and a Finnish Mac keyboard. The installer writes the machine's own into
   `config/hypr/local.lua`: on a PC the display scale picked automatically and the keyboard layout Fedora's installer
   set, in a VM settings for it, on a Mac the layout unless it's Finnish. The login screen uses the same layout. A scale picked in the
-  launcher (Settings › Display) wins over both.
+  launcher (Settings › Display) wins over both, and so does a refresh rate picked there (Automatic is the display's
+  preferred mode: a TV that does 120 Hz often prefers 60).
 - **X11 apps** (REAPER, Steam, Discord) draw at the screen's full resolution, so they are sharp but small on a scaled
   screen: turn up the app's own scale or zoom in its settings.
 - **Per-machine overrides** go to `config/hypr/local.lua`, which git ignores.
