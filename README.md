@@ -120,6 +120,8 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
   it. The other shortcuts are in the config files ([Make it yours](#make-it-yours)).
 - **Mouse**: the mouse wheel's scroll speed, from 0.5× to 3×, in the launcher (Settings › Mouse). It applies right away
   and leaves the trackpad's speed as it is.
+- **Remote login**: SSH into this computer from another one, off by default like on a Mac. Turn it on in the launcher
+  (Settings › Remote login); the page shows the address to use.
 - **Login apps**: you choose what starts at login in the launcher (Settings › Startup, or ⌥Enter on an app). Background
   apps start hidden. Only 1Password (if installed) is on by default, because its SSH agent and the Passwords level need it.
 - **Login screen**: a password-only greeter that matches the theme (`--no-greeter` keeps the distribution's own).

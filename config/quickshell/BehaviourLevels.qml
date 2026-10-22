@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell
 
-// The launcher's Settings › Mouse (the wheel's scroll speed), Launcher (fuzzy search, shortcut hints), Browser (Firefox's links and tab bar), Computer name, Notifications (how long a popup stays,
+// The launcher's Settings › Mouse (the wheel's scroll speed), Launcher (fuzzy search, shortcut hints), Browser (Firefox's links and tab bar), Computer name, Remote login (sshd), Notifications (how long a popup stays,
 // the two sounds, FUMonitor's alerts) and Update channel. Startup stays in Launcher.qml: its rows are the app rows.
 // Launcher.qml asks it like DefaultAppsLevels (levels, titles, parents, items, activate, footer, entered), shows compName
 // channel and the mouse's speed on Settings' own rows, and calls entered("settings") to read them.
@@ -10,12 +10,12 @@ Item {
     property var launcher: null
 
     readonly property string scripts: Quickshell.env("HOME") + "/.config/hypr/scripts"
-    readonly property var levels: ["launcherprefs", "compname", "sounds", "notiftime", "soundregular", "soundurgent", "channel", "browser", "mousescroll"]
-    readonly property var titles: ({ launcherprefs: "Settings › Launcher", compname: "Settings › Computer name", channel: "Settings › Update channel",
+    readonly property var levels: ["launcherprefs", "compname", "remotelogin", "sounds", "notiftime", "soundregular", "soundurgent", "channel", "browser", "mousescroll"]
+    readonly property var titles: ({ launcherprefs: "Settings › Launcher", compname: "Settings › Computer name", remotelogin: "Settings › Remote login", channel: "Settings › Update channel",
                                      browser: "Settings › Browser", mousescroll: "Settings › Mouse",
                                      sounds: "Settings › Notifications", notiftime: "Notifications › Show for",
                                      soundregular: "Notifications › Regular sound", soundurgent: "Notifications › Urgent sound" })
-    readonly property var parents: ({ launcherprefs: "settings", compname: "settings", channel: "settings", sounds: "settings", browser: "settings", mousescroll: "settings",
+    readonly property var parents: ({ launcherprefs: "settings", compname: "settings", remotelogin: "settings", channel: "settings", sounds: "settings", browser: "settings", mousescroll: "settings",
                                       notiftime: "sounds", soundregular: "sounds", soundurgent: "sounds" })
 
     // Settings › Computer name: the pretty host name, or the host name as LocalSend and Ferry show it without one
@@ -24,6 +24,35 @@ Item {
         id: compNameProc
         script: 'n=$(hostnamectl --pretty 2>/dev/null); [ -n "$n" ] || { n=$(uname -n); n=${n%%.*}; n=${n^}; }; echo "$n"'
         onResult: text => b.compName = text.trim()
+    }
+    // Settings › Remote login: SSH into this computer, off by default like a Mac's (Fedora's preset leaves sshd off; the
+    // firewall lets 22 in, so the service is what decides). on | off | none (no openssh-server), "" = not read yet
+    property string remoteLogin: ""
+    property string sshAddress: ""
+    readonly property var remoteLoginItems: remoteLogin === "on" || remoteLogin === "off"
+        ? [{ kind: "nav", name: "Remote login", glyph: "terminal", target: "remotelogin", summary: remoteLogin }] : []
+    Sh {
+        id: remoteLoginProc
+        script: 'systemctl list-unit-files -q sshd.service | grep -q . || { echo none; exit; }; systemctl -q is-active sshd.service && echo on || echo off; h=$(uname -n); echo "$USER@${h%%.*}.local"'
+        onResult: text => {
+            const f = text.trim().split("\n")
+            b.remoteLogin = f[0] || ""
+            b.sshAddress = f[1] || ""
+        }
+    }
+    // systemd's polkit asks for the password; cancelling it leaves the switch as it was
+    Sh {
+        id: remoteLoginSetProc
+        onResult: text => {
+            if (exitCode !== 0 && !/not authorized|cancel/i.test(text))
+                Quickshell.execDetached(["notify-send", "-u", "critical", "-a", "Settings", "Remote login failed", text.trim()])
+            remoteLoginProc.running = true
+        }
+    }
+    function setRemoteLogin(on) {
+        remoteLogin = on ? "on" : "off"
+        remoteLoginSetProc.script = "systemctl " + (on ? "enable" : "disable") + " --now sshd.service"
+        remoteLoginSetProc.running = true
     }
     // Settings › Update channel: stable | dev | custom (nightdrive channel; the channel is the checkout's branch)
     property string channel: ""
@@ -145,7 +174,7 @@ Item {
 
     function footer(level, query) {
         const cur = launcher.results[launcher.selIndex] || {}
-        if (level === "launcherprefs" || cur.kind === "firefox" || cur.kind === "fumon" || cur.kind === "crashreports") return "Enter: on/off"
+        if (level === "launcherprefs" || cur.kind === "firefox" || cur.kind === "remotelogin" || cur.kind === "fumon" || cur.kind === "crashreports") return "Enter: on/off"
         if (cur.kind === "mousescroll") return "Enter: choose, then try the wheel"
         if (cur.kind === "sound") return "Enter: choose  ·  Shift+Enter: listen"
         if (level === "compname" && query.trim() !== "") return "Enter: rename (asks for your password)"
@@ -155,6 +184,7 @@ Item {
     function entered(level) {
         if (level === "settings" || level === "compname") compNameProc.running = true
         if (level === "settings" || level === "channel") channelProc.running = true
+        if (level === "settings" || level === "remotelogin") remoteLoginProc.running = true
         if (level === "settings" || level === "browser") firefoxProc.running = true
         if (level === "settings" || level === "mousescroll") mouseScrollProc.running = true
         if (level === "sounds" || level === "soundregular" || level === "soundurgent") soundsProc.running = true
@@ -194,6 +224,12 @@ Item {
             if (name === "") return launcher.hint("Now “" + compName + "”. Type a new name")
             return [{ kind: "compset", name: "Rename to “" + name + "”", glyph: "laptop", value: name }]
         }
+        if (level === "remotelogin") {
+            return [{ kind: "remotelogin", name: "Remote login", glyph: "terminal", switchOn: remoteLogin === "on",
+                      sub: "Log in to this computer from another one with SSH" },
+                    { kind: "note", name: remoteLogin === "on" ? "ssh " + sshAddress + " from the same network"
+                                                              : "Off by default. Turning it on asks for your password" }]
+        }
         if (level === "sounds") return { all: soundsItems().map(t => ({ item: t, text: t.name })) }
         if (level === "notiftime") {
             const cur = Math.round(Notifs.timeout / 1000)
@@ -232,6 +268,7 @@ Item {
             Quickshell.execDetached([scripts + "/crash-report", crashReports])
             return true
         }
+        if (it.kind === "remotelogin") { l.keepSelection(); setRemoteLogin(!it.switchOn); return true }
         if (it.kind === "fumon") {
             l.keepSelection()
             fumon = fumon === "on" ? "off" : "on"

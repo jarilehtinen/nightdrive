@@ -92,7 +92,7 @@ PanelWindow {
     readonly property var ext: extLoader.item
     // Levels from other files, which answer the same questions (items, activate, footer, entered; the optional ones below):
     // SystemLevels (Wi-Fi, Bluetooth, Sound, Tailscale, Status), HomeLevels (Home Assistant), DefaultAppsLevels, AppKeyLevels
-    // (Keyboard Shortcuts), BehaviourLevels (Mouse, Launcher, Browser, Computer name, Notifications, Update channel), InstallLevels,
+    // (Keyboard Shortcuts), BehaviourLevels (Mouse, Launcher, Browser, Computer name, Remote login, Notifications, Update channel), InstallLevels,
     // ToolsLevels (Clipboard, Emoji, Snippets), AppearanceLevels (Top bar, Screensaver), DisplayLevels (Display, Battery),
     // RemoveLevels, PasswordLevels (with 1Password), ThemeLevels (Theme, Background), ClaudeWriteLevels, the plugins' and the private
     // extension. A new file goes in this list, not in each question's code
@@ -220,7 +220,7 @@ PanelWindow {
             { kind: "nav", name: "Claude writes", glyph: "sparkles", target: "claudewrite", summary: cwrite.modelName(cwrite.model) }
         ], defs.settingsItems, behave.browserItems, akeys.settingsItems, [
             { kind: "nav", name: "Computer name", glyph: "laptop", target: "compname", summary: behave.compName }   // what phones see
-        ], home.settingsItems, [   // Home: only while Home Assistant is set up
+        ], behave.remoteLoginItems, home.settingsItems, [   // Home: only while Home Assistant is set up
             { kind: "nav", name: "Notifications", glyph: "bell-ring", target: "sounds" },
             { kind: "nav", name: "Startup", glyph: "rocket", target: "startup" },
             { kind: "nav", name: "Update channel", glyph: "git-branch", target: "channel",
@@ -249,6 +249,7 @@ PanelWindow {
                                               "Browser": "firefox tabs tab bar links new window",
                                               "Launcher": "search fuzzy typos shortcuts hints spotlight",
                                               "Computer name": "hostname rename device localsend airplay ferry phone",
+                                              "Remote login": "ssh sshd server remote access terminal sharing",
                                               "Update channel": "stable development dev beta branch updates",
                                               "Home": "home assistant automations buttons lights types",
                                               "Opacity": "top bar waybar panel transparency transparent",
