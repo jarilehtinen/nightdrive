@@ -28,11 +28,12 @@
   ⌘ ⌫                Move file to trash (in Files) {!keyd}
   ⌘ ⇧ V              Clipboard history (Enter pastes into the active window, ⇧ Enter copies only)
   ⌘ ⇧ E              Emoji picker (Enter pastes, ⇧ Enter copies only)
+  ⌘ ⇧ C              Claude writes the selected text out (a preview first: Enter replaces, ⌘ ⇧ C writes a new one, Esc cancels; in terminals, if turned on: the command)
 
 ## Windows
-  ⌘ W                Close window; background apps (Deck, WhatsApp, Telegram, Slack, Teams, 1Password) are only hidden and keep running, their other windows (Settings, dialogs) close (green dot in the launcher; their shortcut or the launcher brings them back)
+  ⌘ W                Close window; background apps (Deck, WhatsApp, Slack, 1Password…) are only hidden and keep running, with a green dot in the launcher (their shortcut brings them back)
   ⌘ Q                Quit the app for real: closes all its windows, and an app left running in the tray is asked to quit too (also the background apps; in Deck `q` does the same)
-  ⌘ ⇧ U              Open the window closed with ⌘W again, where it was (again: the one before it, up to 10). A terminal opens in the same folder, Claude Code with the same conversation; editors and the like start again (hypr/reopen-commands), nothing else that ran there
+  ⌘ ⇧ U              Reopen the window closed with ⌘W, where it was; again: the one before it (up to 10). A terminal opens in the same folder, Claude Code in the same conversation, editors start again (hypr/reopen-commands)
   ⌘ ⇧ F              Fullscreen
   ⌘ ⇧ T              Tile or float the window; a floating one goes to the centre (Deck: tiled → floating at start size in the centre; moved → back to centre; already there → tiles)
   ⌘ ⇧ J              Toggle split direction (vertical/horizontal)

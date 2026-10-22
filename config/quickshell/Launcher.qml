@@ -94,11 +94,11 @@ PanelWindow {
     // SystemLevels (Wi-Fi, Bluetooth, Sound, Tailscale, Status), HomeLevels (Home Assistant), DefaultAppsLevels, AppKeyLevels
     // (Keyboard Shortcuts), BehaviourLevels (Launcher, Browser, Computer name, Notifications, Update channel), InstallLevels,
     // ToolsLevels (Clipboard, Emoji, Snippets), AppearanceLevels (Top bar, Screensaver), DisplayLevels (Display, Battery),
-    // RemoveLevels, PasswordLevels (with 1Password), ThemeLevels (Theme, Background), the plugins' and the private
+    // RemoveLevels, PasswordLevels (with 1Password), ThemeLevels (Theme, Background), ClaudeWriteLevels, the plugins' and the private
     // extension. A new file goes in this list, not in each question's code
     // The installed plugins' level files (their <Name>Levels.qml, TopBar.plugin.levels: Deck's Music) come after the core's
     property var pluginExts: []
-    readonly property var exts: [sys, home, defs, akeys, behave, inst, tools, look, disp, rm, pw, themes].concat(pluginExts, ext ? [ext] : [])
+    readonly property var exts: [sys, home, defs, akeys, behave, inst, tools, look, disp, rm, pw, themes, cwrite].concat(pluginExts, ext ? [ext] : [])
     // A plugin's row above the search field (topRow; Deck's player): the first file that has one. ↑ from the list's first
     // row selects it, its keys then go to topKey(event), and Ctrl+Space anywhere to topPress()
     readonly property var topExt: exts.find(e => e.topRow) || null
@@ -215,7 +215,8 @@ PanelWindow {
             { kind: "nav", name: "Top bar", glyph: "panel-top", target: "topbar" },   // its look and what it shows
             { kind: "nav", name: "Screensaver", glyph: "monitor-pause", target: "screensaver" },
             { kind: "header", name: "Behaviour" },
-            { kind: "nav", name: "Launcher", glyph: "text-search", target: "launcherprefs" }
+            { kind: "nav", name: "Launcher", glyph: "text-search", target: "launcherprefs" },
+            { kind: "nav", name: "Claude writes", glyph: "sparkles", target: "claudewrite", summary: cwrite.modelName(cwrite.model) }
         ], defs.settingsItems, behave.browserItems, akeys.settingsItems, [
             { kind: "nav", name: "Computer name", glyph: "laptop", target: "compname", summary: behave.compName }   // what phones see
         ], home.settingsItems, [   // Home: only while Home Assistant is set up
@@ -237,6 +238,7 @@ PanelWindow {
                                               "Display": "brightness keyboard backlight night light warm scale scaling resolution monitor screen retina hidpi zoom size bigger smaller",
                                               "Notifications": "notification sounds alert chime beep ping tone urgent critical popup timeout seconds duration",
                                               "Tailscale": "vpn",
+                                              "Claude writes": "ai write rewrite polish text draft reply tone instructions prompt model",
                                               "Default apps": "browser email mail files folders text editor terminal images photos video music player pdf calendar open with",
                                               "Keyboard Shortcuts": "hyper caps lock keys keybindings hotkeys open app", "Theme": "appearance style look colors",
                                               "Color": "theme accent violet purple blue teal green amber rose graphite gray",
@@ -338,11 +340,21 @@ PanelWindow {
         }
     }
     readonly property int headerHeight: 40
+    // A row's description (sub) wraps, up to subMaxLines: each line after the first makes the row this much taller
+    readonly property int subMaxLines: 3
+    readonly property int subLineHeight: Math.ceil(subMetrics.height)
+    FontMetrics { id: subMetrics; font { family: Theme.font; pixelSize: win.fontSize - 5; weight: win.fontWeight } }
+    // The lines a row's description takes (an estimate from its width, for the list's height; the row measures its own)
+    function subLines(it) {
+        if (!it.sub || fixedRow(it)) return 1
+        const room = Math.max(1, list.width - iconSize - 70)
+        return Math.min(subMaxLines, Math.max(1, Math.ceil(subMetrics.advanceWidth(keySpaced(it.sub)) / room)))
+    }
     function listHeight() {
         const cap = maxRows * (rowHeight + rowGap)
         let h = 0
         for (const it of results) {
-            h += (fixedRow(it) ? headerHeight : rowHeight) + rowGap
+            h += (fixedRow(it) ? headerHeight : rowHeight + (subLines(it) - 1) * subLineHeight) + rowGap
             if (h >= cap) return cap
         }
         return h
@@ -687,6 +699,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
     DefaultAppsLevels { id: defs; launcher: win }
     AppKeyLevels { id: akeys; launcher: win }
     BehaviourLevels { id: behave; launcher: win }
+    ClaudeWriteLevels { id: cwrite; launcher: win }
     InstallLevels { id: inst; launcher: win }
     ToolsLevels { id: tools; launcher: win }
     AppearanceLevels { id: look; launcher: win }
@@ -1041,7 +1054,10 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                                                     || (modelData.armKey !== undefined && win.armed === modelData.armKey)
                     readonly property bool chevron: modelData.kind === "nav" || modelData.kind === "menu" || modelData.chevron === true
                     width: list.width
-                    height: isHeader || isNote ? win.headerHeight : win.rowHeight
+                    readonly property int extraLines: subText.visible ? Math.max(0, subText.lineCount - 1) : 0
+                    // A taller row keeps its icon and right side at the name and the first line, not in the middle
+                    readonly property real topShift: -extraLines * win.subLineHeight / 2
+                    height: isHeader || isNote ? win.headerHeight : win.rowHeight + extraLines * win.subLineHeight
                     radius: 10
                     color: current ? Theme.sel : "transparent"
 
@@ -1049,7 +1065,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                     Item {
                         id: slot
                         visible: !row.noIcon
-                        anchors { left: parent.left; leftMargin: 14; verticalCenter: parent.verticalCenter }
+                        anchors { left: parent.left; leftMargin: 14; verticalCenter: parent.verticalCenter; verticalCenterOffset: row.topShift }
                         width: win.iconSize; height: win.iconSize
                         LevelRing {      // row.slider (Home's lights): the brightness as a ring around the bulb
                             id: brightRing
@@ -1098,7 +1114,8 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                         anchors {
                             left: row.noIcon ? parent.left : slot.right; leftMargin: 16
                             right: keyFrames.visible ? keyFrames.left : shortcut.visible ? shortcut.left : trailing.left; rightMargin: (row.modelData.kind === "key" ? 24 : 12) + (dot.visible ? 19 : 0) + (badge.visible ? badge.implicitWidth + 10 : 0) + (note.visible ? note.implicitWidth + 10 : 0)   // keybindings get more room before the keys (description is elided with …)
-                            verticalCenter: parent.verticalCenter; verticalCenterOffset: twoLines ? (subLine ? -9 : -7) : 0
+                            verticalCenter: parent.verticalCenter
+                            verticalCenterOffset: twoLines ? (subLine ? -9 - row.extraLines * win.subLineHeight / 2 : -7) : 0
                         }
                         elide: Text.ElideRight
                         // liveName: a name that changes often (Status' processes), bound here instead of rebuilding the rows
@@ -1144,9 +1161,14 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                         color: Theme.primary
                         font { family: Theme.font; pixelSize: win.fontSize - 7; letterSpacing: 1 }
                     }
-                    Text {
+                    Text {      // the description wraps (subMaxLines at most): the row grows with it
+                        id: subText
                         visible: nameText.twoLines
                         anchors { left: nameText.left; right: nameText.right; top: nameText.bottom; topMargin: nameText.subLine ? 0 : -1 }
+                        wrapMode: nameText.subLine ? Text.Wrap : Text.NoWrap
+                        maximumLineCount: win.subMaxLines
+                        lineHeightMode: Text.FixedHeight
+                        lineHeight: win.subLineHeight
                         elide: Text.ElideRight
                         textFormat: Text.PlainText
                         text: win.keySpaced(row.modelData.sub || (row.modelData.artist || "").toUpperCase())
@@ -1160,7 +1182,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                             : !win.prefs.shortcuts || trailing.tag || row.modelData.keys !== undefined || row.armedNow
                             || (row.modelData.summary !== undefined && row.modelData.summary !== "") ? "" : win.shortcutFor(row.modelData)
                         visible: keys !== ""
-                        anchors { right: trailing.left; rightMargin: trailing.text !== "" ? 18 : 0; verticalCenter: parent.verticalCenter }
+                        anchors { right: trailing.left; rightMargin: trailing.text !== "" ? 18 : 0; verticalCenter: parent.verticalCenter; verticalCenterOffset: row.topShift }
                         width: shortcutCaps.implicitWidth + 14; height: 24; radius: 6
                         color: "transparent"
                         border { width: 1; color: Theme.dim }
@@ -1177,7 +1199,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                     Row {            // Keybindings: a key's combinations in key frames like a row's shortcut (keyParts)
                         id: keyFrames
                         visible: row.modelData.keys !== undefined
-                        anchors { right: parent.right; rightMargin: 16; verticalCenter: parent.verticalCenter }
+                        anchors { right: parent.right; rightMargin: 16; verticalCenter: parent.verticalCenter; verticalCenterOffset: row.topShift }
                         spacing: 6
                         Repeater {
                             model: keyFrames.visible ? win.keyParts(row.modelData.keys) : []
@@ -1212,7 +1234,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                     Rectangle {      // row.switchOn: an on/off switch like the top bar menus' (MenuHeader), instead of "on"/"off"
                         id: rowSwitch
                         visible: row.modelData.switchOn !== undefined
-                        anchors { right: parent.right; rightMargin: 16; verticalCenter: parent.verticalCenter }
+                        anchors { right: parent.right; rightMargin: 16; verticalCenter: parent.verticalCenter; verticalCenterOffset: row.topShift }
                         width: 34; height: 20; radius: 10
                         color: row.modelData.switchOn ? Theme.accent : Theme.border
                         Rectangle {
@@ -1224,7 +1246,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                     }
                     Text {
                         id: trailing
-                        anchors { right: parent.right; rightMargin: 16 + (rowSwitch.visible ? 34 + 14 : 0); verticalCenter: parent.verticalCenter }
+                        anchors { right: parent.right; rightMargin: 16 + (rowSwitch.visible ? 34 + 14 : 0); verticalCenter: parent.verticalCenter; verticalCenterOffset: row.topShift }
                         width: Math.min(implicitWidth, row.width * 0.42)
                         elide: Text.ElideRight
                         horizontalAlignment: Text.AlignRight
@@ -1246,7 +1268,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                         id: dot
                         visible: win.appRunning(row.modelData)
                         x: nameText.x + Math.min(nameText.contentWidth, nameText.width) + 10
-                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: row.topShift
                         width: 9; height: 9; radius: 5
                         color: Theme.ok
                         // ⌘Q pressed: pulses until the app is gone
@@ -1272,7 +1294,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                         id: badge
                         visible: row.modelData.badge !== undefined
                         x: nameText.x + Math.min(nameText.contentWidth, nameText.width) + 10 + (dot.visible ? 19 : 0)
-                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: row.topShift
                         text: visible ? Icons.g(row.modelData.badge) : ""
                         color: Theme.primary   // the theme colour, like section headers: it has to stand out
                         font { family: Icons.family; pixelSize: win.fontSize - 2 }
@@ -1282,7 +1304,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
                         visible: row.modelData.kind === "brightness" || row.modelData.kind === "slider" || row.modelData.kind === "battery"
                         z: 1
                         // after the name ("Screen" in Display, "Brightness" in a search), lined up while the name is short
-                        anchors { left: slot.right; leftMargin: Math.max(120, 16 + nameText.implicitWidth + 28); right: trailing.left; rightMargin: 20; verticalCenter: parent.verticalCenter }
+                        anchors { left: slot.right; leftMargin: Math.max(120, 16 + nameText.implicitWidth + 28); right: trailing.left; rightMargin: 20; verticalCenter: parent.verticalCenter; verticalCenterOffset: row.topShift }
                         value: row.modelData.kind === "slider" || row.modelData.kind === "battery" ? row.modelData.value : Math.max(0, row.modelData.key === "keys" ? disp.keys : disp.bright)
                         readOnly: row.modelData.kind === "battery"
                         fillColor: row.modelData.charging ? Theme.ok : row.modelData.low ? Theme.danger : Theme.accent

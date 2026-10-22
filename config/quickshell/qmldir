@@ -43,6 +43,7 @@ AppKeyLevels 1.0 AppKeyLevels.qml
 singleton Home 1.0 Home.qml
 singleton Plugins 1.0 Plugins.qml
 SharePicker 1.0 SharePicker.qml
+ClaudeWrite 1.0 ClaudeWrite.qml
 LevelRing 1.0 LevelRing.qml
 BatteryBar 1.0 BatteryBar.qml
 BatteryShape 1.0 BatteryShape.qml
@@ -58,3 +59,4 @@ RemoveLevels 1.0 RemoveLevels.qml
 PasswordLevels 1.0 PasswordLevels.qml
 ThemeLevels 1.0 ThemeLevels.qml
 DetailCard 1.0 DetailCard.qml
+ClaudeWriteLevels 1.0 ClaudeWriteLevels.qml

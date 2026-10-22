@@ -132,6 +132,15 @@ do
 end
 hl.bind(mod .. " + SHIFT + E",   hl.dsp.exec_cmd("qs ipc call launcher openLevel emoji"))   -- emoji picker
 hl.bind(mod .. " + SHIFT + V",   hl.dsp.exec_cmd("qs ipc call launcher openLevel clipboard"))   -- clipboard history
+-- Claude writes the selected text out (scripts/claude-write, quickshell/ClaudeWrite.qml). Pressed again while its preview
+-- has the keyboard: another version. In Nightdrive Mail the key stays the app's own (the script sends it there)
+hl.bind(mod .. " + SHIFT + C", function ()
+    if NIGHTDRIVE_LAYER_HAS_KEYBOARD() then
+        hl.dispatch(hl.dsp.exec_cmd("qs ipc call write again"))
+    else
+        hl.dispatch(hl.dsp.exec_cmd(scripts .. "/claude-write"))
+    end
+end)
 -- Shelf (quickshell/Shelf.qml): no key, a file dragged to the top edge of the screen opens it (qs ipc call shelf toggle)
 hl.bind(mod .. " + ESCAPE",      hl.dsp.exec_cmd("qs ipc call menu toggle notifications"))
 hl.bind(mod .. " + CTRL + L",    hl.dsp.exec_cmd("loginctl lock-session"))

@@ -210,6 +210,8 @@ ShellRoot {
 
     SharePicker {}
 
+    ClaudeWrite {}
+
     Drawer {}
 
     Shelf {}
