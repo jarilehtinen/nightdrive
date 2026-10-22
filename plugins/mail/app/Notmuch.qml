@@ -196,8 +196,19 @@ QtObject {
                 .replace(/<br\s*\/?>/gi, "\n")
                 .replace(/<\/(p|div|tr|h\d|li)>/gi, "\n\n")
                 .replace(/<[^>]+>/g, "")
-                .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<")
-                .replace(/&gt;/g, ">").replace(/&quot;/g, "\"").replace(/&#39;/g, "'")
+                .replace(/&(#x[0-9a-f]+|#\d+|[a-z]+\d*);/gi, (m, e) => entity(e) ?? m)
                 .replace(/\n{3,}/g, "\n\n").trim()
+    }
+    // &#228; &#xE4; &auml; → ä: every numbered character, and the named ones mail most often has
+    readonly property var entities: ({ nbsp: " ", amp: "&", lt: "<", gt: ">", quot: "\"", apos: "'", auml: "ä", Auml: "Ä",
+        ouml: "ö", Ouml: "Ö", aring: "å", Aring: "Å", uuml: "ü", Uuml: "Ü", eacute: "é", Eacute: "É", egrave: "è", agrave: "à",
+        aacute: "á", oacute: "ó", iacute: "í", uacute: "ú", ccedil: "ç", ntilde: "ñ", oslash: "ø", Oslash: "Ø", aelig: "æ",
+        AElig: "Æ", szlig: "ß", euro: "€", pound: "£", copy: "©", reg: "®", trade: "™", hellip: "…", ndash: "–", mdash: "—",
+        lsquo: "‘", rsquo: "’", ldquo: "“", rdquo: "”", laquo: "«", raquo: "»", bull: "•", middot: "·", deg: "°", times: "×",
+        shy: "", zwnj: "", zwj: "" })
+    function entity(e) {
+        if (e[0] !== "#") return entities[e]
+        const n = e[1] === "x" || e[1] === "X" ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10)
+        return n > 0 && n <= 0x10ffff ? String.fromCodePoint(n) : undefined
     }
 }

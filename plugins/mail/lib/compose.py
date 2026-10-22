@@ -38,9 +38,11 @@ import configparser
 import email
 import email.policy
 import hashlib
+import html
 import json
 import mimetypes
 import os
+import re
 import shlex
 import smtplib
 import subprocess
@@ -100,18 +102,29 @@ def signature(acc):
     return acc.get("signature", "").strip()
 
 
-def plain_text(parts):
+def html_text(h):
+    """Enough of an HTML-only message as text to quote it or give it to Claude (as Notmuch.qml's htmlToText)."""
+    h = re.sub(r"(?is)<(style|script|head)\b.*?</\1>", "", h)
+    h = re.sub(r"(?i)<br\s*/?>", "\n", h)
+    h = re.sub(r"(?i)</(p|div|tr|h\d|li)>", "\n\n", h)
+    h = html.unescape(re.sub(r"<[^>]+>", "", h)).replace("\xa0", " ")
+    h = "\n".join(line.strip() for line in h.split("\n"))
+    return re.sub(r"\n{3,}", "\n\n", h).strip()
+
+
+def plain_text(parts, kind="text/plain"):
+    """The message's first text part; an HTML-only message's HTML as text."""
     for part in parts:
         if part.get("content-disposition") == "attachment":
             continue
         content = part.get("content")
         if isinstance(content, list):
-            text = plain_text(content)
+            text = plain_text(content, kind)
             if text:
                 return text
-        elif part.get("content-type", "").lower() == "text/plain" and content:
-            return content
-    return ""
+        elif part.get("content-type", "").lower() == kind and content:
+            return content if kind == "text/plain" else html_text(content)
+    return plain_text(parts, "text/html") if kind == "text/plain" else ""
 
 
 def reply(msgid, to_all):
@@ -123,7 +136,8 @@ def reply(msgid, to_all):
     h, orig = data["reply-headers"], data["original"]
     when = parsedate_to_datetime(orig["headers"]["Date"]).strftime("%a %d %b %Y, %H:%M") if orig["headers"].get("Date") else ""
     name, addr = parseaddr(orig["headers"].get("From", ""))
-    quoted = "\n".join(">" + line if line.startswith(">") else "> " + line if line else ">" for line in plain_text(orig.get("body", [])).rstrip().split("\n"))
+    # notmuch reply leaves an HTML part's text out: an HTML-only message is read from its file
+    quoted = "\n".join(">" + line if line.startswith(">") else "> " + line if line else ">" for line in (plain_text(orig.get("body", [])) or body_text(parsed(msgid))).rstrip().split("\n"))
     return {
         "to": h.get("To", ""),
         "cc": h.get("Cc", ""),
@@ -165,7 +179,10 @@ def attachments(msgid, msg):
 
 def body_text(msg):
     part = msg.get_body(preferencelist=("plain",))
-    return part.get_content() if part else ""
+    if part:
+        return part.get_content()
+    part = msg.get_body(preferencelist=("html",))
+    return html_text(part.get_content()) if part else ""
 
 
 def forward(msgid):
