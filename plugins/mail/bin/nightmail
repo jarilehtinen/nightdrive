@@ -94,6 +94,61 @@ stop() {
   for _ in 1 2 3 4 5 6 7 8 9 10; do running || return 0; sleep 0.1; done
 }
 
+# Claude's reply shows in the desktop's Claude writes card (quickshell/ClaudeWrite.qml, `qs ipc call write ask`), which
+# runs claude-draft for the text and, on Enter, claude-reply to hand it back to Mail. The request (request.json: gen,
+# msgid, hint, thread, sent, accept) and the answer stay in a folder only you can read.
+CLAUDE_DIR=${XDG_RUNTIME_DIR:-/tmp}/nightdrive/mail-claude
+
+# ask-claude TITLE X Y REQUEST: X Y in the window titled TITLE (the writing window), as Mail sees them
+ask_claude() {
+  local title=$1 x=$2 y=$3 at
+  rm -rf "$CLAUDE_DIR"; mkdir -p -m 700 "$CLAUDE_DIR"
+  printf '%s' "$4" >"$CLAUDE_DIR/request.json"
+  # The card opens by the desktop's coordinates: the window's place, or the mouse's while it isn't mapped yet
+  at=$(hyprctl -j clients 2>/dev/null | jq -c --argjson pid "$(pid)" --arg t "$title" \
+         '[.[] | select(.pid == $pid and .title == $t)] | first | .at // empty')
+  if [[ -n $at ]]; then
+    x=$(jq -n --argjson a "$at" --argjson x "$x" '$a[0] + $x'); y=$(jq -n --argjson a "$at" --argjson y "$y" '$a[1] + $y')
+  else
+    read -r x y < <(hyprctl -j cursorpos | jq -r '"\(.x) \(.y)"')
+  fi
+  local self=$APP_DIR/bin/nightmail
+  jq -n --argjson x "$x" --argjson y "$y" --slurpfile r "$CLAUDE_DIR/request.json" --arg self "$self" --arg dir "$CLAUDE_DIR" \
+     '{ x: $x, y: $y, sent: $r[0].sent, accept: $r[0].accept, chars: 0,
+        draft: [$self, "claude-draft", $dir], reply: [$self, "claude-reply", $dir], cancel: [$self, "claude-cancel", $dir] }' \
+     >"$CLAUDE_DIR/meta.json"
+  qs ipc call write ask "$CLAUDE_DIR" >/dev/null 2>&1 || echo '{"error": "The Claude card did not open (is the desktop shell running?)"}'
+}
+
+# The card's draft: compose.py's reply ({text, read}), with the line saying what Claude read
+claude_draft() {
+  local dir=$1 out
+  local -a args
+  if [[ $(jq -r .thread "$dir/request.json") == true ]]; then
+    args=(suggest "$(jq -r .msgid "$dir/request.json")")
+    [[ -n $(jq -r .hint "$dir/request.json") ]] && args+=("$(jq -r .hint "$dir/request.json")")
+  else
+    args=(write "$(jq -r .hint "$dir/request.json")")
+  fi
+  out=$(python3 "$APP_DIR/lib/compose.py" "${args[@]}")
+  printf '%s' "$out" >"$dir/answer.json"
+  jq -c --slurpfile r "$dir/request.json" '
+    if .error then { error } else
+      { text, sent: (if $r[0].thread then "the thread (\(.read) message\(if .read == 1 then "" else "s" end))"
+                       + (if $r[0].hint != "" then " and your draft: \($r[0].hint)" else "" end) else $r[0].hint end) }
+    end' <<<"$out" 2>/dev/null || jq -n --arg e "$out" '{ error: ($e | if . == "" then "No answer from compose.py" else . end) }'
+}
+
+# The card's Enter (dir/result is the text) and Esc, back to Mail
+claude_reply() {
+  local dir=$1 json
+  json=$(jq -c --rawfile t "$dir/result" --slurpfile a "$dir/answer.json" '{ gen, text: $t, read: ($a[0].read // 0) }' "$dir/request.json")
+  running && qs ipc -p "$QS_DIR" call mail claudeAnswer "$json" >/dev/null
+}
+claude_cancel() {
+  running && qs ipc -p "$QS_DIR" call mail claudeCancel "$(jq -r .gen "$1/request.json")" >/dev/null
+}
+
 usage() {
   cat <<USAGE
 Usage: nightmail [command]
@@ -143,6 +198,10 @@ case ${1:-open} in
     running && qs ipc -p "$QS_DIR" call mail refresh >/dev/null
     ;;
   notify)    python3 "$APP_DIR/lib/notify.py" ;;
+  ask-claude)    ask_claude "$2" "$3" "$4" "$5" ;;   # Mail's ⌘⇧C (the commands below are the card's)
+  claude-draft)  claude_draft "$2" ;;
+  claude-reply)  claude_reply "$2" ;;
+  claude-cancel) claude_cancel "$2" ;;
   enable)    enable ;;
   disable)   disable ;;
   help|-h|--help) usage ;;

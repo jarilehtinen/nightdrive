@@ -70,6 +70,9 @@ ShellRoot {
             function openMessage(id: string): void { win.openMessage(id, null) }
             function replyTo(id: string): void { win.openMessage(id, () => win.compose("all")) }
             function claudeReply(id: string): void { win.openMessage(id, () => win.compose("claude")) }
+            // The Claude writes card's Enter and Esc (`nightmail claude-reply`, `claude-cancel`)
+            function claudeAnswer(json: string): void { const a = JSON.parse(json); composer.answered(a.gen, a.text, a.read) }
+            function claudeCancel(gen: string): void { if (parseInt(gen) === composer.gen) composer.bodyEdit.forceActiveFocus() }
         }
 
         readonly property var folders: [
@@ -82,6 +85,8 @@ ShellRoot {
             { name: "Trash", dir: "Trash", query: "folder:/Trash$/" }
         ]
         readonly property int arrowStep: 80     // px an arrow key scrolls the message
+        readonly property int headerHeight: 22  // the folders' title line and the list's search line
+        readonly property int headerGap: 30     // from them to the first folder and the first message
         readonly property int undoDepth: 20     // steps ⌘Z can take back
         property int folder: 0
         property bool showFolders: true
@@ -191,10 +196,12 @@ ShellRoot {
             nm.show(t.thread, m => { if (m.length) messageWindow.createObject(shell, { msgs: m }) })
         }
 
-        // Claude writes the reply (Compose.qml asks, and shows it in Claude's card): from the thread up to the message
-        // answered, with the draft if there is one, or from the selected text alone.
-        function suggest(hint, from, to, thread, gen) {
-            nm.compose(thread ? ["suggest", composer.replyId].concat(hint ? [hint] : []) : ["write", hint], r => composer.answered(gen, r))
+        // Claude writes the reply (Compose.qml asks): the desktop's Claude writes card opens by (x, y) in the writing
+        // window and runs compose.py through `nightmail claude-draft`: the thread up to the message answered with the
+        // draft, or the selected text alone. Its Enter comes back through claudeAnswer().
+        function suggest(request, x, y) {
+            nm.nightmail(["ask-claude", composeWin.title, String(Math.round(x)), String(Math.round(y)), JSON.stringify(request)],
+                         t => { if (t.trim()) { try { composer.failed = true; composer.status = JSON.parse(t).error } catch (e) {} } })
         }
 
         function sendMail(f) {
@@ -373,11 +380,14 @@ ShellRoot {
                     anchors.topMargin: 28
                     anchors.bottomMargin: 24
                     spacing: 0
+                    // The title's line and the search's are as high (headerHeight) and as far from the top, so the first
+                    // folder and the first message line up
                     Row {
                         Layout.leftMargin: 28
-                        Layout.bottomMargin: 36
+                        Layout.preferredHeight: win.headerHeight
+                        Layout.bottomMargin: win.headerGap
                         spacing: 3
-                        Text { text: "Mail"; color: c.title; font.family: c.font; font.pixelSize: 13; font.weight: Font.DemiBold }
+                        Text { anchors.verticalCenter: parent.verticalCenter; text: "Mail"; color: c.title; font.family: c.font; font.pixelSize: 13; font.weight: Font.DemiBold }
                         Rectangle { width: 7; height: 14; color: c.primary; anchors.verticalCenter: parent.verticalCenter }
                     }
                     Repeater {
@@ -438,8 +448,8 @@ ShellRoot {
                     RowLayout {
                         Layout.fillWidth: true
                         Layout.margins: 28
-                        Layout.topMargin: 24
-                        Layout.bottomMargin: 16
+                        Layout.preferredHeight: win.headerHeight
+                        Layout.bottomMargin: win.headerGap
                         spacing: 10
                         Text { text: "⌕"; color: c.faint; font.pixelSize: 15 }
                         TextInput {
@@ -717,7 +727,7 @@ ShellRoot {
             anchors.fill: parent
             c: c
             onSend: f => win.sendMail(f)
-            onSuggest: (hint, from, to, thread, gen) => win.suggest(hint, from, to, thread, gen)
+            onSuggest: (request, x, y) => win.suggest(request, x, y)
             claudeReads: win.settings.claudeReads || ""
             onChooseReads: v => win.setting("claudeReads", v)
             onSave: (f, close) => win.saveDraft(f, close)

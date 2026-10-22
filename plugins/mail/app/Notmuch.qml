@@ -41,6 +41,11 @@ QtObject {
         })
     }
 
+    // Mail's own command (bin/nightmail), e.g. for Claude's card: its output as text.
+    function nightmail(args, done) {
+        proc.createObject(nm, { command: [Quickshell.shellDir + "/../bin/nightmail"].concat(args), done: done })
+    }
+
     // The writing side (lib/compose.py): every command answers with one JSON object.
     // lib/ is beside Mail's config (app/), where Qt.resolvedUrl doesn't reach: Quickshell keeps URLs inside the config
     readonly property string composer: Quickshell.shellDir + "/../lib/compose.py"

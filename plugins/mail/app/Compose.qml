@@ -17,14 +17,14 @@ Item {
     property var attachments: []        // file paths
     property var book: []               // addresses to complete To and Cc from (Notmuch.addresses)
     readonly property int bookShown: 6  // completions shown at once
-    readonly property bool suggesting: claude.visible   // Claude's card is open
 
     signal send(var fields)
     // ⌘⇧C: Claude writes the reply from your draft: the selected text, or all you wrote above the quote. The reply
     // takes the selection's place (from, to), or all of your text's (-1, -1). thread: Claude reads the thread too.
-    // It shows first in Claude's card (ClaudeCard.qml); gen ties the answer to the request, so one that was
-    // cancelled or asked again answers into nothing.
-    signal suggest(string hint, int from, int to, bool thread, int gen)
+    // It shows first in the desktop's Claude writes card (Nightdrive's ClaudeWrite.qml, through `nightmail
+    // ask-claude`), which asks Claude and hands the text back with Enter: answered(). gen ties the answer to the
+    // request, so one for a message since closed or started again answers into nothing.
+    signal suggest(var request, real x, real y)
     property var ask: null              // the request on the card: { hint, from, to, thread }
     property int gen: 0
     function askClaude(req) {
@@ -32,21 +32,14 @@ Item {
         gen++
         // By the mouse when it is over the window, else by the caret
         const p = pointer.hovered ? pointer.point.position : body.mapToItem(root, body.cursorRectangle.x, body.cursorRectangle.y + body.cursorRectangle.height)
-        claude.sent = req.thread ? "the thread" + (req.hint ? " and your draft: " + req.hint : "") : req.hint
-        claude.acceptText = req.from >= 0 ? "Replace selection" : "Insert reply"
-        claude.open(p.x, p.y)
-        suggest(req.hint, req.from, req.to, req.thread, gen)
-    }
-    function answered(g, r) {
-        if (g !== gen || !claude.visible) return
-        if (r.error) { claude.fail(r.error); return }
-        ask.read = r.read
-        if (ask.thread) claude.sent = "the thread (" + r.read + (r.read === 1 ? " message)" : " messages)") + (ask.hint ? " and your draft: " + ask.hint : "")
-        claude.done(r.text)
+        suggest({ gen: gen, msgid: replyId, hint: req.hint, thread: req.thread,
+                  sent: req.thread ? "the thread" + (req.hint ? " and your draft: " + req.hint : "") : req.hint,
+                  accept: req.from >= 0 ? "Replace selection" : "Insert reply" }, p.x, p.y)
     }
     // Enter on the card: the text goes in the selection's place, or in place of all you wrote above the quote.
-    function acceptClaude() {
-        const text = claude.result, before = body.text
+    function answered(g, text, read) {
+        if (g !== gen || !ask) return
+        const before = body.text
         if (ask.from >= 0) {
             body.text = before.slice(0, ask.from) + text + before.slice(ask.to)
             body.cursorPosition = ask.from + text.length
@@ -54,13 +47,13 @@ Item {
             body.text = text + quote()
             body.cursorPosition = 0
         }
-        closeClaude()
+        gen++
+        body.forceActiveFocus()
         // Each time, what Claude read.
         failed = false
-        status = (ask.thread ? "Claude read the thread (" + ask.read + (ask.read === 1 ? " message)" : " messages)") + (ask.hint ? " and your draft" : "")
+        status = (ask.thread ? "Claude read the thread (" + read + (read === 1 ? " message)" : " messages)") + (ask.hint ? " and your draft" : "")
                              : "Claude read only your selection (" + ask.hint.length + " characters)") + ". Read it before sending"
     }
-    function closeClaude() { gen++; claude.close(); body.forceActiveFocus() }
     // What Claude reads: "thread" (and the draft), "selection" (only that), or "" before you have chosen, when the
     // first ⌘⇧C asks (the consent panel below). Settings (⌘,) changes it later.
     property string claudeReads: ""
@@ -119,7 +112,7 @@ Item {
     function start(h, f) {
         heading = h
         to.text = f.to || ""; cc.text = f.cc || ""; subject.text = f.subject || ""; body.text = f.body || ""
-        inReplyTo = f.in_reply_to || ""; references = f.references || ""; replyId = ""; gen++; claude.close()
+        inReplyTo = f.in_reply_to || ""; references = f.references || ""; replyId = ""; gen++
         draftId = f.draft_id || ""; forwardId = ""; attachments = f.attachments || []
         status = ""; failed = false; busy = false; armed = false
         showCc = cc.text !== ""
@@ -132,10 +125,10 @@ Item {
 
     Shortcut { sequences: ["Ctrl+Return", "Ctrl+Enter"]; enabled: root.visible && !root.busy; onActivated: root.send(root.fields()) }
     // ⌘⇧C again on the card writes another version of the same request.
-    Shortcut { sequences: ["Meta+Shift+C", "Ctrl+Shift+C"]; enabled: root.visible && !consent.visible; onActivated: claude.visible ? root.askClaude(root.ask) : root.rewrite() }
+    Shortcut { sequences: ["Meta+Shift+C", "Ctrl+Shift+C"]; enabled: root.visible && !consent.visible; onActivated: root.rewrite() }
     Shortcut { sequence: "Ctrl+S"; enabled: root.visible && !root.busy; onActivated: root.save(root.fields(), false) }
     Shortcut { sequences: ["Ctrl+Shift+A", "Meta+Shift+A"]; enabled: root.visible && !root.busy; onActivated: root.pickFiles() }
-    Shortcut { sequence: "Escape"; enabled: root.visible && !root.busy && !consent.visible && !claude.visible; onActivated: root.escPressed() }
+    Shortcut { sequence: "Escape"; enabled: root.visible && !root.busy && !consent.visible; onActivated: root.escPressed() }
 
     component Field: RowLayout {
         id: f
@@ -344,17 +337,21 @@ Item {
             HoverHandler { cursorShape: Qt.IBeamCursor }
         }
 
-        RowLayout {
+        // What just happened (what Claude read, an error): a line of its own above the buttons, wrapped, not cut off
+        Text {
             Layout.fillWidth: true
             Layout.topMargin: 16
+            visible: root.status !== ""
+            wrapMode: Text.Wrap
+            text: root.status
+            color: root.failed ? root.c.danger : root.c.faint
+            font.family: root.c.font; font.pixelSize: 12
+        }
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.topMargin: root.status !== "" ? 8 : 16
             spacing: 4
-            Text {
-                Layout.fillWidth: true
-                elide: Text.ElideRight
-                text: root.status
-                color: root.failed ? root.c.danger : root.c.faint
-                font.family: root.c.font; font.pixelSize: 12
-            }
+            Item { Layout.fillWidth: true }
             Action { text: "Attach"; hint: "⌘⇧A"; onClicked: root.pickFiles() }
             Action { text: "Save"; hint: "⌘S"; onClicked: root.save(root.fields(), false) }
             Action { text: "Close"; hint: "esc"; onClicked: root.escPressed() }
@@ -479,26 +476,33 @@ Item {
                 }
                 Row {
                     spacing: 18
-                    Text {
-                        text: consent.more ? "Back  r" : "Read more  r"; color: moreHover.hovered ? root.c.accent : root.c.dim
-                        font.family: root.c.font; font.pixelSize: 12
-                        HoverHandler { id: moreHover; cursorShape: Qt.PointingHandCursor }
-                        TapHandler { onTapped: consent.more = !consent.more }
+                    Row {
+                        spacing: 8
+                        KeyCap { anchors.verticalCenter: parent.verticalCenter; c: root.c; keys: "r"; tint: root.c.faint }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: consent.more ? "Back" : "Read more"; color: moreHover.hovered ? root.c.accent : root.c.dim
+                            font.family: root.c.font; font.pixelSize: 12
+                            HoverHandler { id: moreHover; cursorShape: Qt.PointingHandCursor }
+                            TapHandler { onTapped: consent.more = !consent.more }
+                        }
                     }
-                    Text { text: "↑ ↓ ⏎  choose"; color: root.c.faint; font.family: root.c.font; font.pixelSize: 12; visible: !consent.more }
-                    Text { text: "esc  write without Claude"; color: root.c.faint; font.family: root.c.font; font.pixelSize: 12; visible: !consent.more }
+                    Row {
+                        spacing: 8; visible: !consent.more
+                        KeyCap { anchors.verticalCenter: parent.verticalCenter; c: root.c; keys: "↑ ↓  ⏎"; tint: root.c.faint }
+                        Text { anchors.verticalCenter: parent.verticalCenter; text: "Choose"; color: root.c.faint; font.family: root.c.font; font.pixelSize: 12 }
+                    }
+                    Row {
+                        spacing: 8; visible: !consent.more
+                        KeyCap { anchors.verticalCenter: parent.verticalCenter; c: root.c; keys: "esc"; tint: root.c.faint }
+                        Text { anchors.verticalCenter: parent.verticalCenter; text: "Write without Claude"; color: root.c.faint; font.family: root.c.font; font.pixelSize: 12 }
+                    }
                 }
             }
         }
     }
 
     HoverHandler { id: pointer }
-    ClaudeCard {
-        id: claude
-        c: root.c
-        onAccepted: root.acceptClaude()
-        onCancelled: root.closeClaude()
-    }
 
     readonly property alias toInput: toRow.input
     property alias to: toRow.input

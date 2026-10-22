@@ -10,6 +10,11 @@ import Quickshell.Wayland
 // warning when it deletes, overwrites or needs root; Enter puts it on the command line, it doesn't run it.
 //   qs ipc call write open <dir>   (dir: the script's selection and meta.json)
 //   qs ipc call write again
+//   qs ipc call write ask <dir>    another app's request (Mail's reply, plugins/mail): dir/meta.json { x, y (the
+//                                  desktop's coordinates), sent (the line saying what goes to Claude), accept (Enter's
+//                                  hint), draft, reply, cancel (commands, as lists) }. draft prints {text, sent} or
+//                                  {error}; Enter writes dir/result and runs reply instead of pasting; cancel, if given,
+//                                  runs on Esc or a click outside
 // (Not named *Menu.qml: shell.qml treats those as top bar menus.)
 PanelWindow {
     id: win
@@ -20,6 +25,7 @@ PanelWindow {
     property string dir: ""
     property var meta: ({})                // { addr, class, title, terminal, x, y, chars }
     property string selection: ""
+    property string sent: ""               // what goes to Claude, in a line: the selection, or an app's own words
     property string phase: ""              // confirm | working | done | error
     property string result: ""
     property string warning: ""
@@ -31,7 +37,8 @@ PanelWindow {
         metaFile.path = ""; metaFile.path = d + "/meta.json"
         selFile.path = ""; selFile.path = d + "/selection"
         try { meta = JSON.parse(metaFile.text()) } catch (e) { return }
-        selection = selFile.text()
+        selection = meta.draft ? "" : selFile.text()
+        sent = meta.draft ? meta.sent || "" : selection
         const f = Hyprland.focusedMonitor
         screen = (f && Quickshell.screens.find(s => s.name === f.name)) || Quickshell.screens[0]
         result = ""; warning = ""; error = ""
@@ -45,16 +52,22 @@ PanelWindow {
         phase = "working"
         draft.running = false
         draft.myGen = gen
+        draft.command = meta.draft || [script, "draft", dir]
         draft.running = true
     }
-    function cancel() { gen++; draft.running = false; open = false }
+    function cancel() {
+        if (open && meta.cancel) Quickshell.execDetached(meta.cancel)
+        gen++; draft.running = false; open = false
+    }
     function accept() {
         if (phase === "confirm") { write(); return }
         if (phase !== "done" || result === "") return
         open = false
-        // The text to the script's folder (only you can read it), then the script puts it in place
-        Quickshell.execDetached(["sh", "-c", 'umask 077; printf "%s" "$1" > "$2/result" && exec "$3" replace "$2"',
-                                 "_", result, dir, script])
+        // The text to the script's folder (only you can read it), then the script puts it in place, or the app that
+        // asked takes it from there
+        const then = meta.reply || [script, "replace", dir]
+        Quickshell.execDetached(["sh", "-c", 'umask 077; printf "%s" "$1" > "$2/result" && shift 2 && exec "$@"',
+                                 "_", result, dir].concat(then))
     }
 
     FileView { id: metaFile; blockLoading: true; printErrors: false }
@@ -62,13 +75,13 @@ PanelWindow {
     Sh {
         id: draft
         property int myGen: 0
-        command: [win.script, "draft", win.dir]
         onResult: text => {
             if (myGen !== win.gen || !win.open) return
             let r = {}
             try { r = JSON.parse(text) } catch (e) { r = { error: "Claude's answer didn't come through" } }
             if (r.error) { win.error = r.error; win.phase = "error"; return }
             win.result = r.text || ""; win.warning = r.warning || ""; win.phase = "done"
+            if (r.sent) win.sent = r.sent
         }
     }
 
@@ -76,6 +89,7 @@ PanelWindow {
         target: "write"
         function open(dir: string): void { win.show(dir) }
         function again(): void { if (win.open && win.phase !== "confirm") win.write() }
+        function ask(dir: string): void { win.show(dir) }
     }
 
     visible: open
@@ -100,7 +114,7 @@ PanelWindow {
     }
 
     readonly property var keyGlyphs: ({ Enter: "corner-down-left", Cmd: "command", Shift: "arrow-big-up" })
-    readonly property var hints: phase === "done" ? [{ keys: ["Enter"], text: meta.terminal ? "Put on command line" : "Replace selection" },
+    readonly property var hints: phase === "done" ? [{ keys: ["Enter"], text: meta.accept || (meta.terminal ? "Put on command line" : "Replace selection") },
                                                      { keys: ["Cmd", "Shift", "C"], text: "Write new" }, { keys: ["Esc"], text: "Cancel" }]
         : phase === "confirm" ? [{ keys: ["Enter"], text: "Send" }, { keys: ["Esc"], text: "Cancel" }]
         : phase === "error" ? [{ keys: ["Cmd", "Shift", "C"], text: "Try again" }, { keys: ["Esc"], text: "Close" }]
@@ -146,7 +160,7 @@ PanelWindow {
             // What was sent, so it's clear what left the machine
             Text {
                 width: parent.width
-                text: "Sent: " + win.selection.replace(/\s+/g, " ").trim()
+                text: "Sent: " + win.sent.replace(/\s+/g, " ").trim()
                 color: Theme.dim
                 elide: Text.ElideRight
                 font { family: Theme.font; pixelSize: 12 }
