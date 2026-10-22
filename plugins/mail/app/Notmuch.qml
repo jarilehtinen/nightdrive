@@ -38,7 +38,10 @@ QtObject {
                 if ((left ?? tries) > 1) {
                     const timer = later.createObject(nm, { interval: retryMs })
                     timer.triggered.connect(() => json(args, parse, fallback, done, (left ?? tries) - 1))
-                } else done(fallback)
+                } else {
+                    console.warn("notmuch " + args[0] + " failed: " + e + (t.trim() === "" ? " (no output)" : ""))
+                    done(fallback)
+                }
                 return
             }
             done(v)

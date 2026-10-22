@@ -158,14 +158,29 @@ ShellRoot {
             }
         }
 
-        function open(i, then) {
+        // again: the second try, after the list was read anew
+        function open(i, then, again) {
             current = i
             picked = []; anchorId = ""
             htmlMode = settings.view
             if (i < 0) { messages = []; return }
             const t = threads[i]
             // By id: marking it read reloads the list (new objects) before a long thread has come back
-            nm.show(t.thread, m => { if (threads[current] && threads[current].thread === t.thread) { messages = m; if (then) then() } })
+            nm.show(t.thread, m => {
+                if (!threads[current] || threads[current].thread !== t.thread) return
+                // Nothing in it: indexing a sync has joined the thread to another one under a new id since the list was
+                // read. The list is read again, and the thread with the same subject and date opens.
+                if (m.length === 0 && !again) {
+                    nm.search(query(), list => {
+                        threads = list
+                        const j = list.findIndex(x => x.subject === t.subject && x.timestamp === t.timestamp)
+                        open(j >= 0 ? j : Math.min(i, list.length - 1), then, true)
+                    })
+                    return
+                }
+                messages = m
+                if (then) then()
+            })
             if (t.tags.indexOf("unread") >= 0)
                 nm.tag(["-unread"], "thread:" + t.thread, () => reload(true))
         }
