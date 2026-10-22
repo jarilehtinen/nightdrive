@@ -25,20 +25,35 @@ QtObject {
         proc.createObject(nm, { command: ["notmuch"].concat(args), done: done })
     }
 
+    // A read that comes back with no JSON is tried again (tries times, retryMs apart): while notmuch new indexes a big
+    // sync, or a tag is written, a reader can fail (Xapian's DatabaseModifiedError) and print nothing. Then parse(t)
+    // throws, and done gets fallback only after the last try.
+    readonly property int tries: 4
+    readonly property int retryMs: 400
+    readonly property Component later: Component { Timer { running: true; onTriggered: destroy() } }
+    function json(args, parse, fallback, done, left) {
+        run(args, t => {
+            let v
+            try { v = parse(t) } catch (e) {
+                if ((left ?? tries) > 1) {
+                    const timer = later.createObject(nm, { interval: retryMs })
+                    timer.triggered.connect(() => json(args, parse, fallback, done, (left ?? tries) - 1))
+                } else done(fallback)
+                return
+            }
+            done(v)
+        })
+    }
+
     // Threads matching the query, newest first.
     function search(query, done) {
-        run(["search", "--format=json", "--limit=500", query], t => {
-            try { done(JSON.parse(t)) } catch (e) { done([]) }
-        })
+        json(["search", "--format=json", "--limit=500", query], t => JSON.parse(t), [], done)
     }
 
     // The thread's messages in order, each { from, to, date, subject, tags, body } with the body as plain text.
     function show(thread, done) {
-        run(["show", "--format=json", "--include-html", "--entire-thread=true", "thread:" + thread], t => {
-            let out = []
-            try { flatten(JSON.parse(t), out) } catch (e) {}
-            done(out)
-        })
+        json(["show", "--format=json", "--include-html", "--entire-thread=true", "thread:" + thread],
+             t => { const out = []; flatten(JSON.parse(t), out); return out }, [], done)
     }
 
     // Mail's own command (bin/nightmail), e.g. for Claude's card: its output as text.
