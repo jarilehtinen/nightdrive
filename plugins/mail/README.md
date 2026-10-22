@@ -10,6 +10,7 @@ A quiet mail client: folders, the thread list and the open thread, nothing else 
 - `h` shows a message as text, as HTML on the dark page, or as HTML on light paper as it was sent; which one comes first is a setting (text by default). Remote images stay off.
 - `Enter` or a double click opens the thread in a window of its own (in Drafts, it goes on writing the draft). Opening an unread thread marks it read; `u` marks it unread again.
 - `a` archives, `d` moves to Trash, `!` marks spam (in Spam: not spam, back to the Inbox), ⌘Z undoes them. The next sync makes the same move on the server, so your phone and webmail see it too.
+- A message dragged sideways from the list onto Inbox, Archive, Spam or Trash moves there in the same way (⌘Z undoes it too).
 - Attachments show under their message: a click opens one, Save puts it in Downloads.
 
 ## Writing
