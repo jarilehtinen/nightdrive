@@ -343,6 +343,7 @@ Item {
             Layout.topMargin: 16
             visible: root.status !== ""
             wrapMode: Text.Wrap
+            horizontalAlignment: Text.AlignRight
             text: root.status
             color: root.failed ? root.c.danger : root.c.faint
             font.family: root.c.font; font.pixelSize: 12
