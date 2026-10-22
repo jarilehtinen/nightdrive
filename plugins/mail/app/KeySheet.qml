@@ -44,7 +44,10 @@ Rectangle {
     anchors.fill: parent
     visible: shown
     color: root.c.scrim
+    // A click outside the keys closes them; one on them keeps them
+    TapHandler { onTapped: root.shown = false }
     Rectangle {
+        TapHandler {}
         anchors.centerIn: parent
         width: grid.implicitWidth + 80
         height: grid.implicitHeight + 72

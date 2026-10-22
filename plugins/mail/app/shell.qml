@@ -23,6 +23,7 @@ ShellRoot {
             readonly property color bg: Theme.launcherBg
             readonly property color solid: Qt.rgba(bg.r, bg.g, bg.b, 1)
             readonly property color line: Qt.lighter(solid, 1.45)
+            readonly property color divider: Qt.lighter(line, 1.2)     // the lines between the panes
             readonly property color hover: Theme.hover
             readonly property color sel: Theme.sel
             readonly property color text: Theme.text
@@ -717,12 +718,12 @@ ShellRoot {
                         text: win.account.address; color: c.faint; font.family: c.font; font.pixelSize: 11
                     }
                 }
-                Rectangle { anchors.right: parent.right; width: 1; height: parent.height; color: c.line }
+                Rectangle { anchors.right: parent.right; width: 1; height: parent.height; color: c.divider }
             }
 
             // Thread list
             Rectangle {
-                Layout.preferredWidth: Math.max(280, Math.min(400, win.width * 0.3))
+                Layout.preferredWidth: Math.max(250, Math.min(370, win.width * 0.3 - 30))
                 Layout.fillHeight: true
                 color: "transparent"
                 ColumnLayout {
@@ -911,7 +912,7 @@ ShellRoot {
                         text: win.note; color: c.dim; font.family: c.font; font.pixelSize: 11
                     }
                 }
-                Rectangle { anchors.right: parent.right; width: 1; height: parent.height; color: c.line }
+                Rectangle { anchors.right: parent.right; width: 1; height: parent.height; color: c.divider }
             }
 
             // The open thread, or how many are picked and what can be done to them
