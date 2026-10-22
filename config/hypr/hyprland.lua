@@ -322,6 +322,11 @@ hl.config({
     ecosystem = {
         no_update_news = true,
     },
+    -- X11 apps (REAPER, Ardour, Steam) draw at the screen's own resolution instead of 1× stretched by the scale,
+    -- which made them blurry. They come out small unless they scale themselves (README › Make it yours).
+    xwayland = {
+        force_zero_scaling = true,
+    },
 })
 
 -----------------------
