@@ -43,7 +43,7 @@ A quiet mail client: folders, the thread list and the open thread, nothing else 
 
 ## Settings
 
-⌘, (or Settings under the folders, or launcher › Settings › Apps › Mail): whether writing and message windows float (the default) or open in the grid beside Mail, how a message opens (text, HTML on the dark page, or HTML as it was sent), and what Claude reads. They are kept in `~/.config/nightmail/settings.json`. Mail's colours follow the desktop's theme.
+⌘, (or the gear at the foot of the folders, or launcher › Settings › Apps › Mail): whether writing and message windows float (the default) or open in the grid beside Mail, how a message opens (text, HTML on the dark page, or HTML as it was sent), and what Claude reads. They are kept in `~/.config/nightmail/settings.json`. Mail's colours follow the desktop's theme.
 
 ## Setting up an account
 

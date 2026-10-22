@@ -31,7 +31,7 @@ Rectangle {
         return best
     }
     property bool shown: false
-    readonly property int hold: 500     // ms ⌘ is held before the keys show
+    readonly property int hold: 700     // ms ⌘ is held before the keys show
 
     function isSuper(k) { return k === Qt.Key_Super_L || k === Qt.Key_Super_R || k === Qt.Key_Meta }
     function pressed(e) {
@@ -40,6 +40,10 @@ Rectangle {
     }
     function released(e) { if (isSuper(e.key)) { timer.stop(); shown = false } }
     Timer { id: timer; interval: root.hold; onTriggered: root.shown = true }
+    // ⌘ held into a focus change (⌘ + an arrow, a click elsewhere): its release goes to the other window, so the hold
+    // ends here, when this one stops being active
+    readonly property bool active: Window.active
+    onActiveChanged: if (!active) { timer.stop(); shown = false }
 
     anchors.fill: parent
     visible: shown

@@ -101,19 +101,41 @@ Flickable {
         Repeater { model: root.actions; delegate: ActButton { required property var modelData; icon: modelData.icon; label: modelData.short || modelData.text } }
     }
     Row {
+        id: iconBar
+        visible: false
+        spacing: 2
+        Repeater { model: root.actions; delegate: ActButton { required property var modelData; icon: modelData.icon; compact: true } }
+    }
+    // The buttons stay at the top while the thread scrolls under them, on a band of the page's own colour with a line
+    // below it
+    readonly property int barHeight: 54
+    Rectangle {
+        z: 1
+        visible: bar.visible || viewButton.visible
+        y: root.contentY
+        width: root.width; height: root.barHeight
+        color: c.bg
+        TapHandler {}                   // a click on the band doesn't reach the text under it
+        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: c.divider }
+    }
+    Row {
         id: bar
         z: 2                            // the tips lie over the thread
         visible: root.messages.length > 0 && root.actions.length > 0
         readonly property real room: (viewButton.visible ? viewButton.x : page.x + page.width + 12) - x - 12
         readonly property bool full: fullBar.implicitWidth <= room
         readonly property bool compact: !full && shortBar.implicitWidth > room
+        // Narrower still: the view button drops its key, then the last buttons give way (their keys still work)
+        readonly property int fits: Math.floor((room + spacing) / (iconBar.implicitWidth / root.actions.length + spacing))
         x: page.x - 10
-        y: 12
+        y: root.contentY + 12
         spacing: 2
         Repeater {
             model: root.actions
             delegate: ActButton {
                 required property var modelData
+                required property int index
+                visible: !bar.compact || index < bar.fits
                 icon: modelData.icon; label: bar.full ? modelData.text : modelData.short || modelData.text; compact: bar.compact
                 tip: modelData.tip || ""; keys: modelData.keys || ""
                 onClicked: root.act(modelData.id)
@@ -124,8 +146,9 @@ Flickable {
     Rectangle {
         id: viewButton
         visible: root.messages.some(m => m.html !== "")
+        z: 2
         x: page.x + page.width - width + 12
-        y: 12
+        y: root.contentY + 12
         implicitWidth: viewRow.implicitWidth + 24
         implicitHeight: 30
         radius: 8
@@ -136,15 +159,20 @@ Flickable {
             id: viewRow
             anchors.centerIn: parent
             spacing: 8
-            KeyCap { anchors.verticalCenter: parent.verticalCenter; c: root.c; keys: "h"; tint: c.faint }
-            Text { anchors.verticalCenter: parent.verticalCenter; text: ["Text", "HTML, dark", "HTML as sent"][root.htmlMode]; color: c.dim; font.family: c.font; font.pixelSize: 12 }
+            KeyCap {
+                id: viewKey
+                anchors.verticalCenter: parent.verticalCenter; c: root.c; keys: "h"; tint: c.faint
+                visible: iconBar.implicitWidth + 12 + implicitWidth + viewRow.spacing + viewText.implicitWidth + 24
+                         <= page.x + page.width + 12 - bar.x
+            }
+            Text { id: viewText; anchors.verticalCenter: parent.verticalCenter; text: ["Text", "HTML, dark", "HTML as sent"][root.htmlMode]; color: c.dim; font.family: c.font; font.pixelSize: 12 }
         }
     }
     Column {
         id: page
         width: Math.max(240, Math.min(640, root.width - 80))
         x: Math.max(24, (root.width - width) / 2)
-        y: bar.visible ? 64 : 48
+        y: bar.visible || viewButton.visible ? root.barHeight + 48 : 48
         // The gaps are the messages' own, so folded ones lie close together
         spacing: 0
         Text {

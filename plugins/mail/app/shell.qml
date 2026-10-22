@@ -667,14 +667,6 @@ ShellRoot {
                     }
                     Item { Layout.fillHeight: true }
                     // More than one account: each with its inbox's unread count; a click or Tab shows another one's folders
-                    Row {
-                        visible: win.accounts.length > 1
-                        Layout.leftMargin: 28
-                        Layout.bottomMargin: 6
-                        spacing: 8
-                        Text { anchors.verticalCenter: parent.verticalCenter; text: "Accounts"; color: c.faint; font.family: c.font; font.pixelSize: 11 }
-                        KeyCap { anchors.verticalCenter: parent.verticalCenter; c: win.look; keys: "tab"; tint: win.look.faint }
-                    }
                     Repeater {
                         model: win.accounts.length > 1 ? win.accounts : []
                         delegate: Rectangle {
@@ -708,24 +700,29 @@ ShellRoot {
                             }
                         }
                     }
-                    Row {
-                        Layout.leftMargin: 28
-                        Layout.topMargin: win.accounts.length > 1 ? 18 : 0
-                        Layout.bottomMargin: 14
-                        spacing: 8
-                        KeyCap { anchors.verticalCenter: parent.verticalCenter; c: win.look; keys: "⌘,"; tint: win.look.faint }
-                        Text {
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: "Settings"; font.family: c.font; font.pixelSize: 12
-                            color: sh.hovered ? c.text : c.dim
+                    // The foot: Settings (its key in the tip) and the account, when there is only one
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.topMargin: win.accounts.length > 1 ? 12 : 0
+                        implicitHeight: 26
+                        // Its glyph lines up with the folders' names above
+                        Rectangle {
+                            id: gear
+                            anchors.left: parent.left; anchors.leftMargin: 22; anchors.verticalCenter: parent.verticalCenter
+                            width: 26; height: 26; radius: 6
+                            color: sh.hovered ? c.hover : "transparent"
+                            Text { anchors.centerIn: parent; text: Icons.g("settings"); font.family: Icons.family; font.pixelSize: 14; color: sh.hovered ? c.text : c.faint }
                             HoverHandler { id: sh; cursorShape: Qt.PointingHandCursor }
                             TapHandler { onTapped: win.showSettings = true }
+                            Tip { anchors.bottom: parent.top; anchors.bottomMargin: 8; anchors.left: parent.left; c: win.look; text: "Settings"; keys: "⌘,"; hovered: sh.hovered }
                         }
-                    }
-                    Text {
-                        Layout.leftMargin: 28
-                        visible: win.accounts.length < 2
-                        text: win.account.address; color: c.faint; font.family: c.font; font.pixelSize: 11
+                        Text {
+                            anchors.left: gear.right; anchors.leftMargin: 4; anchors.right: parent.right; anchors.rightMargin: 28
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: win.accounts.length < 2
+                            elide: Text.ElideRight
+                            text: win.account.address; color: c.faint; font.family: c.font; font.pixelSize: 11
+                        }
                     }
                 }
                 Rectangle { anchors.right: parent.right; width: 1; height: parent.height; color: c.divider }
@@ -746,7 +743,8 @@ ShellRoot {
                         Layout.preferredHeight: win.headerHeight
                         Layout.bottomMargin: win.headerGap
                         spacing: 10
-                        Text { text: "⌕"; color: c.faint; font.pixelSize: 15 }
+                        // Held to the line's height, so the bigger glyph doesn't push the list down
+                        Text { text: "⌕"; color: c.faint; font.pixelSize: 26; Layout.preferredHeight: win.headerHeight; verticalAlignment: Text.AlignVCenter; topPadding: -2 }
                         TextInput {
                             id: search
                             Layout.fillWidth: true
@@ -762,7 +760,6 @@ ShellRoot {
                             Keys.onDownPressed: list.forceActiveFocus()
                             Timer { id: searchDelay; interval: 150; onTriggered: win.reload(false) }
                         }
-                        KeyCap { c: win.look; keys: "/"; tint: win.look.faint; visible: !search.activeFocus }
                     }
                     ListView {
                         id: list
