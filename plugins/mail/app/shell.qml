@@ -302,6 +302,13 @@ ShellRoot {
         function savePart(msg, f) {
             nm.part("save", msg.id, f.part, f.name, r => say(r.error || "Saved to " + r.path.replace(Quickshell.env("HOME"), "~")))
         }
+        function saveAll(msg) {
+            nm.saveAll(msg.id, msg.files, r => {
+                if (r.error) { say(r.error); return }
+                const dir = r.paths.length ? r.paths[0].replace(/\/[^\/]*$/, "").replace(Quickshell.env("HOME"), "~") : ""
+                say("Saved " + r.paths.length + " attachments to " + dir)
+            })
+        }
         function size(n) {
             if (n < 0) return ""
             if (n < 1024) return n + " B"

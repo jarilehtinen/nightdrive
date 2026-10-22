@@ -322,6 +322,23 @@ Flickable {
                             }
                         }
                     }
+                    // Two or more: all of them to the downloads folder at once
+                    Rectangle {
+                        visible: msgCol.modelData.files.length > 1
+                        implicitWidth: allRow.implicitWidth + 24
+                        implicitHeight: 34
+                        radius: 8
+                        color: allHover.hovered ? c.hover : "transparent"
+                        HoverHandler { id: allHover; cursorShape: Qt.PointingHandCursor }
+                        TapHandler { onTapped: app.saveAll(msgCol.modelData) }
+                        Row {
+                            id: allRow
+                            anchors.centerIn: parent
+                            spacing: 7
+                            Text { anchors.verticalCenter: parent.verticalCenter; text: Icons.g("download"); font.family: Icons.family; font.pixelSize: 14; color: allHover.hovered ? c.accent : c.dim }
+                            Text { anchors.verticalCenter: parent.verticalCenter; text: "Save all"; font.family: c.font; font.pixelSize: 12; color: allHover.hovered ? c.accent : c.dim }
+                        }
+                    }
                 }
                 // A draft is written on in the writing window.
                 Rectangle {

@@ -16,7 +16,7 @@ A quiet mail client: folders, the thread list and the open thread, nothing else 
 - ⇧-click, ⇧↑ / ⇧↓ or ⌘A select several threads, Ctrl-click adds one or leaves it out: archive, delete, spam, `u` and a drag then move or mark them all, and ⌘Z takes them all back. `Esc` selects only one again.
 - In Trash, `d` deletes a thread for good, and ⌘⇧⌫ (or Empty Trash under the list) empties it. Both ask first, as there is no ⌘Z for them; the next sync deletes them on the server too.
 - A message (or the selected ones) dragged sideways from the list onto Inbox, Archive, Spam or Trash moves there in the same way (⌘Z undoes it too).
-- Attachments show under their message: a click opens one, Save puts it in Downloads.
+- Attachments show under their message: a click opens one, Save puts it in Downloads, and Save all (with two or more) puts them all there.
 
 ## Writing
 

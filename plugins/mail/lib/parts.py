@@ -3,6 +3,8 @@
 
     parts.py open MSGID PART NAME    copies the part to ~/.cache/nightmail/parts/ and prints {"path": ...} to open
     parts.py save MSGID PART NAME    copies it to the downloads folder, next to what is there, and prints {"path": ...}
+    parts.py save-all MSGID PART NAME [PART NAME …]
+                                     the same for each, and prints {"paths": [...]}
 
 PART is notmuch's part number (`notmuch show --format=json` lists them), NAME the attachment's file name.
 Failures are {"error": "..."}.
@@ -34,8 +36,7 @@ def free(folder, name):
     return path
 
 
-def main():
-    cmd, msgid, part, name = sys.argv[1:5]
+def write(cmd, msgid, part, name):
     name = os.path.basename(name) or "attachment"
     data = subprocess.run(["notmuch", "show", "--format=raw", "--part=" + part, f'id:"{msgid}"'],
                           capture_output=True, check=True).stdout
@@ -48,7 +49,16 @@ def main():
     os.makedirs(folder, exist_ok=True)
     with open(path, "wb") as fh:
         fh.write(data)
-    print(json.dumps({"path": path}))
+    return path
+
+
+def main():
+    cmd, msgid = sys.argv[1:3]
+    if cmd == "save-all":
+        pairs = sys.argv[3:]
+        print(json.dumps({"paths": [write("save", msgid, pairs[i], pairs[i + 1]) for i in range(0, len(pairs) - 1, 2)]}))
+    else:
+        print(json.dumps({"path": write(cmd, msgid, sys.argv[3], sys.argv[4])}))
 
 
 if __name__ == "__main__":
