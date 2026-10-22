@@ -326,9 +326,8 @@ The full list is in [`config/hypr/SHORTCUTS.md`](config/hypr/SHORTCUTS.md).
   `config/hypr/local.lua`: on a PC the display scale picked automatically and the keyboard layout Fedora's installer
   set, in a VM settings for it, on a Mac the layout unless it's Finnish. The login screen uses the same layout. A scale picked in the
   launcher (Settings › Display) wins over both.
-- **X11 apps** (REAPER, Ardour, Steam) draw at the screen's full resolution, so they are sharp but small on a scaled
-  screen: set their own scale. REAPER: the theme's 200 % layout (Options › Themes › Theme adjuster); Ardour:
-  Preferences › Appearance › GUI and font scaling; Steam: Settings › Interface › Scale. GTK 3 apps follow `GDK_SCALE=2`.
+- **X11 apps** (REAPER, Steam, Discord) draw at the screen's full resolution, so they are sharp but small on a scaled
+  screen: turn up the app's own scale or zoom in its settings.
 - **Per-machine overrides** go to `config/hypr/local.lua`, which git ignores.
   Rounded screen corners (tuned for the MacBook's display) are off; `NIGHTDRIVE = { corners = true }` there turns them on.
 - **Keybindings** are in [`config/hypr/bindings.lua`](config/hypr/bindings.lua), a plugin's in its own folder. Apps
