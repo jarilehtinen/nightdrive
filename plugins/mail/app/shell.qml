@@ -810,7 +810,7 @@ ShellRoot {
                             else if (k === Qt.Key_R && !alt) win.compose(e.modifiers & Qt.ShiftModifier ? "reply" : "all")
                             else if (k === Qt.Key_A || k === Qt.Key_E) win.archive()
                             else if ((k === Qt.Key_Backspace || k === Qt.Key_Delete) && shift && (ctrl || e.modifiers & Qt.MetaModifier)) win.emptyTrash()
-                            else if (k === Qt.Key_D || k === Qt.Key_NumberSign) win.trash()
+                            else if (k === Qt.Key_D || k === Qt.Key_NumberSign || k === Qt.Key_Backspace || k === Qt.Key_Delete) win.trash()
                             else if (k === Qt.Key_Exclam) win.spam()
                             else if (k === Qt.Key_U && shift) win.markAllRead(win.folder)
                             else if (k === Qt.Key_U) win.toggleRead()
@@ -1199,7 +1199,7 @@ ShellRoot {
         readonly property var keyHelp: [
             { title: "Read", keys: [["⌥↑ ⌥↓  j k", "Previous, next"], ["⏎", "Open in a window"], ["↑ ↓", "Scroll the message"], ["Space  ⇧Space", "Page down, up"], ["h", "HTML or text"],
                                     ["⌘F  /", "Search"], ["Esc", "Clear the search"]] },
-            { title: "Act", keys: [["a", "Archive"], ["d", "Move to Trash (in Trash: delete)"], ["!", "Spam (in Spam: not spam)"], ["⌘Z", "Undo"], ["u", "Unread (again: read)"], ["⇧U", "Mark all read"], ["⌘R", "Refresh"],
+            { title: "Act", keys: [["a", "Archive"], ["d  ⌫", "Move to Trash (in Trash: delete)"], ["!", "Spam (in Spam: not spam)"], ["⌘Z", "Undo"], ["u", "Unread (again: read)"], ["⇧U", "Mark all read"], ["⌘R", "Refresh"],
                                    ["⇧↑ ⇧↓  ⇧-click", "Select several"], ["Ctrl-click", "Select or leave out"], ["⌘A", "Select all"]] },
             { title: "Write", keys: [["⌘N  c", "New message"], ["r", "Reply to all"], ["⇧R", "Reply to the sender only"], ["f", "Forward"],
                                      ["⏎", "Continue a draft (in Drafts)"], ["⌘⇧C", "Claude writes the reply"], ["⌘⇧C", "…from the selected text"],

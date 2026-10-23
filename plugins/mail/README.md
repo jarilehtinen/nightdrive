@@ -12,9 +12,9 @@ A quiet mail client: folders, the thread list and the open thread, nothing else 
 - `h` shows a message as text, as HTML on the dark page, or as HTML on light paper as it was sent; which one comes first is a setting (text by default). Remote images stay off.
 - `Enter` or a double click opens the thread in a window of its own (in Drafts, it goes on writing the draft). Opening an unread thread marks it read; `u` marks it unread again (and read again after that). ⇧U (or ✓ beside a folder's unread count) marks the whole folder read, or with a search on, what it found; ⌘Z takes it back.
 - The buttons above a message do the same with the mouse: Reply, Reply with Claude, Forward, Archive, Delete and Spam. Held under the pointer, a button shows its key. With several threads selected, the rows in the reading pane are buttons too.
-- `a` archives, `d` moves to Trash, `!` marks spam (in Spam: not spam, back to the Inbox), ⌘Z undoes them. The next sync makes the same move on the server, so your phone and webmail see it too.
+- `a` archives, `d` or Delete (⌫) moves to Trash, `!` marks spam (in Spam: not spam, back to the Inbox), ⌘Z undoes them. The next sync makes the same move on the server, so your phone and webmail see it too.
 - ⇧-click, ⇧↑ / ⇧↓ or ⌘A select several threads, Ctrl-click adds one or leaves it out: archive, delete, spam, `u` and a drag then move or mark them all, and ⌘Z takes them all back. `Esc` selects only one again.
-- In Trash, `d` deletes a thread for good, and ⌘⇧⌫ (or Empty Trash under the list) empties it. Both ask first, as there is no ⌘Z for them; the next sync deletes them on the server too.
+- In Trash, `d` (or ⌫) deletes a thread for good, and ⌘⇧⌫ (or Empty Trash under the list) empties it. Both ask first, as there is no ⌘Z for them; the next sync deletes them on the server too.
 - A message (or the selected ones) dragged sideways from the list onto Inbox, Archive, Spam or Trash moves there in the same way (⌘Z undoes it too).
 - Attachments show under their message: a click opens one, Save puts it in Downloads, and Save all (with two or more) puts them all there.
 
