@@ -45,7 +45,7 @@ ShellRoot {
         readonly property int searchDelay: 450      // ms after typing stops before Spotify is asked
         readonly property int settleTime: 1500      // ms a pressed button's look waits for Deck's state to catch up
         readonly property int headerTop: 18         // the sidebar's title and the view's title start this far down
-        readonly property int listTop: 70           // and the first section and the first row this far: their tops line up
+        readonly property int listTop: 65           // and the first section and the first row this far: their tops line up
 
         // --- What Deck says: the playing track and the queue (state.json, written on every change) ---
         property var info: null
