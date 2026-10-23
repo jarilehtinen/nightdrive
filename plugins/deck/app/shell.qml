@@ -950,13 +950,30 @@ ShellRoot {
                                 color: note || r.modelData.right === "Listened" ? c.primary : c.faint
                             }
                         }
-                        Text {
+                        // An empty view: what it is in light text ("Nothing yet"), and what to do below it, quieter (the
+                        // part of win.empty after its first ": ")
+                        Column {
+                            id: emptyNote
+                            readonly property int cut: win.empty.indexOf(": ")
                             visible: list.count === 0
                             anchors.centerIn: parent
                             width: Math.min(parent.width - 48, 420)
-                            horizontalAlignment: Text.AlignHCenter
-                            wrapMode: Text.WordWrap
-                            text: win.empty; color: c.faint; font.family: c.font; font.pixelSize: 12
+                            spacing: 6
+                            Text {
+                                width: parent.width
+                                horizontalAlignment: Text.AlignHCenter
+                                wrapMode: Text.WordWrap
+                                text: emptyNote.cut < 0 ? win.empty : win.empty.slice(0, emptyNote.cut)
+                                color: c.text; font.family: c.font; font.pixelSize: 13
+                            }
+                            Text {
+                                visible: emptyNote.cut >= 0
+                                width: parent.width
+                                horizontalAlignment: Text.AlignHCenter
+                                wrapMode: Text.WordWrap
+                                text: emptyNote.cut < 0 ? "" : win.empty.slice(emptyNote.cut + 2).replace(/^./, ch => ch.toUpperCase())
+                                color: c.faint; font.family: c.font; font.pixelSize: 12
+                            }
                         }
                     }
                 }
