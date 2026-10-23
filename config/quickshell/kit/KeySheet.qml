@@ -3,7 +3,7 @@ import QtQuick
 // The keys of a window, shown by ? or Ctrl+? (GNOME's key for an app's shortcuts) until any other key. The window passes
 // its key events to pressed(): the keys its own handlers leave alone (Ctrl+? among them, and ? from where nothing takes
 // it). No ⌘ hold: ⌘ drags windows and starts the apps' shortcuts, so a hold showed the sheet by accident. Nightdrive's apps
-// (Mail, Deck) share it: each links it into its own app/ folder, with KeyCap.qml.
+// (Mail, Deck) share it, with the rest of the apps' kit (README.md).
 Rectangle {
     id: root
     required property QtObject c

@@ -18,7 +18,7 @@ Column {
     property bool outOpen: false       // output device list open
     signal close()
     function openDeck() {
-        Quickshell.execDetached([Quickshell.env("HOME") + "/.local/bin/deck-open"])
+        Quickshell.execDetached([Quickshell.env("HOME") + "/.local/bin/deck-window"])
         m.close()
     }
 

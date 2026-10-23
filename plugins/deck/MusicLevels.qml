@@ -17,7 +17,7 @@ Item {
     property var spotify: null                // Music › Search: { query, artists, albums, songs, error } (deck search --json)
     property var artist: ({ id: "", name: "", albums: null })   // Music › Search › an artist's albums
 
-    readonly property string bin: Quickshell.env("HOME") + "/.local/bin"   // deck, and deck-ctl and deck-open (bin/ here)
+    readonly property string bin: Quickshell.env("HOME") + "/.local/bin"   // deck, and deck-ctl and deck-window (bin/ here)
     readonly property var levels: ["music", "shelf", "curated", "musicsearch", "artist"]
     readonly property var titles: ({ music: "Music", shelf: "Music › Album Shelf", curated: "Music › Curated", musicsearch: "Music › Search",
                                      artist: "Music › " + artist.name })
@@ -196,7 +196,7 @@ jq -cn --argjson s "$s" --argjson c "$c" \'[($s | sort_by((.artist | ascii_downc
     function topPress() { if (info === null) launchDeck(); else ctl("toggle") }
     function launchDeck() {
         launcher.open = false
-        Quickshell.execDetached([bin + "/deck-open"])
+        Quickshell.execDetached([bin + "/deck-window"])
     }
     function ctl(cmd) {
         if (cmd === "toggle") override = Object.assign({}, override, { playing: !playing })

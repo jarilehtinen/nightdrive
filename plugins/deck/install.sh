@@ -1,7 +1,7 @@
 #!/bin/bash
 # Installs the Deck player (Spotify, https://github.com/nightdrive-sh/deck).
 # Source: ~/.local/src/deck (another clone: DECK_SRC=~/path/to/deck ./install.sh), binary: ~/.local/bin/deck,
-# launch: Deck (⌘Space) and Hyper+M (bin/deck-open). `nightdrive update` runs this again when Deck's source changes.
+# launch: Deck (⌘Space) and Hyper+M (bin/deck-window). `nightdrive update` runs this again when Deck's source changes.
 # Needs Spotify Premium and the Client ID of your own Spotify app (~/.config/deck/config.toml), see Deck's README.
 set -euo pipefail
 src=${DECK_SRC:-$HOME/.local/src/deck}
@@ -20,7 +20,7 @@ cat > "$HOME/.local/share/applications/deck.desktop" <<DESK
 Type=Application
 Name=Deck
 Comment=Spotify player
-Exec=$HOME/.local/bin/deck-open
+Exec=$HOME/.local/bin/deck-window
 Icon=deck
 Terminal=false
 Categories=AudioVideo;Audio;Player;

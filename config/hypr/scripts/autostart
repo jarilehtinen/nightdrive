@@ -45,7 +45,7 @@ case $1 in
       cmd=$(grep -m1 '^Exec=' "$file" | cut -d= -f2- | sed -E 's/ +%[a-zA-Z]//g; s/ +@@u?//g; s/ +--$//')
       if grep -qxF "$name" <<<"$bg"; then
         # Hyprland's exec rule follows the process, so the window opens straight in the background without flashing
-        # LAUNCH_HIDDEN: a launch-or-focus wrapper (Deck's deck-open) doesn't bring the window up
+        # LAUNCH_HIDDEN: a launch-or-focus wrapper (Deck's deck-window) doesn't bring the window up
         esc="env LAUNCH_HIDDEN=1 $cmd"; esc=${esc//\\/\\\\}; esc=${esc//\"/\\\"}
         hyprctl dispatch "hl.dsp.exec_cmd(\"$esc\", { workspace = \"special:bg silent\" })" >/dev/null
       else

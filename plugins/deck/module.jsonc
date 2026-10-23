@@ -1,2 +1,2 @@
 // Deck's top bar module: playing or not (./status); a click opens DeckMenu.qml, a right click brings up Deck's window
-{ "interval": 2, "right": "bin/deck-open", "before": "claude", "size": 16, "label": "Music (Deck)", "glyph": "music" }
+{ "interval": 2, "right": "bin/deck-window", "before": "claude", "size": 16, "label": "Music (Deck)", "glyph": "music" }

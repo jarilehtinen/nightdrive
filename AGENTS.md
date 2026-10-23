@@ -58,6 +58,10 @@ check` (exit 1 with the findings) and `nightdrive sandbox shot NAME`, `ipc …` 
   it), but that build stops on such a missing place too: check `tools/build.sh --ref dev` there before a release.
 
 **Recipes**
+- *App* (one of Nightdrive's own, a window: Mail, Deck): a plugin folder whose `app/shell.qml` is a Quickshell config of
+  its own, built from the apps' kit (`config/quickshell/kit/README.md`: sidebar, rows, buttons, panels, key sheet). A
+  change to a kit part reaches every app: compare each app's screenshots before and after. Its command in `bin/` (one,
+  named for the app) is built on `kit/app.sh`.
 - *Plugin* (an optional feature: a bar icon and menu, keys, a service): a folder `plugins/<id>/` as `plugins/README.md`
   explains (copy its Disk example, or `plugins/ferry`), then `nightdrive plugin check <id>`. After changing its
   `module.jsonc` or adding a menu or launcher levels (`<Name>Levels.qml`), run `nightdrive plugins installed`; after

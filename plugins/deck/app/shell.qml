@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import qs
+import qs.kit
 
 // Deck's window: the shelf, Curated, genre radio, Spotify search and the queue, with the player along the bottom. The music plays in
 // `deck serve` (or a Deck in a terminal), which this only talks to: `deck ctl` for commands, its state file for what plays,
@@ -17,27 +18,8 @@ ShellRoot {
         color: c.bg
         onClosed: Qt.quit()
 
-        // The look, as Mail's: the desktop's theme with the terminal's background behind the window.
-        QtObject {
-            id: c
-            readonly property color bg: Theme.launcherBg
-            readonly property color solid: Qt.rgba(bg.r, bg.g, bg.b, 1)
-            readonly property color line: Qt.lighter(solid, 1.45)
-            readonly property color divider: Qt.lighter(line, 1.2)
-            // Under the pointer: the selected row's colour, fainter, so a row you point at never looks picked
-            readonly property color hover: Qt.rgba(sel.r, sel.g, sel.b, 0.5)
-            readonly property color sel: Theme.sel
-            readonly property color text: Theme.text
-            readonly property color dim: Theme.dim
-            readonly property color faint: Qt.darker(dim, 1.33)
-            readonly property color accent: Theme.accent
-            readonly property color primary: Theme.primary
-            readonly property color title: Theme.title
-            readonly property color danger: Theme.danger
-            // Behind the key sheet: the menus' background, dimmed
-            readonly property color scrim: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0.7)
-            readonly property string font: Theme.font
-        }
+        // The look, as Mail's: the apps' kit (kit/AppLook.qml)
+        AppLook { id: c }
 
         readonly property string home: Quickshell.env("HOME")
         readonly property string deckBin: home + "/.local/bin/deck"
@@ -120,7 +102,7 @@ ShellRoot {
             if (queue.length) { pendingNext = queue[0]; pendingWait.restart() }
             ctl(["next"])
         }
-        function startDeck() { Quickshell.execDetached([home + "/.local/bin/deck-open", "player"]) }
+        function startDeck() { Quickshell.execDetached([home + "/.local/bin/deck-window", "player"]) }
 
         // --- Deck's own files: the shelf and Curated ---
         property var shelf: []
@@ -505,7 +487,7 @@ ShellRoot {
             if (danger) { noteTimer.interval = 8000; noteTimer.restart() }
         }
 
-        // `deck-open search QUERY` (the launcher's "Search Spotify" row)
+        // `deck-window search QUERY` (the launcher's "Search Spotify" row)
         IpcHandler {
             target: "deck"
             function search(query: string): void {
@@ -551,62 +533,27 @@ ShellRoot {
                 Layout.fillHeight: true
                 spacing: 0
 
-                // Sections
-                Rectangle {
+                // Sections: the title level with the view's, the first section level with the first row
+                AppSidebar {
                     Layout.preferredWidth: 196
-                    Layout.fillHeight: true
-                    color: "transparent"
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.bottomMargin: 18
-                        spacing: 2
-                        // The title, level with the view's; the first section level with the first row
-                        Item {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: win.listTop - parent.spacing
-                            Row {
-                                x: 28; height: 22
-                                y: (win.headerHeight - height) / 2
-                                spacing: 3
-                                Text { anchors.verticalCenter: parent.verticalCenter; text: "Deck"; color: c.title; font.family: c.font; font.pixelSize: 13; font.weight: Font.DemiBold }
-                                Rectangle { width: 7; height: 14; color: c.primary; anchors.verticalCenter: parent.verticalCenter }
-                            }
+                    c: win.look
+                    title: "Deck"
+                    headerHeight: win.headerHeight
+                    contentTop: win.listTop
+                    Repeater {
+                        model: win.sections
+                        delegate: AppNavRow {
+                            required property var modelData
+                            c: win.look
+                            glyph: modelData.glyph
+                            label: modelData.name
+                            selected: win.section === modelData.id
+                            count: modelData.id === "queue" && win.queue.length ? win.queue.length
+                                 : modelData.id === "curated" && win.curated.length ? win.curated.length : ""
+                            onClicked: win.pickSection(modelData.id)
                         }
-                        Repeater {
-                            model: win.sections
-                            delegate: Rectangle {
-                                required property var modelData
-                                required property int index
-                                Layout.fillWidth: true
-                                Layout.leftMargin: 12
-                                Layout.rightMargin: 12
-                                implicitHeight: 34
-                                radius: 8
-                                color: win.section === modelData.id ? c.sel : sh.hovered ? c.hover : "transparent"
-                                HoverHandler { id: sh; cursorShape: Qt.PointingHandCursor }
-                                TapHandler { onTapped: win.pickSection(modelData.id) }
-                                Text {
-                                    id: glyph
-                                    anchors.left: parent.left; anchors.leftMargin: 14; anchors.verticalCenter: parent.verticalCenter
-                                    text: Icons.g(modelData.glyph); font.family: Icons.family; font.pixelSize: 15
-                                    color: win.section === modelData.id ? c.accent : c.dim
-                                }
-                                Text {
-                                    anchors.left: glyph.right; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter
-                                    text: modelData.name; font.family: c.font; font.pixelSize: 13
-                                    color: win.section === modelData.id ? c.title : c.dim
-                                }
-                                Text {
-                                    anchors.right: parent.right; anchors.rightMargin: 16; anchors.verticalCenter: parent.verticalCenter
-                                    text: modelData.id === "queue" && win.queue.length ? win.queue.length
-                                        : modelData.id === "curated" && win.curated.length ? win.curated.length : ""
-                                    font.family: c.font; font.pixelSize: 11; color: c.faint
-                                }
-                            }
-                        }
-                        Item { Layout.fillHeight: true }
                     }
-                    Rectangle { anchors.right: parent.right; width: 1; height: parent.height; color: c.divider }
+                    Item { Layout.fillHeight: true }
                 }
 
                 // The view
@@ -635,19 +582,14 @@ ShellRoot {
                                 visible: win.view.kind !== "search"
                                 // The way back: a button the size of the album buttons, its arrow where the title starts
                                 // in a section's own view
-                                Rectangle {
+                                AppIconButton {
                                     visible: win.stack.length > 1
                                     Layout.leftMargin: -8
                                     implicitWidth: 30; implicitHeight: 28; radius: 7
-                                    color: bh.hovered ? c.hover : "transparent"
-                                    HoverHandler { id: bh; cursorShape: Qt.PointingHandCursor }
-                                    TapHandler { onTapped: win.back() }
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: Icons.g("arrow-left"); font.family: Icons.family; font.pixelSize: 16
-                                        color: bh.hovered ? c.text : c.dim
-                                    }
-                                    Tip { y: parent.height + 8; c: win.look; text: "Back"; keys: "Esc"; hovered: bh.hovered }
+                                    c: win.look
+                                    glyph: "arrow-left"; glyphSize: 16
+                                    tip: "Back"; keys: "Esc"
+                                    onClicked: win.back()
                                 }
                                 // The album's cover, a little taller than the line
                                 Image {
@@ -713,30 +655,13 @@ ShellRoot {
                                             ? { glyph: "check", label: "On the shelf", tip: "Take it off the shelf", keys: "a", act: () => win.shelve(null) }
                                             : { glyph: "library", label: "Shelf", tip: "Put it on the shelf", keys: "a", act: () => win.shelve(null) }
                                     ] : []
-                                    delegate: Rectangle {
+                                    delegate: AppButton {
                                         required property var modelData
-                                        implicitWidth: albumBtn.implicitWidth + 24; implicitHeight: 28; radius: 7
-                                        color: ah.hovered ? c.hover : "transparent"
-                                        border.color: c.line
-                                        HoverHandler { id: ah; cursorShape: Qt.PointingHandCursor }
-                                        TapHandler { onTapped: modelData.act() }
-                                        Row {
-                                            id: albumBtn
-                                            anchors.centerIn: parent
-                                            spacing: 8
-                                            Text {
-                                                anchors.verticalCenter: parent.verticalCenter
-                                                text: Icons.g(modelData.glyph); font.family: Icons.family; font.pixelSize: 13
-                                                color: modelData.on || modelData.glyph === "check" ? c.primary : c.dim
-                                            }
-                                            Text {
-                                                anchors.verticalCenter: parent.verticalCenter
-                                                text: modelData.label; font.family: c.font; font.pixelSize: 12
-                                                color: ah.hovered ? c.title : c.text
-                                            }
-                                        }
-                                        // Below, ending at the button's right edge: the window's edge is near
-                                        Tip { x: parent.width - width; y: parent.height + 8; c: win.look; text: modelData.tip; keys: modelData.keys; hovered: ah.hovered }
+                                        c: win.look
+                                        glyph: modelData.glyph; label: modelData.label
+                                        on: !!modelData.on || modelData.glyph === "check"
+                                        tip: modelData.tip; keys: modelData.keys
+                                        onClicked: modelData.act()
                                     }
                                 }
                                 // Curated: a new list by Claude. The first press says what it does, the second does it.
@@ -751,55 +676,28 @@ ShellRoot {
                                                             { label: "Cancel", glyph: "", strong: false, act: () => win.curateAsk = false }]
                                          : (win.curated.length ? [{ label: "Pick for me", glyph: "dices", strong: false, act: () => win.pick("curated") }] : [])
                                            .concat([{ label: "New list", glyph: "refresh-cw", strong: false, act: () => win.curateAsk = true }])
-                                    delegate: Rectangle {
+                                    delegate: AppButton {
                                         required property var modelData
-                                        implicitWidth: btn.implicitWidth + 24; implicitHeight: 28; radius: 7
-                                        color: modelData.strong ? c.sel : nh.hovered ? c.hover : "transparent"
-                                        border.color: modelData.strong ? c.primary : c.line
-                                        HoverHandler { id: nh; cursorShape: Qt.PointingHandCursor }
-                                        TapHandler { onTapped: modelData.act() }
-                                        Row {
-                                            id: btn
-                                            anchors.centerIn: parent
-                                            spacing: 8
-                                            Text {
-                                                visible: modelData.glyph !== ""
-                                                anchors.verticalCenter: parent.verticalCenter
-                                                text: Icons.g(modelData.glyph); font.family: Icons.family; font.pixelSize: 13
-                                                color: modelData.strong ? c.accent : c.dim
-                                            }
-                                            Text {
-                                                anchors.verticalCenter: parent.verticalCenter
-                                                text: modelData.label; font.family: c.font; font.pixelSize: 12
-                                                color: modelData.strong || nh.hovered ? c.title : c.text
-                                            }
-                                        }
+                                        c: win.look
+                                        glyph: modelData.glyph; label: modelData.label
+                                        strong: modelData.strong
+                                        onClicked: modelData.act()
                                     }
                                 }
                             }
-                            RowLayout {
+                            // As high as the title's row, so the field sits where the title does
+                            AppSearchField {
+                                id: searchField
                                 Layout.fillWidth: true
                                 Layout.leftMargin: 28
                                 Layout.rightMargin: 28
-                                // As high as the title's row, so the field sits where the title does
-                                Layout.preferredHeight: 30
                                 visible: win.view.kind === "search"
-                                spacing: 10
-                                Text { text: Icons.g("search"); font.family: Icons.family; font.pixelSize: 15; color: c.faint }
-                                TextInput {
-                                    id: searchField
-                                    Layout.fillWidth: true
-                                    color: c.text; font.family: c.font; font.pixelSize: 14
-                                    selectionColor: c.sel
-                                    Text {
-                                        visible: !searchField.text
-                                        text: "Search Spotify"; color: c.faint; font: searchField.font
-                                    }
-                                    onTextEdited: searchTimer.restart()
-                                    Keys.onReturnPressed: { searchTimer.stop(); win.search(); list.forceActiveFocus() }
-                                    Keys.onDownPressed: list.forceActiveFocus()
-                                    Keys.onEscapePressed: { if (text) { text = ""; win.results = null } else list.forceActiveFocus() }
-                                }
+                                c: win.look
+                                placeholder: "Search Spotify"
+                                onEdited: searchTimer.restart()
+                                onReturnPressed: { searchTimer.stop(); win.search(); list.forceActiveFocus() }
+                                onDownPressed: list.forceActiveFocus()
+                                onEscapePressed: { if (text) { text = ""; win.results = null } else list.forceActiveFocus() }
                             }
                         }
                     }
@@ -859,7 +757,7 @@ ShellRoot {
                             else return
                             e.accepted = true
                         }
-                        delegate: Rectangle {
+                        delegate: AppRow {
                             id: r
                             required property var modelData
                             required property int index
@@ -874,11 +772,10 @@ ShellRoot {
                             readonly property bool dotted: modelData.kind === "album" && win.view.kind !== "shelf" && !!win.shelfUris[modelData.data.uri]
                             // A cover beside a reason (Curated) is as tall as the texts; beside a line or two, a small one
                             readonly property bool tall: !!modelData.cover && !!modelData.note
-                            width: ListView.view.width
                             implicitHeight: Math.max(body.implicitHeight, art.visible ? art.height : 0) + 20
-                            radius: 8
-                            color: current && list.activeFocus ? c.sel : current ? c.hover : rh.hovered ? c.hover : "transparent"
-                            HoverHandler { id: rh; cursorShape: Qt.PointingHandCursor }
+                            c: win.look
+                            selected: current && list.activeFocus
+                            marked: current
                             TapHandler {
                                 // An artist, an album or a genre opens with one click (only browsing: Esc comes back); a song plays
                                 // with two, so picking one doesn't stop the music

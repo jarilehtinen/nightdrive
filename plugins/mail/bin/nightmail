@@ -8,32 +8,10 @@ SYNC_UNIT=nightdrive-mail-sync.service                  # fetches and indexes ma
 PUSH_UNIT=nightdrive-mail-push.service                  # runs the sync as soon as mail comes (IMAP IDLE)
 FETCH_LOCK=${XDG_RUNTIME_DIR:-/tmp}/nightdrive/mail-fetch.lock
 
-running() { qs list -p "$QS_DIR" 2>/dev/null | grep -q 'Process ID'; }
-pid() { qs list -p "$QS_DIR" 2>/dev/null | awk '/Process ID/ { print $3; exit }'; }
-
-start() { setsid -f qs -p "$QS_DIR" >/dev/null 2>&1; }
-
-# A Mail just started answers over IPC once it has loaded: wait for that (3 s at most).
-ready() {
-  for _ in $(seq 30); do
-    qs ipc -p "$QS_DIR" show 2>/dev/null | grep -q 'target mail' && return 0
-    sleep 0.1
-  done
-  return 1
-}
-
-# On Hyprland, a second `nightmail` brings the open window forward instead of starting another one.
-# Without a window to bring forward (one closed before Mail quit by itself on closing), it starts again.
-focus() {
-  command -v hyprctl >/dev/null || return 0
-  local addr
-  addr=$(hyprctl -j clients | jq -r --argjson pid "$(pid)" '[.[] | select(.pid == $pid and .title == "Mail")] | first | .address // empty')
-  if [[ -n $addr ]]; then
-    hyprctl dispatch "hl.dsp.focus({ window = \"address:$addr\" })" >/dev/null
-  else
-    stop; start
-  fi
-}
+# The window: started, brought forward, waited for and stopped by the apps' kit (app/kit/app.sh)
+APP_TITLE=Mail
+APP_IPC=mail
+. "$QS_DIR/kit/app.sh"
 
 # Puts Mail among the desktop's apps (share/nightmail.desktop); link.sh has put `nightmail` in ~/.local/bin.
 install_app() {
@@ -124,12 +102,6 @@ fetch() {
   flock "$FETCH_LOCK" sh -c 'mbsync -q "$@" && notmuch new --quiet' sh "$@"
 }
 
-stop() {
-  running || return 0
-  qs kill -p "$QS_DIR" >/dev/null 2>&1
-  for _ in 1 2 3 4 5 6 7 8 9 10; do running || return 0; sleep 0.1; done
-}
-
 # Claude's reply shows in the desktop's Claude writes card (quickshell/ClaudeWrite.qml, `qs ipc call write ask`), which
 # runs claude-draft for the text and, on Enter, claude-reply to hand it back to Mail. The request (request.json: gen,
 # msgid, account, hint, thread, sent, accept) and the answer stay in a folder only you can read.
@@ -179,10 +151,10 @@ claude_draft() {
 claude_reply() {
   local dir=$1 json
   json=$(jq -c --rawfile t "$dir/result" --slurpfile a "$dir/answer.json" '{ gen, text: $t, read: ($a[0].read // 0) }' "$dir/request.json")
-  running && qs ipc -p "$QS_DIR" call mail claudeAnswer "$json" >/dev/null
+  running && ipc claudeAnswer "$json"
 }
 claude_cancel() {
-  running && qs ipc -p "$QS_DIR" call mail claudeCancel "$(jq -r .gen "$1/request.json")" >/dev/null
+  running && ipc claudeCancel "$(jq -r .gen "$1/request.json")"
 }
 
 usage() {
@@ -214,10 +186,8 @@ USAGE
 }
 
 case ${1:-open} in
-  open)    if running; then focus; else start; fi ;;
-  new)     running || { start; ready; }; qs ipc -p "$QS_DIR" call mail compose >/dev/null ;;
-  settings) if running; then focus; else start; ready; fi; qs ipc -p "$QS_DIR" call mail openSettings >/dev/null ;;
-  mailto:*) running || { start; ready; }; qs ipc -p "$QS_DIR" call mail mailto "$1" >/dev/null ;;
+  new)     running || { start; ready; }; ipc compose ;;
+  mailto:*) running || { start; ready; }; ipc mailto "$1" ;;
   sync)
     if (($# > 1)); then
       fetch "${@:2}"
@@ -227,22 +197,19 @@ case ${1:-open} in
       notmuch new --quiet
     fi
     status=$?
-    running && qs ipc -p "$QS_DIR" call mail refresh >/dev/null
+    running && ipc refresh
     exit $status
     ;;
-  restart) stop; start ;;
-  quit)    stop ;;
-  log)     running || { echo "Mail is not running." >&2; exit 1; }; qs log -p "$QS_DIR" -f ;;
   show|reply|claude)
     [[ -n ${2:-} ]] || { usage >&2; exit 2; }
-    if running; then focus; else start; ready; fi
+    open_ready
     case $1 in show) fn=openMessage ;; reply) fn=replyTo ;; claude) fn=claudeReply ;; esac
-    qs ipc -p "$QS_DIR" call mail "$fn" "$2" >/dev/null
+    ipc "$fn" "$2"
     ;;
   delete)
     [[ -n ${2:-} ]] || { usage >&2; exit 2; }
     python3 "$APP_DIR/lib/move.py" Trash "id:\"$2\"" INBOX >/dev/null && notmuch tag -inbox -- "id:\"$2\""
-    running && qs ipc -p "$QS_DIR" call mail refresh >/dev/null
+    running && ipc refresh
     ;;
   notify)    python3 "$APP_DIR/lib/notify.py" ;;
   fetch)     fetch "${@:2}" ;;
@@ -256,5 +223,9 @@ case ${1:-open} in
   enable)    enable ;;
   disable)   disable ;;
   help|-h|--help) usage ;;
-  *)       usage >&2; exit 2 ;;
+  *)
+    app_command "$@"; status=$?        # open (the default), settings, restart, quit, log
+    ((status == 2)) && { usage >&2; exit 2; }
+    exit $status
+    ;;
 esac

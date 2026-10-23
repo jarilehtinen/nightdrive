@@ -1,1 +1,0 @@
-../../../config/quickshell/Tip.qml

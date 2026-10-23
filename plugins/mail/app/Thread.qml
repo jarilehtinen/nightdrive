@@ -1,5 +1,6 @@
 import QtQuick
 import qs
+import qs.kit
 
 // The open thread: its subject, then each message with its attachments. Mail's reading pane, and a message window's.
 Flickable {

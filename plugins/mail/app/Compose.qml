@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs
+import qs.kit
 
 // Writing a message, in the reading pane's place: To, Cc, Subject and the text, nothing else.
 Item {

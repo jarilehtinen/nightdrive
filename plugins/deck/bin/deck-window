@@ -1,0 +1,58 @@
+#!/bin/bash
+# deck-window [search QUERY | player | restart | quit | log]: Deck's window (app/, a Quickshell config of its own) over
+# the player, `deck serve`, which is started first if no Deck runs. The window only talks to the player, so closing it
+# leaves the music playing. `deck` opens it (Deck hands over to a deck-window on PATH; `deck tui` is Deck's own screen in
+# the terminal), and so do the launcher, the bar, Hyper+M and F8 (hypr/scripts/media-play), as ~/.local/bin/deck-window.
+set -u
+
+APP_DIR=$(dirname "$(dirname "$(readlink -f "$0")")")   # the plugin's folder
+QS_DIR=$APP_DIR/app
+DECK=$HOME/.local/bin/deck
+RUNTIME=${XDG_RUNTIME_DIR:-/tmp}/deck
+SERVE_LOG=$HOME/.cache/deck/serve.log                   # what `deck serve` says before its own log (deck.log) opens
+START_WAIT=50                                           # × 0.2 s for the player to answer
+
+# The window: started, brought forward, waited for and stopped by the apps' kit (app/kit/app.sh)
+APP_TITLE=Deck
+APP_IPC=deck
+. "$QS_DIR/kit/app.sh"
+
+# A Deck plays: its state file's pid lives (a killed one leaves the file behind)
+player_running() {
+  local pid
+  pid=$(jq -r '.pid // empty' "$RUNTIME/state.json" 2>/dev/null)
+  [[ -n $pid && -d /proc/$pid ]]
+}
+
+start_player() {
+  player_running && return 0
+  mkdir -p "$(dirname "$SERVE_LOG")"
+  setsid -f "$DECK" serve >"$SERVE_LOG" 2>&1 </dev/null
+  for _ in $(seq "$START_WAIT"); do
+    player_running && return 0
+    sleep 0.2
+  done
+  # Still starting (the first sign-in waits for the browser), or it stopped: then its last words say why
+  pgrep -xf "$DECK serve" >/dev/null && return 0
+  notify-send -a Deck "Deck didn't start" "$(tail -n 1 "$SERVE_LOG" 2>/dev/null)"
+  return 1
+}
+
+usage() { echo "usage: deck-window [search QUERY | player | restart | quit | log]" >&2; }
+
+case ${1:-open} in
+  open)
+    start_player || exit 1
+    # Autostart's background apps start hidden: the player, not the window
+    [[ -n ${LAUNCH_HIDDEN:-} ]] || open_window
+    ;;
+  player)   start_player ;;
+  search)   start_player || exit 1; open_ready; ipc search "${*:2}" ;;
+  quit)     stop; "$DECK" ctl quit 2>/dev/null ;;
+  settings) usage; exit 2 ;;      # none yet
+  *)
+    app_command "$@"; status=$?    # restart, log
+    ((status == 2)) && { usage; exit 2; }
+    exit $status
+    ;;
+esac

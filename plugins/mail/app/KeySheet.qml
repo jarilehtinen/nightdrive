@@ -1,1 +1,0 @@
-../../../config/quickshell/KeySheet.qml

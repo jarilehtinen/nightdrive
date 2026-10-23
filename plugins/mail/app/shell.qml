@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import qs
+import qs.kit
 
 // Nightdrive Mail: folders, thread list and the open thread, over notmuch.
 ShellRoot {
@@ -16,29 +17,8 @@ ShellRoot {
         // Closing the window (⌘W) quits Mail: a process left without its window would only look open to `nightmail`.
         onClosed: Qt.quit()
 
-        // The look, in one place: the desktop's theme (Theme.qml, linked from Nightdrive's shell), with the terminal's
-        // background and opacity behind the window, and a few shades derived from it for lines and quiet text.
-        QtObject {
-            id: c
-            readonly property color bg: Theme.launcherBg
-            readonly property color solid: Qt.rgba(bg.r, bg.g, bg.b, 1)
-            readonly property color line: Qt.lighter(solid, 1.45)
-            readonly property color divider: Qt.lighter(line, 1.2)     // the lines between the panes
-            // Under the pointer: the selected row's colour, fainter, so a row you point at never looks picked
-            readonly property color hover: Qt.rgba(sel.r, sel.g, sel.b, 0.5)
-            readonly property color sel: Theme.sel
-            readonly property color text: Theme.text
-            readonly property color body: Qt.lighter(text, 1.06)
-            readonly property color dim: Theme.dim
-            readonly property color faint: Qt.darker(dim, 1.33)
-            readonly property color accent: Theme.accent
-            readonly property color primary: Theme.primary
-            readonly property color title: Theme.title
-            readonly property color danger: Theme.danger
-            // Behind a panel over the window (settings, Claude's question, the key sheet): the menus' background, dimmed
-            readonly property color scrim: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0.7)
-            readonly property string font: Theme.font
-        }
+        // The look, as Deck's: the apps' kit (kit/AppLook.qml)
+        AppLook { id: c }
 
         Notmuch { id: nm }
         // For components in their own files, which don't see this file's ids.
@@ -603,136 +583,103 @@ ShellRoot {
             Keys.onPressed: e => sheet.pressed(e)
             spacing: 0
 
-            // Folders
-            Rectangle {
+            // Folders. The title's line and the search's are as high (headerHeight) and as far from the top, so the first
+            // folder and the first message line up.
+            AppSidebar {
                 Layout.preferredWidth: win.width < 900 ? 168 : 208
                 z: 1        // a folder's tip lies over the list
                 visible: win.showFolders
-                Layout.fillHeight: true
-                color: "transparent"
-                ColumnLayout {
-                    anchors.fill: parent
-                    anchors.topMargin: 18
-                    anchors.bottomMargin: 24
-                    spacing: 0
-                    // The title's line and the search's are as high (headerHeight) and as far from the top, so the first
-                    // folder and the first message line up
-                    Row {
-                        Layout.leftMargin: 28
-                        Layout.preferredHeight: win.headerHeight
-                        Layout.bottomMargin: win.headerGap
-                        spacing: 3
-                        Text { anchors.verticalCenter: parent.verticalCenter; text: "Mail"; color: c.title; font.family: c.font; font.pixelSize: 13; font.weight: Font.DemiBold }
-                        Rectangle { width: 7; height: 14; color: c.primary; anchors.verticalCenter: parent.verticalCenter }
-                    }
-                    Repeater {
-                        id: folderRows
-                        model: win.folders
-                        delegate: Rectangle {
-                            required property var modelData
-                            required property int index
-                            Layout.fillWidth: true
-                            Layout.leftMargin: 12
-                            Layout.rightMargin: 12
-                            implicitHeight: 34
-                            radius: 8
-                            color: index === win.folder ? c.sel : fh.hovered || index === win.dropFolder ? c.hover : "transparent"
-                            border.color: index === win.dropFolder ? c.primary : "transparent"
-                            HoverHandler { id: fh; cursorShape: Qt.PointingHandCursor }
-                            TapHandler { onTapped: win.pickFolder(index) }
-                            // The same glyphs as the reading pane's buttons, and the same look as Deck's sections
-                            Text {
-                                id: folderGlyph
-                                anchors.left: parent.left; anchors.leftMargin: 14; anchors.verticalCenter: parent.verticalCenter
-                                text: Icons.g(modelData.glyph); font.family: Icons.family; font.pixelSize: 15
-                                color: index === win.folder ? c.accent : c.dim
-                            }
-                            Text {
-                                anchors.left: folderGlyph.right; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter
-                                text: modelData.name; font.family: c.font; font.pixelSize: 13
-                                color: index === win.folder ? c.title : c.dim
-                            }
-                            Text {
-                                anchors.right: parent.right; anchors.rightMargin: 16; anchors.verticalCenter: parent.verticalCenter
-                                visible: !readButton.visible
-                                text: win.unreadCounts[index] > 0 ? win.unreadCounts[index] : ""
-                                font.family: c.font; font.pixelSize: 11; color: c.dim
-                            }
-                            // Under the pointer, the unread count gives way to ✓: mark all read
-                            Rectangle {
-                                id: readButton
-                                visible: fh.hovered && win.unreadCounts[index] > 0
-                                anchors.right: parent.right; anchors.rightMargin: 6; anchors.verticalCenter: parent.verticalCenter
-                                width: 26; height: 26; radius: 6
-                                color: rh.hovered ? c.sel : "transparent"
-                                HoverHandler { id: rh; cursorShape: Qt.PointingHandCursor }
-                                TapHandler { onTapped: { win.markAllRead(index); list.forceActiveFocus() } }
-                                Text { anchors.centerIn: parent; text: Icons.g("check-check"); font.family: Icons.family; font.pixelSize: 14; color: rh.hovered ? c.text : c.dim }
-                                Tip { x: parent.width + 8; anchors.verticalCenter: parent.verticalCenter; c: win.look; text: "Mark all read"; keys: "⇧U"; hovered: rh.hovered }
-                            }
-                        }
-                    }
-                    Item { Layout.fillHeight: true }
-                    // More than one account: each with its inbox's unread count; a click or Tab shows another one's folders
-                    Repeater {
-                        model: win.accounts.length > 1 ? win.accounts : []
-                        delegate: Rectangle {
-                            required property var modelData
-                            required property int index
-                            Layout.fillWidth: true
-                            Layout.leftMargin: 12
-                            Layout.rightMargin: 12
-                            implicitHeight: 30
-                            radius: 8
-                            color: ah.hovered ? c.hover : "transparent"
-                            HoverHandler { id: ah; cursorShape: Qt.PointingHandCursor }
-                            TapHandler { onTapped: { win.pickAccount(index); list.forceActiveFocus() } }
-                            Rectangle {
-                                visible: index === win.acct
-                                x: 6; anchors.verticalCenter: parent.verticalCenter
-                                width: 3; height: 14; radius: 1.5; color: c.primary
-                            }
-                            Text {
-                                anchors.left: parent.left; anchors.leftMargin: 16; anchors.right: count.left; anchors.rightMargin: 8
-                                anchors.verticalCenter: parent.verticalCenter
-                                elide: Text.ElideRight
-                                text: modelData.address; font.family: c.font; font.pixelSize: 12
-                                color: index === win.acct ? c.title : c.dim
-                            }
-                            Text {
-                                id: count
-                                anchors.right: parent.right; anchors.rightMargin: 16; anchors.verticalCenter: parent.verticalCenter
-                                text: win.inboxUnread[modelData.id] > 0 ? win.inboxUnread[modelData.id] : ""
-                                font.family: c.font; font.pixelSize: 11; color: c.dim
-                            }
-                        }
-                    }
-                    // The foot: Settings (its key in the tip) and the account, when there is only one
-                    Item {
-                        Layout.fillWidth: true
-                        Layout.topMargin: win.accounts.length > 1 ? 12 : 0
-                        implicitHeight: 26
-                        // Its glyph lines up with the folders' names above
-                        Rectangle {
-                            id: gear
-                            anchors.left: parent.left; anchors.leftMargin: 22; anchors.verticalCenter: parent.verticalCenter
-                            width: 26; height: 26; radius: 6
-                            color: sh.hovered ? c.hover : "transparent"
-                            Text { anchors.centerIn: parent; text: Icons.g("settings"); font.family: Icons.family; font.pixelSize: 14; color: sh.hovered ? c.text : c.faint }
-                            HoverHandler { id: sh; cursorShape: Qt.PointingHandCursor }
-                            TapHandler { onTapped: win.showSettings = true }
-                            Tip { anchors.bottom: parent.top; anchors.bottomMargin: 8; anchors.left: parent.left; c: win.look; text: "Settings"; keys: "⌘,"; hovered: sh.hovered }
-                        }
-                        Text {
-                            anchors.left: gear.right; anchors.leftMargin: 4; anchors.right: parent.right; anchors.rightMargin: 28
-                            anchors.verticalCenter: parent.verticalCenter
-                            visible: win.accounts.length < 2
-                            elide: Text.ElideRight
-                            text: win.account.address; color: c.faint; font.family: c.font; font.pixelSize: 11
+                c: win.look
+                title: "Mail"
+                headerHeight: 2 * 18 + win.headerHeight
+                contentTop: 18 + win.headerHeight + win.headerGap
+                bottomMargin: 24
+                Repeater {
+                    id: folderRows
+                    model: win.folders
+                    // The same glyphs as the reading pane's buttons
+                    delegate: AppNavRow {
+                        id: folderRow
+                        required property var modelData
+                        required property int index
+                        c: win.look
+                        glyph: modelData.glyph
+                        label: modelData.name
+                        selected: index === win.folder
+                        dropTarget: index === win.dropFolder
+                        count: !readButton.visible && win.unreadCounts[index] > 0 ? win.unreadCounts[index] : ""
+                        countColor: c.dim
+                        onClicked: win.pickFolder(index)
+                        // Under the pointer, the unread count gives way to ✓: mark all read
+                        AppIconButton {
+                            id: readButton
+                            visible: folderRow.hovered && win.unreadCounts[folderRow.index] > 0
+                            anchors.right: parent.right; anchors.rightMargin: 6; anchors.verticalCenter: parent.verticalCenter
+                            c: win.look
+                            glyph: "check-check"
+                            hoverColor: c.sel
+                            tip: "Mark all read"; keys: "⇧U"; tipSide: "right"
+                            onClicked: { win.markAllRead(folderRow.index); list.forceActiveFocus() }
                         }
                     }
                 }
-                Rectangle { anchors.right: parent.right; width: 1; height: parent.height; color: c.divider }
+                Item { Layout.fillHeight: true }
+                // More than one account: each with its inbox's unread count; a click or Tab shows another one's folders
+                Repeater {
+                    model: win.accounts.length > 1 ? win.accounts : []
+                    delegate: Rectangle {
+                        required property var modelData
+                        required property int index
+                        Layout.fillWidth: true
+                        Layout.leftMargin: 12
+                        Layout.rightMargin: 12
+                        implicitHeight: 30
+                        radius: 8
+                        color: ah.hovered ? c.hover : "transparent"
+                        HoverHandler { id: ah; cursorShape: Qt.PointingHandCursor }
+                        TapHandler { onTapped: { win.pickAccount(index); list.forceActiveFocus() } }
+                        Rectangle {
+                            visible: index === win.acct
+                            x: 6; anchors.verticalCenter: parent.verticalCenter
+                            width: 3; height: 14; radius: 1.5; color: c.primary
+                        }
+                        Text {
+                            anchors.left: parent.left; anchors.leftMargin: 16; anchors.right: count.left; anchors.rightMargin: 8
+                            anchors.verticalCenter: parent.verticalCenter
+                            elide: Text.ElideRight
+                            text: modelData.address; font.family: c.font; font.pixelSize: 12
+                            color: index === win.acct ? c.title : c.dim
+                        }
+                        Text {
+                            id: count
+                            anchors.right: parent.right; anchors.rightMargin: 16; anchors.verticalCenter: parent.verticalCenter
+                            text: win.inboxUnread[modelData.id] > 0 ? win.inboxUnread[modelData.id] : ""
+                            font.family: c.font; font.pixelSize: 11; color: c.dim
+                        }
+                    }
+                }
+                // The foot: Settings (its key in the tip) and the account, when there is only one
+                Item {
+                    Layout.fillWidth: true
+                    Layout.topMargin: win.accounts.length > 1 ? 12 : 0
+                    implicitHeight: 26
+                    // Its glyph lines up with the folders' names above
+                    AppIconButton {
+                        id: gear
+                        anchors.left: parent.left; anchors.leftMargin: 22; anchors.verticalCenter: parent.verticalCenter
+                        c: win.look
+                        glyph: "settings"; glyphColor: c.faint
+                        tip: "Settings"; keys: "⌘,"; tipSide: "above"
+                        onClicked: win.showSettings = true
+                    }
+                    Text {
+                        anchors.left: gear.right; anchors.leftMargin: 4; anchors.right: parent.right; anchors.rightMargin: 28
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: win.accounts.length < 2
+                        elide: Text.ElideRight
+                        text: win.account.address; color: c.faint; font.family: c.font; font.pixelSize: 11
+                    }
+                }
             }
 
             // Thread list
@@ -743,36 +690,26 @@ ShellRoot {
                 ColumnLayout {
                     anchors.fill: parent
                     spacing: 0
-                    RowLayout {
-                        id: searchRow
+                    AppSearchField {
+                        id: search
                         Layout.fillWidth: true
                         Layout.margins: 28
                         Layout.topMargin: 16    // centred between the window's top and the line below
+                        // Held to the line's height, so the glyph doesn't push the list down
                         Layout.preferredHeight: win.headerHeight
                         Layout.bottomMargin: 0
-                        spacing: 10
-                        // Held to the line's height, so the glyph doesn't push the list down
-                        Text { text: Icons.g("search"); font.family: Icons.family; color: c.faint; font.pixelSize: 15; Layout.preferredHeight: win.headerHeight; verticalAlignment: Text.AlignVCenter }
-                        TextInput {
-                            id: search
-                            Layout.fillWidth: true
-                            color: c.text; font.family: c.font; font.pixelSize: 13
-                            selectionColor: c.sel
-                            Text {
-                                visible: !search.text && !search.activeFocus
-                                text: "Search"; color: c.faint; font: search.font
-                            }
-                            onTextEdited: searchDelay.restart()
-                            Keys.onEscapePressed: { text = ""; win.reload(false); list.forceActiveFocus() }
-                            Keys.onReturnPressed: list.forceActiveFocus()
-                            Keys.onDownPressed: list.forceActiveFocus()
-                            Timer { id: searchDelay; interval: 150; onTriggered: win.reload(false) }
-                        }
+                        c: win.look
+                        pixelSize: 13
+                        onEdited: searchDelay.restart()
+                        onEscapePressed: { text = ""; win.reload(false); list.forceActiveFocus() }
+                        onReturnPressed: list.forceActiveFocus()
+                        onDownPressed: list.forceActiveFocus()
+                        Timer { id: searchDelay; interval: 150; onTriggered: win.reload(false) }
                     }
                     // Under the search, level with the line under the thread's buttons (the last pixel of Thread.barHeight)
                     Rectangle {
                         Layout.fillWidth: true
-                        Layout.topMargin: reader.barHeight - 1 - searchRow.Layout.topMargin - win.headerHeight
+                        Layout.topMargin: reader.barHeight - 1 - search.Layout.topMargin - win.headerHeight
                         Layout.preferredHeight: 1
                         color: c.divider
                     }
@@ -836,19 +773,17 @@ ShellRoot {
                             else return
                             e.accepted = true
                         }
-                        delegate: Rectangle {
+                        delegate: AppRow {
                             id: row
                             required property var modelData
                             required property int index
                             readonly property bool unread: modelData.tags.indexOf("unread") >= 0
                             readonly property bool picked: win.picked.indexOf(modelData.thread) >= 0
-                            width: ListView.view.width
                             implicitHeight: col.implicitHeight + 28
-                            radius: 8
-                            color: picked || index === win.current && !win.picked.length ? c.sel : th.hovered ? c.hover : "transparent"
+                            c: win.look
+                            selected: picked || index === win.current && !win.picked.length
                             // With threads picked, the keyboard's place among them
                             border.color: index === win.current && win.picked.length ? c.line : "transparent"
-                            HoverHandler { id: th; cursorShape: Qt.PointingHandCursor }
                             // Dragged sideways (towards the folders) it moves; up and down the list scrolls as before.
                             DragHandler {
                                 target: null
@@ -912,20 +847,14 @@ ShellRoot {
                         }
                     }
                     // In Trash: emptying it, which asks first
-                    Row {
+                    AppKeyAction {
                         Layout.leftMargin: 28
                         Layout.topMargin: 8
                         Layout.bottomMargin: win.note === "" ? 24 : 0
                         visible: win.folders[win.folder].dir === "Trash" && win.threads.length > 0
-                        spacing: 8
-                        KeyCap { anchors.verticalCenter: parent.verticalCenter; c: win.look; keys: "⌘⇧⌫"; tint: win.look.faint }
-                        Text {
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: "Empty Trash"; font.family: c.font; font.pixelSize: 12
-                            color: eh.hovered ? c.danger : c.dim
-                            HoverHandler { id: eh; cursorShape: Qt.PointingHandCursor }
-                            TapHandler { onTapped: win.emptyTrash() }
-                        }
+                        c: win.look
+                        keys: "⌘⇧⌫"; label: "Empty Trash"; hoverColor: c.danger
+                        onClicked: win.emptyTrash()
                     }
                     Text {
                         Layout.fillWidth: true
@@ -1030,13 +959,13 @@ ShellRoot {
             { key: "claudeReads", title: "Claude reads", choices: [["thread", "The whole thread"], ["selection", "Only what I select"]],
               hint: "What is sent to Claude when it writes a reply (⌘⇧C)" }
         ]
-        Rectangle {
+        AppPanel {
             id: settingsPanel
-            anchors.fill: parent
             visible: win.showSettings
-            color: c.scrim
+            c: win.look
+            spacing: 28
             property int row: 0
-            TapHandler { onTapped: win.showSettings = false }
+            onOutsideTapped: win.showSettings = false
             Keys.onPressed: e => {
                 const r = win.settingRows[row]
                 const i = r.choices.findIndex(ch => ch[0] === win.settings[r.key])
@@ -1048,114 +977,66 @@ ShellRoot {
                 else return
                 e.accepted = true
             }
-            Rectangle {
-                anchors.centerIn: parent
-                width: 560
-                height: settingsCol.implicitHeight + 72
-                radius: 14
-                color: c.solid
-                border.color: c.line
-                TapHandler {}       // a click inside keeps it open
-                Column {
-                    id: settingsCol
-                    x: 40; y: 36
-                    width: parent.width - 80
-                    spacing: 28
+            Row {
+                width: parent.width
+                Text { anchors.verticalCenter: parent.verticalCenter; text: "Settings"; color: c.title; font.family: c.font; font.pixelSize: 15; font.weight: Font.Medium; width: parent.width - escHint.width }
+                KeyCap { id: escHint; anchors.verticalCenter: parent.verticalCenter; c: win.look; keys: "esc"; tint: win.look.faint }
+            }
+            Repeater {
+                model: win.settingRows
+                delegate: Column {
+                    id: settingRow
+                    required property var modelData
+                    required property int index
+                    width: parent.width
+                    spacing: 10
+                    Text { text: modelData.title; color: index === settingsPanel.row ? c.title : c.text; font.family: c.font; font.pixelSize: 13 }
                     Row {
-                        width: parent.width
-                        Text { anchors.verticalCenter: parent.verticalCenter; text: "Settings"; color: c.title; font.family: c.font; font.pixelSize: 15; font.weight: Font.Medium; width: parent.width - escHint.width }
-                        KeyCap { id: escHint; anchors.verticalCenter: parent.verticalCenter; c: win.look; keys: "esc"; tint: win.look.faint }
-                    }
-                    Repeater {
-                        model: win.settingRows
-                        delegate: Column {
-                            id: settingRow
-                            required property var modelData
-                            required property int index
-                            width: settingsCol.width
-                            spacing: 10
-                            Text { text: modelData.title; color: index === settingsPanel.row ? c.title : c.text; font.family: c.font; font.pixelSize: 13 }
-                            Row {
-                                spacing: 8
-                                Repeater {
-                                    model: settingRow.modelData.choices
-                                    delegate: Rectangle {
-                                        id: choice
-                                        required property var modelData
-                                        readonly property bool on: win.settings[settingRow.modelData.key] === modelData[0]
-                                        implicitWidth: choiceText.implicitWidth + 32
-                                        implicitHeight: 34
-                                        radius: 8
-                                        color: on ? c.sel : chh.hovered ? c.hover : "transparent"
-                                        border.color: on ? c.primary : c.line
-                                        HoverHandler { id: chh; cursorShape: Qt.PointingHandCursor }
-                                        TapHandler { onTapped: { settingsPanel.row = settingRow.index; win.setting(settingRow.modelData.key, choice.modelData[0]) } }
-                                        Text { id: choiceText; anchors.centerIn: parent; text: choice.modelData[1]; color: choice.on ? c.title : c.dim; font.family: c.font; font.pixelSize: 12 }
-                                    }
-                                }
-                            }
-                            Row {
-                                spacing: 8
-                                KeyCap { anchors.verticalCenter: parent.verticalCenter; c: win.look; keys: "←  →"; tint: win.look.faint }
-                                Text { anchors.verticalCenter: parent.verticalCenter; text: settingRow.modelData.hint; color: c.faint; font.family: c.font; font.pixelSize: 11 }
+                        spacing: 8
+                        Repeater {
+                            model: settingRow.modelData.choices
+                            delegate: Rectangle {
+                                id: choice
+                                required property var modelData
+                                readonly property bool on: win.settings[settingRow.modelData.key] === modelData[0]
+                                implicitWidth: choiceText.implicitWidth + 32
+                                implicitHeight: 34
+                                radius: 8
+                                color: on ? c.sel : chh.hovered ? c.hover : "transparent"
+                                border.color: on ? c.primary : c.line
+                                HoverHandler { id: chh; cursorShape: Qt.PointingHandCursor }
+                                TapHandler { onTapped: { settingsPanel.row = settingRow.index; win.setting(settingRow.modelData.key, choice.modelData[0]) } }
+                                Text { id: choiceText; anchors.centerIn: parent; text: choice.modelData[1]; color: choice.on ? c.title : c.dim; font.family: c.font; font.pixelSize: 12 }
                             }
                         }
                     }
+                    Text { text: settingRow.modelData.hint; color: c.faint; font.family: c.font; font.pixelSize: 11 }
                 }
             }
         }
 
         // Asks before what can't be undone (deleting for good): Enter does it, Esc or a click outside doesn't.
-        Rectangle {
+        AppPanel {
             id: confirmPanel
-            anchors.fill: parent
             visible: win.confirm !== null
-            color: c.scrim
-            TapHandler { onTapped: win.confirm = null }
+            c: win.look
+            cardWidth: 520
+            onOutsideTapped: win.confirm = null
             Keys.onPressed: e => {
                 if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { const run = win.confirm.run; win.confirm = null; run() }
                 else if (e.key === Qt.Key_Escape) win.confirm = null
                 e.accepted = true
             }
-            Rectangle {
-                anchors.centerIn: parent
-                width: 520
-                height: confirmCol.implicitHeight + 72
-                radius: 14
-                color: c.solid
-                border.color: c.line
-                TapHandler {}       // a click inside keeps it open
-                Column {
-                    id: confirmCol
-                    x: 40; y: 36
-                    width: parent.width - 80
-                    spacing: 18
-                    Text { text: win.confirm ? win.confirm.title : ""; color: c.title; font.family: c.font; font.pixelSize: 15; font.weight: Font.Medium }
-                    Text { width: parent.width; wrapMode: Text.Wrap; lineHeight: 1.2; text: win.confirm ? win.confirm.detail : ""; color: c.text; font.family: c.font; font.pixelSize: 12 }
-                    Row {
-                        spacing: 18
-                        Row {
-                            spacing: 8
-                            KeyCap { anchors.verticalCenter: parent.verticalCenter; c: win.look; keys: "⏎"; tint: win.look.faint }
-                            Text {
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: win.confirm ? win.confirm.action : ""; color: dh.hovered ? c.title : c.danger; font.family: c.font; font.pixelSize: 12
-                                HoverHandler { id: dh; cursorShape: Qt.PointingHandCursor }
-                                TapHandler { onTapped: { const run = win.confirm.run; win.confirm = null; run() } }
-                            }
-                        }
-                        Row {
-                            spacing: 8
-                            KeyCap { anchors.verticalCenter: parent.verticalCenter; c: win.look; keys: "esc"; tint: win.look.faint }
-                            Text {
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: "Cancel"; color: ch.hovered ? c.text : c.dim; font.family: c.font; font.pixelSize: 12
-                                HoverHandler { id: ch; cursorShape: Qt.PointingHandCursor }
-                                TapHandler { onTapped: win.confirm = null }
-                            }
-                        }
-                    }
+            Text { text: win.confirm ? win.confirm.title : ""; color: c.title; font.family: c.font; font.pixelSize: 15; font.weight: Font.Medium }
+            Text { width: parent.width; wrapMode: Text.Wrap; lineHeight: 1.2; text: win.confirm ? win.confirm.detail : ""; color: c.text; font.family: c.font; font.pixelSize: 12 }
+            Row {
+                spacing: 18
+                AppKeyAction {
+                    c: win.look
+                    keys: "⏎"; label: win.confirm ? win.confirm.action : ""; color: c.danger; hoverColor: c.title
+                    onClicked: { const run = win.confirm.run; win.confirm = null; run() }
                 }
+                AppKeyAction { c: win.look; keys: "esc"; label: "Cancel"; onClicked: win.confirm = null }
             }
         }
 
@@ -1163,51 +1044,29 @@ ShellRoot {
         // with you by README.md (`nightmail setup`).
         property bool setupStarted: false
         function startSetup() { setupStarted = true; nm.nightmail(["setup"], () => {}) }
-        Rectangle {
+        AppPanel {
             id: setupPanel
-            anchors.fill: parent
             visible: win.needsAccount
-            color: c.scrim
-            TapHandler {}       // nothing behind it to click yet
+            c: win.look
             Keys.onPressed: e => {
                 if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) win.startSetup()
                 e.accepted = true
             }
-            Rectangle {
-                anchors.centerIn: parent
-                width: 560
-                height: setupCol.implicitHeight + 72
-                radius: 14
-                color: c.solid
-                border.color: c.line
-                Column {
-                    id: setupCol
-                    x: 40; y: 36
-                    width: parent.width - 80
-                    spacing: 18
-                    Text { text: "Set up your email account"; color: c.title; font.family: c.font; font.pixelSize: 15; font.weight: Font.Medium }
-                    Text {
-                        width: parent.width; wrapMode: Text.Wrap; lineHeight: 1.2; color: c.text; font.family: c.font; font.pixelSize: 12
-                        text: win.setupStarted
-                            ? "Claude opens in a terminal and goes through it with you. When it's done, your inbox shows here."
-                            : "Mail keeps your mail on this computer, fetched from your provider. Claude can set up the account with you in a terminal, a step at a time: it asks your address and writes the settings. Your password goes only into the login keyring, never to Claude."
-                    }
-                    Row {
-                        spacing: 8
-                        KeyCap { anchors.verticalCenter: parent.verticalCenter; c: win.look; keys: "⏎"; tint: win.look.faint }
-                        Text {
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: win.setupStarted ? "Open Claude again" : "Set up with Claude"
-                            color: setupHover.hovered ? c.title : c.primary; font.family: c.font; font.pixelSize: 12
-                            HoverHandler { id: setupHover; cursorShape: Qt.PointingHandCursor }
-                            TapHandler { onTapped: win.startSetup() }
-                        }
-                    }
-                    Text {
-                        width: parent.width; wrapMode: Text.Wrap; color: c.faint; font.family: c.font; font.pixelSize: 11
-                        text: "To do it yourself: launcher › System › Install › Plugins › Mail has the steps."
-                    }
-                }
+            Text { text: "Set up your email account"; color: c.title; font.family: c.font; font.pixelSize: 15; font.weight: Font.Medium }
+            Text {
+                width: parent.width; wrapMode: Text.Wrap; lineHeight: 1.2; color: c.text; font.family: c.font; font.pixelSize: 12
+                text: win.setupStarted
+                    ? "Claude opens in a terminal and goes through it with you. When it's done, your inbox shows here."
+                    : "Mail keeps your mail on this computer, fetched from your provider. Claude can set up the account with you in a terminal, a step at a time: it asks your address and writes the settings. Your password goes only into the login keyring, never to Claude."
+            }
+            AppKeyAction {
+                c: win.look
+                keys: "⏎"; label: win.setupStarted ? "Open Claude again" : "Set up with Claude"; color: c.primary; hoverColor: c.title
+                onClicked: win.startSetup()
+            }
+            Text {
+                width: parent.width; wrapMode: Text.Wrap; color: c.faint; font.family: c.font; font.pixelSize: 11
+                text: "To do it yourself: launcher › System › Install › Plugins › Mail has the steps."
             }
         }
 

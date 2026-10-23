@@ -2,7 +2,7 @@ import QtQuick
 
 // A button's tip: what it does and its key, shown once the pointer has rested on it (delay). Place it with x and y
 // beside the button, and bind hovered to the button's HoverHandler.
-// Nightdrive's apps (Mail, Deck) share it: each links it into its own app/ folder.
+// Part of the apps' kit (README.md).
 Rectangle {
     id: root
     required property QtObject c

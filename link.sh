@@ -92,10 +92,11 @@ fi
 # VS Code plugin (plugins/vscode): its Wayland flags. The link from before the folder (config/code-flags.conf, 19.10.2026)
 # went with the dead links above.
 command -v code >/dev/null && link "$repo/plugins/vscode/code-flags.conf" "$HOME/.config/code-flags.conf"
-# Deck's desktop file from before its folder (18.10.2026) runs hypr/scripts/deck-open, now plugins/deck/bin (~/.local/bin)
+# Deck's desktop file from before 23.10.2026 runs deck-open (in hypr/scripts before its folder, 18.10.2026), now
+# deck-window in plugins/deck/bin (~/.local/bin)
 deck_desktop=$HOME/.local/share/applications/deck.desktop
-if [[ -f $deck_desktop ]] && grep -q '/\.config/hypr/scripts/deck-open' "$deck_desktop"; then
-  sed -i 's#/\.config/hypr/scripts/deck-open#/.local/bin/deck-open#' "$deck_desktop" && echo "fixed       $deck_desktop"
+if [[ -f $deck_desktop ]] && grep -q '^Exec=.*deck-open' "$deck_desktop"; then
+  sed -i "s#^Exec=.*deck-open#Exec=$HOME/.local/bin/deck-window#" "$deck_desktop" && echo "fixed       $deck_desktop"
 fi
 # Web apps from before 19.10.2026 lack --no-first-run (webapp-add): each has a Chromium profile of its own, so each was a
 # first run, and Fedora's /etc/chromium/master_preferences opened its first_run_tabs page in a window of its own

@@ -1,2 +1,2 @@
 # ⌘Q on Deck's window stops the music too (⌘W only closes the window and the music plays on): hypr/scripts/quit-app
-^org\.quickshell$ @ ^Deck$ = "$HOME/.local/bin/deck-open" quit
+^org\.quickshell$ @ ^Deck$ = "$HOME/.local/bin/deck-window" quit
