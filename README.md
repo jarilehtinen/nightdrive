@@ -204,7 +204,7 @@ Machine: PC (x86_64, graphics: amd, keyboard: us)
   Recommended apps
    1 [ ] 1Password         Password manager: launcher › Passwords, op CLI, SSH agent
    2 [x] Deck              Spotify player (needs Premium), launcher and top bar; compiled
-   3 [x] Tailscale         VPN, in the top bar (log in afterwards: tailscale up)
+   3 [x] Tailscale         VPN, in the top bar (log in from Settings › Tailscale)
    …
 
   Web apps
@@ -250,7 +250,7 @@ after the password. KDE stays installed as a fallback. If the login screen fails
 | `--dry-run` | Shows the optional parts, what would be installed and what would be removed, then stops |
 
 A few things stay manual (the install lists the ones for the parts you chose):
-- Tailscale: log in with `tailscale up` (it prints a link to open).
+- Tailscale: log in from launcher › Settings › Tailscale › *Log in* (or its top bar menu): the login page opens in the browser.
 - Mail: open it; its first start offers to set up your account with Claude.
 - 1Password: in Settings › Developer, turn on *SSH agent* and *Integrate with 1Password CLI*. The launcher's Passwords level
   needs the CLI integration.

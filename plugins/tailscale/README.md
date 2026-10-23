@@ -10,8 +10,9 @@ A private network between your own devices: reach your home server, NAS or Home 
 
 ## Setting up
 
-Log in once after installing: `tailscale up` prints a link to open in the browser. The installer makes you Tailscale's
-operator, so this and the top bar's on/off need no password. Installed before that (the switch says *Permission denied*)? Run
+Log in once after installing: launcher › Settings › Tailscale › *Log in*, or *Log in* in its top bar menu, opens the login
+page in the browser (a right click on the icon does too). The installer makes you Tailscale's operator, so this and the
+top bar's on/off need no password. Installed before that (the switch says *Permission denied*)? Run
 once:
 
 ```

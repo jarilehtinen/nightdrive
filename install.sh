@@ -334,7 +334,7 @@ echo
 (( ${failed_claude:-0} )) && echo "Claude Code not installed (an error, see above). Run again: curl -fsSL https://claude.ai/install.sh | bash" && echo
 echo "Done. Still to do by hand:"
 echo "  Claude Code: run claude once and log in (⌘⌥Enter and the top bar's usage menu use that sign-in)."
-has tailscale && echo "  Tailscale: log in with  tailscale up  (it prints a link to open); then it's on and off in its top bar menu."
+has tailscale && echo "  Tailscale: log in from launcher › Settings › Tailscale › Log in (it opens the login page); then it's on and off in its top bar menu."
 has mail && echo "  Mail: open it (launcher › Mail); its first start offers to set up your account with Claude."
 has deck && echo "  Deck: needs Spotify Premium and the Client ID of your own Spotify app (~/.config/deck/config.toml), see Deck's README."
 if has thunderbird; then
