@@ -1,6 +1,7 @@
 # Dictation (Voxtype)
 
-Hold **F5** (or **Fn** for more than 0.3 s), speak, and let go: the text is typed into the active window. It runs fully offline
+Hold **F5** (or **Fn** for more than 0.3 s), speak, and let go: the text is typed into the active window. Music and
+other sound playing drops to 10% while you speak, so it doesn't end up in the text (`duck_media` in `config.toml`). It runs fully offline
 with [Voxtype](https://github.com/peteonrails/voxtype) and NVIDIA's Parakeet model, on the CPU (about 1.4 s for 6 s of speech on an M2 Max).
 
 Voxtype is installed by hand:
