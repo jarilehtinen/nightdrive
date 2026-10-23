@@ -25,19 +25,23 @@ Item {
         script: 'n=$(hostnamectl --pretty 2>/dev/null); [ -n "$n" ] || { n=$(uname -n); n=${n%%.*}; n=${n^}; }; echo "$n"'
         onResult: text => b.compName = text.trim()
     }
-    // Settings › Remote login: SSH into this computer, off by default like a Mac's (Fedora's preset leaves sshd off; the
-    // firewall lets 22 in, so the service is what decides). on | off | none (no openssh-server), "" = not read yet
+    // Settings › Remote login: SSH into this computer, off by default like a Mac's (Fedora's preset leaves sshd off).
+    // When on, the firewall lets it in over Tailscale and on the networks trusted (scripts/remote-login), not on a
+    // café's. on | off | none (no openssh-server), "" = not read yet. remoteNet: the network the traffic goes out on
+    // ({uuid, name, allowed: yes | no | ""}), empty off Wi-Fi and cable or without firewalld
     property string remoteLogin: ""
     property string sshAddress: ""
+    property var remoteNet: ({})
     readonly property var remoteLoginItems: remoteLogin === "on" || remoteLogin === "off"
         ? [{ kind: "nav", name: "Remote login", glyph: "terminal", target: "remotelogin", summary: remoteLogin }] : []
     Sh {
         id: remoteLoginProc
-        script: 'systemctl list-unit-files -q sshd.service | grep -q . || { echo none; exit; }; systemctl -q is-active sshd.service && echo on || echo off; h=$(uname -n); echo "$USER@${h%%.*}.local"'
+        script: '"$HOME/.config/hypr/scripts/remote-login" status'
         onResult: text => {
-            const f = text.trim().split("\n")
+            const f = text.replace(/\n$/, "").split("\n")
             b.remoteLogin = f[0] || ""
             b.sshAddress = f[1] || ""
+            b.remoteNet = f[2] ? { uuid: f[2], name: f[3] || "", allowed: f[4] || "" } : {}
         }
     }
     // systemd's polkit asks for the password; cancelling it leaves the switch as it was
@@ -51,7 +55,12 @@ Item {
     }
     function setRemoteLogin(on) {
         remoteLogin = on ? "on" : "off"
-        remoteLoginSetProc.script = "systemctl " + (on ? "enable" : "disable") + " --now sshd.service"
+        remoteLoginSetProc.script = '"$HOME/.config/hypr/scripts/remote-login" ' + (on ? "on" : "off")
+        remoteLoginSetProc.running = true
+    }
+    function setRemoteNet(allow) {
+        remoteNet = Object.assign({}, remoteNet, { allowed: allow ? "yes" : "no" })
+        remoteLoginSetProc.script = '"$HOME/.config/hypr/scripts/remote-login" ' + (allow ? "allow" : "deny") + " " + remoteNet.uuid
         remoteLoginSetProc.running = true
     }
     // Settings › Update channel: stable | dev | custom (nightdrive channel; the channel is the checkout's branch)
@@ -173,7 +182,7 @@ Item {
 
     function footer(level, query) {
         const cur = launcher.results[launcher.selIndex] || {}
-        if (level === "launcherprefs" || cur.kind === "firefox" || cur.kind === "remotelogin" || cur.kind === "fumon" || cur.kind === "crashreports") return "Enter: on/off"
+        if (level === "launcherprefs" || cur.kind === "firefox" || cur.kind === "remotelogin" || cur.kind === "remotenet" || cur.kind === "fumon" || cur.kind === "crashreports") return "Enter: on/off"
         if (cur.kind === "mousescroll") return "Enter: choose, then try the wheel"
         if (cur.kind === "sound") return "Enter: choose  ·  Shift+Enter: listen"
         if (level === "compname" && query.trim() !== "") return "Enter: rename (asks for your password)"
@@ -213,11 +222,11 @@ Item {
             // Firefox reads them when it starts (user.js, userChrome.css)
             if (typeof firefox !== "object") return []
             return [{ kind: "firefox", key: "links", on: "window", off: "tab", name: "Links from other apps in a new window", glyph: "app-window",
-                      sub: "Off: as a tab in the last Firefox window", switchOn: firefox.links === "window" },
+                      sub: "A link from Mail or chat opens on its own, not among your tabs", switchOn: firefox.links === "window" },
                     { kind: "firefox", key: "tabbar", on: "auto", off: "always", name: "Tab bar only with several tabs", glyph: "panel-top",
-                      sub: "Off: the tab bar shows also with one tab", switchOn: firefox.tabbar === "auto" },
+                      sub: "One tab, no tab bar: more room for the page", switchOn: firefox.tabbar === "auto" },
                     { kind: "firefox", key: "startup", on: "empty", off: "restore", name: "Start with an empty window", glyph: "history",
-                      sub: "Off: the last session's windows and tabs open again", switchOn: firefox.startup !== "restore" },
+                      sub: "A fresh start, not the last session’s tabs again", switchOn: firefox.startup !== "restore" },
                     { kind: "note", name: "Changes apply when Firefox restarts" }]
         }
         if (level === "compname") {
@@ -227,10 +236,15 @@ Item {
             return [{ kind: "compset", name: "Rename to “" + name + "”", glyph: "laptop", value: name }]
         }
         if (level === "remotelogin") {
-            return [{ kind: "remotelogin", name: "Remote login", glyph: "terminal", switchOn: remoteLogin === "on",
-                      sub: "Log in to this computer from another one with SSH" },
-                    { kind: "note", name: remoteLogin === "on" ? "ssh " + sshAddress + " from the same network"
-                                                              : "Off by default. Turning it on asks for your password" }]
+            const on = remoteLogin === "on"
+            return [{ kind: "remotelogin", name: "Remote login", glyph: "terminal", switchOn: on,
+                      sub: "Log in to this computer from another one with SSH" }]
+                .concat(on && remoteNet.uuid ? [{ kind: "remotenet", name: "Allow from “" + remoteNet.name + "”", glyph: "house",
+                      switchOn: remoteNet.allowed === "yes", sub: "Safe at home or work, not on a café’s or hotel’s network" }] : [])
+                .concat(on ? [{ kind: "note", name: "ssh " + sshAddress },
+                              { kind: "note", name: remoteNet.allowed === "yes" ? "On this network, and over Tailscale from anywhere"
+                                                                                : "Over Tailscale from anywhere" + (remoteNet.uuid ? ", not on this network" : "") }]
+                           : [{ kind: "note", name: "Off by default. Turning it on asks for your password" }])
         }
         if (level === "crashreports") {
             return [{ kind: "crashreports", name: "Crash reports to Claude", glyph: "bug", switchOn: crashReports === "on",
@@ -275,6 +289,7 @@ Item {
             return true
         }
         if (it.kind === "remotelogin") { l.keepSelection(); setRemoteLogin(!it.switchOn); return true }
+        if (it.kind === "remotenet") { l.keepSelection(); setRemoteNet(!it.switchOn); return true }
         if (it.kind === "fumon") {
             l.keepSelection()
             fumon = fumon === "on" ? "off" : "on"

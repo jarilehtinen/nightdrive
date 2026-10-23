@@ -313,6 +313,12 @@ LIST
   (( changed )) && as_root "System files" sudo systemctl kill -s HUP systemd-logind
   (( copied )) || echo "    up to date"
 
+  # Remote login: SSH only over Tailscale and on the networks trusted, once (config/hypr/scripts/remote-login, 23.10.2026).
+  # firewalld lets the session's wheel user do it without a password; over ssh it needs sudo
+  echo "==> Remote login"
+  "$scripts/remote-login" setup | sed 's/^/    /'
+  case ${PIPESTATUS[0]} in 1) echo "    up to date" ;; 2) as_root "Remote login" sudo "$scripts/remote-login" setup ;; esac
+
   # The login screen's and the boot splash's copies in /etc/greetd and /usr/share/plymouth: installed again when the repo's
   # differ (their version file: the git tree they came from). An install from before both were the default (18.10.2026)
   # is asked once whether to turn them on.
