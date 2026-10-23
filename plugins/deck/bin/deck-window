@@ -91,6 +91,8 @@ case ${1:-open} in
   setup)    setup ;;
   search)   start_player || exit 1; open_ready; ipc search "${*:2}" ;;
   quit)     stop; "$DECK" ctl quit 2>/dev/null ;;
+  # The window anew, over a player started first if none runs, as open does
+  restart)  start_player || exit 1; app_command restart ;;
   settings) usage; exit 2 ;;      # none yet
   *)
     app_command "$@"; status=$?    # restart, log

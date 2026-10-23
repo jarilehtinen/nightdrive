@@ -4,6 +4,7 @@ import qs
 // A button with a frame: a glyph and a label, for what the view on show can do (Play, Queue, New list). Strong, it is the
 // one to press (filled, as a picked row); on, its glyph is lit for a state that holds (playing, on the shelf). The tip
 // tells what it does and its key, below it and ending at its right edge, as such buttons sit at the window's right.
+// Without a label (a narrow window) it is the glyph alone, and the tip says the rest.
 Rectangle {
     id: root
     required property QtObject c
@@ -31,6 +32,7 @@ Rectangle {
             color: root.strong ? root.c.accent : root.on ? root.c.primary : root.c.dim
         }
         Text {
+            visible: root.label !== ""
             anchors.verticalCenter: parent.verticalCenter
             text: root.label; font.family: root.c.font; font.pixelSize: 12
             color: root.strong || root.hovered ? root.c.title : root.c.text
