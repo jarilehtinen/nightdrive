@@ -26,7 +26,7 @@ The music plays in `deck serve`, Deck without its screen, which the window start
 
 ## Setting up
 
-The installer builds Deck from source (a few minutes), and `nightdrive update` builds it again when it changes. Deck needs the Client ID of your own free Spotify developer app: Deck's README shows how.
+The installer installs Deck as the `deck` package from Nightdrive's COPR (aarch64 and x86_64), and `nightdrive update` updates it with the system's packages. Where there is no package, it builds Deck from source (a few minutes), and `nightdrive update` builds it again when the source changes; so does a clone of your own (`DECK_SRC=~/path/to/deck plugins/deck/install.sh`, or `~/.local/src/deck` linked to it). Deck needs the Client ID of your own free Spotify developer app: Deck's README shows how.
 
 Curated needs your own Spotify app too (it finds its albums through it) and something to go on: best your Last.fm listening history (a Last.fm account that records your Spotify listening, and its API key in Deck's config), or without Last.fm, a few lines about your taste in `~/.config/deck/taste.md` (Deck's README › Setting up Curated). Deck's first start offers Set up with Claude, which opens Claude Code in a terminal to go through what is still missing with you a step at a time, the Spotify app first: it asks whether you have Last.fm, and if not, talks with you about the music you like and writes it down (`deck-window setup` does the same, and so does Curated's button until it is done); Esc puts the offer aside. Sign-ins happen only in your browser. Then Curated's New list makes the first list, and it learns from what you play in Deck. Nightdrive doesn't make a new list every week by itself: New list makes one when you want it.
 

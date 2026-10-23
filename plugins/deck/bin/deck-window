@@ -11,7 +11,8 @@ DECK=$HOME/.local/bin/deck
 RUNTIME=${XDG_RUNTIME_DIR:-/tmp}/deck
 SERVE_LOG=$HOME/.cache/deck/serve.log                   # what `deck serve` says before its own log (deck.log) opens
 START_WAIT=50                                           # × 0.2 s for the player to answer
-DECK_README=${DECK_SRC:-$HOME/.local/src/deck}/README.md  # the installer's clone (install.sh)
+DECK_README=${DECK_SRC:-$HOME/.local/src/deck}/README.md  # a source build's clone (install.sh)
+DECK_README_PKG=/usr/share/doc/deck/README.md            # the deck package's
 DECK_README_URL=https://github.com/nightdrive-sh/deck/blob/main/README.md
 
 # The window: started, brought forward, waited for and stopped by the apps' kit (app/kit/app.sh)
@@ -47,6 +48,7 @@ start_player() {
 setup() {
   local claude=$HOME/.local/bin/claude readme=$DECK_README config=$HOME/.config/deck/config.toml steps="" n=1
   [[ -x $claude ]] || claude=$(command -v claude) || { echo "Claude Code is not installed: Deck's README has the steps." >&2; return 1; }
+  [[ -f $readme ]] || readme=$DECK_README_PKG
   [[ -f $readme ]] || readme=$DECK_README_URL
   if ! grep -qE '^\s*client_id\s*=\s*"[^"]+"' "$config" 2>/dev/null; then
     steps+="$n) My own Spotify app, by the README's \"2. Create your own Spotify app\" and \"3. Write the config file\": \

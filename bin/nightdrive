@@ -355,7 +355,8 @@ LIST
   offer_apps     # before the Deck rebuild: a Deck installed there was just built
 
   # Only while Deck is installed: its source stays when the app is removed, and a rebuild would bring it back
-  (( deck )) && [[ -x $HOME/.local/bin/deck ]] && { echo "==> Deck (rebuild)"; DECK_SRC=${DECK_SRC:-$HOME/.local/src/deck} "$repo/plugins/deck/install.sh" \
+  # No DECK_SRC of its own: install.sh builds a DECK_SRC as one's own source, which would turn a packaged Deck into a build
+  (( deck )) && [[ -x $HOME/.local/bin/deck ]] && { echo "==> Deck (rebuild)"; "$repo/plugins/deck/install.sh" \
     || missed+=("Deck (rebuild): $repo/plugins/deck/install.sh"); }
 
   plugins_installed >/dev/null     # the optional parts' list, before the reload reads it (hypr/bindings.lua)
