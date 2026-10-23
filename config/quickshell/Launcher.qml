@@ -94,11 +94,11 @@ PanelWindow {
     // SystemLevels (Wi-Fi, Bluetooth, Sound, Tailscale, Status), HomeLevels (Home Assistant), DefaultAppsLevels, AppKeyLevels
     // (App shortcuts), BehaviourLevels (Mouse, Launcher, Firefox, Computer name, Remote login, Notifications, Crash reports, Update channel), InstallLevels,
     // ToolsLevels (Clipboard, Emoji, Snippets), AppearanceLevels (Top bar, Screensaver), DisplayLevels (Display, Battery),
-    // RemoveLevels, PasswordLevels (with 1Password), ThemeLevels (Theme, Background), ClaudeWriteLevels, the plugins' and the private
+    // RemoveLevels, PasswordLevels (with 1Password), ThemeLevels (Theme, Background), ClaudeWriteLevels, AboutLevels, the plugins' and the private
     // extension. A new file goes in this list, not in each question's code
     // The installed plugins' level files (their <Name>Levels.qml, TopBar.plugin.levels: Deck's Music) come after the core's
     property var pluginExts: []
-    readonly property var exts: [sys, home, defs, akeys, behave, inst, tools, look, disp, rm, pw, themes, cwrite].concat(pluginExts, ext ? [ext] : [])
+    readonly property var exts: [sys, home, defs, akeys, behave, inst, tools, look, disp, rm, pw, themes, cwrite, about].concat(pluginExts, ext ? [ext] : [])
     // A plugin's row above the search field (topRow; Deck's player): the first file that has one. ↑ from the list's first
     // row selects it, its keys then go to topKey(event), and Ctrl+Space anywhere to topPress()
     readonly property var topExt: exts.find(e => e.topRow) || null
@@ -163,7 +163,7 @@ PanelWindow {
         { kind: "nav", name: "Tools", glyph: "wrench", target: "tools" },
         { kind: "nav", name: "Keybindings", glyph: "keyboard", target: "keys" },
         { kind: "nav", name: "Settings", glyph: "settings", target: "settings" },
-        // System: Install, Remove, Update and Status (the update count shows here too)
+        // System: Install, Remove, Update, Status and About Nightdrive (the update count shows here too)
         { kind: "nav", name: "System", glyph: "monitor-cog", target: "system", summary: updates > 0 ? updates + " new" : undefined },
         { kind: "nav", name: "Power", glyph: "power", target: "power" }
     ])
@@ -175,7 +175,8 @@ PanelWindow {
             { kind: "nav", name: "Remove", glyph: "package-minus", target: "remove", extra: "uninstall delete package app" },
             { kind: "action", name: "Update", glyph: "refresh-cw", confirm: true, cmd: term('"$HOME/.local/bin/nightdrive" update'),
               summary: updates > 0 ? updates + " new" : undefined, extra: "upgrade dnf flatpak nightdrive" },
-            { kind: "nav", name: "Status", glyph: "activity", target: "status", extra: "cpu memory processes temperature claude usage" }
+            { kind: "nav", name: "Status", glyph: "activity", target: "status", extra: "cpu memory processes temperature claude usage" },
+            { kind: "nav", name: "About Nightdrive", glyph: "info", target: "about", extra: "version release channel info website github" }
         ],
         tools: [
             { kind: "nav", name: "Screenshot", glyph: "camera", target: "screenshot" },
@@ -732,6 +733,7 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
     RemoveLevels { id: rm; launcher: win }
     PasswordLevels { id: pw; launcher: win }
     ThemeLevels { id: themes; launcher: win }
+    AboutLevels { id: about; launcher: win }
     Instantiator {
         id: pluginLevels
         model: TopBar.plugin.levels

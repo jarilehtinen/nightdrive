@@ -273,7 +273,9 @@ change first, before it is tested and released into Stable: in the launcher unde
 (`nightdrive channel stable` goes back). Switching stops with a note instead of going over your own changes.
 
 Stable gets the changes as releases, each with notes on what's new: an update that brings one shows its notes at the end,
-`nightdrive version` tells which release you have, and every release is in the [changelog](CHANGELOG.md).
+`nightdrive version` tells which release you have, and every release is in the [changelog](CHANGELOG.md). The launcher's
+**System › About Nightdrive** (or search "version") shows the release, the channel and the computer, with links to the
+website, the documentation and the GitHub issues.
 
 The same `nightdrive` command reaches the settings from a terminal (`nightdrive` alone lists everything):
 
