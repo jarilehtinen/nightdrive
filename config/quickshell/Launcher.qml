@@ -231,7 +231,8 @@ PanelWindow {
         ]),
         // Settings › Apps: what is about apps in general first, then each app's own settings (only those installed)
         appsettings: defs.settingsItems.concat(akeys.settingsItems, [
-            { kind: "nav", name: "Startup", glyph: "rocket", target: "startup" }
+            { kind: "nav", name: "Startup", glyph: "rocket", target: "startup" },
+            { kind: "nav", name: "Nightdrive apps", glyph: "app-window", target: "ndapps", summary: "on or off" }   // InstallLevels.qml
         ], behave.browserItems.length || home.settingsItems.length || Plugins.has("mail") ? [{ kind: "header", name: "Installed apps" }] : [],
            behave.browserItems.concat(home.settingsItems,
                Plugins.has("mail") ? [{ kind: "action", name: "Mail", glyph: "mail", cmd: [Quickshell.env("HOME") + "/.local/bin/nightmail", "settings"] }] : [])

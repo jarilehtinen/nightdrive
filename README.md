@@ -280,7 +280,8 @@ nightdrive update   # pulls Nightdrive (and Deck), relinks, installs new package
 ```
 
 An install that doesn't have one of Nightdrive's apps yet (Mail, Deck) gets it with the update, once: one you remove
-afterwards isn't installed again (`nightdrive plugins install mail` brings it back).
+afterwards isn't installed again: it is back in launcher › System › Install › Recommended (or `nightdrive plugins
+install mail`). Settings › Apps › Nightdrive apps turns one off or on.
 
 It never overwrites your own edits: a repo with uncommitted changes is skipped with a note. On an install older than the
 command, run it once as `~/dotfiles/bin/nightdrive update` (a plain `git pull` misses the new links and packages).

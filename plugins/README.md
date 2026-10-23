@@ -74,8 +74,10 @@ author=@jarilehtinen
 | `order` | A number, default 50: `install.sh` installs the plugins in this order, and the lists show them in it. Lower goes first; the same order keeps the folders' (alphabetical) order, then `plugins.txt`'s lines. Home Assistant has 90: its installer asks for addresses, so it runs last |
 
 An `app` (Mail, Deck) is part of Nightdrive, like the apps that come with macOS: every install gets it without asking,
-it isn't listed in System › Install, and its settings are in Settings › Apps. `nightdrive update` installs an app that an
-existing install has never had (one made an app later, or a new one), once: the ids it has offered are kept in
+it isn't listed in System › Install while it's installed, and its settings are in Settings › Apps (Nightdrive apps
+turns one off or on). One the user removed is back in Install › Recommended, to install again from there.
+`nightdrive update` installs an app that an existing install has never had (one made an app later, or a new one), once:
+the ids it has offered are kept in
 `~/.local/state/nightdrive/apps-offered` (`install.sh` writes the ones it offered, left out or not), and an app the
 user removed afterwards is never installed again. Whether a new app comes with Nightdrive or would be bloat there (then
 it is `recommended`) is decided for each app. Only the repo's own plugins can be apps: `nightdrive update` doesn't
