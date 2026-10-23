@@ -158,10 +158,12 @@ Flickable {
         Row {
             id: viewRow
             anchors.centerIn: parent
-            spacing: 8
+            // The key a size smaller than the shared KeyCap's (scaled: its box is fixed), its gap to the text kept
+            spacing: 6
             KeyCap {
                 id: viewKey
-                anchors.verticalCenter: parent.verticalCenter; c: root.c; keys: "h"; tint: c.faint
+                scale: 0.8
+                anchors.verticalCenter: parent.verticalCenter; c: root.c; keys: "h"; tint: c.dim
                 visible: iconBar.implicitWidth + 12 + implicitWidth + viewRow.spacing + viewText.implicitWidth + 24
                          <= page.x + page.width + 12 - bar.x
             }
@@ -172,7 +174,7 @@ Flickable {
         id: page
         width: Math.max(240, Math.min(640, root.width - 80))
         x: Math.max(24, (root.width - width) / 2)
-        y: bar.visible || viewButton.visible ? root.barHeight + 38 : 38
+        y: bar.visible || viewButton.visible ? root.barHeight + 33 : 33
         // The gaps are the messages' own, so folded ones lie close together
         spacing: 0
         Text {
