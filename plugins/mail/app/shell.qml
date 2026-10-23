@@ -744,14 +744,15 @@ ShellRoot {
                     anchors.fill: parent
                     spacing: 0
                     RowLayout {
+                        id: searchRow
                         Layout.fillWidth: true
                         Layout.margins: 28
-                        Layout.topMargin: 18
+                        Layout.topMargin: 16    // centred between the window's top and the line below
                         Layout.preferredHeight: win.headerHeight
-                        Layout.bottomMargin: win.headerGap
+                        Layout.bottomMargin: 0
                         spacing: 10
-                        // Held to the line's height, so the bigger glyph doesn't push the list down
-                        Text { text: "⌕"; color: c.faint; font.pixelSize: 26; Layout.preferredHeight: win.headerHeight; verticalAlignment: Text.AlignVCenter; topPadding: -2 }
+                        // Held to the line's height, so the glyph doesn't push the list down
+                        Text { text: Icons.g("search"); font.family: Icons.family; color: c.faint; font.pixelSize: 15; Layout.preferredHeight: win.headerHeight; verticalAlignment: Text.AlignVCenter }
                         TextInput {
                             id: search
                             Layout.fillWidth: true
@@ -768,6 +769,13 @@ ShellRoot {
                             Timer { id: searchDelay; interval: 150; onTriggered: win.reload(false) }
                         }
                     }
+                    // Under the search, level with the line under the thread's buttons (the last pixel of Thread.barHeight)
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.topMargin: reader.barHeight - 1 - searchRow.Layout.topMargin - win.headerHeight
+                        Layout.preferredHeight: 1
+                        color: c.divider
+                    }
                     ListView {
                         id: list
                         Layout.fillWidth: true
@@ -782,6 +790,8 @@ ShellRoot {
                         highlightMoveDuration: 0
                         TouchScroll { view: list }
                         spacing: 2
+                        // The rest of the gap under the search, so the first message is level with the first folder
+                        topMargin: 18 + win.headerHeight + win.headerGap - reader.barHeight
                         bottomMargin: 12
                         focus: true
                         Keys.onPressed: e => {

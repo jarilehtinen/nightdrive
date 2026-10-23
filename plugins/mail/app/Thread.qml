@@ -106,7 +106,7 @@ Flickable {
         spacing: 2
         Repeater { model: root.actions; delegate: ActButton { required property var modelData; icon: modelData.icon; compact: true } }
     }
-    // The buttons stay at the top while the thread scrolls under them, on a band of the page's own colour with a line
+    // The buttons stay at the top while the thread scrolls under them, on a solid band of the page's colour with a line
     // below it
     readonly property int barHeight: 54
     Rectangle {
@@ -114,7 +114,7 @@ Flickable {
         visible: bar.visible || viewButton.visible
         y: root.contentY
         width: root.width; height: root.barHeight
-        color: c.bg
+        color: c.solid
         TapHandler {}                   // a click on the band doesn't reach the text under it
         Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: c.divider }
     }
