@@ -11,7 +11,8 @@
 #   claude-write add TEXT, remove TEXT   an instruction line on or off (an example goes back to being one)
 #   claude-write block CLASS, unblock CLASS   an app of your own left out, or back in (launcher › Settings › Claude writes)
 #   claude-write always      the classes that are always left out (a regex), so the launcher doesn't offer them
-# What Claude gets: the selection, the window's class and title, nothing else. It has no tools and no saved session, so
+# What Claude gets: the selection, the window's class and title, nothing else. It has no tools (--tools "" is only the
+# built-in ones, so --strict-mcp-config leaves out your MCP servers and claude.ai connectors too) and no saved session, so
 # the worst a selection that tries to steer it can do is write the wrong text, which the preview shows before anything
 # is written. Settings: ~/.local/state/nightdrive/claude-write.json { "model": "sonnet", "terminals": false, "blocked":
 # [window classes you left out] }. Your own
@@ -108,8 +109,8 @@ these rules."
   [[ -n $own ]] && system+=$'\n\nThe user\'s own instructions, which take precedence over the above:\n'"$own"
   # A child session's variables would make claude think it runs inside another one
   for v in $(compgen -e | grep '^CLAUDE'); do unset "$v"; done
-  if ! out=$(cd ~ && timeout "$TIMEOUT" "$HOME/.local/bin/claude" -p --tools "" --no-session-persistence \
-               --model "$model" --system-prompt "$system" <"$dir/selection" 2>&1); then
+  if ! out=$(cd ~ && timeout "$TIMEOUT" "$HOME/.local/bin/claude" -p --tools "" --strict-mcp-config \
+               --no-session-persistence --model "$model" --system-prompt "$system" <"$dir/selection" 2>&1); then
     [[ -z $out ]] && out="Claude didn't answer"
     jq -n --arg e "$out" '{ error: ($e | split("\n") | map(select(length > 0)) | last // "Claude failed") }'
     return

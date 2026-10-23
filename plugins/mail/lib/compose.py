@@ -310,8 +310,10 @@ def thread_text(msgid):
 
 
 def ask_claude(acc, system, text):
-    # No tools and no saved session: Claude only writes the text.
-    cmd = ["claude", "-p", "--tools", "", "--no-session-persistence", "--system-prompt", system,
+    # No tools and no saved session: Claude only writes the text. --tools "" leaves out only the built-in tools, so
+    # --strict-mcp-config (with no --mcp-config) keeps the user's MCP servers and claude.ai connectors away from a
+    # stranger's mail too.
+    cmd = ["claude", "-p", "--tools", "", "--strict-mcp-config", "--no-session-persistence", "--system-prompt", system,
            "--model", acc.get("suggest-model", "sonnet")]
     return subprocess.run(cmd, input=text, capture_output=True, text=True, check=True,
                           timeout=SUGGEST_TIMEOUT, cwd=os.path.expanduser("~")).stdout.strip()

@@ -405,8 +405,9 @@ The full list is in [`config/hypr/SHORTCUTS.md`](config/hypr/SHORTCUTS.md).
   pages break a few Electron apps, but 1Password works.
 - **The Claude menu** reads your plan's limits with Claude Code's own sign-in, so Claude Code must have been run once.
 - **Claude writes (⌘⇧C)** sends the selected text, and the window's class and title, to Anthropic through Claude Code,
-  and only when you press the key. Claude has no tools there and nothing is saved as a session. Its text goes in only
-  after you've seen it, the clipboard gets its own content back, and the text isn't kept in the clipboard history.
+  and only when you press the key. Claude has no tools there, not even your MCP servers or claude.ai connectors, and
+  nothing is saved as a session. Its text goes in only after you've seen it, the clipboard gets its own content back,
+  and the text isn't kept in the clipboard history.
 - **No credentials are stored in this repo.** Tokens stay with each app (Deck, Claude Code) or in 1Password.
 
 ## Want to participate?
