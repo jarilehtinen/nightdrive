@@ -20,11 +20,13 @@ WheelHandler {
     target: null
     acceptedDevices: PointerDevice.TouchPad
 
-    // Scrolls by dy (+ = towards the top); false when it hit either end
+    // Scrolls by dy (+ = towards the top); false when it hit either end. The ends take the view's own margins in, so
+    // a list with a topMargin (Deck's under its title bar's line) comes back to its gap instead of stopping at the line.
     function scrollBy(dy) {
-        const max = Math.max(view.originY, view.originY + view.contentHeight - view.height)
+        const min = view.originY - view.topMargin
+        const max = Math.max(min, view.originY + view.contentHeight + view.bottomMargin - view.height)
         const want = view.contentY - dy
-        const y = Math.max(view.originY, Math.min(max, want))
+        const y = Math.max(min, Math.min(max, want))
         view.contentY = y
         setY = y
         return y === want
