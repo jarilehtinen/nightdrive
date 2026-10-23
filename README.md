@@ -103,7 +103,8 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
   "airplay"), with sound. Google Cast works from Chromium (⋮ › Cast…). Sharing the screen, for these and video calls, asks
   in a themed window: the whole screen or one window.
 - **Themes**: seven colours that change the whole desktop at once, two synthwave wallpapers and your own (Settings › Theme).
-  GTK windows such as the file picker and Files follow the colour too: an app already open shows it once reopened.
+  GTK windows such as the file picker and Files follow the colour too, and so does the password prompt for admin rights
+  (polkit): an app already open shows it once reopened.
 - **Screensavers**: a synthwave sunset and a falling-characters rain, both drawn in the terminal, and a big clock whose
   digits slide up as the minutes change.
 - **Background apps**: ⌘W only hides chat apps and the music player, so they keep running. Their shortcut brings them straight back.
@@ -296,6 +297,7 @@ The same `nightdrive` command reaches the settings from a terminal (`nightdrive`
 | `nightdrive plugins` | Optional parts and whether each is installed and on; `nightdrive plugins install home-assistant` runs one's installer |
 | `nightdrive plugins off ferry` | Hides an installed part from the desktop and stops its services, for one that misbehaves (`on` brings it back; also the switch on its page in the launcher) |
 | `nightdrive plugins add <git-url>` | Adds a plugin from someone else's repo, marked external in the launcher; `nightdrive update` keeps it up to date, `nightdrive plugins remove ID` deletes it |
+| `nightdrive ask "Fix the clock"` | Opens Claude Code in a new terminal with that as its first message, as ⌘⌥Enter does from the launcher; `--dir ~/dotfiles` starts it in that folder (`~/Projects` otherwise), `--name "Clock"` names the session (as `/rename`) |
 
 ## Keys
 

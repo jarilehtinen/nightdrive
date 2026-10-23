@@ -878,7 +878,9 @@ jq --arg id "$ID" --arg to "$TO" \'.shown = ((.shown // []) - [$id]) | .hidden =
             const q = win.query.trim()
             if (!win.open || q === "" || (win.level !== "root" && win.level !== "apps")) return ""
             win.open = false
-            Quickshell.execDetached([win.scripts + "/terminal-or-claude", q])
+            // the session's name (claude -n) is the question's start, to find it again in the Claude menu and /resume
+            const name = q.length > 40 ? q.slice(0, 40).replace(/\s+\S*$/, "") + "…" : q
+            Quickshell.execDetached([win.scripts + "/terminal-or-claude", "--name", name, "--", q])
             return "ok"
         }
         // rows: the open level's title, footer, selected index and rows as JSON, primitive fields only (automated testing)
