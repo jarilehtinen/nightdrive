@@ -10,7 +10,7 @@ A fast Spotify player, made for Nightdrive: your albums in the launcher, the pla
 
 ## The window
 
-The sidebar's sections are Shelf, Curated, Radio, Search and Queue (⌘1–5 or Ctrl+↑ ↓, / searches). Enter opens an artist or an album and plays a song; Esc or ⌫ goes back. On a row, p plays the album (or the song), e queues the album or the song, a puts the album on your shelf or takes it off, and d removes a track from the queue, or an album from Curated (Deck remembers it, so it isn't suggested again). Space plays and pauses, ← → skip a track, , and . jump 10 seconds back and ahead, l likes the playing one and n opens what plays (its album, or the radio; a click on the player's cover does the same). `?` or Ctrl+? shows all the keys.
+The sidebar's sections are Shelf, Curated, Radio, Search, Queue and History (⌘1–6 or Ctrl+↑ ↓, / searches). History lists the albums you have played in the last 30 days, newest first. Enter opens an artist or an album and plays a song; Esc or ⌫ goes back. On a row, p plays the album (or the song), e queues the album or the song, a puts the album on your shelf or takes it off, and d removes a track from the queue, or an album from Curated (Deck remembers it, so it isn't suggested again). Space plays and pauses, ← → skip a track, , and . jump 10 seconds back and ahead, l likes the playing one and n opens what plays (its album, or the radio; a click on the player's cover does the same). `?` or Ctrl+? shows all the keys.
 
 Queue shows what plays now at the top, with the playing note on the right (it says when it came from the queue: Next takes the queue's first track), and buttons that play the queue and empty it.
 

@@ -130,6 +130,25 @@ ShellRoot {
             onFileChanged: reload()
             onLoaded: { try { win.listened = JSON.parse(text()) } catch (e) { win.listened = {} } }
         }
+        // What you have played lately, album by album, newest first (Deck keeps 30 days)
+        property var history: []
+        FileView {
+            path: win.home + "/.local/state/deck/history.json"
+            watchChanges: true
+            printErrors: false
+            onFileChanged: reload()
+            onLoaded: { try { win.history = JSON.parse(text()) } catch (e) { win.history = [] } }
+        }
+        // When: today's with its time, then yesterday, a weekday this week, and a date before that
+        function when(at) {
+            const d = new Date(at * 1000), now = new Date()
+            const day = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
+            const days = Math.round((day(now) - day(d)) / 86400000)
+            if (days === 0) return "Today " + Qt.formatTime(d, "hh:mm")
+            if (days === 1) return "Yesterday"
+            if (days < 7) return Qt.formatDate(d, "dddd")
+            return Qt.formatDate(d, "ddd d MMM")
+        }
         function heard(uri) {
             const l = listened[uri]
             if (!l) return ""
@@ -252,7 +271,8 @@ ShellRoot {
             { id: "curated", name: "Curated", glyph: "sparkles" },
             { id: "radio", name: "Radio", glyph: "radio" },
             { id: "search", name: "Search", glyph: "search" },
-            { id: "queue", name: "Queue", glyph: "list-music" }
+            { id: "queue", name: "Queue", glyph: "list-music" },
+            { id: "history", name: "History", glyph: "history" }
         ]
         property string section: "shelf"
         property var stack: [{ kind: "shelf" }]
@@ -369,6 +389,8 @@ ShellRoot {
             const v = view, out = []
             if (v.kind === "shelf")
                 for (const a of shelfArtists) out.push({ kind: "artist", title: a.name, right: a.albums + (a.albums === 1 ? " album" : " albums"), data: a, shelf: true, cover: a.id ? "spotify:artist:" + a.id : "" })
+            else if (v.kind === "history")
+                for (const h of history) out.push({ kind: "album", title: h.name, sub: h.artist, right: when(h.at), data: { uri: h.uri, name: h.name, artist: h.artist }, cover: h.uri })
             else if (v.kind === "curated")
                 for (const a of curated) out.push({ kind: "album", title: a.name, sub: a.artist + (a.year ? " · " + a.year : ""), note: a.reason || "", data: a, cover: a.uri, right: heard(a.uri) })
             else if (v.kind === "radio")
@@ -408,6 +430,7 @@ ShellRoot {
             if (v.kind === "artist") return v.shelf ? "On your shelf" : "On Spotify"
             if (v.kind === "curated") return curating ? curateLine : curated.length ? curated.length + " albums picked for you this week" : ""
             if (v.kind === "queue") return queue.length ? "Plays next, after the current track" : ""
+            if (v.kind === "history") return history.length ? "What you have played in the last 30 days" : ""
             if (v.kind === "radio") return "A radio for each genre, your favourites first"
             if (v.kind === "station") return "Genre radio"
             return ""
@@ -419,6 +442,7 @@ ShellRoot {
             if (v.kind === "curated") return "No Curated list yet: `deck curate` suggests albums based on what you play"
             if (v.kind === "search") return results && results.error ? results.error : searching ? "Searching…" : searchField.text.trim().length < 2 ? "Artists, albums and songs on Spotify" : "Nothing found"
             if (v.kind === "queue") return "Nothing queued: e adds an album or a song"
+            if (v.kind === "history") return "Nothing yet: an album shows up here once you have played it"
             if (v.kind === "radio") return genres.length ? "" : "Loading…"
             if (v.kind === "station") return radioStarting === v.genre.id ? "Starting the radio…" : "Play starts the radio: songs Spotify picks from the genre's artists"
             if (v.kind === "artist") return v.albums ? "No albums" : "Loading…"
@@ -529,7 +553,7 @@ ShellRoot {
             }
         }
 
-        // ⌘F and / search, ⌘1–5 the sections; Ctrl+Q closes the window (the music plays on). ⌘Q, Hyprland's, quits the player
+        // ⌘F and / search, ⌘1–6 the sections; Ctrl+Q closes the window (the music plays on). ⌘Q, Hyprland's, quits the player
         // too (plugins/deck/quit-commands)
         Shortcut { sequences: ["Ctrl+F", "/"]; onActivated: win.pickSection("search") }
         Shortcut { sequence: "Ctrl+Q"; onActivated: Qt.quit() }
@@ -538,6 +562,7 @@ ShellRoot {
         Shortcut { sequences: ["Ctrl+3", "Meta+3"]; onActivated: win.pickSection("radio") }
         Shortcut { sequences: ["Ctrl+4", "Meta+4"]; onActivated: win.pickSection("search") }
         Shortcut { sequences: ["Ctrl+5", "Meta+5"]; onActivated: win.pickSection("queue") }
+        Shortcut { sequences: ["Ctrl+6", "Meta+6"]; onActivated: win.pickSection("history") }
         // Ctrl+↑ ↓ the previous and next section, as Mail's folders
         function stepSection(d) {
             const i = sections.findIndex(s => s.id === section) + d
@@ -673,7 +698,11 @@ ShellRoot {
                                             ? { glyph: "star", on: true, label: "Favourite", tip: "Not a favourite", keys: "f", act: () => win.favorite(win.genreRow(win.view.genre)) }
                                             : { glyph: "star", label: "Favourite", tip: "A favourite genre, on Deck's home", keys: "f", act: () => win.favorite(win.genreRow(win.view.genre)) }
                                     ] : win.view.kind === "album" ? [
-                                        { glyph: "play", label: "Play", tip: "Play the album", keys: "p", act: () => win.ctl(["play-album", win.view.album.uri]) },
+                                        // While this album plays the button pauses it, and resumes it when paused, so a press shows
+                                        win.info && win.info.album_uri === win.view.album.uri
+                                            ? (win.playing ? { glyph: "pause", label: "Pause", tip: "Pause the album", keys: "Space", act: () => win.togglePlay() }
+                                                           : { glyph: "play", label: "Resume", tip: "Go on with the album", keys: "Space", act: () => win.togglePlay() })
+                                            : { glyph: "play", label: "Play", tip: "Play the album", keys: "p", act: () => win.ctl(["play-album", win.view.album.uri]) },
                                         { glyph: "list-plus", label: "Queue", tip: "Queue the album", keys: "e", act: () => { win.ctl(["queue-album", win.view.album.uri]); win.note = "Queued: " + win.view.album.name } },
                                         win.shelfUris[win.view.album.uri]
                                             ? { glyph: "check", label: "On the shelf", tip: "Take it off the shelf", keys: "a", act: () => win.shelve(null) }
@@ -1114,7 +1143,7 @@ ShellRoot {
 
         readonly property QtObject look: c
         readonly property var keyHelp: [
-            { title: "Browse", keys: [["↑ ↓  j k", "Move"], ["⏎", "Open, or play a song"], ["Esc  ⌫", "Back"], ["⌘1 … ⌘5", "Shelf, Curated, Radio, Search, Queue"], ["Ctrl ↑ ↓", "Previous, next section"], ["⌘F  /", "Search Spotify"], ["n", "What plays: its album or radio"], ["r", "Pick for me: an album you haven't played lately"],
+            { title: "Browse", keys: [["↑ ↓  j k", "Move"], ["⏎", "Open, or play a song"], ["Esc  ⌫", "Back"], ["⌘1 … ⌘6", "Shelf, Curated, Radio, Search, Queue, History"], ["Ctrl ↑ ↓", "Previous, next section"], ["⌘F  /", "Search Spotify"], ["n", "What plays: its album or radio"], ["r", "Pick for me: an album you haven't played lately"],
                                       ["f", "A favourite genre, or not"], ["d", "Out of the queue; Not for me in Curated"]] },
             { title: "Play", keys: [["Space", "Play, pause"], ["← →", "Previous, next track"], [", .", "Back, ahead 10 seconds"], ["p", "Play the album, song or radio"], ["e", "Queue the album or song"], ["a", "On the shelf, or off it"],
                                     ["l", "Like the playing track"], ["o", "Where the sound plays"], ["?  Ctrl ?", "These keys"]] }
