@@ -6,13 +6,13 @@
   "background-opacity": 97,
   "border-color": "#7aa2f7",
   "border-opacity": 100,
-  "inactive-border": "off",
-  "inactive-border-color": "#595959",
-  "inactive-border-opacity": 66.7,
+  "inactive-border": "on",
+  "inactive-border-color": "#3a2f45",
+  "inactive-border-opacity": 80,
   "shadow": "on",
   "shadow-size": 16,
   "shadow-color": "#000000",
-  "shadow-opacity": 9,
+  "shadow-opacity": 10,
   "inactive-shadow": "on"
  }
 }
