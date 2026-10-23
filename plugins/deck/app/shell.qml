@@ -356,8 +356,12 @@ ShellRoot {
                 for (const a of results.albums) out.push({ kind: "album", title: a.name, sub: a.artist + (a.year ? " · " + a.year : ""), right: "Album", data: a, cover: a.uri })
                 for (const s of results.songs) out.push({ kind: "song", title: s.name, sub: s.artist + " · " + s.album.name, right: fmt(s.duration_ms), data: s, cover: s.album.uri })
             }
-            else if (v.kind === "queue")
+            else if (v.kind === "queue") {
+                // What plays now first, so a track taken from the queue doesn't seem to vanish from it
+                if (info) out.push({ kind: "nowplaying", title: info.title, sub: info.queued ? "Now playing, from the queue" : "Now playing · " + info.artist + " · " + info.album,
+                                     data: info, cover: info.album_uri || "" })
                 queue.forEach((t, i) => out.push({ kind: "queued", title: t.title, sub: t.artist, right: fmt(t.duration_ms), data: t, index: i, cover: t.album_uri || "" }))
+            }
             else if (v.kind === "artist" && v.albums)
                 for (const a of v.albums) out.push({ kind: "album", title: a.name, sub: year(a), data: a, cover: a.uri })
             else if (v.kind === "album" && v.tracks)
@@ -400,6 +404,7 @@ ShellRoot {
             if (row.kind === "song") return row.data.album
             if (row.kind === "track") return view.album
             if (row.kind === "radiotrack") return { uri: row.data.album_uri, name: row.data.album }
+            if (row.kind === "nowplaying" && row.data.album_uri) return { uri: row.data.album_uri, name: row.data.album }
             if (row.kind === "queued" && row.data.album_uri) return { uri: row.data.album_uri, name: "" }
             return null
         }
@@ -411,6 +416,7 @@ ShellRoot {
             else if (row.kind === "album") openAlbum(row.data, view.kind)
             // A genre opens to its Play button, as an album does: picking one doesn't stop the music
             else if (row.kind === "genre") push({ kind: "station", genre: row.data })
+            else if (row.kind === "nowplaying") openPlaying()
             else if (row.kind === "track") ctl(["play-song", row.data.uri, view.album.uri])
             else if (row.kind === "song") ctl(["play-song", row.data.uri, row.data.album.uri])
         }
@@ -643,7 +649,13 @@ ShellRoot {
                                 }
                                 // An album's own buttons, as Curated's New list: play it, queue it, shelve it. The tip tells the key.
                                 Repeater {
-                                    model: win.view.kind === "station" ? [
+                                    model: win.view.kind === "queue" ? (win.queue.length === 0 ? [] : [
+                                        // The queue plays when its first track does: Next takes it
+                                        win.info && win.info.queued
+                                            ? { glyph: "check", label: "Playing", tip: "The queue plays", keys: "", act: () => {} }
+                                            : { glyph: "play", label: "Play", tip: "Play the queue now", keys: "", act: () => win.ctl(["next"]) },
+                                        { glyph: "trash-2", label: "Empty queue", tip: "Take everything off the queue", keys: "", act: () => { win.ctl(["queue-clear"]); win.note = "The queue is empty" } }
+                                    ]) : win.view.kind === "station" ? [
                                         win.radio && win.radio.genre === win.view.genre.id
                                             ? { glyph: "check", label: "Playing", tip: "The radio plays", keys: "", act: () => {} }
                                             : { glyph: "play", label: "Play", tip: "Play the radio", keys: "p", act: () => win.playRadio(win.view.genre) },
@@ -808,6 +820,7 @@ ShellRoot {
                             readonly property bool current: index === list.currentIndex
                             // The playing track, or the album it plays from
                             readonly property bool now: win.info !== null && (
+                                modelData.kind === "nowplaying" ||
                                 (modelData.kind === "track" || modelData.kind === "song" || modelData.kind === "radiotrack") && modelData.data.uri === win.info.track_uri
                                 || modelData.kind === "album" && modelData.data.uri === win.info.album_uri
                                 || modelData.kind === "genre" && win.radio !== null && win.radio.genre === modelData.data.id)
