@@ -1,0 +1,44 @@
+name: Known issue
+description: A problem caused outside Nightdrive (a driver, an app, a device) that you found a workaround for
+labels: [known issue]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for writing this up! Check the [known issues](https://github.com/nightdrive-sh/nightdrive/issues?q=is%3Aissue%20label%3A%22known%20issue%22)
+        first: if yours is there, a comment with your machine is worth more than a new issue. If Nightdrive itself is
+        broken, use Bug report instead.
+  - type: textarea
+    id: seen
+    attributes:
+      label: Seen
+      description: The machine, the system and the versions of whatever is involved (driver, app, device firmware).
+      placeholder: MacBook Air 13″ M2, Fedora Asahi Remix 44, kernel 7.1.13-402.asahi, a 4K display on the HDMI port.
+    validations:
+      required: true
+  - type: textarea
+    id: symptom
+    attributes:
+      label: Symptom
+      description: What you notice, and when it happens.
+    validations:
+      required: true
+  - type: textarea
+    id: cause
+    attributes:
+      label: Cause
+      description: |
+        Where it comes from, as far as you know, and the journal lines that show it. A command to check for it helps the
+        next person, e.g. `journalctl -b | grep …`.
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Workaround
+      description: What gets you past it, and how to undo it if it changes a setting.
+    validations:
+      required: true
+  - type: textarea
+    id: fix
+    attributes:
+      label: A fix for everyone could be
+      description: In the other project or in Nightdrive. Links to upstream reports are welcome.

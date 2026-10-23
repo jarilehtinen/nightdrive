@@ -6,7 +6,9 @@ body:
     attributes:
       value: |
         Thanks for taking the time to report this! A few details about your machine help a lot,
-        since Nightdrive has only been tested on a handful of machines so far.
+        since Nightdrive has only been tested on a handful of machines so far. The
+        [known issues](https://github.com/nightdrive-sh/nightdrive/issues?q=is%3Aissue%20label%3A%22known%20issue%22)
+        may already have it, with a workaround: a comment there counts as a second report.
   - type: dropdown
     id: machine
     attributes:
@@ -16,6 +18,7 @@ body:
         - asahi (Apple Silicon Mac, Fedora Asahi Remix)
         - pc (x86_64, Fedora KDE)
         - vm (virtual machine)
+        - Other (something else, or the command fails: describe it under Machine)
     validations:
       required: true
   - type: input

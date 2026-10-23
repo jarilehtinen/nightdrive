@@ -16,6 +16,7 @@ body:
         - asahi (Apple Silicon Mac, Fedora Asahi Remix)
         - pc (x86_64, Fedora KDE)
         - vm (virtual machine)
+        - Other (something else, or the command fails: describe it under Machine)
     validations:
       required: true
   - type: input
