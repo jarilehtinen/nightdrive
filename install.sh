@@ -266,6 +266,16 @@ $kb_lua
 LUA
 fi
 
+# Firefox makes its profile at its first start, and link.sh themes only a profile that exists. A headless start makes
+# the same default-release profile now, so Firefox looks like Nightdrive the first time it opens. Stopped once its
+# startup is through (sessionCheckpoints.json), or after 30 s.
+ff_dir=$HOME/.config/mozilla/firefox
+if command -v firefox >/dev/null && ! compgen -G "$ff_dir/*.default-release" >/dev/null; then
+  echo "==> Firefox profile"
+  firefox --headless about:blank >/dev/null 2>&1 & ff=$!
+  for _ in {1..60}; do compgen -G "$ff_dir/*.default-release/sessionCheckpoints.json" >/dev/null && break; sleep 0.5; done
+  kill "$ff" 2>/dev/null; wait "$ff" 2>/dev/null
+fi
 echo "==> Configs (links into ~/.config, fonts)"
 "$repo/link.sh"
 
@@ -342,27 +352,39 @@ if (( nokde )); then
     plasma-workspace-wallpapers kde-inotify-survey kde-settings-pulseaudio phonon-qt6-backend-vlc pinentry-qt xwaylandvideobridge
 fi
 
+# The end: what to do now, numbered (the reboot first), what can wait, and the way out of a broken login screen apart
+# from both, so it doesn't read as one more step
+step=0
+next() { step=$((step + 1)); echo "  $step. $1"; shift; local l; for l in "$@"; do echo "     $l"; done; }
 echo
-(( ${#failed[@]} )) && echo "Not installed (an error, see above): ${failed[*]}. Run again: nightdrive plugins install ID" && echo
-(( ${failed_claude:-0} )) && echo "Claude Code not installed (an error, see above). Run again: curl -fsSL https://claude.ai/install.sh | bash" && echo
-echo "Done. Still to do by hand:"
-echo "  At your first login, Welcome to Nightdrive signs you in to Claude, then sets up Tailscale, Mail and Deck with you"
-echo "  (later: launcher › System › Set up Nightdrive)."
-if has thunderbird; then
-  echo "  Firefox and Thunderbird: open each once, then run ./link.sh again (it themes their profiles, which don't exist yet)."
-else
-  echo "  Firefox: open it once, then run ./link.sh again (it themes its profile, which doesn't exist yet)."
+printf '\e[1m%s\e[0m\n' "Nightdrive is installed."
+if (( ${#failed[@]} )) || (( ${failed_claude:-0} )); then
+  echo
+  echo "Needs a look (an error, see above):"
+  (( ${#failed[@]} )) && echo "  • Not installed: ${failed[*]}. Run again: nightdrive plugins install ID"
+  (( ${failed_claude:-0} )) && echo "  • Claude Code not installed. Run again: curl -fsSL https://claude.ai/install.sh | bash"
 fi
-has 1password && echo "  Firefox: the 1Password extension from addons.mozilla.org."
-echo "  Optional parts you skipped: launcher › System › Install, or \`nightdrive plugins\`."
-if (( greeter )); then
-  echo "  Reboot: the Nightdrive login screen starts Hyprland (if it breaks: ctrl+alt+F3, log in and run config/greeter/switch.sh off)."
-else
-  echo "  Reboot and pick \"Hyprland\" (not \"Hyprland (uwsm-managed)\") as the session at the login screen."
-fi
-[[ $machine == asahi ]] && echo "  The notch setting also takes effect at the reboot."
+echo
+echo "Next:"
 if (( nvidia )) && (( secureboot )); then
-  echo "  Secure Boot is on: before the reboot, run  sudo mokutil --import /etc/pki/akmods/certs/public_key.der  (choose a"
-  echo "  one-time password); at the reboot the blue MOK screen asks for it: Enroll MOK › Continue › Yes. Otherwise the NVIDIA"
-  echo "  driver doesn't load (docs/pc.md)."
+  next "Before the reboot, as Secure Boot is on: sudo mokutil --import /etc/pki/akmods/certs/public_key.der" \
+    "(choose a one-time password). At the reboot the blue MOK screen asks for it: Enroll MOK › Continue › Yes." \
+    "Otherwise the NVIDIA driver doesn't load (docs/pc.md)."
+fi
+notch=""; [[ $machine == asahi ]] && notch="The notch setting takes effect then too."
+if (( greeter )); then
+  next "Reboot. The Nightdrive login screen starts Hyprland." ${notch:+"$notch"}
+else
+  next "Reboot and pick \"Hyprland\" (not \"Hyprland (uwsm-managed)\") at the login screen." ${notch:+"$notch"}
+fi
+next "At your first login, Welcome to Nightdrive signs you in to Claude and sets up Tailscale, Mail and Deck" \
+  "with you (again later: launcher › System › Set up Nightdrive)."
+echo
+echo "Later, if you like:"
+has 1password && echo "  • Firefox: the 1Password extension from addons.mozilla.org."
+echo "  • Parts you skipped: launcher › System › Install, or \`nightdrive plugins\`."
+if (( greeter )); then
+  echo
+  echo "If the login screen fails: press ctrl+alt+F3, log in and run"
+  echo "  ${repo/#$HOME/\~}/config/greeter/switch.sh off"
 fi
