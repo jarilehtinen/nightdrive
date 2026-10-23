@@ -1,7 +1,8 @@
-# Optional parts. install.sh asks at the start which to install (pre-ticked: Default on; --with/--without/--all/--none),
-# the launcher lists them under System › Install and `nightdrive plugins` in a terminal, so what was skipped can be added
-# later. The desktop hides a part that isn't installed: the launcher (Plugins.has), the top bar ("needs" in
-# topbar/modules.jsonc), the keybindings (hypr/bindings.lua) and their lines in SHORTCUTS.md (an {id} at the end).
+# Optional parts. install.sh installs the Default on ones and Tailscale, Mail and Deck (ALWAYS there) without asking
+# (--choose asks; --with/--without/--all/--none), the launcher lists them under System › Install and `nightdrive plugins`
+# in a terminal, so what was skipped can be added later. The desktop hides a part that isn't installed: the launcher
+# (Plugins.has), the top bar ("needs" in topbar/modules.jsonc), the keybindings (hypr/bindings.lua) and their lines in
+# SHORTCUTS.md (an {id} at the end).
 #
 # This file holds the one-line parts (web apps, an app from dnf or Flathub), with their page in docs/plugins/<id>.md. A
 # part with files of its own (a top bar module and menu, keys, a service, commands) is a folder, plugins/<id>/ (or

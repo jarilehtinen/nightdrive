@@ -3,17 +3,19 @@
 # or in a virtual machine. Which one it is comes from `nightdrive platform machine` (asahi | pc | vm): the notch setting
 # and the Mac-only removals are for asahi, a PC gets its display and keyboard settings in config/hypr/local.lua and, with
 # an NVIDIA card, the driver from RPM Fusion.
-#   ./install.sh               asks which optional parts to install (1Password, Deck, web apps…, plugins.txt) and whether
-#                              to remove the apps Nightdrive doesn't use (packages-remove.txt), then runs unattended:
-#                              removes those, updates the system, installs packages, fonts, the notch setting, links the
-#                              configs, installs Claude Code, the Nightdrive login screen and boot splash (active from the
-#                              next boot: the splash, then the desktop under the login screen as its lock) and the chosen
-#                              parts.
-#                              Home Assistant, if chosen, asks for its address at the end.
-#                              The removals are on by default only on a fresh system (installed under 3 days ago).
-#   ./install.sh --with deck,1password   these parts on top of the defaults, without asking (ids: --dry-run lists them)
-#   ./install.sh --without youtube       the defaults without these, without asking (--with and --without combine)
-#   ./install.sh --all / --none / --defaults   every optional part / none / the defaults (Default on in plugins.txt)
+#   ./install.sh               asks nothing (sudo's password once at the start) and runs unattended: removes the apps
+#                              Nightdrive doesn't use (packages-remove.txt; only on a fresh system, installed under 3
+#                              days ago), updates the system, installs packages, fonts, the notch setting, links the
+#                              configs, installs Claude Code, Tailscale, Mail and Deck (ALWAYS), the Nightdrive login
+#                              screen and boot splash (active from the next boot: the splash, then the desktop under the
+#                              login screen as its lock) and the optional parts that are Default on in plugins.txt.
+#   ./install.sh --choose      first lists the optional parts (1Password, web apps…, plugins.txt) and the removals to tick
+#                              or untick. Home Assistant, if chosen, asks for its address at the end.
+#   ./install.sh --with 1password,slack   these parts on top of the defaults (ids: --dry-run lists them)
+#   ./install.sh --without youtube       the defaults without these (--with and --without combine; with --choose they
+#                                        set what starts ticked)
+#   ./install.sh --all / --none / --defaults   every optional part / none / the defaults (Default on in plugins.txt);
+#                              the ALWAYS parts are in with each (--without leaves one out)
 #   ./install.sh --dry-run     shows the optional parts, which would be installed and what would be removed, and stops
 #   ./install.sh --no-greeter  keeps the distribution's own login screen (pick "Hyprland" there)
 #   ./install.sh --no-autologin  the Nightdrive login screen before the desktop starts, instead of as its lock
@@ -23,15 +25,18 @@
 #   ./install.sh --no-kde      removes Plasma entirely (needs the greeter); experimental, see config/greeter/
 #   ./install.sh --vm          the virtual machine settings even if it isn't detected as one (docs/vm.md)
 #   ./install.sh --no-nvidia   leaves an NVIDIA card's driver alone (e.g. one installed by hand); docs/pc.md
-# Without a terminal (or with any of --with/--without/--all/--none/--defaults) nothing is asked. What was skipped can be
-# added later: launcher › System › Install (Recommended, Webapp, Plugins), or `nightdrive plugins install ID`.
+# --choose needs a terminal. What was skipped can be added later: launcher › System › Install (Recommended, Webapp,
+# Plugins), or `nightdrive plugins install ID`.
 # Run as a regular user; sudo asks for the password once at the start.
 set -euo pipefail
 repo=$(cd "$(dirname "$0")" && pwd)
 FRESH_DAYS=3                     # a system installed less than this many days ago gets the removals by default
-debloat=""; machine=""; nvidia=1; secureboot=0; greeter=1; autologin=1; splash=1; nokde=0; dry=0   # debloat: 1 | 0, "" = by the system's age; machine: "" = detected
-base=""; with=""; without=""     # base: all | none | defaults, "" = ask
-usage() { sed -n '6,27p' "$0" | sed 's/^# \{0,1\}//'; }
+# Part of Nightdrive like Claude Code, so not asked: Mail is quiet until its account is set up, Tailscale until it's logged
+# in. Folders in plugins/, so their packages and services stay out of the core.
+ALWAYS=(tailscale mail deck)
+debloat=""; machine=""; nvidia=1; secureboot=0; greeter=1; autologin=1; splash=1; nokde=0; dry=0; choose=0   # debloat: 1 | 0, "" = by the system's age; machine: "" = detected
+base=""; with=""; without=""     # base: all | none | defaults, "" = the defaults
+usage() { sed -n '6,29p' "$0" | sed 's/^# \{0,1\}//'; }
 while (( $# )); do
   case $1 in
     --debloat) debloat=1 ;;
@@ -46,6 +51,7 @@ while (( $# )); do
     --all) base=all ;;
     --none) base=none ;;
     --defaults) base=defaults ;;
+    --choose) choose=1 ;;
     --with=*) with+=,${1#*=} ;;
     --without=*) without+=,${1#*=} ;;
     --with|--without) [[ -n ${2:-} ]] || { echo "$1 needs a list of ids, e.g. $1 deck,youtube" >&2; exit 2; }
@@ -56,6 +62,7 @@ while (( $# )); do
   esac
   shift
 done
+(( choose )) && [[ ! -t 0 ]] && { echo "--choose needs a terminal to ask in" >&2; exit 2; }
 (( nokde && !greeter )) && { echo "--no-kde removes the KDE login screen, so it can't be combined with --no-greeter" >&2; exit 2; }
 pkgs() { grep -vE '^\s*(#|$)' "$1" | tr '\n' ' '; }
 # The names of these that are installed (rpm prints "package X is not installed" for the rest)
@@ -108,6 +115,7 @@ case $base in
   all) on=("${on[@]/*/1}") ;;
   none) on=("${on[@]/*/0}") ;;
 esac
+for i in "${!ids[@]}"; do [[ " ${ALWAYS[*]} " == *" ${ids[i]} "* ]] && on[i]=1; done
 # --with/--without: ids (or names) separated by commas
 toggle_listed() {  # toggle_listed LIST 0|1
   local list w i found
@@ -145,7 +153,7 @@ show_parts() {
 echo "Machine: $machine_desc"
 (( nvidia )) && echo "         NVIDIA: installs the driver from RPM Fusion (akmod-nvidia; --no-nvidia leaves it alone)"
 echo
-if [[ -z $base$with$without && -t 0 ]]; then
+if (( choose )); then
   echo "Optional parts. Everything else is the same on every install; these can also be added later (launcher ›"
   echo "System › Install). Type numbers to tick or untick (e.g. 2 5), a = all, n = none, Enter continues."
   while true; do
@@ -302,9 +310,10 @@ fi
 
 # Last of the unattended part. One that fails doesn't stop the rest: it's listed at the end, and can be run again from
 # the launcher (System › Install) or with `nightdrive plugins install ID`.
+# NIGHTDRIVE_INSTALL: an installer that would open its app for a first setup (Mail) leaves that to the first start.
 failed=()
 for id in "${chosen[@]}"; do
-  "$repo/bin/nightdrive" plugins install "$id" || failed+=("$id")
+  NIGHTDRIVE_INSTALL=1 "$repo/bin/nightdrive" plugins install "$id" || failed+=("$id")
 done
 "$repo/bin/nightdrive" plugins installed >/dev/null
 "$repo/config/fuzzel/sync-apps"
@@ -325,10 +334,8 @@ echo
 (( ${failed_claude:-0} )) && echo "Claude Code not installed (an error, see above). Run again: curl -fsSL https://claude.ai/install.sh | bash" && echo
 echo "Done. Still to do by hand:"
 echo "  Claude Code: run claude once and log in (⌘⌥Enter and the top bar's usage menu use that sign-in)."
-if has tailscale; then
-  echo '  sudo tailscale up                          # log in'
-  echo '  sudo tailscale set --operator=$USER        # lets the top bar Tailscale click work without a password'
-fi
+has tailscale && echo "  Tailscale: log in with  tailscale up  (it prints a link to open); then it's on and off in its top bar menu."
+has mail && echo "  Mail: open it (launcher › Mail); its first start offers to set up your account with Claude."
 has deck && echo "  Deck: needs Spotify Premium and the Client ID of your own Spotify app (~/.config/deck/config.toml), see Deck's README."
 if has thunderbird; then
   echo "  Firefox and Thunderbird: open each once, then run ./link.sh again (it themes their profiles, which don't exist yet)."

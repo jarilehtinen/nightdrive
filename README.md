@@ -179,18 +179,24 @@ curl -fsSL https://nightdrive.sh/install | bash
 
 That runs [`bootstrap.sh`](bootstrap.sh): it installs git, clones Nightdrive into `~/dotfiles` and starts its installer.
 `bash -s -- --dev` clones the dev channel instead of the stable one, and the installer's options in the table below go
-after `--` too (`bash -s -- --with deck`). The same by hand:
+after `--` too (`bash -s -- --choose`). The same by hand:
 
 ```sh
 sudo dnf install -y git   # not in a fresh install
 git clone https://github.com/nightdrive-sh/nightdrive.git ~/dotfiles
 cd ~/dotfiles
-./install.sh              # asks which optional parts to install, then: removes the KDE apps and services Nightdrive
-                          # doesn't use (packages-remove.txt), system update, packages, fonts, the notch setting,
-                          # config links, Claude Code, login screen and the optional parts
+./install.sh              # asks nothing: removes the KDE apps and services Nightdrive doesn't use
+                          # (packages-remove.txt), system update, packages, fonts, the notch setting, config links,
+                          # Claude Code, Tailscale, Mail, Deck, login screen and the default optional parts
 ```
 
-It tells which machine it's on and asks first which optional parts you want (number toggles one, Enter continues):
+It tells which machine it's on and then runs unattended (sudo asks for the password once at the start); the system update
+and compiling Deck take a while. Claude Code, Tailscale, Mail and Deck come with every install, like the rest of the
+desktop: each stays quiet until you set it up. The optional parts that are on by default (YouTube) come too, and the rest
+can be added later from the launcher (System › Install) or with `nightdrive plugins install ID`.
+
+To pick the optional parts yourself, run `./install.sh --choose`: it lists them first (a number toggles one, Enter
+continues):
 
 ```
 Machine: PC (x86_64, graphics: amd, keyboard: us)
@@ -198,7 +204,7 @@ Machine: PC (x86_64, graphics: amd, keyboard: us)
   Recommended apps
    1 [ ] 1Password         Password manager: launcher › Passwords, op CLI, SSH agent
    2 [x] Deck              Spotify player (needs Premium), launcher and top bar; compiled
-   3 [x] Tailscale         VPN, in the top bar (log in afterwards: sudo tailscale up)
+   3 [x] Tailscale         VPN, in the top bar (log in afterwards: tailscale up)
    …
 
   Web apps
@@ -217,12 +223,10 @@ Machine: PC (x86_64, graphics: amd, keyboard: us)
 ```
 
 **Trying it on the system you already use?** The removals are on by default only on a fresh install (one installed less
-than three days ago). On an older system the *Remove apps* row starts unticked, and nothing else is removed: your configs
+than three days ago). On an older system nothing is removed (`--choose` shows the *Remove apps* row unticked): your configs
 in `~/.config` are moved aside to `<name>.bak-<time>`, and `config/greeter/switch.sh off` brings back the KDE login screen.
 
-After that it runs unattended (sudo asks for the password once at the start); the system update and compiling Deck take a
-while. Home Assistant, if chosen, asks for its address and token at the very end. Anything you skip can be added later from
-the launcher (System › Install) or with `nightdrive plugins install ID`.
+Home Assistant, if chosen, asks for its address and token at the very end.
 
 Then **reboot**. The Nightdrive boot splash goes straight over to the Nightdrive login screen (greetd + Quickshell): the
 desktop starts behind it as its lock, so the screen changes hands only once and doesn't flash black. The login apps start
@@ -235,17 +239,19 @@ after the password. KDE stays installed as a fallback. If the login screen fails
 | `--no-autologin` | The Nightdrive login screen starts the desktop after the password, instead of being its lock (black flashes at boot) |
 | `--no-splash` | Keeps Fedora's boot splash and the GRUB menu (`config/splash/install.sh off` later) |
 | `--keep-apps` | Keeps the KDE apps, printing, network shares, accessibility tools and other packages listed in `packages-remove.txt` (comment a line out to keep just that one) |
-| `--debloat` | Removes them also on a system that isn't fresh (without a terminal, or with `--defaults` and the like, nothing is asked) |
+| `--debloat` | Removes them also on a system that isn't fresh |
+| `--choose` | Lists the optional parts and the removals first, to tick or untick |
 | `--no-kde` | Removes Plasma completely (experimental) |
 | `--vm` | The virtual machine settings, if the VM isn't detected as one ([docs/vm.md](docs/vm.md)) |
 | `--no-nvidia` | On a PC, leaves an NVIDIA card's driver alone instead of installing RPM Fusion's ([docs/pc.md](docs/pc.md)) |
-| `--with deck,1password` | These optional parts on top of the defaults, without asking (`--dry-run` lists the ids) |
-| `--without youtube` | The defaults without these, without asking; combines with `--with` |
-| `--all` / `--none` / `--defaults` | Every optional part / none / the defaults (Tailscale, Deck, YouTube), without asking |
+| `--with 1password,slack` | These optional parts on top of the defaults (`--dry-run` lists the ids) |
+| `--without youtube` | The defaults without these; combines with `--with`, and leaves out Tailscale, Mail or Deck too |
+| `--all` / `--none` / `--defaults` | Every optional part / none / the defaults (YouTube); Tailscale, Mail and Deck come with each |
 | `--dry-run` | Shows the optional parts, what would be installed and what would be removed, then stops |
 
 A few things stay manual (the install lists the ones for the parts you chose):
-- Tailscale: `sudo tailscale up`
+- Tailscale: log in with `tailscale up` (it prints a link to open).
+- Mail: open it; its first start offers to set up your account with Claude.
 - 1Password: in Settings › Developer, turn on *SSH agent* and *Integrate with 1Password CLI*. The launcher's Passwords level
   needs the CLI integration.
 - Deck: sign in to Spotify (needs Premium and the Client ID of your own Spotify app, see Deck's README).

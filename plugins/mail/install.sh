@@ -9,6 +9,8 @@ sudo dnf install -y notmuch isync libsecret zenity python3
 
 bin/nightmail enable
 if [[ ! -f ~/.config/isyncrc || ! -f ~/.config/nightmail/account.conf ]] || ! notmuch config get database.path >/dev/null 2>&1; then
+  # Nightdrive's own installer (install.sh) installs Mail on every machine: the setup waits for Mail's first start
+  [[ -n ${NIGHTDRIVE_INSTALL:-} ]] && { echo "Mail is installed; its first start offers to set up your account."; exit 0; }
   cat <<MSG
 
 Mail needs your email account first: Mail opens now and Claude can set it up with you (or: nightmail setup).
