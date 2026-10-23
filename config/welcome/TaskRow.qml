@@ -3,24 +3,26 @@ import qs
 import qs.kit
 
 // One thing to set up in the Welcome window: its icon, name and why in plain words, and on the right where it stands
-// (With Claude, Done, Skipped, Not finished, Needs Claude), or on the picked row what Enter does there.
+// (With Claude, Done, Skipped, Not finished, Needs Claude), or on the picked row what Enter does there. Set up by hand
+// (the first question's No, or before signing in to Claude), Enter shows its steps (StepView).
 AppRow {
     id: root
     required property var task
     required property int index
     property bool claudeIn: true            // signed in to Claude: the other rows' setups need it
+    property bool manual: false             // the first question's No: every row by hand, and no Claude row
     readonly property int sideWidth: 180    // the right's room, the same on every row, so picking one doesn't rewrap its text
     signal activated()
 
     // Its state, from tasks' row: running and done come from the system, skipped and started from setup.json
-    readonly property bool needsClaude: task.id !== "claude" && !claudeIn && !task.done && !task.running
-    readonly property string stage: task.running ? "running" : task.done ? "done" : needsClaude ? "needs"
-                                  : task.mark === "skipped" ? "skipped" : task.mark === "started" ? "started" : "todo"
+    readonly property bool byHand: task.id !== "claude" && (manual || !claudeIn)
+    readonly property string stage: task.running ? "running" : task.done ? "done" : task.mark === "skipped" ? "skipped"
+                                  : task.mark === "started" ? "started" : byHand ? "needs" : "todo"
     readonly property string action: ({
         running: "Show",
-        done: task.id === "claude" ? "" : "Run again",     // signed in is as far as Claude's row goes
-        needs: "Open the steps",
-        skipped: task.id === "claude" ? "Sign in" : "Set up with Claude",
+        done: task.id === "claude" ? "" : byHand ? "Show the steps" : "Run again",    // signed in is as far as Claude's row goes
+        needs: task.steps ? "Set up by hand" : "Open the steps",
+        skipped: task.id === "claude" ? "Sign in" : byHand ? "Set up by hand" : "Set up with Claude",
         started: "Continue",
         todo: task.id === "claude" ? "Sign in" : "Set up with Claude"
     })[stage]
@@ -38,7 +40,7 @@ AppRow {
         id: name
         x: 44; y: 12
         text: root.task.name
-        color: root.stage === "skipped" || root.stage === "needs" ? root.c.dim : root.c.title
+        color: root.stage === "skipped" || root.stage === "needs" && !root.manual ? root.c.dim : root.c.title
         font.family: root.c.font; font.pixelSize: 13; font.weight: Font.Medium
     }
     Text {
@@ -70,7 +72,7 @@ AppRow {
         Text {
             visible: !root.selected || root.action === ""
             anchors.verticalCenter: parent.verticalCenter
-            text: ({ running: "With Claude", done: "Done", needs: "Needs Claude", skipped: "Skipped",
+            text: ({ running: "With Claude", done: "Done", needs: root.manual ? "" : "Needs Claude", skipped: "Skipped",
                      started: "Not finished", todo: "" })[root.stage]
             color: root.stage === "done" ? root.c.primary : root.stage === "running" ? root.c.text : root.c.faint
             font.family: root.c.font; font.pixelSize: 12

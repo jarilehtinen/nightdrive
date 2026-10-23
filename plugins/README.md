@@ -20,6 +20,7 @@ Only `plugin.conf` and `README.md` are required. The other files are used only w
 | --- | --- | --- |
 | `plugin.conf` | Name, icon, description, how to install it and how to tell it's installed | [plugin.conf](ferry/plugin.conf) |
 | `README.md` | Its page: the launcher shows it, and GitHub (and later the website) the same file. Pictures go in the folder | [README.md](ferry/README.md), [ferry.jpg](ferry/ferry.jpg) |
+| `steps.md` | Its setup by hand, a step at a time, for Welcome to Nightdrive without Claude (see [below](#setting-up-by-hand-stepsmd)) | — (Mail's [steps.md](mail/steps.md)) |
 | `module.jsonc` | A top bar module | [module.jsonc](ferry/module.jsonc) |
 | `status` | The module's state, one line of JSON | [status](ferry/status) |
 | `icons/` | The module's own SVG icons, for a logo Lucide hasn't got | — (Tailscale's [icons/](tailscale/icons)) |
@@ -72,7 +73,7 @@ author=@jarilehtinen
 | `author` | Who made it: a GitHub user (`@name`) or a name |
 | `setup` | A shell command, run in the folder, that sets the installed plugin up with Claude: Claude Code in a terminal, going through the README's steps with the user. The plugin's page gets a button Set up with Claude (and the key C) for it. For a plugin whose use needs more than its installer can ask, such as Mail's account (`bin/nightmail setup`). Start Claude through `~/.config/hypr/scripts/claude-setup ID NAME`, with your steps on its stdin: it holds the session to them, and Welcome to Nightdrive sees it running. Installed plugins with a `setup` are rows in Welcome to Nightdrive (launcher › System › Set up Nightdrive) |
 | `configured` | A shell test, run in the folder, like `installed`: the setup is done while it succeeds (an account written, a login made). Welcome shows the plugin's row as Done by it. Quick, as `installed`. Without it, a setup counts as done once its Claude session has closed |
-| `welcome` | The plugin's row in Welcome to Nightdrive: one line, in plain words, of what setting it up gives you. Default: `description` |
+| `welcome` | The plugin's row in Welcome to Nightdrive: one line, in plain words, of what setting it up gives you (with Claude or without). Default: `description` |
 | `order` | A number, default 50: `install.sh` installs the plugins in this order, and the lists show them in it. Lower goes first; the same order keeps the folders' (alphabetical) order, then `plugins.txt`'s lines. Home Assistant has 90: its installer asks for addresses, so it runs last |
 
 An `app` (Mail, Deck) is part of Nightdrive, like the apps that come with macOS: every install gets it without asking,
@@ -214,6 +215,27 @@ rest of it would be a paragraph of its own (`nightdrive plugin check` points out
 Commands go in a code block, indented by 4 spaces after a blank line (or in ``` fences), one command a line. The
 launcher shows it in a box with its lines as they are, and a `command   # comment` line with the comment dimmed in a
 column beside the commands (under the command when there isn't room), so keep the comments short, as Ferry's are.
+
+## Setting up by hand: steps.md
+
+Welcome to Nightdrive asks first whether you have Claude. Without, Enter on a plugin's row shows its `steps.md` in the
+window, a step at a time, and h shows the README's setup section beside the step (without a `steps.md`, Enter opens the
+plugin's page). Write it for someone new to Linux: what the step is for, then what to do. The first step says why the
+plugin matters in Nightdrive. `config/welcome/steps` reads it; Tailscale's, Mail's and Deck's are examples.
+
+- Each `## Title` is a step: its paragraphs (Markdown), at most one fenced code block, and lines of their own:
+  - `Ask: key | Label | example`: a field to fill in. `{key}` in a later code block, button or test becomes its value,
+    kept only while the window is open; a command that needs one waits until it is filled in.
+  - `Edit: ~/path`: the code block is the file's template. Enter writes it, if the file isn't there yet, and opens it
+    in the text editor. Without `Edit:`, the code block is a command: Enter runs it in a terminal, y copies it.
+  - `Run: Label | command` and `Open: Label | https://…`: a button that runs a command in the plugin's folder, or opens
+    a page.
+  - `Done when: test`: a quick shell test, run in the folder every few seconds; the step shows Done while it succeeds.
+  - `Help: README.md#anchor`: this step's help, instead of the file's.
+- `Help:` lines before the first step name the help beside every step: a file in the folder (or `~/…`, an absolute
+  path) and a heading's anchor, as GitHub makes it. With more than one, the first file that is there wins (Deck's own
+  README, then the plugin's page).
+- The row counts as done by `configured` in plugin.conf, as with Claude; Finish on the last step marks it started.
 
 ## Keys: bindings.lua and SHORTCUTS.md
 
