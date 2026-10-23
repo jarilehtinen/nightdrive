@@ -14,7 +14,7 @@ The sidebar's sections are Shelf, Curated, Radio, Search and Queue (⌘1–5 or 
 
 Queue shows what plays now at the top, with the playing note on the right (it says when it came from the queue: Next takes the queue's first track), and buttons that play the queue and empty it.
 
-Pick for me (r, or the button on Shelf and Curated) plays an album from your shelf or Curated that you haven't played in a while: Deck draws them like from a hat, so an album comes again only once the others have played, and every album you play counts (`deck ctl pick`).
+Pick for me (r, or the button on Shelf and Curated) puts an album from your shelf or Curated that you haven't played in a while at the front of the queue, all of it, and starts it: Deck draws them like from a hat, so an album comes again only once the others have played, and every album you play counts (`deck ctl pick`).
 
 Radio lists Deck's genres, your favourites first (the star): a click or Enter opens a genre, and its Play button (or p) starts the radio, which then shows what it plays next; f makes a genre a favourite or not. Deck's own genres (`deck genre add`) are there too.
 
