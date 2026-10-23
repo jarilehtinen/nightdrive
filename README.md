@@ -303,7 +303,7 @@ The same `nightdrive` command reaches the settings from a terminal (`nightdrive`
 | `nightdrive plugins` | Optional parts and whether each is installed and on; `nightdrive plugins install home-assistant` runs one's installer |
 | `nightdrive plugins off ferry` | Hides an installed part from the desktop and stops its services, for one that misbehaves (`on` brings it back; also the switch on its page in the launcher) |
 | `nightdrive plugins add <git-url>` | Adds a plugin from someone else's repo, marked external in the launcher; `nightdrive update` keeps it up to date, `nightdrive plugins remove ID` deletes it |
-| `nightdrive ask "Fix the clock"` | Opens Claude Code in a new terminal with that as its first message, as ⌘⌥Enter does from the launcher; `--dir ~/dotfiles` starts it in that folder (`~/Projects` otherwise), `--name "Clock"` names the session (as `/rename`) |
+| `nightdrive ask "Fix the clock"` | Opens Claude Code in a new terminal with that as its first message, as ⌘⌥Enter does from the launcher; `--dir ~/dotfiles` starts it in that folder (`~/Projects` otherwise), `--name "Clock"` names the session (as `/rename`), `--effort high` sets its effort level (low to max) |
 
 ## Keys
 
