@@ -6,7 +6,8 @@
     parts.py save-all MSGID PART NAME [PART NAME …]
                                      the same for each, and prints {"paths": [...]}
     parts.py html MSGID              writes the message's HTML for the browser, with nothing that loads from the network,
-                                     to $XDG_RUNTIME_DIR/nightmail/ and prints {"path": ...} to open
+                                     to $XDG_RUNTIME_DIR/nightmail/ and prints {"path": ...} to open. With remote images
+                                     in it, a bar at the top links to a second page that loads them.
 
 PART is notmuch's part number (`notmuch show --format=json` lists them), NAME the attachment's file name.
 Failures are {"error": "..."}.
@@ -31,9 +32,17 @@ PAGES = os.path.join(os.environ.get("XDG_RUNTIME_DIR") or f"/tmp/nightmail-{os.g
 # First in the page: the browser loads nothing but what is in the file, so no remote image or font tells the sender
 # the message was opened. Pictures sent with the message are in the file (data: URIs); links still open when clicked.
 HEAD = """<meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; font-src data:; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:{images}; style-src 'unsafe-inline'; font-src data:; form-action 'none'">
 <meta http-equiv="x-dns-prefetch-control" content="off">
 <meta name="referrer" content="no-referrer">
+"""
+# Remote images, which the sender may use to see that the message was opened: on the blocked page only this bar says
+# so, and links to the page that loads them (images only: scripts and the rest stay out there too)
+REMOTE = re.compile(r"""(\b(src|srcset|background)\s*=\s*["']?\s*|url\(\s*["']?\s*)(https?:)?//""", re.I)
+BAR = """<div style="all: initial; display: block; padding: 9px 16px; background: #2a2631; color: #e8e4ee;
+ font: 14px/1.4 system-ui, sans-serif; text-align: center">Remote images are blocked, so the sender
+ can't tell you opened this. <a href="{href}" style="all: initial; color: #c9a7f0; font: inherit; font-weight: 600;
+ cursor: pointer; text-decoration: underline">Load images</a></div>
 """
 
 
@@ -92,19 +101,31 @@ def page(msgid):
     # (a refresh, a policy, a charset) and a base for relative links
     text = re.sub(r"<script\b.*?</script\s*>", "", text, flags=re.I | re.S)
     text = re.sub(r"<(script|link|meta|base)\b[^>]*>", "", text, flags=re.I)
-    head = HEAD
+    title = ""
     if not re.search(r"<title\b[^>]*>\s*[^<\s]", text, re.I):
-        head += f"<title>{html.escape(msg.get('Subject', '') or '(no subject)')}</title>\n"
-    # After the doctype (before it the page would lose its standards mode), else at the very start
+        title = f"<title>{html.escape(msg.get('Subject', '') or '(no subject)')}</title>\n"
+    # The head after the doctype (before it the page would lose its standards mode), else at the very start; the bar
+    # first in the body
     doctype = re.match(r"\s*(<!--.*?-->\s*)*<!doctype[^>]*>", text, re.I | re.S)
     at = doctype.end() if doctype else 0
-    text = text[:at] + "\n" + head + text[at:]
+    body = re.search(r"<body\b[^>]*>", text, re.I)
+    top = body.end() if body else at
+    stem = hashlib.sha1(msgid.encode()).hexdigest()[:12]
     os.makedirs(PAGES, mode=0o700, exist_ok=True)
-    path = os.path.join(PAGES, hashlib.sha1(msgid.encode()).hexdigest()[:12] + ".html")
-    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w", encoding="utf-8") as fh:
-        fh.write(text)
-    return path
+
+    def write(name, images, bar):
+        page = text[:at] + "\n" + HEAD.format(images=images) + title + text[at:top] + bar + text[top:]
+        path = os.path.join(PAGES, name)
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(page)
+        return path
+
+    bar = ""
+    if REMOTE.search(text):
+        write(stem + "-images.html", " https: http:", "")
+        bar = BAR.format(href=stem + "-images.html")
+    return write(stem + ".html", "", bar)
 
 
 def main():
