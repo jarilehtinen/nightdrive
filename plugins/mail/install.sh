@@ -14,7 +14,7 @@ if [[ ! -f ~/.config/isyncrc || ! -f ~/.config/nightmail/account.conf ]] || ! no
   cat <<MSG
 
 Mail needs your email account first: Mail opens now and Claude can set it up with you (or: nightmail setup).
-To do it yourself, the plugin's page has the steps (launcher › System › Install › Plugins › Mail, or $PWD/README.md).
+To do it yourself, Mail's README has the steps: $PWD/README.md
 MSG
   # Only on the desktop (not over ssh)
   [[ -n ${WAYLAND_DISPLAY:-} ]] && bin/nightmail

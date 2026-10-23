@@ -201,25 +201,28 @@ continues):
 ```
 Machine: PC (x86_64, graphics: amd, keyboard: us)
 
+  Nightdrive apps
+   1 [x] Deck              Spotify player (needs Premium), launcher and top bar; compiled
+   2 [x] Mail              Mail over notmuch: quiet reading, notifications, Claude's replies
+
   Recommended apps
-   1 [ ] 1Password         Password manager: launcher › Passwords, op CLI, SSH agent
-   2 [x] Deck              Spotify player (needs Premium), launcher and top bar; compiled
-   3 [x] Tailscale         VPN, in the top bar (log in from Settings › Tailscale)
+   3 [ ] 1Password         Password manager: launcher › Passwords, op CLI, SSH agent
+   4 [x] Tailscale         VPN, in the top bar (log in from Settings › Tailscale)
    …
 
   Web apps
-   9 [ ] Slack             Slack as a web app (Hyper+S)
+  10 [ ] Slack             Slack as a web app (Hyper+S)
    …
 
   Plugins
-  13 [ ] AirPlay Receiver  Mirror an iPhone, iPad or Mac here (UxPlay, experimental)
-  14 [ ] Ferry             Files and text both ways with your phone over Tailscale, no app (experimental)
-  15 [ ] Mac Keyboard Shortcuts ⌥⌫ deletes a word, ⌘⌫ to the line start; Files: Enter renames, ⌘O opens, ⌘⌫ to the trash
+  14 [ ] AirPlay Receiver  Mirror an iPhone, iPad or Mac here (UxPlay, experimental)
+  15 [ ] Ferry             Files and text both ways with your phone over Tailscale, no app (experimental)
+  16 [ ] Mac Keyboard Shortcuts ⌥⌫ deletes a word, ⌘⌫ to the line start; Files: Enter renames, ⌘O opens, ⌘⌫ to the trash
    …
 
-  18 [ ] Install all       every optional part above
+  19 [ ] Install all       every optional part above
 
-  19 [x] Remove apps       112 installed packages Nightdrive doesn't use: akregator dolphin konsole kmail …
+  20 [x] Remove apps       112 installed packages Nightdrive doesn't use: akregator dolphin konsole kmail …
 ```
 
 **Trying it on the system you already use?** The removals are on by default only on a fresh install (one installed less
@@ -271,6 +274,9 @@ You can also update any time from the launcher (**Update**) or a terminal:
 ```sh
 nightdrive update   # pulls Nightdrive (and Deck), relinks, installs new packages, updates the system, reloads the desktop
 ```
+
+An install that doesn't have one of Nightdrive's apps yet (Mail, Deck) gets it with the update, once: one you remove
+afterwards isn't installed again (`nightdrive plugins install mail` brings it back).
 
 It never overwrites your own edits: a repo with uncommitted changes is skipped with a note. On an install older than the
 command, run it once as `~/dotfiles/bin/nightdrive update` (a plain `git pull` misses the new links and packages).

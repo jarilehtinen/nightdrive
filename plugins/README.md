@@ -67,11 +67,19 @@ author=@jarilehtinen
 | `default` | `on`: ticked in `install.sh`'s list; `off` (default): not |
 | `install` | A shell command, or a script in the folder, run in the folder in a terminal (it may ask things, and `sudo` works). Running it again must be safe. Default: nothing to install |
 | `installed` | A shell test, run in the folder: the plugin is installed while it succeeds. Make it quick: every `nightdrive plugins` runs all of them |
-| `group` | Where it is listed: `plugin` (default, Install › Plugins: a feature of the desktop), `recommended` (Install › Recommended: an app Nightdrive sets up) or `webapp` |
+| `group` | Where it is listed: `plugin` (default, Install › Plugins: a feature of the desktop), `recommended` (Install › Recommended: an app Nightdrive sets up), `webapp`, or `app`: one of Nightdrive's own apps (below) |
 | `version` | `MAJOR.MINOR.PATCH`, e.g. `1.0.0` (`0.x` while it's experimental). It shows on the plugin's page in the launcher and on the website, so a bug report can name it. See [Versions](#versions) |
 | `author` | Who made it: a GitHub user (`@name`) or a name |
 | `setup` | A shell command, run in the folder, that sets the installed plugin up with Claude: Claude Code in a terminal, going through the README's steps with the user. The plugin's page gets a button Set up with Claude (and the key C) for it. For a plugin whose use needs more than its installer can ask, such as Mail's account (`bin/nightmail setup`) |
 | `order` | A number, default 50: `install.sh` installs the plugins in this order, and the lists show them in it. Lower goes first; the same order keeps the folders' (alphabetical) order, then `plugins.txt`'s lines. Home Assistant has 90: its installer asks for addresses, so it runs last |
+
+An `app` (Mail, Deck) is part of Nightdrive, like the apps that come with macOS: every install gets it without asking,
+it isn't listed in System › Install, and its settings are in Settings › Apps. `nightdrive update` installs an app that an
+existing install has never had (one made an app later, or a new one), once: the ids it has offered are kept in
+`~/.local/state/nightdrive/apps-offered` (`install.sh` writes the ones it offered, left out or not), and an app the
+user removed afterwards is never installed again. Whether a new app comes with Nightdrive or would be bloat there (then
+it is `recommended`) is decided for each app. Only the repo's own plugins can be apps: `nightdrive update` doesn't
+install an external plugin by its group.
 
 Pick `installed` so it follows what the installer did: a unit that is enabled, a command that exists. A plugin with
 nothing to install can use `installed=true`, but then everyone who has the folder has it on, which suits an external
@@ -289,7 +297,7 @@ something is off. `nightdrive sandbox check` runs it too. It checks a plugin fol
 
 - The id: the folder's name is letters, digits, `-` and `_`, and no other plugin (or `plugins.txt` line) has it.
 - `plugin.conf`: only `key=value` lines and known keys, each once; `name`, `icon`, `description`, `installed`,
-  `version` and `author` are there; `default` is `on` or `off`, `group` one of the three, `version` is
+  `version` and `author` are there; `default` is `on` or `off`, `group` one of the four, `version` is
   `MAJOR.MINOR.PATCH` and `order` a number; `install` and `installed` parse as shell (`bash -n`).
 - The icons are Lucide names: plugin.conf's `icon`, module.jsonc's `glyph`, and the ones `status` prints with `emit`
   (or one of the bar's own in `config/topbar/icons`; a `pack:name` isn't checked).

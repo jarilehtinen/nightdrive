@@ -23,7 +23,7 @@ CORE_MODULES = os.path.join(REPO, "config/topbar/modules.jsonc")
 CONF_KEYS = ("name", "icon", "description", "default", "install", "installed", "group", "version", "author", "order", "setup")
 CONF_NEEDED = ("name", "icon", "description", "installed", "version", "author")   # without installed it never counts
                                                              # as installed; version and author go in bug reports
-GROUPS = ("recommended", "webapp", "plugin")
+GROUPS = ("app", "recommended", "webapp", "plugin")
 MODULE_KEYS = {"name", "interval", "status", "menu", "right", "middle", "spacing", "drop", "after", "before", "size",
                "label", "glyph"}                                           # modules.jsonc's header; needs is implied
 FACTS = ("Homepage", "Needs", "Keys")                             # in this order, the last lines of a README

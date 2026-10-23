@@ -1107,7 +1107,7 @@ ShellRoot {
             }
             Text {
                 width: parent.width; wrapMode: Text.Wrap; color: c.faint; font.family: c.font; font.pixelSize: 11
-                text: "To do it yourself: launcher › System › Install › Plugins › Mail has the steps."
+                text: "To do it yourself: Mail's README has the steps (plugins/mail/README.md in Nightdrive)."
             }
         }
 

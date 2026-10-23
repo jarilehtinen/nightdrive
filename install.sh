@@ -6,7 +6,7 @@
 #   ./install.sh               asks nothing (sudo's password once at the start) and runs unattended: removes the apps
 #                              Nightdrive doesn't use (packages-remove.txt; only on a fresh system, installed under 3
 #                              days ago), updates the system, installs packages, fonts, the notch setting, links the
-#                              configs, installs Claude Code, Tailscale, Mail and Deck (ALWAYS), the Nightdrive login
+#                              configs, installs Claude Code, Tailscale (ALWAYS), Nightdrive's apps (Mail, Deck), the login
 #                              screen and boot splash (active from the next boot: the splash, then the desktop under the
 #                              login screen as its lock) and the optional parts that are Default on in plugins.txt.
 #   ./install.sh --choose      first lists the optional parts (1Password, web apps…, plugins.txt) and the removals to tick
@@ -15,7 +15,7 @@
 #   ./install.sh --without youtube       the defaults without these (--with and --without combine; with --choose they
 #                                        set what starts ticked)
 #   ./install.sh --all / --none / --defaults   every optional part / none / the defaults (Default on in plugins.txt);
-#                              the ALWAYS parts are in with each (--without leaves one out)
+#                              the ALWAYS parts and the apps are in with each (--without leaves one out)
 #   ./install.sh --dry-run     shows the optional parts, which would be installed and what would be removed, and stops
 #   ./install.sh --no-greeter  keeps the distribution's own login screen (pick "Hyprland" there)
 #   ./install.sh --no-autologin  the Nightdrive login screen before the desktop starts, instead of as its lock
@@ -31,9 +31,10 @@
 set -euo pipefail
 repo=$(cd "$(dirname "$0")" && pwd)
 FRESH_DAYS=3                     # a system installed less than this many days ago gets the removals by default
-# Part of Nightdrive like Claude Code, so not asked: Mail is quiet until its account is set up, Tailscale until it's logged
-# in. Folders in plugins/, so their packages and services stay out of the core.
-ALWAYS=(tailscale mail deck)
+# Part of Nightdrive like Claude Code, so not asked: Tailscale is quiet until it's logged in. Nightdrive's own apps (group
+# app in plugin.conf: Mail, Deck) are too, Mail until its account is set up. Folders in plugins/, so their packages and
+# services stay out of the core.
+ALWAYS=(tailscale)
 debloat=""; machine=""; nvidia=1; secureboot=0; greeter=1; autologin=1; splash=1; nokde=0; dry=0; choose=0   # debloat: 1 | 0, "" = by the system's age; machine: "" = detected
 base=""; with=""; without=""     # base: all | none | defaults, "" = the defaults
 usage() { sed -n '6,29p' "$0" | sed 's/^# \{0,1\}//'; }
@@ -107,15 +108,15 @@ while IFS=$'\t' read -r id name _ desc def _ _ group _; do
 done < <("$repo/bin/nightdrive" plugins)
 # Shown by group like the launcher's Install menu; installed in the file's order. order: row number - 1 → index
 order=()
-for g in recommended webapp plugin; do
+for g in app recommended webapp plugin; do
   for i in "${!ids[@]}"; do [[ ${groups[i]} == "$g" ]] && order+=("$i"); done
 done
-declare -A group_title=([recommended]="Recommended apps" [webapp]="Web apps" [plugin]="Plugins")
+declare -A group_title=([app]="Nightdrive apps" [recommended]="Recommended apps" [webapp]="Web apps" [plugin]="Plugins")
 case $base in
   all) on=("${on[@]/*/1}") ;;
   none) on=("${on[@]/*/0}") ;;
 esac
-for i in "${!ids[@]}"; do [[ " ${ALWAYS[*]} " == *" ${ids[i]} "* ]] && on[i]=1; done
+for i in "${!ids[@]}"; do [[ " ${ALWAYS[*]} " == *" ${ids[i]} "* || ${groups[i]} == app ]] && on[i]=1; done
 # --with/--without: ids (or names) separated by commas
 toggle_listed() {  # toggle_listed LIST 0|1
   local list w i found
@@ -315,6 +316,12 @@ failed=()
 for id in "${chosen[@]}"; do
   NIGHTDRIVE_INSTALL=1 "$repo/bin/nightdrive" plugins install "$id" || failed+=("$id")
 done
+# The apps were offered now, the ones left out (--without, --choose) too: nightdrive update installs an app only on an
+# install that has never had it (bin/nightdrive, offer_apps)
+offered=$HOME/.local/state/nightdrive/apps-offered
+mkdir -p "${offered%/*}"
+{ cat "$offered" 2>/dev/null || true; for i in "${!ids[@]}"; do if [[ ${groups[i]} == app ]]; then echo "${ids[i]}"; fi; done; } \
+  | sort -u > "$offered.tmp" && mv "$offered.tmp" "$offered"
 "$repo/bin/nightdrive" plugins installed >/dev/null
 "$repo/config/fuzzel/sync-apps"
 
