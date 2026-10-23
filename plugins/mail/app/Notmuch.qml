@@ -113,6 +113,16 @@ QtObject {
         } })
     }
 
+    // The message's HTML as a page for the browser, with nothing in it that loads from the network; done gets
+    // { path } or { error }.
+    function page(msgid, done) {
+        proc.createObject(nm, { command: ["python3", parter, "html", msgid], done: t => {
+            let r
+            try { r = JSON.parse(t) } catch (e) { r = { error: t.trim() || "No answer from parts.py" } }
+            done(r)
+        } })
+    }
+
     // All of a message's attachments ({ part, name }) to the downloads folder; done gets { paths } or { error }.
     function saveAll(msgid, files, done) {
         const pairs = files.reduce((a, f) => a.concat([String(f.part), f.name]), [])

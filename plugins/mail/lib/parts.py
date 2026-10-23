@@ -5,18 +5,36 @@
     parts.py save MSGID PART NAME    copies it to the downloads folder, next to what is there, and prints {"path": ...}
     parts.py save-all MSGID PART NAME [PART NAME …]
                                      the same for each, and prints {"paths": [...]}
+    parts.py html MSGID              writes the message's HTML for the browser, with nothing that loads from the network,
+                                     to $XDG_RUNTIME_DIR/nightmail/ and prints {"path": ...} to open
 
 PART is notmuch's part number (`notmuch show --format=json` lists them), NAME the attachment's file name.
 Failures are {"error": "..."}.
 """
 
+import base64
+import email
+import email.policy
 import hashlib
+import html
 import json
 import os
+import re
 import subprocess
 import sys
+import urllib.parse
 
 PARTS = os.path.join(os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache")), "nightmail", "parts")
+# The HTML pages: in memory (tmpfs), the user's alone, gone at logout
+PAGES = os.path.join(os.environ.get("XDG_RUNTIME_DIR") or f"/tmp/nightmail-{os.getuid()}", "nightmail")
+
+# First in the page: the browser loads nothing but what is in the file, so no remote image or font tells the sender
+# the message was opened. Pictures sent with the message are in the file (data: URIs); links still open when clicked.
+HEAD = """<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; font-src data:; form-action 'none'">
+<meta http-equiv="x-dns-prefetch-control" content="off">
+<meta name="referrer" content="no-referrer">
+"""
 
 
 def downloads():
@@ -38,8 +56,7 @@ def free(folder, name):
 
 def write(cmd, msgid, part, name):
     name = os.path.basename(name) or "attachment"
-    data = subprocess.run(["notmuch", "show", "--format=raw", "--part=" + part, f'id:"{msgid}"'],
-                          capture_output=True, check=True).stdout
+    data = raw(msgid, part)
     if cmd == "open":
         folder = os.path.join(PARTS, hashlib.sha1(msgid.encode()).hexdigest()[:12])
         path = os.path.join(folder, name)
@@ -52,9 +69,49 @@ def write(cmd, msgid, part, name):
     return path
 
 
+def raw(msgid, part=None):
+    args = ["notmuch", "show", "--format=raw"] + (["--part=" + part] if part else []) + [f'id:"{msgid}"']
+    return subprocess.run(args, capture_output=True, check=True).stdout
+
+
+def page(msgid):
+    msg = email.message_from_bytes(raw(msgid), policy=email.policy.default)
+    body = msg.get_body(preferencelist=("html",))
+    if body is None:
+        raise ValueError("This message has no HTML version")
+    text = body.get_content()
+    # Pictures sent with the HTML (multipart/related), by Content-ID, as data: URIs
+    pics = {}
+    for part in msg.walk():
+        cid = part.get("Content-ID")
+        if cid and not part.is_multipart():
+            data = part.get_payload(decode=True) or b""
+            pics[cid.strip().strip("<>")] = f"data:{part.get_content_type()};base64,{base64.b64encode(data).decode()}"
+    text = re.sub(r"cid:([^\"'\s)>]+)", lambda m: pics.get(urllib.parse.unquote(m.group(1)), m.group(0)), text, flags=re.I)
+    # What could still reach out, or take the page's head over: scripts, linked files, the sender's own meta tags
+    # (a refresh, a policy, a charset) and a base for relative links
+    text = re.sub(r"<script\b.*?</script\s*>", "", text, flags=re.I | re.S)
+    text = re.sub(r"<(script|link|meta|base)\b[^>]*>", "", text, flags=re.I)
+    head = HEAD
+    if not re.search(r"<title\b[^>]*>\s*[^<\s]", text, re.I):
+        head += f"<title>{html.escape(msg.get('Subject', '') or '(no subject)')}</title>\n"
+    # After the doctype (before it the page would lose its standards mode), else at the very start
+    doctype = re.match(r"\s*(<!--.*?-->\s*)*<!doctype[^>]*>", text, re.I | re.S)
+    at = doctype.end() if doctype else 0
+    text = text[:at] + "\n" + head + text[at:]
+    os.makedirs(PAGES, mode=0o700, exist_ok=True)
+    path = os.path.join(PAGES, hashlib.sha1(msgid.encode()).hexdigest()[:12] + ".html")
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as fh:
+        fh.write(text)
+    return path
+
+
 def main():
     cmd, msgid = sys.argv[1:3]
-    if cmd == "save-all":
+    if cmd == "html":
+        print(json.dumps({"path": page(msgid)}))
+    elif cmd == "save-all":
         pairs = sys.argv[3:]
         print(json.dumps({"paths": [write("save", msgid, pairs[i], pairs[i + 1]) for i in range(0, len(pairs) - 1, 2)]}))
     else:
@@ -64,5 +121,5 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except (subprocess.CalledProcessError, OSError, ValueError) as e:
+    except (subprocess.CalledProcessError, OSError, ValueError, LookupError) as e:
         print(json.dumps({"error": str(e)}))

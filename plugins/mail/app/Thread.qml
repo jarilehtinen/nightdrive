@@ -12,6 +12,7 @@ Flickable {
     property var messages: []
     property int htmlMode: 0            // 0 text, 1 HTML on the dark page, 2 HTML on light paper
     signal cycleHtml()
+    signal openBrowser()
     signal resumeDraft()
     // Buttons above the thread, for the mouse: [{ id, icon, text, short, tip, keys }]; a click sends act(id). Where they
     // don't all fit beside the view button, the short names show, and where those don't either, only the icons. Held
@@ -128,7 +129,7 @@ Flickable {
         visible: root.messages.length > 0 && root.actions.length > 0
         // Where it may start: after the back button, if there is one; in one pane the buttons are centred from there on
         readonly property real start: root.back ? backButton.x + backButton.width + 6 : page.x - 10
-        readonly property real end: viewButton.visible ? viewButton.x - 12 : root.back ? root.width - 12 : page.x + page.width
+        readonly property real end: viewButton.visible ? browserButton.x - 12 : root.back ? root.width - 12 : page.x + page.width
         readonly property real room: end - start
         readonly property bool full: fullBar.implicitWidth <= room
         readonly property bool compact: !full && shortBar.implicitWidth > room
@@ -183,11 +184,25 @@ Flickable {
                 id: viewKey
                 scale: 0.8
                 anchors.verticalCenter: parent.verticalCenter; c: root.c; keys: "h"; tint: c.dim
-                visible: iconBar.implicitWidth + 12 + implicitWidth + viewRow.spacing + viewText.implicitWidth + 24
+                visible: iconBar.implicitWidth + 12 + browserButton.width + 2 + implicitWidth + viewRow.spacing + viewText.implicitWidth + 24
                          <= page.x + page.width + 12 - bar.start   // start, not x: x follows the width in one pane
             }
             Text { id: viewText; anchors.verticalCenter: parent.verticalCenter; text: ["Text", "HTML, dark", "HTML as sent"][root.htmlMode]; color: c.dim; font.family: c.font; font.pixelSize: 12 }
         }
+    }
+    // The HTML as sent, in the browser: tables and pictures sent with it as the sender laid them out, still with
+    // nothing loaded from the network
+    AppIconButton {
+        id: browserButton
+        visible: viewButton.visible
+        z: 2
+        x: viewButton.x - width - 2
+        y: root.contentY + 12
+        implicitWidth: 30; implicitHeight: 30; radius: 8
+        c: root.c
+        glyph: "external-link"; glyphSize: 14
+        tip: "Open in the browser"; keys: "⇧H"
+        onClicked: root.openBrowser()
     }
     Column {
         id: page
