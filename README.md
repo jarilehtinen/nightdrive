@@ -65,9 +65,10 @@ Browse has Popular (top 100) and categories: Flathub's most installed apps that 
 Terminals Fedora's terminals first (Ghostty, kitty, Alacritty, foot, Ptyxis). System ›
 Remove has Software (both) and Webapps, and its search looks in both.
 
-Everything beyond the core is an optional part you choose when installing, or later under System › Install: apps Nightdrive
-sets up (1Password, Deck, Home Assistant…), ready-made web apps with a keybinding, and plugins for desktop features. A part
-that isn't installed doesn't show anywhere: no launcher level, bar icon or keybinding.
+Nightdrive's own apps (Mail, Deck) and Tailscale come with every install. Everything else is an optional part: the
+installer adds the ones on by default (or the ones you tick with `./install.sh --choose`), and the rest are under System ›
+Install: apps Nightdrive sets up (1Password, Home Assistant…), ready-made web apps with a keybinding, and plugins for
+desktop features. A part that isn't installed doesn't show anywhere: no launcher level, bar icon or keybinding.
 
 Updates come in a notification with an **Update** button, which updates Nightdrive and the system in one go.
 
@@ -140,12 +141,13 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
 | Bar, menus, launcher | [Quickshell](https://quickshell.org) | one themed shell for the top bar, its menus, launcher, OSD and shelf; an orange microphone and camera in the bar while an app uses them (MacBooks have no microphone light), the microphone filling up with the input level, their menus name the apps |
 | Terminal | [kitty](https://sw.kovidgoyal.net/kitty/) | ⌘Enter, opens in `~/Projects`; Mac copy and paste. Another terminal (Ghostty, foot, Alacritty, WezTerm) in Settings › Apps › Default apps: it opens everywhere kitty did, with its own settings and colours |
 | Browser | Firefox | tabs below the address bar, no tab bar while a window has one tab, links from other apps in a new window, starts with an empty window rather than the last session's tabs (all three in launcher › Settings › Apps › Firefox), themed UI |
-| Mail (optional) | Thunderbird | themed, with a minimal toolbar ([details](docs/thunderbird.md)) |
-| Music (optional) | [Deck](plugins/deck/README.md) (Spotify in the terminal, needs Spotify Premium) | bar icon, music menu, player row in the launcher, media keys |
+| Mail | [Mail](plugins/mail/README.md) (Nightdrive's own, over notmuch and mbsync) | quiet reading, notifications you can answer from, replies written by Claude for you to read first |
+| Mail, alternative (optional) | Thunderbird | themed, with a minimal toolbar ([details](docs/thunderbird.md)) |
+| Music | [Deck](plugins/deck/README.md) (Nightdrive's own Spotify player, needs Spotify Premium) | bar icon, music menu, player row in the launcher, media keys |
 | Passwords (optional) | [1Password](plugins/1password/README.md) + `op` CLI | Passwords level in the launcher, SSH agent |
 | AI | [Claude Code](https://claude.com/claude-code) (the installer sets it up; log in once with `claude`) | ⌘⌥Enter in `~/Projects`, ask from the launcher, sessions and usage limits in the bar |
 | Dictation | [Voxtype](https://github.com/peteonrails/voxtype) (Parakeet) | F5 / Fn push-to-talk, recording card on screen |
-| Network | NetworkManager, BlueZ, [Tailscale](plugins/tailscale/README.md) (optional) | Wi-Fi, Bluetooth and Tailscale menus |
+| Network | NetworkManager, BlueZ, [Tailscale](plugins/tailscale/README.md) | Wi-Fi, Bluetooth and Tailscale menus |
 | Audio | PipeWire, [EasyEffects](https://github.com/wwmm/easyeffects) | output switching (AirPlay speakers too), EQ presets for headphones; the headphone jack asks whether headphones or speakers went in, keeps a volume for each and starts quiet until you answer; Sony and AirPods listening mode, AirPods battery per pod and case and their own settings; the headphones' microphone in the Sound menus or Use for › Calls in the headphones menu (headset mode; another microphone or Use for › Music switches back to music mode, and music started in headset mode offers it in a notification) |
 | Screen Mirroring (optional) | [doubletake](https://github.com/omarroth/doubletake) (AirPlay, built by `plugins/mirroring/install.sh`) | Settings › Display; experimental, picture limited to 1080p (no hardware encoder on Asahi) |
 | Notifications | Quickshell | app icon and time on every notification, its app's buttons in the popup and in the history (until the app closes it), history and do not disturb in the bar; a warning with the charge left when the battery drops to 10 % and 5 % (gone once the charger is in); how long they show and their sounds in launcher › Settings › Notifications; with Settings › Crash reports on, a crashed app's notification has Ask Claude, which finds out why, and Mute for 15 minutes (a crash loop while you test) or for good |
@@ -193,7 +195,7 @@ cd ~/dotfiles
 ```
 
 It tells which machine it's on and then runs unattended (sudo asks for the password once at the start); the system update
-and compiling Deck take a while. Claude Code, Tailscale, Mail and Deck come with every install, like the rest of the
+takes a while. Claude Code, Tailscale, Mail and Deck come with every install, like the rest of the
 desktop: each stays quiet until you set it up. The optional parts that are on by default (YouTube) come too, and the rest
 can be added later from the launcher (System › Install) or with `nightdrive plugins install ID`.
 
@@ -204,7 +206,7 @@ continues):
 Machine: PC (x86_64, graphics: amd, keyboard: us)
 
   Nightdrive apps
-   1 [x] Deck              Spotify player (needs Premium), launcher and top bar; compiled
+   1 [x] Deck              Spotify player (needs Premium), launcher and top bar
    2 [x] Mail              Mail over notmuch: quiet reading, notifications, Claude's replies
 
   Recommended apps
