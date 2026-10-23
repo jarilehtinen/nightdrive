@@ -111,6 +111,15 @@ ShellRoot {
             updatedMs = Date.now(); nowMs = updatedMs
             ctl(["seek", String(ms)])
         }
+        // Next takes the queue's first track, which leaves the queue at once, but Deck tells the new track only once the
+        // player has it: until then the queue's top row shows the track that is coming
+        property var pendingNext: null
+        Timer { id: pendingWait; interval: 5000; onTriggered: win.pendingNext = null }
+        onInfoChanged: if (pendingNext && info && info.track_uri === pendingNext.uri) pendingNext = null
+        function next() {
+            if (queue.length) { pendingNext = queue[0]; pendingWait.restart() }
+            ctl(["next"])
+        }
         function startDeck() { Quickshell.execDetached([home + "/.local/bin/deck-open", "player"]) }
 
         // --- Deck's own files: the shelf and Curated ---
@@ -278,6 +287,13 @@ ShellRoot {
             push(v)
             if (!fromShelf) run(["artist-albums", "--json", artist.id], text => update(v, { albums: JSON.parse(text) }), err => update(v, { albums: [], error: err }))
         }
+        // An album's artist, from the album's view: all their albums on Spotify (yours marked with the shelf's icon), or
+        // only your shelf's when Deck knows no id for the artist
+        function artistOnShelf(album) { return shelf.some(a => (a.artist_id || a.artist) === (album.artist_id || album.artist)) }
+        function openAlbumArtist() {
+            const a = view.album
+            openArtist({ id: a.artist_id, name: a.artist }, !a.artist_id)
+        }
         function openAlbum(album, from) {
             const v = { kind: "album", album: album, tracks: null, from: from || "" }
             push(v)
@@ -358,9 +374,11 @@ ShellRoot {
             }
             else if (v.kind === "queue") {
                 // What plays now first, so a track taken from the queue doesn't seem to vanish from it
-                if (info) out.push({ kind: "nowplaying", title: info.title, sub: info.queued ? "Now playing, from the queue" : "Now playing · " + info.artist + " · " + info.album,
-                                     data: info, cover: info.album_uri || "" })
-                queue.forEach((t, i) => out.push({ kind: "queued", title: t.title, sub: t.artist, right: fmt(t.duration_ms), data: t, index: i, cover: t.album_uri || "" }))
+                if (pendingNext) out.push({ kind: "nowplaying", title: pendingNext.title, sub: "Now playing, from the queue", data: info, cover: pendingNext.album_uri || "" })
+                else if (info) out.push({ kind: "nowplaying", title: info.title, sub: info.queued ? "Now playing, from the queue" : "Now playing · " + info.artist + " · " + info.album,
+                                          data: info, cover: info.album_uri || "" })
+                // The coming track is already the top row
+                queue.forEach((t, i) => (pendingNext && t.uri === pendingNext.uri && i === 0) ? null : out.push({ kind: "queued", title: t.title, sub: t.artist, right: fmt(t.duration_ms), data: t, index: i, cover: t.album_uri || "" }))
             }
             else if (v.kind === "artist" && v.albums)
                 for (const a of v.albums) out.push({ kind: "album", title: a.name, sub: year(a), data: a, cover: a.uri })
@@ -377,7 +395,8 @@ ShellRoot {
         }
         readonly property string subheading: {
             const v = view
-            if (v.kind === "album") return [v.album.artist, year(v.album)].filter(x => x).join(" · ")
+            // The artist is a link of its own before this
+            if (v.kind === "album") return year(v.album) ? (v.album.artist ? "· " : "") + year(v.album) : ""
             if (v.kind === "artist") return v.shelf ? "On your shelf" : "On Spotify"
             if (v.kind === "curated") return curating ? curateLine : curated.length ? curated.length + " albums picked for you this week" : ""
             if (v.kind === "queue") return queue.length ? "Plays next, after the current track" : ""
@@ -438,6 +457,11 @@ ShellRoot {
             ctl(["radio", g.id])
         }
         function genreRow(g) { return { kind: "genre", title: g.name, fav: favorites.indexOf(g.id) >= 0, data: g } }
+        // Pick for me: Deck draws an album from the shelf or Curated that hasn't played in this round
+        function pick(from) {
+            ctl(from ? ["pick", from] : ["pick"])
+            note = "Picking an album…"
+        }
         function enqueue(row) {
             if (!row) return
             if (row.kind === "track") ctl(["queue-song", row.data.uri, view.album.uri])
@@ -639,21 +663,40 @@ ShellRoot {
                                     elide: Text.ElideRight
                                     text: win.heading; color: c.title; font.family: c.font; font.pixelSize: 15; font.weight: Font.DemiBold
                                 }
-                                // What it is, quieter on the same line (the album's artist and year, how many Curated has)
+                                // An album's artist: a click opens the artist's albums
+                                Text {
+                                    id: albumArtist
+                                    readonly property bool linked: win.view.kind === "album" && (!!win.view.album.artist_id || win.artistOnShelf(win.view.album))
+                                    visible: win.view.kind === "album" && !!win.view.album.artist
+                                    Layout.alignment: Qt.AlignBaseline
+                                    Layout.leftMargin: 10
+                                    // Its own width (a long name at most this much); the year after it takes the rest
+                                    Layout.preferredWidth: Math.min(implicitWidth, 320)
+                                    elide: Text.ElideRight
+                                    text: visible ? win.view.album.artist : ""
+                                    color: arh.hovered && linked ? c.text : c.dim; font.family: c.font; font.pixelSize: 12
+                                    font.underline: arh.hovered && linked
+                                    HoverHandler { id: arh; enabled: albumArtist.linked; cursorShape: Qt.PointingHandCursor }
+                                    TapHandler { enabled: albumArtist.linked; onTapped: win.openAlbumArtist() }
+                                    Tip { y: parent.height + 8; c: win.look; text: "Open the artist"; hovered: arh.hovered }
+                                }
+                                // What it is, quieter on the same line (the album's year, how many Curated has)
                                 Text {
                                     Layout.fillWidth: true
                                     Layout.alignment: Qt.AlignBaseline
-                                    Layout.leftMargin: 10
+                                    Layout.leftMargin: albumArtist.visible ? -4 : 10      // after the artist, a space's width (the row's spacing is 10)
                                     elide: Text.ElideRight
                                     text: win.subheading; color: c.dim; font.family: c.font; font.pixelSize: 12
                                 }
                                 // An album's own buttons, as Curated's New list: play it, queue it, shelve it. The tip tells the key.
                                 Repeater {
-                                    model: win.view.kind === "queue" ? (win.queue.length === 0 ? [] : [
+                                    model: win.view.kind === "shelf" && win.shelf.length ? [
+                                        { glyph: "dices", label: "Pick for me", tip: "An album you haven't played in a while", keys: "r", act: () => win.pick("shelf") }
+                                    ] : win.view.kind === "queue" ? (win.queue.length === 0 ? [] : [
                                         // The queue plays when its first track does: Next takes it
                                         win.info && win.info.queued
                                             ? { glyph: "check", label: "Playing", tip: "The queue plays", keys: "", act: () => {} }
-                                            : { glyph: "play", label: "Play", tip: "Play the queue now", keys: "", act: () => win.ctl(["next"]) },
+                                            : { glyph: "play", label: "Play", tip: "Play the queue now", keys: "", act: () => win.next() },
                                         { glyph: "trash-2", label: "Empty queue", tip: "Take everything off the queue", keys: "", act: () => { win.ctl(["queue-clear"]); win.note = "The queue is empty" } }
                                     ]) : win.view.kind === "station" ? [
                                         win.radio && win.radio.genre === win.view.genre.id
@@ -705,7 +748,8 @@ ShellRoot {
                                     model: win.view.kind !== "curated" || win.curating ? []
                                          : win.curateAsk ? [{ label: "Make it", glyph: "sparkles", strong: true, act: () => win.curate() },
                                                             { label: "Cancel", glyph: "", strong: false, act: () => win.curateAsk = false }]
-                                         : [{ label: "New list", glyph: "refresh-cw", strong: false, act: () => win.curateAsk = true }]
+                                         : (win.curated.length ? [{ label: "Pick for me", glyph: "dices", strong: false, act: () => win.pick("curated") }] : [])
+                                           .concat([{ label: "New list", glyph: "refresh-cw", strong: false, act: () => win.curateAsk = true }])
                                     delegate: Rectangle {
                                         required property var modelData
                                         implicitWidth: btn.implicitWidth + 24; implicitHeight: 28; radius: 7
@@ -796,7 +840,7 @@ ShellRoot {
                             else if (k === Qt.Key_Escape || k === Qt.Key_Backspace) win.back()
                             else if (k === Qt.Key_Space) win.togglePlay()
                             else if (k === Qt.Key_Left) win.ctl(["previous"])
-                            else if (k === Qt.Key_Right) win.ctl(["next"])
+                            else if (k === Qt.Key_Right) win.next()
                             else if (k === Qt.Key_P) win.play(row)
                             else if (k === Qt.Key_E) win.enqueue(row)
                             else if (k === Qt.Key_A) win.shelve(row)
@@ -805,6 +849,7 @@ ShellRoot {
                             else if (k === Qt.Key_F) win.favorite(win.view.kind === "station" ? win.genreRow(win.view.genre) : row)
                             else if (k === Qt.Key_O) outputs.visible = !outputs.visible
                             else if (k === Qt.Key_N) win.openPlaying()
+                            else if (k === Qt.Key_R) win.pick(win.section === "curated" ? "curated" : win.section === "shelf" ? "shelf" : "")
                             else if (k === Qt.Key_Comma) win.seek((win.position - 10000) / win.duration)
                             else if (k === Qt.Key_Period) win.seek((win.position + 10000) / win.duration)
                             else if (k === Qt.Key_Question) sheet.shown = !sheet.shown
@@ -824,7 +869,7 @@ ShellRoot {
                                 (modelData.kind === "track" || modelData.kind === "song" || modelData.kind === "radiotrack") && modelData.data.uri === win.info.track_uri
                                 || modelData.kind === "album" && modelData.data.uri === win.info.album_uri
                                 || modelData.kind === "genre" && win.radio !== null && win.radio.genre === modelData.data.id)
-                            // The dot: an album on your shelf (Deck's green ●); a favourite genre has a star
+                            // An album on your shelf has the shelf's icon (Deck's green ●); a favourite genre has a star
                             readonly property bool dotted: modelData.kind === "album" && win.view.kind !== "shelf" && !!win.shelfUris[modelData.data.uri]
                             // A cover beside a reason (Curated) is as tall as the texts; beside a line or two, a small one
                             readonly property bool tall: !!modelData.cover && !!modelData.note
@@ -887,7 +932,7 @@ ShellRoot {
                                     spacing: 8
                                     Text {
                                         id: titleText
-                                        width: Math.min(implicitWidth, parent.width - (dot.visible ? 14 : 0) - (star.visible ? star.implicitWidth + 8 : 0) - (byText.visible ? Math.min(byText.implicitWidth, parent.width / 3) : 0))
+                                        width: Math.min(implicitWidth, parent.width - (dot.visible ? dot.implicitWidth + 8 : 0) - (star.visible ? star.implicitWidth + 8 : 0) - (byText.visible ? Math.min(byText.implicitWidth, parent.width / 3) : 0))
                                         elide: Text.ElideRight
                                         text: r.modelData.title
                                         font.family: c.font; font.pixelSize: 13
@@ -903,12 +948,13 @@ ShellRoot {
                                         text: "– " + (r.modelData.by || "")
                                         font.family: c.font; font.pixelSize: 12; color: c.dim
                                     }
-                                    // On your shelf: Deck's green ●, in the theme's colour
-                                    Rectangle {
+                                    // On your shelf: the shelf's icon, as the player's button by the playing album
+                                    Text {
                                         id: dot
                                         visible: r.dotted
                                         anchors.verticalCenter: parent.verticalCenter
-                                        width: 6; height: 6; radius: 3; color: c.primary
+                                        text: Icons.g("library"); font.family: Icons.family; font.pixelSize: 12
+                                        color: c.primary
                                     }
                                     Text {
                                         id: star
@@ -937,12 +983,16 @@ ShellRoot {
                                     font.family: c.font; font.pixelSize: 11; color: c.faint; lineHeight: 1.2
                                 }
                             }
+                            // On the right: a duration or a year, or for the queue's playing track the note the album's
+                            // list shows on the left
                             Text {
                                 id: right
                                 anchors.right: parent.right; anchors.rightMargin: 16
                                 anchors.verticalCenter: parent.verticalCenter
-                                text: r.modelData.right || ""
-                                font.family: c.font; font.pixelSize: 11; color: c.faint
+                                readonly property bool note: r.modelData.kind === "nowplaying"
+                                text: note ? Icons.g("music") : r.modelData.right || ""
+                                font.family: note ? Icons.family : c.font; font.pixelSize: note ? 13 : 11
+                                color: note ? c.primary : c.faint
                             }
                         }
                         Text {
@@ -1056,7 +1106,7 @@ ShellRoot {
                                     font.family: Icons.family; font.pixelSize: modelData.size
                                     HoverHandler { id: ch; cursorShape: Qt.PointingHandCursor }
                                     Tip { x: (parent.width - width) / 2; y: -height - 10; c: win.look; text: modelData.tip; keys: modelData.keys; hovered: ch.hovered }
-                                    TapHandler { onTapped: modelData.act === "toggle" ? win.togglePlay() : win.ctl([modelData.act]) }
+                                    TapHandler { onTapped: modelData.act === "toggle" ? win.togglePlay() : modelData.act === "next" ? win.next() : win.ctl([modelData.act]) }
                                 }
                             }
                         }
@@ -1136,7 +1186,7 @@ ShellRoot {
 
         readonly property QtObject look: c
         readonly property var keyHelp: [
-            { title: "Browse", keys: [["↑ ↓  j k", "Move"], ["⏎", "Open, or play a song"], ["Esc  ⌫", "Back"], ["⌘1 … ⌘5", "Shelf, Curated, Radio, Search, Queue"], ["Ctrl ↑ ↓", "Previous, next section"], ["⌘F  /", "Search Spotify"], ["n", "What plays: its album or radio"],
+            { title: "Browse", keys: [["↑ ↓  j k", "Move"], ["⏎", "Open, or play a song"], ["Esc  ⌫", "Back"], ["⌘1 … ⌘5", "Shelf, Curated, Radio, Search, Queue"], ["Ctrl ↑ ↓", "Previous, next section"], ["⌘F  /", "Search Spotify"], ["n", "What plays: its album or radio"], ["r", "Pick for me: an album you haven't played lately"],
                                       ["f", "A favourite genre, or not"], ["d", "Out of the queue, or of Curated"]] },
             { title: "Play", keys: [["Space", "Play, pause"], ["← →", "Previous, next track"], [", .", "Back, ahead 10 seconds"], ["p", "Play the album, song or radio"], ["e", "Queue the album or song"], ["a", "On the shelf, or off it"],
                                     ["l", "Like the playing track"], ["o", "Where the sound plays"], ["?  Ctrl ?", "These keys"]] }
