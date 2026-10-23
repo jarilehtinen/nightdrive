@@ -442,7 +442,7 @@ ShellRoot {
             if (v.kind === "curated") return "No Curated list yet: `deck curate` suggests albums based on what you play"
             if (v.kind === "search") return results && results.error ? results.error : searching ? "Searching…" : searchField.text.trim().length < 2 ? "Artists, albums and songs on Spotify" : "Nothing found"
             if (v.kind === "queue") return "Nothing queued: e adds an album or a song"
-            if (v.kind === "history") return "Nothing yet: an album shows up here once you have played it"
+            if (v.kind === "history") return "Nothing yet: the albums you play show up here"
             if (v.kind === "radio") return genres.length ? "" : "Loading…"
             if (v.kind === "station") return radioStarting === v.genre.id ? "Starting the radio…" : "Play starts the radio: songs Spotify picks from the genre's artists"
             if (v.kind === "artist") return v.albums ? "No albums" : "Loading…"
