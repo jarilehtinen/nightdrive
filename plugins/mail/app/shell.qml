@@ -81,14 +81,14 @@ ShellRoot {
 
         // @NAME in a query is the account's folder NAME (folderQuery)
         readonly property var folders: [
-            { name: "Inbox", dir: "INBOX", query: "@INBOX and tag:inbox" },
-            { name: "Sent", dir: "Sent", query: "@Sent" },
-            { name: "Drafts", dir: "Drafts", query: "@Drafts" },
+            { name: "Inbox", dir: "INBOX", glyph: "inbox", query: "@INBOX and tag:inbox" },
+            { name: "Sent", dir: "Sent", glyph: "send", query: "@Sent" },
+            { name: "Drafts", dir: "Drafts", glyph: "file-pen", query: "@Drafts" },
             // Archived before archive moved mail to the Archive folder: in the inbox's folder without the inbox tag. Gmail's
             // Archive (All Mail) holds the inbox's messages too, and Trash and Spam lose theirs only at the next sync.
-            { name: "Archive", dir: "Archive", query: "(@Archive and not @INBOX and not @Trash and not @Spam) or (@INBOX and not tag:inbox)" },
-            { name: "Spam", dir: "Spam", query: "@Spam" },
-            { name: "Trash", dir: "Trash", query: "@Trash" }
+            { name: "Archive", dir: "Archive", glyph: "archive", query: "(@Archive and not @INBOX and not @Trash and not @Spam) or (@INBOX and not tag:inbox)" },
+            { name: "Spam", dir: "Spam", glyph: "ban", query: "@Spam" },
+            { name: "Trash", dir: "Trash", glyph: "trash-2", query: "@Trash" }
         ]
         readonly property int arrowStep: 80     // px an arrow key scrolls the message
         readonly property int headerHeight: 22  // the folders' title line and the list's search line
@@ -640,8 +640,15 @@ ShellRoot {
                             border.color: index === win.dropFolder ? c.primary : "transparent"
                             HoverHandler { id: fh; cursorShape: Qt.PointingHandCursor }
                             TapHandler { onTapped: win.pickFolder(index) }
+                            // The same glyphs as the reading pane's buttons, and the same look as Deck's sections
                             Text {
-                                anchors.left: parent.left; anchors.leftMargin: 16; anchors.verticalCenter: parent.verticalCenter
+                                id: folderGlyph
+                                anchors.left: parent.left; anchors.leftMargin: 14; anchors.verticalCenter: parent.verticalCenter
+                                text: Icons.g(modelData.glyph); font.family: Icons.family; font.pixelSize: 15
+                                color: index === win.folder ? c.accent : c.dim
+                            }
+                            Text {
+                                anchors.left: folderGlyph.right; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter
                                 text: modelData.name; font.family: c.font; font.pixelSize: 13
                                 color: index === win.folder ? c.title : c.dim
                             }
