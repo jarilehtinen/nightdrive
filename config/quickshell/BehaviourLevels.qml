@@ -188,7 +188,9 @@ Item {
         if (level === "compname" && query.trim() !== "") return "Enter: rename (asks for your password)"
         return ""
     }
-    function opened() {}
+    // The rows that show only once read (Firefox, Remote login, Crash reports) are in the root search too, so read
+    // them on every open, not only on entering Settings: after a reload they were missing until Settings was opened
+    function opened() { firefoxProc.running = true; remoteLoginProc.running = true; crashReportsProc.running = true }
     function entered(level) {
         if (level === "settings" || level === "compname") compNameProc.running = true
         if (level === "settings" || level === "channel") channelProc.running = true
