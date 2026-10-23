@@ -121,6 +121,32 @@ ShellRoot {
             onFileChanged: reload()
             onLoaded: { try { win.curated = JSON.parse(text()).albums || [] } catch (e) { win.curated = [] } }
         }
+        // What you have listened to in Deck: a track halfway counts, an album with half its tracks is listened
+        property var listened: ({})
+        FileView {
+            path: win.home + "/.local/state/deck/listened.json"
+            watchChanges: true
+            printErrors: false
+            onFileChanged: reload()
+            onLoaded: { try { win.listened = JSON.parse(text()) } catch (e) { win.listened = {} } }
+        }
+        function heard(uri) {
+            const l = listened[uri]
+            if (!l) return ""
+            if (l.listened) return "Listened"
+            return l.played && l.played.length && l.tracks ? l.played.length + " of " + l.tracks : ""
+        }
+        readonly property var curatedUris: {
+            const s = {}
+            for (const a of curated) s[a.uri] = true
+            return s
+        }
+        // Not for me: out of Curated, into its history as rejected, which the next list learns from (loosely: no more
+        // records like it)
+        function notForMe(album) {
+            ctl(["curated-reject", album.uri])
+            note = "Not for me: " + album.name
+        }
         // Album covers and artists' pictures by URI: the image's address from Spotify's oEmbed (no sign-in needed), asked
         // once per album or artist when a row shows it. The addresses are kept in covers.json, so a cover shows at once the next time; the images
         // themselves aren't kept (Spotify's CDN serves them, as to its own apps).
@@ -344,7 +370,7 @@ ShellRoot {
             if (v.kind === "shelf")
                 for (const a of shelfArtists) out.push({ kind: "artist", title: a.name, right: a.albums + (a.albums === 1 ? " album" : " albums"), data: a, shelf: true, cover: a.id ? "spotify:artist:" + a.id : "" })
             else if (v.kind === "curated")
-                for (const a of curated) out.push({ kind: "album", title: a.name, sub: a.artist + (a.year ? " · " + a.year : ""), note: a.reason || "", data: a, cover: a.uri })
+                for (const a of curated) out.push({ kind: "album", title: a.name, sub: a.artist + (a.year ? " · " + a.year : ""), note: a.reason || "", data: a, cover: a.uri, right: heard(a.uri) })
             else if (v.kind === "radio")
                 for (const g of genreRows) out.push({ kind: "genre", title: g.name, fav: favorites.indexOf(g.id) >= 0, right: radio && radio.genre === g.id ? "Playing" : "", data: g })
             else if (v.kind === "station" && radio && radio.genre === v.genre.id)
@@ -464,10 +490,8 @@ ShellRoot {
         function remove(row) {
             if (!row) return
             if (row.kind === "queued") ctl(["unqueue", String(row.index)])
-            else if (row.kind === "album" && view.kind === "curated") {
-                ctl(["curated-reject", row.data.uri])
-                note = "Out of Curated: " + row.title
-            }
+            else if (row.kind === "album" && view.kind === "curated") notForMe(row.data)
+            else if (view.kind === "album" && curatedUris[view.album.uri]) { notForMe(view.album); back() }
         }
         function favorite(row) {
             if (!row || row.kind !== "genre") return
@@ -654,7 +678,10 @@ ShellRoot {
                                         win.shelfUris[win.view.album.uri]
                                             ? { glyph: "check", label: "On the shelf", tip: "Take it off the shelf", keys: "a", act: () => win.shelve(null) }
                                             : { glyph: "library", label: "Shelf", tip: "Put it on the shelf", keys: "a", act: () => win.shelve(null) }
-                                    ] : []
+                                    ].concat(win.curatedUris[win.view.album.uri] ? [
+                                        // A Curated suggestion: out of the list, and the next one learns from it
+                                        { glyph: "thumbs-down", label: "Not for me", tip: "Out of Curated: no more like it", keys: "d", act: () => { win.notForMe(win.view.album); win.back() } }
+                                    ] : []) : []
                                     delegate: AppButton {
                                         required property var modelData
                                         c: win.look
@@ -890,7 +917,8 @@ ShellRoot {
                                 readonly property bool note: r.modelData.kind === "nowplaying"
                                 text: note ? Icons.g("music") : r.modelData.right || ""
                                 font.family: note ? Icons.family : c.font; font.pixelSize: note ? 13 : 11
-                                color: note ? c.primary : c.faint
+                                // A Curated album you have listened to, in the theme's colour
+                                color: note || r.modelData.right === "Listened" ? c.primary : c.faint
                             }
                         }
                         Text {
@@ -1087,7 +1115,7 @@ ShellRoot {
         readonly property QtObject look: c
         readonly property var keyHelp: [
             { title: "Browse", keys: [["↑ ↓  j k", "Move"], ["⏎", "Open, or play a song"], ["Esc  ⌫", "Back"], ["⌘1 … ⌘5", "Shelf, Curated, Radio, Search, Queue"], ["Ctrl ↑ ↓", "Previous, next section"], ["⌘F  /", "Search Spotify"], ["n", "What plays: its album or radio"], ["r", "Pick for me: an album you haven't played lately"],
-                                      ["f", "A favourite genre, or not"], ["d", "Out of the queue, or of Curated"]] },
+                                      ["f", "A favourite genre, or not"], ["d", "Out of the queue; Not for me in Curated"]] },
             { title: "Play", keys: [["Space", "Play, pause"], ["← →", "Previous, next track"], [", .", "Back, ahead 10 seconds"], ["p", "Play the album, song or radio"], ["e", "Queue the album or song"], ["a", "On the shelf, or off it"],
                                     ["l", "Like the playing track"], ["o", "Where the sound plays"], ["?  Ctrl ?", "These keys"]] }
         ]
