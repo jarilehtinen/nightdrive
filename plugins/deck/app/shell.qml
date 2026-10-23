@@ -44,8 +44,9 @@ ShellRoot {
         readonly property string runtime: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/deck"
         readonly property int searchDelay: 450      // ms after typing stops before Spotify is asked
         readonly property int settleTime: 1500      // ms a pressed button's look waits for Deck's state to catch up
-        readonly property int headerTop: 18         // the sidebar's title and the view's title start this far down
-        readonly property int listTop: 65           // and the first section and the first row this far: their tops line up
+        readonly property int headerHeight: 56      // the view's title bar, a line under it whatever it holds; the sidebar's title beside it
+        readonly property int listGap: 8            // from the line to the first row, and to the sidebar's first section
+        readonly property int listTop: headerHeight + 1 + listGap
 
         // --- What Deck says: the playing track and the queue (state.json, written on every change) ---
         property var info: null
@@ -526,14 +527,15 @@ ShellRoot {
                     color: "transparent"
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.topMargin: win.headerTop
                         anchors.bottomMargin: 18
                         spacing: 2
+                        // The title, level with the view's; the first section level with the first row
                         Item {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: win.listTop - win.headerTop - parent.spacing
+                            Layout.preferredHeight: win.listTop - parent.spacing
                             Row {
                                 x: 28; height: 22
+                                y: (win.headerHeight - height) / 2
                                 spacing: 3
                                 Text { anchors.verticalCenter: parent.verticalCenter; text: "Deck"; color: c.title; font.family: c.font; font.pixelSize: 13; font.weight: Font.DemiBold }
                                 Rectangle { width: 7; height: 14; color: c.primary; anchors.verticalCenter: parent.verticalCenter }
@@ -582,15 +584,15 @@ ShellRoot {
                     Layout.fillHeight: true
                     spacing: 0
 
-                    // Its title (with the way back), or the search field: as high whatever it holds, so the first row stays put.
-                    // Over the list, so its buttons' tips aren't drawn under the first row.
+                    // Its title (with the way back), or the search field: as high whatever it holds, with a line under it, so the
+                    // first row stays put. Over the list, so its buttons' tips aren't drawn under the first row.
                     Item {
                         z: 1
                         Layout.fillWidth: true
-                        Layout.preferredHeight: win.listTop
+                        Layout.preferredHeight: win.headerHeight
                         ColumnLayout {
                             anchors.left: parent.left; anchors.right: parent.right
-                            anchors.top: parent.top; anchors.topMargin: win.headerTop
+                            anchors.verticalCenter: parent.verticalCenter
                             spacing: 0
                             RowLayout {
                                 Layout.fillWidth: true
@@ -742,6 +744,7 @@ ShellRoot {
                             }
                         }
                     }
+                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: c.divider }
 
                     ListView {
                         id: list
@@ -756,6 +759,8 @@ ShellRoot {
                         boundsBehavior: Flickable.StopAtBounds
                         highlightMoveDuration: 0
                         spacing: 2
+                        // Inside the list, so rows scroll up to the line
+                        topMargin: win.listGap
                         bottomMargin: 12
                         TouchScroll { view: list }
                         readonly property var row: win.rows[currentIndex]
