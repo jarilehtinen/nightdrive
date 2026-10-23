@@ -429,12 +429,14 @@ done; true'
     Timer { interval: 2500; repeat: true; running: s.shown && s.level === "bluetooth"; onTriggered: s.btRefresh() }
     Sh {
         id: powerProc
-        command: ["bluetoothctl", "show"]
+        // Without bluetoothd (the sandbox, a VM) bluetoothctl aborts or hangs
+        script: 'systemctl is-active -q bluetooth 2>/dev/null && bluetoothctl show'
         onResult: text => { const p = /Powered:\s*yes/.test(text); if (p !== s.powered) { s.sel(); s.powered = p } }
     }
     Sh {
         id: btListProc
-        script: 'bluetoothctl devices | sed "s/\\x1b\\[[0-9;]*m//g" | while read -r _ mac name; do\n' +
+        script: 'systemctl is-active -q bluetooth 2>/dev/null || exit 0\n' +
+                'bluetoothctl devices | sed "s/\\x1b\\[[0-9;]*m//g" | while read -r _ mac name; do\n' +
                 '  info=$(bluetoothctl info "$mac")\n' +
                 '  c=$(grep -c "Connected: yes" <<<"$info"); p=$(grep -c "Paired: yes" <<<"$info"); n=$(grep -c "^\\s*Name:" <<<"$info")\n' +
                 '  b=$(grep -oP "Battery Percentage: 0x\\w+ \\(\\K[0-9]+" <<<"$info")\n' +
