@@ -1072,7 +1072,8 @@ ShellRoot {
                             color: outputs.visible || oh.hovered ? c.primary : c.dim
                             font.family: Icons.family; font.pixelSize: 18
                             HoverHandler { id: oh; cursorShape: Qt.PointingHandCursor }
-                            Tip { x: (parent.width - width) / 2; y: -height - 10; c: win.look; text: "Where the sound plays"; keys: "o"; hovered: oh.hovered && !outputs.visible }
+                            // Ending at the button's right edge, as the heart's: the window's edge is near
+                            Tip { x: parent.width - width; y: -height - 10; c: win.look; text: "Where the sound plays"; keys: "o"; hovered: oh.hovered && !outputs.visible }
                             TapHandler { onTapped: outputs.visible = !outputs.visible }
                         }
                         Text {
@@ -1100,29 +1101,36 @@ ShellRoot {
         ]
         KeySheet { id: sheet; c: win.look; groups: win.keyHelp }
 
-        // The sound outputs, over the window above the speaker button; a click elsewhere or Esc closes them
+        // The sound outputs, just above the speaker button. A click anywhere else, on the button too, or Esc closes them.
         Item {
             id: outputs
             anchors.fill: parent
             visible: false
-            onVisibleChanged: if (!visible) list.forceActiveFocus()
-            TapHandler { onTapped: outputs.visible = false }
+            // Where the button is, taken when the list opens (the window may have been resized since)
+            property point at: Qt.point(0, 0)
+            onVisibleChanged: {
+                if (visible) at = speaker.mapToItem(outputs, speaker.width / 2, 0)
+                else list.forceActiveFocus()
+            }
+            // Over everything, so the click that closes the list doesn't also reach what is under it
+            MouseArea { anchors.fill: parent; onClicked: outputs.visible = false }
             Rectangle {
-                x: parent.width - width - 20
-                y: parent.height - 92 - height - 6
                 width: 320
-                height: outCol.implicitHeight + 20
+                height: outCol.implicitHeight + 26
+                x: Math.min(outputs.at.x + 28 - width, parent.width - width - 12)
+                y: outputs.at.y - height - 12
                 radius: 10
-                color: Theme.bg
+                // The window's own colour, a step darker, so the list stands out from what is under it
+                color: Qt.darker(c.solid, 1.05)
                 border.color: c.line
-                // Clicks on the panel stay on it
-                TapHandler {}
+                // Clicks between the rows stay on the list
+                MouseArea { anchors.fill: parent }
                 Column {
                     id: outCol
-                    x: 10; y: 10
+                    x: 10; y: 14
                     width: parent.width - 20
-                    spacing: 6
-                    Text { leftPadding: 10; text: "Sound output"; color: c.title; font.family: c.font; font.pixelSize: 12; font.weight: Font.DemiBold }
+                    spacing: 8
+                    Text { leftPadding: 10; text: "Sound output"; color: c.title; font.family: c.font; font.pixelSize: 15; font.weight: Font.DemiBold }
                     OutputList { active: outputs.visible; width: parent.width }
                 }
             }
