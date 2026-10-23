@@ -23,6 +23,11 @@ MUTED_UNTIL_FILE = os.path.expanduser("~/.local/state/nightdrive/crash-reports-m
 SHORT_MUTE_MINUTES = 15
 # Muted from the start: UxPlay's waylandsink crashes at every screen change and comes back by itself (docs/known-issues.md)
 DEFAULT_MUTED = {"uxplay"}
+# Left out, as (process names, the crashing thread's top frame): crashes that only end what was ending anyway.
+# Quickshell 0.2.1 (Fedora's git20260209 build) segfaults on `qs kill` when its config is between generations
+# (IpcKillCommand::exec on a null currentGeneration, fixed upstream on 2026-03-07): the shell and the apps' windows
+# (app.sh stop) quit that way, so it came at nearly every restart.
+HARMLESS = [({"qs", "quickshell"}, "IpcServerConnection11onReadyRead")]
 QUIET_SECONDS = 60   # one notification per program in this time: a crash loop doesn't fill the screen
 HERE = os.path.dirname(os.path.realpath(__file__))
 REPO = os.path.realpath(os.path.join(HERE, "..", "..", ".."))
@@ -92,6 +97,15 @@ def set_muted(name, on):
         f.write("".join(l + "\n" for l in lines))
 
 
+def harmless(c):
+    """Whether the crash is one of HARMLESS: the journal's message has the stack trace, its first frame is #0."""
+    message = c.get("MESSAGE") or ""
+    if isinstance(message, list):   # journalctl's JSON gives a message that isn't valid UTF-8 as bytes
+        message = bytes(message).decode(errors="replace")
+    top = next((l for l in message.splitlines() if l.startswith("#0 ")), "")
+    return any(c.get("COREDUMP_COMM") in names and frame in top for names, frame in HARMLESS)
+
+
 def crash(pid):
     """The journal's coredump entry for PID (the newest), or None."""
     out = subprocess.run(["journalctl", "-o", "json", "-n", "1", "--no-pager", "MESSAGE_ID=" + COREDUMP_MESSAGE,
@@ -139,7 +153,8 @@ def notify(c):
 def watch():
     me = str(os.getuid())
     last = {}
-    j = subprocess.Popen(["journalctl", "-f", "-n", "0", "-o", "json", "MESSAGE_ID=" + COREDUMP_MESSAGE],
+    # --all: without it the message, with its stack trace, comes as null (it is long)
+    j = subprocess.Popen(["journalctl", "--all", "-f", "-n", "0", "-o", "json", "MESSAGE_ID=" + COREDUMP_MESSAGE],
                          stdout=subprocess.PIPE, text=True)
     for line in j.stdout:
         try:
@@ -147,7 +162,7 @@ def watch():
         except ValueError:
             continue
         name = c.get("COREDUMP_COMM", "")
-        if c.get("COREDUMP_UID") != me or name in muted():
+        if c.get("COREDUMP_UID") != me or name in muted() or harmless(c):
             continue
         now = time.monotonic()
         if now - last.get(name, -QUIET_SECONDS) < QUIET_SECONDS:
