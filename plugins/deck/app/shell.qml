@@ -286,6 +286,20 @@ ShellRoot {
             }, err => update(v, { tracks: [], error: err }))
         }
 
+        // n, or a click on the player's cover: what plays, in the section you are in (Esc comes back): its album, or the
+        // radio's genre
+        function openPlaying() {
+            if (!info) return
+            if (info.album_uri) {
+                if (view.kind === "album" && view.album.uri === info.album_uri) return
+                openAlbum({ uri: info.album_uri, name: info.album, artist: info.artist })
+            } else if (radio) {
+                if (view.kind === "station" && view.genre.id === radio.genre) return
+                const g = genres.find(g => g.id === radio.genre) || { id: radio.genre, name: genreName(radio.name) }
+                push({ kind: "station", genre: g })
+            }
+        }
+
         // --- Deck's JSON commands (search, an artist's albums, an album's tracks), one process each ---
         Component {
             id: runner
@@ -767,6 +781,7 @@ ShellRoot {
                             else if (k === Qt.Key_D || k === Qt.Key_Delete) win.remove(row)
                             else if (k === Qt.Key_F) win.favorite(win.view.kind === "station" ? win.genreRow(win.view.genre) : row)
                             else if (k === Qt.Key_O) outputs.visible = !outputs.visible
+                            else if (k === Qt.Key_N) win.openPlaying()
                             else if (k === Qt.Key_Comma) win.seek((win.position - 10000) / win.duration)
                             else if (k === Qt.Key_Period) win.seek((win.position + 10000) / win.duration)
                             else if (k === Qt.Key_Question) sheet.shown = !sheet.shown
@@ -938,6 +953,9 @@ ShellRoot {
                             source: win.info && win.info.cover ? win.info.cover : ""
                             visible: source !== "" && status === Image.Ready
                         }
+                        HoverHandler { id: cvh; enabled: !!win.info; cursorShape: Qt.PointingHandCursor }
+                        TapHandler { enabled: !!win.info; onTapped: win.openPlaying() }
+                        Tip { y: -height - 10; c: win.look; text: win.info && win.info.album_uri ? "Open the album" : "Open the radio"; keys: "n"; hovered: cvh.hovered }
                         Rectangle {
                             anchors.fill: parent; radius: 6
                             visible: !cover.visible
@@ -1094,7 +1112,7 @@ ShellRoot {
 
         readonly property QtObject look: c
         readonly property var keyHelp: [
-            { title: "Browse", keys: [["↑ ↓  j k", "Move"], ["⏎", "Open, or play a song"], ["Esc  ⌫", "Back"], ["⌘1 … ⌘5", "Shelf, Curated, Radio, Search, Queue"], ["Ctrl ↑ ↓", "Previous, next section"], ["⌘F  /", "Search Spotify"],
+            { title: "Browse", keys: [["↑ ↓  j k", "Move"], ["⏎", "Open, or play a song"], ["Esc  ⌫", "Back"], ["⌘1 … ⌘5", "Shelf, Curated, Radio, Search, Queue"], ["Ctrl ↑ ↓", "Previous, next section"], ["⌘F  /", "Search Spotify"], ["n", "What plays: its album or radio"],
                                       ["f", "A favourite genre, or not"], ["d", "Out of the queue, or of Curated"]] },
             { title: "Play", keys: [["Space", "Play, pause"], ["← →", "Previous, next track"], [",  .", "Back, ahead 10 seconds"], ["p", "Play the album, song or radio"], ["e", "Queue the album or song"], ["a", "On the shelf, or off it"],
                                     ["l", "Like the playing track"], ["o", "Where the sound plays"], ["?  Ctrl ?", "These keys"]] }

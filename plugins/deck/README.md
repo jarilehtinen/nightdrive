@@ -10,7 +10,7 @@ A fast Spotify player, made for Nightdrive: your albums in the launcher, the pla
 
 ## The window
 
-The sidebar's sections are Shelf, Curated, Radio, Search and Queue (⌘1–5 or Ctrl+↑ ↓, / searches). Enter opens an artist or an album and plays a song; Esc or ⌫ goes back. On a row, p plays the album (or the song), e queues the album or the song, a puts the album on your shelf or takes it off, and d removes a track from the queue, or an album from Curated (Deck remembers it, so it isn't suggested again). Space plays and pauses, ← → skip a track, , and . jump 10 seconds back and ahead, and l likes the playing one. `?` or Ctrl+? shows all the keys.
+The sidebar's sections are Shelf, Curated, Radio, Search and Queue (⌘1–5 or Ctrl+↑ ↓, / searches). Enter opens an artist or an album and plays a song; Esc or ⌫ goes back. On a row, p plays the album (or the song), e queues the album or the song, a puts the album on your shelf or takes it off, and d removes a track from the queue, or an album from Curated (Deck remembers it, so it isn't suggested again). Space plays and pauses, ← → skip a track, , and . jump 10 seconds back and ahead, l likes the playing one and n opens what plays (its album, or the radio; a click on the player's cover does the same). `?` or Ctrl+? shows all the keys.
 
 Radio lists Deck's genres, your favourites first (the star): a click or Enter opens a genre, and its Play button (or p) starts the radio, which then shows what it plays next; f makes a genre a favourite or not. Deck's own genres (`deck genre add`) are there too.
 
