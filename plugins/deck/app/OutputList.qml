@@ -1,0 +1,1 @@
+../../../config/quickshell/OutputList.qml
