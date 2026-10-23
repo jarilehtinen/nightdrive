@@ -44,8 +44,8 @@ ShellRoot {
         readonly property string runtime: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/deck"
         readonly property int searchDelay: 450      // ms after typing stops before Spotify is asked
         readonly property int settleTime: 1500      // ms a pressed button's look waits for Deck's state to catch up
-        readonly property int headerHeight: 56      // the view's title bar, a line under it whatever it holds; the sidebar's title beside it
-        readonly property int listGap: 8            // from the line to the first row, and to the sidebar's first section
+        readonly property int headerHeight: 62      // the view's title bar, a line under it whatever it holds; the sidebar's title beside it
+        readonly property int listGap: 12           // from the line to the first row, and to the sidebar's first section
         readonly property int listTop: headerHeight + 1 + listGap
 
         // --- What Deck says: the playing track and the queue (state.json, written on every change) ---
@@ -598,7 +598,8 @@ ShellRoot {
                                 Layout.fillWidth: true
                                 Layout.leftMargin: 28
                                 Layout.rightMargin: 28
-                                Layout.preferredHeight: 22
+                                // As high as the tallest it holds (an album's cover, the buttons), so it centres in the bar
+                                Layout.preferredHeight: 30
                                 spacing: 10
                                 visible: win.view.kind !== "search"
                                 // The way back: a button the size of the album buttons, its arrow where the title starts
@@ -723,7 +724,8 @@ ShellRoot {
                                 Layout.fillWidth: true
                                 Layout.leftMargin: 28
                                 Layout.rightMargin: 28
-                                Layout.preferredHeight: 22
+                                // As high as the title's row, so the field sits where the title does
+                                Layout.preferredHeight: 30
                                 visible: win.view.kind === "search"
                                 spacing: 10
                                 Text { text: Icons.g("search"); font.family: Icons.family; font.pixelSize: 15; color: c.faint }
