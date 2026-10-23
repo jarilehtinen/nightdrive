@@ -833,7 +833,7 @@ ShellRoot {
                             readonly property bool unread: modelData.tags.indexOf("unread") >= 0
                             readonly property bool picked: win.picked.indexOf(modelData.thread) >= 0
                             width: ListView.view.width
-                            implicitHeight: col.implicitHeight + 36
+                            implicitHeight: col.implicitHeight + 28
                             radius: 8
                             color: picked || index === win.current && !win.picked.length ? c.sel : th.hovered ? c.hover : "transparent"
                             // With threads picked, the keyboard's place among them

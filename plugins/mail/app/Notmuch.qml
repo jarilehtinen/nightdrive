@@ -50,7 +50,13 @@ QtObject {
 
     // Threads matching the query, newest first.
     function search(query, done) {
-        json(["search", "--format=json", "--limit=500", query], t => JSON.parse(t), [], done)
+        json(["search", "--format=json", "--limit=500", query],
+             t => JSON.parse(t).map(x => Object.assign(x, { subject: oneLine(x.subject) })), [], done)
+    }
+
+    // Some senders fold a header with stray spaces or end it in line breaks, which keeps a Text from eliding it.
+    function oneLine(s) {
+        return (s || "").replace(/\s+/g, " ").trim()
     }
 
     // The thread's messages in order, each { from, to, date, subject, tags, body } with the body as plain text.
@@ -158,7 +164,7 @@ QtObject {
             id: m.id,
             from: m.headers.From || "",
             to: m.headers.To || "",
-            subject: m.headers.Subject || "",
+            subject: oneLine(m.headers.Subject),
             timestamp: m.timestamp,
             tags: m.tags || [],
             draft: (m.filename || []).some(f => /\/Drafts\/(cur|new)\//.test(f)),

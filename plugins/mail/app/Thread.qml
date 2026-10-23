@@ -172,12 +172,12 @@ Flickable {
         id: page
         width: Math.max(240, Math.min(640, root.width - 80))
         x: Math.max(24, (root.width - width) / 2)
-        y: bar.visible || viewButton.visible ? root.barHeight + 48 : 48
+        y: bar.visible || viewButton.visible ? root.barHeight + 38 : 38
         // The gaps are the messages' own, so folded ones lie close together
         spacing: 0
         Text {
             width: parent.width
-            bottomPadding: 32
+            bottomPadding: 12
             visible: root.messages.length > 0
             text: root.messages.length ? root.messages[0].subject : ""
             wrapMode: Text.Wrap
