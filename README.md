@@ -256,12 +256,14 @@ after the password. KDE stays installed as a fallback. If the login screen fails
 | `--all` / `--none` / `--defaults` | Every optional part / none / the defaults (YouTube); Tailscale, Mail and Deck come with each |
 | `--dry-run` | Shows the optional parts, what would be installed and what would be removed, then stops |
 
-A few things stay manual (the install lists the ones for the parts you chose):
-- Tailscale: log in from launcher › Settings › Tailscale › *Log in* (or its top bar menu): the login page opens in the browser.
-- Mail: open it; its first start offers to set up your account with Claude.
+At your first login, **Welcome to Nightdrive** opens: sign in to Claude there first, then it sets up Tailscale, Mail and Deck
+with you, each in a Claude session of its own that does only that one thing (Claude Code needs a paid Claude plan or an
+API account). Skip any of them; launcher › System › *Set up Nightdrive* (or `nightdrive welcome`) opens it again, and later
+logins ask with a notification until you finish it or say not to. Without Claude, each part's README has the steps.
+
+A few things stay manual:
 - 1Password: in Settings › Developer, turn on *SSH agent* and *Integrate with 1Password CLI*. The launcher's Passwords level
   needs the CLI integration.
-- Deck: sign in to Spotify (needs Premium and the Client ID of your own Spotify app, see Deck's README).
 - Open Firefox (and Thunderbird) once and run `./link.sh` again: it themes their profiles, which don't exist before the first start.
 - Optionally, set up dictation ([docs/dictation.md](docs/dictation.md)).
 - More optional parts: launcher › System › Install (Recommended, Webapp, Plugins), or `nightdrive plugins`. Each opens its
@@ -315,6 +317,7 @@ The same `nightdrive` command reaches the settings from a terminal (`nightdrive`
 | `nightdrive plugins off ferry` | Hides an installed part from the desktop and stops its services, for one that misbehaves (`on` brings it back; also the switch on its page in the launcher) |
 | `nightdrive plugins add <git-url>` | Adds a plugin from someone else's repo, marked external in the launcher; `nightdrive update` keeps it up to date, `nightdrive plugins remove ID` deletes it |
 | `nightdrive ask "Fix the clock"` | Opens Claude Code in a new terminal with that as its first message, as ⌘⌥Enter does from the launcher; `--dir ~/dotfiles` starts it in that folder (`~/Projects` otherwise), `--name "Clock"` names the session (as `/rename`), `--effort high` sets its effort level (low to max) |
+| `nightdrive welcome` | Opens Welcome to Nightdrive: signing in to Claude, then setting up Tailscale, Mail, Deck… with Claude, each on its own (launcher › System › *Set up Nightdrive*) |
 
 ## Keys
 

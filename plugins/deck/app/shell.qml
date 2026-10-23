@@ -254,7 +254,23 @@ ShellRoot {
         // Setting up Deck with Claude (`deck-window setup`, which asks only for what is missing): offered at the first start
         // (setupPanel) until it is done or put aside, and by Curated's button until it is done
         property bool setupStarted: false
-        readonly property bool setupOffer: configRead && prefsRead && !curatedReady && !prefs.setupDismissed
+        readonly property bool setupOffer: configRead && prefsRead && setupStateRead && !curatedReady && !prefs.setupDismissed
+                                           && (!setupElsewhere || setupStarted)
+        // Started elsewhere (Welcome to Nightdrive, the plugin's page: claude-setup marks it in setup.json), the setup isn't
+        // offered again at the first start; Curated's button still offers it until it is done
+        property bool setupElsewhere: false
+        property bool setupStateRead: false
+        FileView {
+            path: win.home + "/.local/state/nightdrive/setup.json"
+            watchChanges: true
+            printErrors: false
+            onFileChanged: reload()
+            onLoaded: {
+                try { win.setupElsewhere = (JSON.parse(text()).tasks || {}).deck === "started" } catch (e) { win.setupElsewhere = false }
+                win.setupStateRead = true
+            }
+            onLoadFailed: win.setupStateRead = true
+        }
         function startSetup() { setupStarted = true; Quickshell.execDetached([home + "/.local/bin/deck-window", "setup"]) }
         function dismissSetup() {
             prefs = Object.assign({}, prefs, { setupDismissed: true })

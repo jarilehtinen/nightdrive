@@ -324,6 +324,12 @@ mkdir -p "${offered%/*}"
   | sort -u > "$offered.tmp" && mv "$offered.tmp" "$offered"
 "$repo/bin/nightdrive" plugins installed >/dev/null
 "$repo/config/fuzzel/sync-apps"
+# The first login opens Welcome to Nightdrive (config/welcome), which sets up the rest with Claude. Only an install that
+# has never had it: `nightdrive update` never writes this, and a second run of install.sh leaves its state as it is.
+setup_state=$HOME/.local/state/nightdrive/setup.json
+if ! jq -e 'has("welcome")' "$setup_state" >/dev/null 2>&1; then
+  { jq '.welcome = "pending"' "$setup_state" 2>/dev/null || jq -n '{ welcome: "pending" }'; } > "$setup_state.tmp" && mv "$setup_state.tmp" "$setup_state"
+fi
 
 if (( nokde )); then
   echo "==> Removing Plasma (experimental). Keeping the cursor theme, GTK fonts and power profiles."
@@ -340,10 +346,8 @@ echo
 (( ${#failed[@]} )) && echo "Not installed (an error, see above): ${failed[*]}. Run again: nightdrive plugins install ID" && echo
 (( ${failed_claude:-0} )) && echo "Claude Code not installed (an error, see above). Run again: curl -fsSL https://claude.ai/install.sh | bash" && echo
 echo "Done. Still to do by hand:"
-echo "  Claude Code: run claude once and log in (⌘⌥Enter and the top bar's usage menu use that sign-in)."
-has tailscale && echo "  Tailscale: log in from launcher › Settings › Tailscale › Log in (it opens the login page); then it's on and off in its top bar menu."
-has mail && echo "  Mail: open it (launcher › Mail); its first start offers to set up your account with Claude."
-has deck && echo "  Deck: needs Spotify Premium and the Client ID of your own Spotify app (~/.config/deck/config.toml), see Deck's README."
+echo "  At your first login, Welcome to Nightdrive signs you in to Claude, then sets up Tailscale, Mail and Deck with you"
+echo "  (later: launcher › System › Set up Nightdrive)."
 if has thunderbird; then
   echo "  Firefox and Thunderbird: open each once, then run ./link.sh again (it themes their profiles, which don't exist yet)."
 else

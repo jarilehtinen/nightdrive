@@ -1,0 +1,72 @@
+#!/bin/bash
+# welcome [open | login | skip-rest | off]: Welcome to Nightdrive, the window that sets up what a new install still needs
+# (signing in to Claude, then Tailscale, Mail, Deck…), each in a Claude session of its own (hypr/scripts/claude-setup).
+# `nightdrive welcome` and launcher › System › Set up Nightdrive open it. At login (hyprland.lua, once unlocked):
+#   - the first login after install.sh (setup.json's welcome: pending) opens it;
+#   - later ones, while something is neither done nor skipped, ask with a notification (Set up, Don't remind me);
+#   - after Skip for now, Finish or Don't remind me (welcome: off), nothing.
+set -u
+
+QS_DIR=$(dirname "$(readlink -f "$0")")                 # this folder: the window's own Quickshell config
+STATE=$HOME/.local/state/nightdrive/setup.json          # { welcome: pending | shown | off, tasks: { ID: started | skipped } }
+LOGIN_DELAY=3                                           # seconds after unlocking, so the window comes up over the login apps
+
+# The window: started, brought forward and stopped by the apps' kit (kit/app.sh)
+APP_TITLE="Welcome to Nightdrive"
+APP_IPC=welcome
+. "$QS_DIR/kit/app.sh"
+
+state() { jq -r '.welcome // empty' "$STATE" 2>/dev/null; }
+
+set_state() {
+  local tmp
+  mkdir -p "${STATE%/*}"
+  tmp=$(mktemp "$STATE.XXXXXX") || return 1
+  jq --arg w "$1" '.welcome = $w' "$STATE" 2>/dev/null >"$tmp" || jq -n --arg w "$1" '{ welcome: $w }' >"$tmp"
+  mv "$tmp" "$STATE"
+}
+
+# Something is neither done nor skipped
+unfinished() { "$QS_DIR/tasks" | jq -e 'any(.[]; (.done | not) and .mark != "skipped")' >/dev/null; }
+
+login() {
+  case $(state) in
+    pending)
+      set_state shown
+      sleep "$LOGIN_DELAY"
+      open_window
+      ;;
+    shown)
+      unfinished || return 0
+      local answer
+      answer=$(notify-send -a Nightdrive -i lucide:sparkles -A open="Set up" -A off="Don't remind me" \
+                 "Finish setting up Nightdrive" \
+                 "A few things still need your accounts. Claude can set them up with you, one at a time.")
+      case $answer in
+        open) open_window ;;
+        off) set_state off ;;
+      esac
+      ;;
+  esac
+}
+
+# Skip for now: what isn't done is put aside, and logins no longer ask
+skip_rest() {
+  local id
+  for id in $("$QS_DIR/tasks" | jq -r '.[] | select((.done | not) and .mark != "skipped") | .id'); do
+    "$HOME/.config/hypr/scripts/claude-setup" mark "$id" skipped
+  done
+  set_state off
+}
+
+case ${1:-open} in
+  login) login ;;
+  skip-rest) skip_rest ;;
+  off) set_state off ;;
+  settings) echo "usage: welcome [open | login | skip-rest | off | restart | quit | log]" >&2; exit 2 ;;
+  *)
+    app_command "$@"; status=$?    # open, restart, quit, log
+    ((status == 2)) && { echo "usage: welcome [open | login | skip-rest | off | restart | quit | log]" >&2; exit 2; }
+    exit $status
+    ;;
+esac

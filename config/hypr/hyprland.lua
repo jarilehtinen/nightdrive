@@ -222,6 +222,7 @@ function NightdriveUnlocked()
     if not once(UNLOCKED_FLAG) then return end
     hl.exec_cmd(HOME .. "/.config/hypr/scripts/autostart")   -- the user's login apps (launcher › Settings › Apps › Startup; 1Password by default)
     hl.exec_cmd(HOME .. "/.config/hypr/scripts/reopen session offer")   -- the battery ran out: open its windows again?
+    hl.exec_cmd(HOME .. "/.config/welcome/welcome login")   -- a new install's first login: Welcome to Nightdrive (later ones: a reminder)
     update_corners()
 end
 
@@ -448,6 +449,14 @@ hl.window_rule({
     float = true,
     size  = "460 monitor_h-57",             -- the screen's height under the bar; it scrolls
     move  = "monitor_w-470 47",
+})
+-- Welcome to Nightdrive (config/welcome): a card in the middle, over whatever the first login opened
+hl.window_rule({
+    name  = "float-welcome",
+    match = { class = "^org\\.quickshell$", title = "^Welcome to Nightdrive$" },
+    float = true,
+    size  = "640 690",
+    center = true,
 })
 hl.window_rule({
     name  = "float-preview",

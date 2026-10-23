@@ -175,6 +175,9 @@ PanelWindow {
             { kind: "nav", name: "Remove", glyph: "package-minus", target: "remove", extra: "uninstall delete package app" },
             { kind: "action", name: "Update", glyph: "refresh-cw", confirm: true, cmd: term('"$HOME/.local/bin/nightdrive" update'),
               summary: updates > 0 ? updates + " new" : undefined, extra: "upgrade dnf flatpak nightdrive" },
+            // Welcome to Nightdrive (config/welcome): the first login's window, again
+            { kind: "action", name: "Set up Nightdrive", glyph: "sparkles", cmd: [Quickshell.env("HOME") + "/.local/bin/nightdrive", "welcome"],
+              extra: "welcome first run start setup claude sign in login tailscale mail deck" },
             { kind: "nav", name: "Status", glyph: "activity", target: "status", extra: "cpu memory processes temperature claude usage" },
             { kind: "nav", name: "About Nightdrive", glyph: "info", target: "about", extra: "version release channel info website github" }
         ],
