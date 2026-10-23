@@ -49,7 +49,7 @@
 ## Workspaces (like macOS Spaces)
   ⌘ 1 … ⌘ 0          Go to workspace (⌘ 0: the laptop's own screen, with an external display)
   ⌘ ⇧ 1 … ⌘ ⇧ 0      Move window to workspace
-  ⌘ ⌥ 1 … ⌘ ⌥ 0      Move all windows to workspace (and go there)
+  ⌘ ⌥ 1 … ⌘ ⌥ 0      Move all windows to workspace (and go there). These three and ⌘ ⇧ F also work over a VM's window, which otherwise takes every key
   ⌘ Tab / ⌘ ⇧ Tab    Next / previous workspace
   3-finger swipe     Switch workspace
   4-finger swipe     Move window in the swipe direction

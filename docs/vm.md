@@ -22,3 +22,36 @@ On a VM the installer skips the notch step and writes `config/hypr/local.lua` wi
 launcher's Settings › Display for *Scaled*), a software cursor and, unless it's Finnish, the keyboard layout Fedora's installer set. It must be Fedora 44,
 because the Hyprland COPR builds only for that release. Containers won't work, since Hyprland needs a GPU. Parallels passes
 the Mac's battery to the VM; without a display or keyboard backlight their sliders are left out.
+
+## On an Asahi Mac, with qemu
+
+Experimental: Fedora 44 runs under KVM on Fedora Asahi Remix itself, in qemu's own window with a virgl GPU (tested on an
+M2 Max: the live desktop with `+virgl`; Nightdrive inside it isn't tested yet). The 16k-page kernel is no obstacle: the
+guest runs Fedora's ordinary 4k one. No libvirt or virt-manager is needed:
+
+```bash
+sudo dnf install qemu-system-aarch64-core qemu-img qemu-ui-sdl qemu-ui-opengl qemu-device-display-virtio-gpu-pci-gl
+mkdir -p ~/vm && cd ~/vm      # the KDE live ISO in it, as above
+cp /usr/share/edk2/aarch64/vars-template-pflash.raw vars.raw
+qemu-img create -f qcow2 disk.qcow2 64G
+# the performance cores (cpu_capacity 1024): a vCPU must not move to an efficiency core, which reports another CPU
+pcores=$(grep -lx 1024 /sys/devices/system/cpu/cpu*/cpu_capacity | sed 's|.*/cpu\([0-9]*\)/.*|\1|' | sort -n | paste -sd,)
+taskset -c "$pcores" qemu-system-aarch64 -machine virt,gic-version=3 -accel kvm -cpu host -smp 6 -m 8G \
+  -drive if=pflash,format=raw,unit=0,readonly=on,file=/usr/share/edk2/aarch64/QEMU_EFI-silent-pflash.raw \
+  -drive if=pflash,format=raw,unit=1,file=vars.raw \
+  -drive if=virtio,format=qcow2,file=disk.qcow2,discard=unmap \
+  -device virtio-gpu-gl-pci,xres=1600,yres=1000 -display sdl,gl=on \
+  -device qemu-xhci -device usb-kbd -device usb-tablet \
+  -device virtio-scsi-pci -device scsi-cd,drive=cd -drive if=none,id=cd,media=cdrom,file=Fedora-KDE-Desktop-Live-44-1.7.aarch64.iso \
+  -nic user,model=virtio-net-pci,hostfwd=tcp:127.0.0.1:2222-:22
+```
+
+Once Fedora is installed, leave out the `scsi-cd` line to boot from the disk; `sudo dnf remove` the packages (and
+`edk2-aarch64`) takes it all away again.
+- The display is SDL, not GTK: GTK's GL window stays black on Wayland and, under XWayland, qemu aborts when the guest's
+  kernel resets the GPU.
+- The window holds the keyboard, so the desktop inside gets ⌘ too. ⌘1–⌘0, ⌘⇧1–⌘⇧0, ⌘⌥1–⌘⌥0 and ⌘⇧F stay the Mac's, to
+  move the window or leave it.
+- Keys arrive by their place on the keyboard: pick the guest's layout to match the Mac's in Fedora's installer. Nothing
+  is shared with the clipboard: copy commands in over `ssh -p 2222 localhost` (start `sshd` in the guest).
+- Pick scale 1.0 in the launcher's Settings › Display inside it (the installer's 2.0 is for Parallels).
