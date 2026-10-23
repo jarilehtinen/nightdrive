@@ -36,6 +36,14 @@ Flickable {
     function folded(m, i) {
         return messages.length >= foldFrom && i < messages.length - 1 && !m.draft && m.tags.indexOf("unread") < 0 && !unfolded[m.id]
     }
+    // A link in a message opens on the web, or as a new message (mailto:). Any other kind (file:, smb:, an app's own)
+    // would open something on this computer at a stranger's word, so it doesn't open at all.
+    function openLink(link) {
+        link = link.trim()
+        if (/^https?:\/\//i.test(link)) Qt.openUrlExternally(link)
+        else if (/^mailto:/i.test(link)) app.compose("new", null, app.mailtoFields(link))
+        else app.say("Only web and email links open from a message")
+    }
     function unfold(m) { const u = Object.assign({}, unfolded); u[m.id] = true; unfolded = u }
     function showQuote(m) { const q = Object.assign({}, quotesShown); q[m.id] = true; quotesShown = q }
     // The text without quote marks, whitespace as single spaces: a quote compared with the message it quotes
@@ -309,7 +317,7 @@ Flickable {
                     font.family: c.font; font.pixelSize: 14
                     color: c.body
                     selectionColor: c.sel
-                    onLinkActivated: link => Qt.openUrlExternally(link)
+                    onLinkActivated: link => root.openLink(link)
                     HoverHandler { cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.IBeamCursor }
                 }
                 // The HTML version: on the dark page with the sender's colours taken out, or on light paper as sent
@@ -344,7 +352,7 @@ Flickable {
                         font.pixelSize: 14
                         color: parent.paper ? root.paperText : c.body
                         selectionColor: parent.paper ? root.paperSelection : c.sel
-                        onLinkActivated: link => Qt.openUrlExternally(link)
+                        onLinkActivated: link => root.openLink(link)
                         HoverHandler { cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.IBeamCursor }
                     }
                 }

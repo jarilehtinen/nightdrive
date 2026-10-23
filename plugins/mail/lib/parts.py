@@ -97,24 +97,30 @@ def page(msgid):
             data = part.get_payload(decode=True) or b""
             pics[cid.strip().strip("<>")] = f"data:{part.get_content_type()};base64,{base64.b64encode(data).decode()}"
     text = re.sub(r"cid:([^\"'\s)>]+)", lambda m: pics.get(urllib.parse.unquote(m.group(1)), m.group(0)), text, flags=re.I)
-    # What could still reach out, or take the page's head over: scripts, linked files, the sender's own meta tags
-    # (a refresh, a policy, a charset) and a base for relative links
-    text = re.sub(r"<script\b.*?</script\s*>", "", text, flags=re.I | re.S)
-    text = re.sub(r"<(script|link|meta|base)\b[^>]*>", "", text, flags=re.I)
+    # What could still reach out, or take the page's head over: scripts, frames, linked files, the sender's own meta
+    # tags (a refresh, which no policy stops, a policy, a charset) and a base for relative links. Again until nothing
+    # changes: a tag split by another (<me<meta>ta http-equiv=refresh …>) forms once the inner one goes.
+    while True:
+        was = text
+        text = re.sub(r"<script\b.*?</script\s*>", "", text, flags=re.I | re.S)
+        text = re.sub(r"<(script|link|meta|base|i?frame|object|embed)\b[^>]*>", "", text, flags=re.I)
+        if text == was:
+            break
     title = ""
     if not re.search(r"<title\b[^>]*>\s*[^<\s]", text, re.I):
         title = f"<title>{html.escape(msg.get('Subject', '') or '(no subject)')}</title>\n"
-    # The head after the doctype (before it the page would lose its standards mode), else at the very start; the bar
-    # first in the body
-    doctype = re.match(r"\s*(<!--.*?-->\s*)*<!doctype[^>]*>", text, re.I | re.S)
-    at = doctype.end() if doctype else 0
-    body = re.search(r"<body\b[^>]*>", text, re.I)
-    top = body.end() if body else at
+    # Our head before anything of the sender's: after their doctype, a comment or <textarea> of theirs could swallow it
+    # (<!--><textarea><!-- --><!doctype html></textarea>) and leave the policy as text. Their doctype moves up to the
+    # top, so the page keeps the mode it was laid out for, and any others go. The bar opens the body: the sender's
+    # <html>, <head> and <body> after it only add their attributes.
+    doctype = re.search(r"<!doctype\b[^<>]*>", text, re.I)
+    text = re.sub(r"<!doctype\b[^>]*>", "", text, flags=re.I)
+    top = (doctype.group(0) if doctype else "") + "\n<html><head>\n"
     stem = hashlib.sha1(msgid.encode()).hexdigest()[:12]
     os.makedirs(PAGES, mode=0o700, exist_ok=True)
 
     def write(name, images, bar):
-        page = text[:at] + "\n" + HEAD.format(images=images) + title + text[at:top] + bar + text[top:]
+        page = top + HEAD.format(images=images) + title + "</head><body>\n" + bar + text
         path = os.path.join(PAGES, name)
         fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
