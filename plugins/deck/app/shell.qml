@@ -523,7 +523,8 @@ ShellRoot {
             }
         }
 
-        // ⌘F and / search, ⌘1–5 the sections; Ctrl+Q closes the window (the music plays on)
+        // ⌘F and / search, ⌘1–5 the sections; Ctrl+Q closes the window (the music plays on). ⌘Q, Hyprland's, quits the player
+        // too (plugins/deck/quit-commands)
         Shortcut { sequences: ["Ctrl+F", "/"]; onActivated: win.pickSection("search") }
         Shortcut { sequence: "Ctrl+Q"; onActivated: Qt.quit() }
         Shortcut { sequences: ["Ctrl+1", "Meta+1"]; onActivated: win.pickSection("shelf") }

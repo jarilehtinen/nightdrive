@@ -28,6 +28,7 @@ Only `plugin.conf` and `README.md` are required. The other files are used only w
 | `bindings.lua` | Keys | — (Deck's [bindings.lua](deck/bindings.lua)) |
 | `SHORTCUTS.md` | Its lines in the key list (⌘⇧K, launcher › Keybindings) | — (Deck's [SHORTCUTS.md](deck/SHORTCUTS.md)) |
 | `hyprland.lua` | Hyprland settings: window rules, and programs that start with the session | — (Deck's [hyprland.lua](deck/hyprland.lua)) |
+| `quit-commands` | What ⌘Q runs on its window instead of closing it, e.g. to stop a player that plays on without one | — (Deck's [quit-commands](deck/quit-commands)) |
 | `systemd/` | User units, linked to `~/.config/systemd/user` | [nightdrive-ferry.service](ferry/systemd/nightdrive-ferry.service) |
 | `bin/` | Commands, linked to `~/.local/bin` | [ferry](ferry/bin/ferry) |
 | `nautilus-python/` | Files extensions, linked to `~/.local/share/nautilus-python/extensions` | — (LocalSend's [localsend.py](localsend/nautilus-python/localsend.py)) |
@@ -36,8 +37,8 @@ Only `plugin.conf` and `README.md` are required. The other files are used only w
 `link.sh` links `bin/`, `systemd/` and `nautilus-python/` whether the plugin is installed or not, so its installer can
 use them. The rest is picked up by `nightdrive plugins installed`, which installing and turning a plugin off or on run: it
 lists the plugins that are on, with their modules, menus and icons, in `~/.cache/nightdrive/plugins.d/`. The bar reads its
-modules from there, and Hyprland and the key list read `bindings.lua`, `hyprland.lua` and `SHORTCUTS.md` straight from
-the folders listed. Nothing is written into the repo.
+modules from there, and Hyprland, the key list and ⌘Q read `bindings.lua`, `hyprland.lua`, `SHORTCUTS.md` and
+`quit-commands` straight from the folders listed. Nothing is written into the repo.
 
 ## plugin.conf
 

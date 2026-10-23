@@ -6,7 +6,7 @@ A fast Spotify player, made for Nightdrive: your albums in the launcher, the pla
 - The launcher's own search leaves Deck out unless you turn on Settings › Launcher › Include Deck artists, albums and songs: then your shelf's and Curated's albums and artists come up among the hits, with a row that searches Spotify for what you typed (Spotify is asked only when you pick it).
 - While music plays, a player row sits on top of the launcher, and Ctrl+Space plays or pauses.
 - The music icon in the top bar opens the player: the cover, the controls, the like and the speaker to play on.
-- Hyper+M (Caps Lock + M) opens Deck's window: your shelf, Curated, genre radio, Spotify search and the queue, with the player along the bottom. ⌘W closes it, and the music keeps playing.
+- Hyper+M (Caps Lock + M) opens Deck's window: your shelf, Curated, genre radio, Spotify search and the queue, with the player along the bottom. ⌘W closes it, and the music keeps playing; ⌘Q quits Deck, the music too.
 
 ## The window
 
