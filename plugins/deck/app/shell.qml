@@ -1,0 +1,943 @@
+import QtQuick
+import QtQuick.Layouts
+import Quickshell
+import Quickshell.Io
+import qs
+
+// Deck's window: the shelf, Curated, Spotify search and the queue, with the player along the bottom. The music plays in
+// `deck serve` (or a Deck in a terminal), which this only talks to: `deck ctl` for commands, its state file for what plays,
+// and Deck's own files for the shelf and Curated. Closing the window leaves the music playing.
+ShellRoot {
+    id: shell
+    FloatingWindow {
+        id: win
+        title: "Deck"
+        implicitWidth: 1080
+        implicitHeight: 700
+        color: c.bg
+        onClosed: Qt.quit()
+
+        // The look, as Mail's: the desktop's theme with the terminal's background behind the window.
+        QtObject {
+            id: c
+            readonly property color bg: Theme.launcherBg
+            readonly property color solid: Qt.rgba(bg.r, bg.g, bg.b, 1)
+            readonly property color line: Qt.lighter(solid, 1.45)
+            readonly property color divider: Qt.lighter(line, 1.2)
+            // Under the pointer: the selected row's colour, fainter, so a row you point at never looks picked
+            readonly property color hover: Qt.rgba(sel.r, sel.g, sel.b, 0.5)
+            readonly property color sel: Theme.sel
+            readonly property color text: Theme.text
+            readonly property color dim: Theme.dim
+            readonly property color faint: Qt.darker(dim, 1.33)
+            readonly property color accent: Theme.accent
+            readonly property color primary: Theme.primary
+            readonly property color title: Theme.title
+            readonly property color danger: Theme.danger
+            // Behind the key sheet: the menus' background, dimmed
+            readonly property color scrim: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0.7)
+            readonly property string font: Theme.font
+        }
+
+        readonly property string home: Quickshell.env("HOME")
+        readonly property string deckBin: home + "/.local/bin/deck"
+        readonly property string runtime: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/deck"
+        readonly property int searchDelay: 450      // ms after typing stops before Spotify is asked
+        readonly property int settleTime: 1500      // ms a pressed button's look waits for Deck's state to catch up
+        readonly property int headerTop: 18         // the sidebar's title and the view's title start this far down
+        readonly property int listTop: 60           // and the first section and the first row this far: their tops line up
+
+        // --- What Deck says: the playing track and the queue (state.json, written on every change) ---
+        property var info: null
+        property bool alive: false                  // a Deck is running (the file's pid lives)
+        property real updatedMs: 0
+        property real nowMs: Date.now()
+        property var optimistic: ({})               // { playing, liked } until Deck's state catches up
+        readonly property bool playing: optimistic.playing !== undefined ? optimistic.playing : (info !== null && info.playing)
+        readonly property var liked: optimistic.liked !== undefined ? optimistic.liked : (info ? info.liked : null)
+        readonly property real duration: info ? info.duration_ms : 0
+        readonly property real position: {
+            if (!info) return 0
+            let p = info.position_ms
+            if (info.playing) p += nowMs - updatedMs
+            return Math.max(0, Math.min(duration, p))
+        }
+        readonly property var queue: info && info.queue ? info.queue : []
+
+        FileView {
+            id: stateFile
+            path: win.runtime + "/state.json"
+            watchChanges: true
+            printErrors: false
+            onFileChanged: reload()
+            onLoaded: {
+                try {
+                    const j = JSON.parse(text())
+                    win.info = j.info
+                    win.updatedMs = j.updated_ms
+                    win.nowMs = Date.now()
+                    alivePid.command = ["test", "-d", "/proc/" + j.pid]
+                    alivePid.running = true
+                } catch (e) { win.info = null; win.alive = false }
+            }
+            onLoadFailed: { win.info = null; win.alive = false }
+        }
+        // A Deck killed without cleaning up leaves its file behind: the pid tells.
+        Process { id: alivePid; onExited: code => { win.alive = code === 0; if (code !== 0) win.info = null } }
+        Timer { interval: 3000; repeat: true; running: true; onTriggered: stateFile.reload() }
+        Timer { interval: 250; repeat: true; running: win.playing; onTriggered: win.nowMs = Date.now() }
+        Timer { id: settle; interval: win.settleTime; onTriggered: win.optimistic = ({}) }
+
+        function ctl(args) {
+            Quickshell.execDetached([deckBin, "ctl"].concat(args))
+            settle.restart()
+        }
+        function togglePlay() { if (info) { optimistic = Object.assign({}, optimistic, { playing: !playing }); ctl(["toggle"]) } }
+        function toggleLike() {
+            if (liked === null || liked === undefined) return
+            optimistic = Object.assign({}, optimistic, { liked: !liked })
+            ctl(["like"])
+        }
+        function startDeck() { Quickshell.execDetached([home + "/.local/bin/deck-open", "player"]) }
+
+        // --- Deck's own files: the shelf and Curated ---
+        property var shelf: []
+        property var curated: []
+        FileView {
+            path: win.home + "/.config/deck/shelf.json"
+            watchChanges: true
+            printErrors: false
+            onFileChanged: reload()
+            onLoaded: { try { win.shelf = JSON.parse(text()) } catch (e) { win.shelf = [] } }
+        }
+        FileView {
+            path: win.home + "/.config/deck/curated.json"
+            watchChanges: true
+            printErrors: false
+            onFileChanged: reload()
+            onLoaded: { try { win.curated = JSON.parse(text()).albums || [] } catch (e) { win.curated = [] } }
+        }
+        // Album covers by URI: the image's address from Spotify's oEmbed (no sign-in needed), asked once per album when
+        // a row shows it. The addresses are kept in covers.json, so a cover shows at once the next time; the images
+        // themselves aren't kept (Spotify's CDN serves them, as to its own apps).
+        property var covers: ({})
+        property bool coversLoaded: false
+        property var coversAsked: ({})              // this session's oEmbed requests: one per album
+        FileView {
+            id: coversFile
+            path: win.home + "/.cache/deck/covers.json"
+            printErrors: false
+            onLoaded: { try { win.covers = JSON.parse(text()) } catch (e) {} win.coversLoaded = true }
+            onLoadFailed: win.coversLoaded = true
+        }
+        Timer { id: coversSave; interval: 1000; onTriggered: coversFile.setText(JSON.stringify(win.covers) + "\n") }
+        function cover(uri) {
+            if (covers[uri]) return covers[uri]
+            if (!coversLoaded || coversAsked[uri]) return ""
+            coversAsked[uri] = true
+            const id = uri.replace("spotify:album:", "")
+            const req = new XMLHttpRequest()
+            req.onreadystatechange = () => {
+                if (req.readyState !== XMLHttpRequest.DONE || req.status !== 200) return
+                try {
+                    const url = JSON.parse(req.responseText).thumbnail_url
+                    if (!url) return
+                    const c = Object.assign({}, covers); c[uri] = url; covers = c
+                    coversSave.restart()
+                } catch (e) {}
+            }
+            req.open("GET", "https://open.spotify.com/oembed?url=https://open.spotify.com/album/" + id)
+            req.send()
+            return ""
+        }
+
+        // A new Curated list (`deck curate`: Claude Code, a few minutes, on your Claude plan). It runs on its own, so
+        // closing the window doesn't stop it; the list shows up when curated.json changes.
+        property bool curating: false
+        property bool curateAsk: false              // the button's first press asks, the second runs it
+        property string curateLine: ""              // the run's latest line in its log
+        readonly property string curateLog: home + "/.cache/deck/curate.log"
+        function curate() {
+            curateAsk = false
+            Quickshell.execDetached(["setsid", "-f", deckBin, "curate"])
+            curating = true
+            curateLine = "Starting Claude…"
+        }
+        Process {
+            id: curateCheck
+            // A run (this one, or the weekly one) is going: its latest log line; then "done" and the last line
+            command: ["sh", "-c", 'pgrep -f "^[^ ]*deck curate$" >/dev/null && echo run || echo done; tail -n 1 "$1" | cut -c 22-', "sh", win.curateLog]
+            stdout: StdioCollector {
+                onStreamFinished: {
+                    const [state, ...rest] = text.split("\n")
+                    const line = rest.join(" ").trim()
+                    if (state === "run") { win.curating = true; win.curateLine = line || "Starting Claude…"; return }
+                    if (!win.curating) return
+                    win.curating = false
+                    win.note = /failed/.test(line) ? "Curated failed: " + line.replace(/^=== curate: failed: /, "") : "A new Curated list"
+                }
+            }
+        }
+        Timer { interval: 2000; repeat: true; running: true; triggeredOnStart: true; onTriggered: curateCheck.running = true }
+
+        readonly property var shelfUris: {
+            const s = {}
+            for (const a of shelf) s[a.uri] = true
+            return s
+        }
+        // Sorted as Deck sorts them: a leading "The" and accents aside
+        function sortName(name) { return name.replace(/^the\s+/i, "") }
+        readonly property var shelfArtists: {
+            const by = {}
+            for (const a of shelf) {
+                const id = a.artist_id || a.artist
+                if (!by[id]) by[id] = { id: a.artist_id, name: a.artist, albums: 0 }
+                by[id].albums++
+            }
+            return Object.values(by).sort((x, y) => sortName(x.name).localeCompare(sortName(y.name), undefined, { sensitivity: "base" }))
+        }
+
+        // --- Where you are: a section (the sidebar) and the views opened in it, Esc goes back ---
+        readonly property var sections: [
+            { id: "shelf", name: "Shelf", glyph: "library" },
+            { id: "curated", name: "Curated", glyph: "sparkles" },
+            { id: "search", name: "Search", glyph: "search" },
+            { id: "queue", name: "Queue", glyph: "list-music" }
+        ]
+        property string section: "shelf"
+        property var stack: [{ kind: "shelf" }]
+        property var cursors: [0]                    // the selected row in each view of the stack below the top one
+        // The selected row: kept by hand, because the list's own goes back to the top whenever its rows are made anew
+        // (each change of Deck's state does that in the queue)
+        property int cursor: 0
+        readonly property var view: stack[stack.length - 1]
+        function moveTo(i) { cursor = Math.max(0, Math.min(i, rows.length - 1)); list.currentIndex = cursor }
+        function pickSection(id) {
+            section = id
+            cursor = 0
+            stack = [{ kind: id }]
+            cursors = []
+            if (id === "search") searchField.forceActiveFocus()
+            else list.forceActiveFocus()
+        }
+        function push(v) {
+            cursors = cursors.concat([cursor])
+            cursor = 0
+            stack = stack.concat([v])
+            list.forceActiveFocus()
+        }
+        function back() {
+            if (stack.length < 2) { if (section === "search") searchField.forceActiveFocus(); return }
+            cursor = cursors[cursors.length - 1]
+            cursors = cursors.slice(0, -1)
+            stack = stack.slice(0, -1)
+        }
+        // A view whose data arrives later is updated in place, if it is still in the stack
+        function update(v, fields) {
+            const i = stack.indexOf(v)
+            if (i < 0) return
+            const s = stack.slice(); s[i] = Object.assign({}, v, fields); stack = s
+        }
+
+        function openArtist(artist, fromShelf) {
+            const v = { kind: "artist", artist: artist, shelf: fromShelf, albums: null }
+            if (fromShelf) v.albums = shelf.filter(a => (a.artist_id || a.artist) === (artist.id || artist.name)).sort((x, y) => (x.year || 0) - (y.year || 0))
+            push(v)
+            if (!fromShelf) run(["artist-albums", "--json", artist.id], text => update(v, { albums: JSON.parse(text) }), err => update(v, { albums: [], error: err }))
+        }
+        function openAlbum(album, from) {
+            const v = { kind: "album", album: album, tracks: null, from: from || "" }
+            push(v)
+            run(["album-tracks", "--json", album.uri], text => {
+                const j = JSON.parse(text)
+                update(v, { tracks: j.tracks, album: Object.assign({}, j.album, album) })
+            }, err => update(v, { tracks: [], error: err }))
+        }
+
+        // --- Deck's JSON commands (search, an artist's albums, an album's tracks), one process each ---
+        Component {
+            id: runner
+            Process {
+                property var done
+                property var failed
+                stdout: StdioCollector { id: out }
+                stderr: StdioCollector { id: err }
+                onExited: code => {
+                    try {
+                        if (code !== 0) throw new Error(err.text.trim().split("\n").pop() || "Deck didn't answer")
+                        done(out.text)
+                    } catch (e) { failed(String(e.message || e).replace(/^deck: /, "")) }
+                    destroy()
+                }
+            }
+        }
+        function run(args, done, failed) {
+            runner.createObject(win, { command: [deckBin].concat(args), done: done, failed: failed, running: true })
+        }
+
+        property var results: null                   // { query, artists, albums, songs, error }
+        property bool searching: false
+        Timer { id: searchTimer; interval: win.searchDelay; onTriggered: win.search() }
+        function search() {
+            const q = searchField.text.trim()
+            if (q.length < 2) { results = null; return }
+            searching = true
+            run(["search", "--json", q], text => {
+                const r = JSON.parse(text)
+                if (searchField.text.trim() === q) { results = { query: q, artists: r.artists, albums: r.albums, songs: r.songs, error: "" }; searching = false }
+            }, e => { results = { query: q, artists: [], albums: [], songs: [], error: e }; searching = false })
+        }
+
+        // --- The rows of the view on top: { kind, title, sub, right, mark, data } ---
+        function year(a) { return a.year ? String(a.year) : "" }
+        function fmt(ms) {
+            const s = Math.floor(ms / 1000)
+            return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0")
+        }
+        readonly property var rows: {
+            const v = view, out = []
+            if (v.kind === "shelf")
+                for (const a of shelfArtists) out.push({ kind: "artist", title: a.name, right: a.albums + (a.albums === 1 ? " album" : " albums"), data: a, shelf: true })
+            else if (v.kind === "curated")
+                for (const a of curated) out.push({ kind: "album", title: a.name, sub: a.artist + (a.year ? " · " + a.year : ""), note: a.reason || "", data: a, cover: true })
+            else if (v.kind === "search" && results) {
+                for (const a of results.artists) out.push({ kind: "artist", title: a.name, right: "Artist", data: a, shelf: false })
+                for (const a of results.albums) out.push({ kind: "album", title: a.name, sub: a.artist + (a.year ? " · " + a.year : ""), right: "Album", data: a })
+                for (const s of results.songs) out.push({ kind: "song", title: s.name, sub: s.artist + " · " + s.album.name, right: fmt(s.duration_ms), data: s })
+            }
+            else if (v.kind === "queue")
+                queue.forEach((t, i) => out.push({ kind: "queued", title: t.title, sub: t.artist, right: fmt(t.duration_ms), data: t, index: i }))
+            else if (v.kind === "artist" && v.albums)
+                for (const a of v.albums) out.push({ kind: "album", title: a.name, right: year(a), data: a })
+            else if (v.kind === "album" && v.tracks)
+                v.tracks.forEach((t, i) => out.push({ kind: "track", title: t.name, by: t.artist !== v.album.artist ? t.artist : "", right: fmt(t.duration_ms), number: i + 1, data: t }))
+            return out
+        }
+        readonly property string heading: {
+            const v = view
+            if (v.kind === "artist") return v.artist.name
+            if (v.kind === "album") return v.album.name
+            return sections.find(s => s.id === v.kind).name
+        }
+        readonly property string subheading: {
+            const v = view
+            if (v.kind === "album") return [v.album.artist, year(v.album)].filter(x => x).join(" · ")
+            if (v.kind === "artist") return v.shelf ? "On your shelf" : "On Spotify"
+            if (v.kind === "curated") return curating ? curateLine : curated.length ? curated.length + " albums picked for you this week" : ""
+            if (v.kind === "queue") return queue.length ? "Plays next, after the current track" : ""
+            return ""
+        }
+        readonly property string empty: {
+            const v = view
+            if (v.error) return v.error
+            if (v.kind === "shelf") return "Your shelf is empty: find an album in Search and press a"
+            if (v.kind === "curated") return "No Curated list yet: `deck curate` suggests albums based on what you play"
+            if (v.kind === "search") return results && results.error ? results.error : searching ? "Searching…" : searchField.text.trim().length < 2 ? "Artists, albums and songs on Spotify" : "Nothing found"
+            if (v.kind === "queue") return "Nothing queued: e adds an album or a song"
+            if (v.kind === "artist") return v.albums ? "No albums" : "Loading…"
+            if (v.kind === "album") return v.tracks ? "No tracks" : "Loading…"
+            return ""
+        }
+        // The album a row stands for, for e and a (a song's or a track's album too)
+        function albumOf(row) {
+            if (row.kind === "album") return row.data
+            if (row.kind === "song") return row.data.album
+            if (row.kind === "track") return view.album
+            return null
+        }
+
+        // --- What the keys and clicks do ---
+        function activate(row) {
+            if (!row) return
+            if (row.kind === "artist") openArtist(row.data, row.shelf)
+            else if (row.kind === "album") openAlbum(row.data, view.kind)
+            else if (row.kind === "track") ctl(["play-song", row.data.uri, view.album.uri])
+            else if (row.kind === "song") ctl(["play-song", row.data.uri, row.data.album.uri])
+        }
+        function play(row) {
+            const a = row && albumOf(row)
+            if (row && (row.kind === "track" || row.kind === "song")) activate(row)
+            else if (a) ctl(["play-album", a.uri])
+        }
+        function enqueue(row) {
+            if (!row) return
+            if (row.kind === "track") ctl(["queue-song", row.data.uri, view.album.uri])
+            else if (row.kind === "song") ctl(["queue-song", row.data.uri, row.data.album.uri])
+            else if (row.kind === "album") ctl(["queue-album", row.data.uri])
+            else return
+            note = "Queued: " + row.title
+        }
+        function shelve(row) {
+            const a = row ? albumOf(row) : view.kind === "album" ? view.album : null
+            if (!a) return
+            const on = !!shelfUris[a.uri]
+            ctl([on ? "shelf-remove" : "shelf-add", a.uri])
+            note = (on ? "Taken off the shelf: " : "On the shelf: ") + a.name
+        }
+        function unqueue(row) { if (row && row.kind === "queued") ctl(["unqueue", String(row.index)]) }
+
+        // A quiet line for what just happened
+        property string note: ""
+        onNoteChanged: if (note !== "") noteTimer.restart()
+        Timer { id: noteTimer; interval: 3000; onTriggered: win.note = "" }
+
+        // `deck-open search QUERY` (the launcher's "Search Spotify" row)
+        IpcHandler {
+            target: "deck"
+            function search(query: string): void {
+                win.pickSection("search")
+                searchField.text = query
+                win.search()
+            }
+            function section(id: string): void { win.pickSection(id) }
+        }
+
+        // ⌘F and / search, ⌘1–4 the sections; Ctrl+Q closes the window (the music plays on)
+        Shortcut { sequences: ["Ctrl+F", "/"]; onActivated: win.pickSection("search") }
+        Shortcut { sequence: "Ctrl+Q"; onActivated: Qt.quit() }
+        Shortcut { sequences: ["Ctrl+1", "Meta+1"]; onActivated: win.pickSection("shelf") }
+        Shortcut { sequences: ["Ctrl+2", "Meta+2"]; onActivated: win.pickSection("curated") }
+        Shortcut { sequences: ["Ctrl+3", "Meta+3"]; onActivated: win.pickSection("search") }
+        Shortcut { sequences: ["Ctrl+4", "Meta+4"]; onActivated: win.pickSection("queue") }
+        // Ctrl+↑ ↓ the previous and next section, as Mail's folders
+        function stepSection(d) {
+            const i = sections.findIndex(s => s.id === section) + d
+            if (i >= 0 && i < sections.length) pickSection(sections[i].id)
+        }
+        Shortcut { sequence: "Ctrl+Up"; onActivated: win.stepSection(-1) }
+        Shortcut { sequence: "Ctrl+Down"; onActivated: win.stepSection(1) }
+
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: 0
+            // ? and Ctrl+? show the keys, as in Mail (KeySheet.qml)
+            Keys.onPressed: e => sheet.pressed(e)
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                spacing: 0
+
+                // Sections
+                Rectangle {
+                    Layout.preferredWidth: 196
+                    Layout.fillHeight: true
+                    color: "transparent"
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.topMargin: win.headerTop
+                        anchors.bottomMargin: 18
+                        spacing: 2
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: win.listTop - win.headerTop - parent.spacing
+                            Row {
+                                x: 28; height: 22
+                                spacing: 3
+                                Text { anchors.verticalCenter: parent.verticalCenter; text: "Deck"; color: c.title; font.family: c.font; font.pixelSize: 13; font.weight: Font.DemiBold }
+                                Rectangle { width: 7; height: 14; color: c.primary; anchors.verticalCenter: parent.verticalCenter }
+                            }
+                        }
+                        Repeater {
+                            model: win.sections
+                            delegate: Rectangle {
+                                required property var modelData
+                                required property int index
+                                Layout.fillWidth: true
+                                Layout.leftMargin: 12
+                                Layout.rightMargin: 12
+                                implicitHeight: 34
+                                radius: 8
+                                color: win.section === modelData.id ? c.sel : sh.hovered ? c.hover : "transparent"
+                                HoverHandler { id: sh; cursorShape: Qt.PointingHandCursor }
+                                TapHandler { onTapped: win.pickSection(modelData.id) }
+                                Text {
+                                    id: glyph
+                                    anchors.left: parent.left; anchors.leftMargin: 14; anchors.verticalCenter: parent.verticalCenter
+                                    text: Icons.g(modelData.glyph); font.family: Icons.family; font.pixelSize: 15
+                                    color: win.section === modelData.id ? c.accent : c.dim
+                                }
+                                Text {
+                                    anchors.left: glyph.right; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter
+                                    text: modelData.name; font.family: c.font; font.pixelSize: 13
+                                    color: win.section === modelData.id ? c.title : c.dim
+                                }
+                                Text {
+                                    anchors.right: parent.right; anchors.rightMargin: 16; anchors.verticalCenter: parent.verticalCenter
+                                    text: modelData.id === "queue" && win.queue.length ? win.queue.length
+                                        : modelData.id === "curated" && win.curated.length ? win.curated.length : ""
+                                    font.family: c.font; font.pixelSize: 11; color: c.faint
+                                }
+                            }
+                        }
+                        Item { Layout.fillHeight: true }
+                    }
+                    Rectangle { anchors.right: parent.right; width: 1; height: parent.height; color: c.divider }
+                }
+
+                // The view
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    spacing: 0
+
+                    // Its title (with the way back), or the search field: as high whatever it holds, so the first row stays put.
+                    // Over the list, so its buttons' tips aren't drawn under the first row.
+                    Item {
+                        z: 1
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: win.listTop
+                        ColumnLayout {
+                            anchors.left: parent.left; anchors.right: parent.right
+                            anchors.top: parent.top; anchors.topMargin: win.headerTop
+                            spacing: 0
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Layout.leftMargin: 28
+                                Layout.rightMargin: 28
+                                Layout.preferredHeight: 22
+                                spacing: 10
+                                visible: win.view.kind !== "search"
+                                Text {
+                                    visible: win.stack.length > 1
+                                    text: Icons.g("arrow-left"); font.family: Icons.family; font.pixelSize: 15
+                                    color: bh.hovered ? c.text : c.dim
+                                    HoverHandler { id: bh; cursorShape: Qt.PointingHandCursor }
+                                    TapHandler { onTapped: win.back() }
+                                    Tip { y: parent.height + 8; c: win.look; text: "Back"; keys: "Esc"; hovered: bh.hovered }
+                                }
+                                Text {
+                                    Layout.maximumWidth: implicitWidth
+                                    Layout.fillWidth: true
+                                    elide: Text.ElideRight
+                                    text: win.heading; color: c.title; font.family: c.font; font.pixelSize: 15; font.weight: Font.DemiBold
+                                }
+                                // What it is, quieter on the same line (the album's artist and year, how many Curated has)
+                                Text {
+                                    Layout.fillWidth: true
+                                    Layout.alignment: Qt.AlignBaseline
+                                    Layout.leftMargin: 10
+                                    elide: Text.ElideRight
+                                    text: win.subheading; color: c.dim; font.family: c.font; font.pixelSize: 12
+                                }
+                                // An album's own buttons, as Curated's New list: play it, queue it, shelve it. The tip tells the key.
+                                Repeater {
+                                    model: win.view.kind === "album" ? [
+                                        { glyph: "play", label: "Play", tip: "Play the album", keys: "p", act: () => win.ctl(["play-album", win.view.album.uri]) },
+                                        { glyph: "list-plus", label: "Queue", tip: "Queue the album", keys: "e", act: () => { win.ctl(["queue-album", win.view.album.uri]); win.note = "Queued: " + win.view.album.name } },
+                                        win.shelfUris[win.view.album.uri]
+                                            ? { glyph: "check", label: "On the shelf", tip: "Take it off the shelf", keys: "a", act: () => win.shelve(null) }
+                                            : { glyph: "library", label: "Shelf", tip: "Put it on the shelf", keys: "a", act: () => win.shelve(null) }
+                                    ] : []
+                                    delegate: Rectangle {
+                                        required property var modelData
+                                        implicitWidth: albumBtn.implicitWidth + 24; implicitHeight: 28; radius: 7
+                                        color: ah.hovered ? c.hover : "transparent"
+                                        border.color: c.line
+                                        HoverHandler { id: ah; cursorShape: Qt.PointingHandCursor }
+                                        TapHandler { onTapped: modelData.act() }
+                                        Row {
+                                            id: albumBtn
+                                            anchors.centerIn: parent
+                                            spacing: 8
+                                            Text {
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                text: Icons.g(modelData.glyph); font.family: Icons.family; font.pixelSize: 13
+                                                color: modelData.glyph === "check" ? c.primary : c.dim
+                                            }
+                                            Text {
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                text: modelData.label; font.family: c.font; font.pixelSize: 12
+                                                color: ah.hovered ? c.title : c.text
+                                            }
+                                        }
+                                        // Below, ending at the button's right edge: the window's edge is near
+                                        Tip { x: parent.width - width; y: parent.height + 8; c: win.look; text: modelData.tip; keys: modelData.keys; hovered: ah.hovered }
+                                    }
+                                }
+                                // Curated: a new list by Claude. The first press says what it does, the second does it.
+                                Text {
+                                    visible: win.view.kind === "curated" && win.curateAsk
+                                    text: "Claude picks new albums in a few minutes, on your Claude plan"
+                                    color: c.dim; font.family: c.font; font.pixelSize: 12
+                                }
+                                Repeater {
+                                    model: win.view.kind !== "curated" || win.curating ? []
+                                         : win.curateAsk ? [{ label: "Make it", glyph: "sparkles", strong: true, act: () => win.curate() },
+                                                            { label: "Cancel", glyph: "", strong: false, act: () => win.curateAsk = false }]
+                                         : [{ label: "New list", glyph: "refresh-cw", strong: false, act: () => win.curateAsk = true }]
+                                    delegate: Rectangle {
+                                        required property var modelData
+                                        implicitWidth: btn.implicitWidth + 24; implicitHeight: 28; radius: 7
+                                        color: modelData.strong ? c.sel : nh.hovered ? c.hover : "transparent"
+                                        border.color: modelData.strong ? c.primary : c.line
+                                        HoverHandler { id: nh; cursorShape: Qt.PointingHandCursor }
+                                        TapHandler { onTapped: modelData.act() }
+                                        Row {
+                                            id: btn
+                                            anchors.centerIn: parent
+                                            spacing: 8
+                                            Text {
+                                                visible: modelData.glyph !== ""
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                text: Icons.g(modelData.glyph); font.family: Icons.family; font.pixelSize: 13
+                                                color: modelData.strong ? c.accent : c.dim
+                                            }
+                                            Text {
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                text: modelData.label; font.family: c.font; font.pixelSize: 12
+                                                color: modelData.strong || nh.hovered ? c.title : c.text
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Layout.leftMargin: 28
+                                Layout.rightMargin: 28
+                                Layout.preferredHeight: 22
+                                visible: win.view.kind === "search"
+                                spacing: 10
+                                Text { text: Icons.g("search"); font.family: Icons.family; font.pixelSize: 15; color: c.faint }
+                                TextInput {
+                                    id: searchField
+                                    Layout.fillWidth: true
+                                    color: c.text; font.family: c.font; font.pixelSize: 14
+                                    selectionColor: c.sel
+                                    Text {
+                                        visible: !searchField.text
+                                        text: "Search Spotify"; color: c.faint; font: searchField.font
+                                    }
+                                    onTextEdited: searchTimer.restart()
+                                    Keys.onReturnPressed: { searchTimer.stop(); win.search(); list.forceActiveFocus() }
+                                    Keys.onDownPressed: list.forceActiveFocus()
+                                    Keys.onEscapePressed: { if (text) { text = ""; win.results = null } else list.forceActiveFocus() }
+                                }
+                            }
+                        }
+                    }
+
+                    ListView {
+                        id: list
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        Layout.leftMargin: 12
+                        Layout.rightMargin: 12
+                        clip: true
+                        focus: true
+                        model: win.rows
+                        onModelChanged: currentIndex = Math.max(0, Math.min(win.cursor, count - 1))
+                        boundsBehavior: Flickable.StopAtBounds
+                        highlightMoveDuration: 0
+                        spacing: 2
+                        bottomMargin: 12
+                        TouchScroll { view: list }
+                        readonly property var row: win.rows[currentIndex]
+                        Keys.onPressed: e => {
+                            const k = e.key
+                            if (e.modifiers & (Qt.ControlModifier | Qt.MetaModifier | Qt.AltModifier)) return
+                            // The list takes most keys before they reach the sheet: any but ? closes it here
+                            if (sheet.shown && k !== Qt.Key_Question && sheet.modifierKeys.indexOf(k) < 0) sheet.shown = false
+                            if (k === Qt.Key_Down || k === Qt.Key_J) win.moveTo(currentIndex + 1)
+                            else if (k === Qt.Key_Up || k === Qt.Key_K) {
+                                if (currentIndex > 0) win.moveTo(currentIndex - 1)
+                                else if (win.view.kind === "search") searchField.forceActiveFocus()
+                            }
+                            else if (k === Qt.Key_Return || k === Qt.Key_Enter) win.activate(row)
+                            else if (k === Qt.Key_Escape || k === Qt.Key_Backspace) win.back()
+                            else if (k === Qt.Key_Space) win.togglePlay()
+                            else if (k === Qt.Key_Left) win.ctl(["previous"])
+                            else if (k === Qt.Key_Right) win.ctl(["next"])
+                            else if (k === Qt.Key_P) win.play(row)
+                            else if (k === Qt.Key_E) win.enqueue(row)
+                            else if (k === Qt.Key_A) win.shelve(row)
+                            else if (k === Qt.Key_L) win.toggleLike()
+                            else if (k === Qt.Key_D || k === Qt.Key_Delete) win.unqueue(row)
+                            else if (k === Qt.Key_Question) sheet.shown = !sheet.shown
+                            else if (k === Qt.Key_Home) win.moveTo(0)
+                            else if (k === Qt.Key_End) win.moveTo(count - 1)
+                            else return
+                            e.accepted = true
+                        }
+                        delegate: Rectangle {
+                            id: r
+                            required property var modelData
+                            required property int index
+                            readonly property bool current: index === list.currentIndex
+                            // The playing track, or the album it plays from
+                            readonly property bool now: win.info !== null && (
+                                (modelData.kind === "track" || modelData.kind === "song") && modelData.data.uri === win.info.track_uri
+                                || modelData.kind === "album" && modelData.data.uri === win.info.album_uri)
+                            readonly property bool onShelf: modelData.kind === "album" && win.view.kind !== "shelf" && !!win.shelfUris[modelData.data.uri]
+                            width: ListView.view.width
+                            implicitHeight: Math.max(body.implicitHeight, art.visible ? art.height : 0) + 20
+                            radius: 8
+                            color: current && list.activeFocus ? c.sel : current ? c.hover : rh.hovered ? c.hover : "transparent"
+                            HoverHandler { id: rh; cursorShape: Qt.PointingHandCursor }
+                            TapHandler {
+                                // An artist or an album opens with one click (only browsing: Esc comes back); a song plays
+                                // with two, so picking one doesn't stop the music
+                                onTapped: {
+                                    win.moveTo(r.index); list.forceActiveFocus()
+                                    if (r.modelData.kind === "artist" || r.modelData.kind === "album") win.activate(r.modelData)
+                                }
+                                onDoubleTapped: if (r.modelData.kind !== "artist" && r.modelData.kind !== "album") win.activate(r.modelData)
+                            }
+                            Text {
+                                id: lead
+                                x: 14; width: 22
+                                anchors.verticalCenter: parent.verticalCenter
+                                horizontalAlignment: Text.AlignRight
+                                visible: (r.modelData.number !== undefined || r.now) && !r.modelData.cover
+                                text: r.now ? Icons.g("music") : r.modelData.number || ""
+                                font.family: r.now ? Icons.family : c.font; font.pixelSize: r.now ? 13 : 11
+                                color: r.now ? c.primary : c.faint
+                            }
+                            // Curated's albums show their cover, as tall as the texts beside it with a two-line reason, its top
+                            // at theirs (a selected row's longer reason runs on below it)
+                            // (From the fonts, not the texts' heights: those hang on the width, which hangs on the cover)
+                            FontMetrics { id: titleMetrics; font: titleText.font }
+                            FontMetrics { id: subMetrics; font: subText.font }
+                            FontMetrics { id: noteMetrics; font: noteText.font }
+                            Image {
+                                id: art
+                                visible: !!r.modelData.cover
+                                x: 12; anchors.top: body.top
+                                height: Math.ceil(titleMetrics.height) + Math.ceil(subMetrics.height) + subText.bottomPadding + 2 * Math.ceil(noteMetrics.height * noteText.lineHeight) + 2 * body.spacing
+                                width: height
+                                sourceSize: Qt.size(128, 128)
+                                fillMode: Image.PreserveAspectCrop
+                                source: r.modelData.cover ? win.cover(r.modelData.data.uri) : ""
+                                Rectangle { anchors.fill: parent; color: c.hover; visible: parent.status !== Image.Ready }
+                            }
+                            Column {
+                                id: body
+                                anchors.left: art.visible ? art.right : lead.visible ? lead.right : parent.left
+                                anchors.leftMargin: art.visible ? 17 : lead.visible ? 14 : 16
+                                anchors.right: right.left; anchors.rightMargin: 16
+                                // Beside a cover from the top, so a one-line reason doesn't leave the cover hanging below
+                                anchors.top: art.visible ? parent.top : undefined
+                                anchors.topMargin: 10
+                                anchors.verticalCenter: art.visible ? undefined : parent.verticalCenter
+                                spacing: 3
+                                Row {
+                                    width: parent.width
+                                    spacing: 8
+                                    Text {
+                                        id: titleText
+                                        width: Math.min(implicitWidth, parent.width - (dot.visible ? 14 : 0) - (byText.visible ? Math.min(byText.implicitWidth, parent.width / 3) : 0))
+                                        elide: Text.ElideRight
+                                        text: r.modelData.title
+                                        font.family: c.font; font.pixelSize: 13
+                                        color: r.now ? c.accent : c.title
+                                    }
+                                    // A track's own artists, when not the album's: after its name, as quiet as a second line
+                                    Text {
+                                        id: byText
+                                        visible: !!r.modelData.by
+                                        anchors.baseline: titleText.baseline
+                                        width: Math.min(implicitWidth, parent.width - titleText.width - parent.spacing)
+                                        elide: Text.ElideRight
+                                        text: "– " + (r.modelData.by || "")
+                                        font.family: c.font; font.pixelSize: 12; color: c.dim
+                                    }
+                                    // On your shelf: Deck's green ●, in the theme's colour
+                                    Rectangle {
+                                        id: dot
+                                        visible: r.onShelf
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: 6; height: 6; radius: 3; color: c.primary
+                                    }
+                                }
+                                Text {
+                                    id: subText
+                                    visible: !!r.modelData.sub
+                                    bottomPadding: r.modelData.note ? 5 : 0     // a little air before the reason
+                                    width: parent.width; elide: Text.ElideRight
+                                    text: r.modelData.sub || ""
+                                    font.family: c.font; font.pixelSize: 12; color: c.dim
+                                }
+                                Text {
+                                    id: noteText
+                                    visible: !!r.modelData.note
+                                    width: parent.width
+                                    wrapMode: Text.WordWrap
+                                    maximumLineCount: r.current ? 6 : 2
+                                    elide: Text.ElideRight
+                                    text: r.modelData.note || ""
+                                    font.family: c.font; font.pixelSize: 11; color: c.faint; lineHeight: 1.2
+                                }
+                            }
+                            Text {
+                                id: right
+                                anchors.right: parent.right; anchors.rightMargin: 16
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: r.modelData.right || ""
+                                font.family: c.font; font.pixelSize: 11; color: c.faint
+                            }
+                        }
+                        Text {
+                            visible: list.count === 0
+                            anchors.centerIn: parent
+                            width: Math.min(parent.width - 48, 420)
+                            horizontalAlignment: Text.AlignHCenter
+                            wrapMode: Text.WordWrap
+                            text: win.empty; color: c.faint; font.family: c.font; font.pixelSize: 12
+                        }
+                    }
+                }
+            }
+
+            // The player
+            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: c.divider }
+            Item {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 92
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 20
+                    anchors.rightMargin: 28
+                    spacing: 16
+                    Item {
+                        Layout.preferredWidth: 60; Layout.preferredHeight: 60
+                        Image {
+                            id: cover
+                            anchors.fill: parent
+                            sourceSize: Qt.size(120, 120)
+                            fillMode: Image.PreserveAspectCrop
+                            source: win.info && win.info.cover ? win.info.cover : ""
+                            visible: source !== "" && status === Image.Ready
+                        }
+                        Rectangle {
+                            anchors.fill: parent; radius: 6
+                            visible: !cover.visible
+                            color: c.hover
+                            Text { anchors.centerIn: parent; text: Icons.g("disc-3"); color: c.dim; font.family: Icons.family; font.pixelSize: 24 }
+                        }
+                    }
+                    Column {
+                        Layout.preferredWidth: 260
+                        spacing: 3
+                        Text {
+                            width: parent.width; elide: Text.ElideRight
+                            text: win.info ? win.info.title : win.alive ? "Nothing playing" : "Deck isn't running"
+                            color: win.info ? c.accent : c.dim; font.family: c.font; font.pixelSize: 13; font.weight: Font.DemiBold
+                        }
+                        Row {
+                            width: parent.width
+                            visible: !!win.info
+                            spacing: 8
+                            Text {
+                                width: Math.min(implicitWidth, parent.width - (shelfButton.visible ? shelfButton.width + 8 : 0))
+                                elide: Text.ElideRight
+                                text: win.info ? win.info.artist + " · " + win.info.album : ""
+                                color: c.dim; font.family: c.font; font.pixelSize: 12
+                            }
+                            // The playing album on the shelf, or off it: by the album's name, so it doesn't read as the
+                            // heart's (which is the track's). Not for a radio track: Deck knows no album for it.
+                            Text {
+                                id: shelfButton
+                                readonly property string uri: win.info && win.info.album_uri ? win.info.album_uri : ""
+                                readonly property bool on: !!win.shelfUris[uri]
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: uri !== ""
+                                text: Icons.g("library")
+                                color: on || sbh.hovered ? c.primary : c.faint
+                                font.family: Icons.family; font.pixelSize: 14
+                                HoverHandler { id: sbh; cursorShape: Qt.PointingHandCursor }
+                                Tip { x: (parent.width - width) / 2; y: -height - 10; c: win.look; text: shelfButton.on ? "Take the album off the shelf" : "Put the album on the shelf"; hovered: sbh.hovered }
+                                TapHandler {
+                                    onTapped: {
+                                        win.ctl([shelfButton.on ? "shelf-remove" : "shelf-add", shelfButton.uri])
+                                        win.note = (shelfButton.on ? "Taken off the shelf: " : "On the shelf: ") + win.info.album
+                                    }
+                                }
+                            }
+                        }
+                        Text {
+                            visible: !win.alive
+                            text: "Start Deck"
+                            color: sth.hovered ? c.primary : c.text; font.family: c.font; font.pixelSize: 12
+                            HoverHandler { id: sth; cursorShape: Qt.PointingHandCursor }
+                            TapHandler { onTapped: win.startDeck() }
+                        }
+                    }
+                    // Controls over the playhead (Deck has no seeking: it only shows)
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+                        opacity: win.info ? 1 : 0.35
+                        Row {
+                            Layout.alignment: Qt.AlignHCenter
+                            spacing: 26
+                            Repeater {
+                                model: [
+                                    { glyph: "skip-back", size: 18, act: "previous", tip: "Previous track", keys: "←" },
+                                    { glyph: "play", size: 24, act: "toggle", tip: "Play, pause", keys: "Space" },
+                                    { glyph: "skip-forward", size: 18, act: "next", tip: "Next track", keys: "→" }
+                                ]
+                                delegate: Text {
+                                    required property var modelData
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: Icons.g(modelData.act === "toggle" ? (win.playing ? "pause" : "play") : modelData.glyph)
+                                    color: ch.hovered ? c.primary : c.text
+                                    font.family: Icons.family; font.pixelSize: modelData.size
+                                    HoverHandler { id: ch; cursorShape: Qt.PointingHandCursor }
+                                    Tip { x: (parent.width - width) / 2; y: -height - 10; c: win.look; text: modelData.tip; keys: modelData.keys; hovered: ch.hovered }
+                                    TapHandler { onTapped: modelData.act === "toggle" ? win.togglePlay() : win.ctl([modelData.act]) }
+                                }
+                            }
+                        }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 10
+                            Text { text: win.fmt(win.position); color: c.faint; font.family: c.font; font.pixelSize: 10 }
+                            Rectangle {
+                                Layout.fillWidth: true; height: 3; radius: 1.5
+                                color: c.line
+                                Rectangle {
+                                    width: win.duration > 0 ? parent.width * (win.position / win.duration) : 0
+                                    height: parent.height; radius: 1.5; color: c.primary
+                                }
+                            }
+                            Text { text: win.fmt(win.duration); color: c.faint; font.family: c.font; font.pixelSize: 10 }
+                        }
+                    }
+                    Item {
+                        Layout.preferredWidth: 260
+                        Layout.fillHeight: true
+                        Text {
+                            anchors.right: heart.left; anchors.rightMargin: 18
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            horizontalAlignment: Text.AlignRight
+                            elide: Text.ElideRight
+                            text: win.note
+                            color: c.dim; font.family: c.font; font.pixelSize: 11
+                        }
+                        Text {
+                            id: heart
+                            anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+                            visible: win.liked !== null && win.liked !== undefined
+                            text: Icons.g("heart")
+                            color: win.liked ? c.primary : lh.hovered ? c.primary : c.dim
+                            font.family: Icons.family; font.pixelSize: 18
+                            HoverHandler { id: lh; cursorShape: Qt.PointingHandCursor }
+                            Tip { x: parent.width - width; y: -height - 10; c: win.look; text: win.liked ? "Unlike the track" : "Like the track"; keys: "l"; hovered: lh.hovered }
+                            TapHandler { onTapped: win.toggleLike() }
+                        }
+                    }
+                }
+            }
+        }
+
+        readonly property QtObject look: c
+        readonly property var keyHelp: [
+            { title: "Browse", keys: [["↑ ↓  j k", "Move"], ["⏎", "Open, or play a song"], ["Esc  ⌫", "Back"], ["⌘1 … ⌘4", "Shelf, Curated, Search, Queue"], ["Ctrl ↑ ↓", "Previous, next section"], ["⌘F  /", "Search Spotify"]] },
+            { title: "Play", keys: [["Space", "Play, pause"], ["← →", "Previous, next track"], ["p", "Play the album or song"], ["e", "Queue the album or song"], ["a", "On the shelf, or off it"],
+                                    ["d", "Remove from the queue"], ["l", "Like the playing track"], ["?  Ctrl ?", "These keys"]] }
+        ]
+        KeySheet { id: sheet; c: win.look; groups: win.keyHelp }
+    }
+}

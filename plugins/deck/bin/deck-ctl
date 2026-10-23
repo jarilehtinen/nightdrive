@@ -2,12 +2,16 @@
 # deck-ctl play-album <spotify:album:…> | play-song <spotify:track:…> <spotify:album:…> | search <query>: the
 # launcher's Music level talks to Deck through this
 # (~/.local/bin/deck-ctl).
-# Starts Deck first if it isn't running (and waits for its control socket); a search also brings Deck's window up.
+# Starts Deck first if it isn't running (and waits for its control socket). A search opens in Deck's window; playing
+# starts only the player (`deck serve`), with no window. A Deck built before `deck serve` opens in its terminal.
 cmd=${1:?usage: deck-ctl play-album <uri> | play-song <track uri> <album uri> | search <query>}; shift
 deck="$HOME/.local/bin/deck"
 here=$(dirname "$(readlink -f "$0")")
 sock="${XDG_RUNTIME_DIR:-/tmp}/deck/control.sock"
-if [[ ! -S $sock ]]; then
+if "$deck" --help 2>/dev/null | grep -q serve; then
+  [[ $cmd == search ]] && exec "$here/deck-open" search "$@"
+  "$here/deck-open" player || exit 1
+elif [[ ! -S $sock ]]; then
   "$here/deck-open" &
   for _ in $(seq 50); do [[ -S $sock ]] && break; sleep 0.2; done
 elif [[ $cmd == search ]]; then

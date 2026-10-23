@@ -4,7 +4,7 @@ A quiet mail client: folders, the thread list and the open thread, nothing else 
 
 ## Reading
 
-- Hold ⌘ (or press `?`) in Mail to see its keys. The ⌘ keys follow Mac Mail; on a PC keyboard they are Ctrl (Ctrl+R, Ctrl+N…), as in Thunderbird and Outlook.
+- Press `?` (or Ctrl+?) in Mail to see its keys. The ⌘ keys follow Mac Mail; on a PC keyboard they are Ctrl (Ctrl+R, Ctrl+N…), as in Thunderbird and Outlook.
 - `j` / `k` or ⌥↑ / ⌥↓ move in the list, the arrows scroll the message, `Space` and ⇧Space page through it. `/` or ⌘F searches (notmuch's query syntax), `Esc` clears the search.
 - `1`–`6` or Ctrl+↑ / Ctrl+↓ pick a folder: Inbox, Sent, Drafts, Archive, Spam, Trash. ⌘B hides the folders.
 - With more than one account, each has its own folders: `Tab` / ⇧Tab (or a click on an address under the folders) shows the next one. A notification's message opens in its own account.

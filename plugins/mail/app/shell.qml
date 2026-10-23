@@ -24,7 +24,8 @@ ShellRoot {
             readonly property color solid: Qt.rgba(bg.r, bg.g, bg.b, 1)
             readonly property color line: Qt.lighter(solid, 1.45)
             readonly property color divider: Qt.lighter(line, 1.2)     // the lines between the panes
-            readonly property color hover: Theme.hover
+            // Under the pointer: the selected row's colour, fainter, so a row you point at never looks picked
+            readonly property color hover: Qt.rgba(sel.r, sel.g, sel.b, 0.5)
             readonly property color sel: Theme.sel
             readonly property color text: Theme.text
             readonly property color body: Qt.lighter(text, 1.06)
@@ -598,9 +599,8 @@ ShellRoot {
 
         RowLayout {
             anchors.fill: parent
-            // Holding ⌘ (Super) shows the keys.
+            // ? and Ctrl+? show the keys (KeySheet.qml)
             Keys.onPressed: e => sheet.pressed(e)
-            Keys.onReleased: e => sheet.released(e)
             spacing: 0
 
             // Folders
@@ -780,7 +780,7 @@ ShellRoot {
                         Keys.onPressed: e => {
                             const k = e.key
                             // The list takes most keys before they reach the sheet: any but ? closes it here.
-                            if (win.cheats && k !== Qt.Key_Question) win.cheats = false
+                            if (win.cheats && k !== Qt.Key_Question && sheet.modifierKeys.indexOf(k) < 0) win.cheats = false
                             const ctrl = e.modifiers & Qt.ControlModifier
                             const alt = e.modifiers & Qt.AltModifier
                             const shift = e.modifiers & Qt.ShiftModifier
@@ -1276,11 +1276,10 @@ ShellRoot {
                 actions: win.windowActions
                 onAct: id => win.act(id, mw.msgs)
                 focus: true
-                Keys.onReleased: e => keys.released(e)
                 Keys.onPressed: e => {
                     const k = e.key
-                    keys.pressed(e)
-                    if (k === Qt.Key_Question) keys.shown = !keys.shown
+                    keys.pressed(e)             // ? and Ctrl+? show and hide the keys
+                    if (k === Qt.Key_Question) {}
                     else if (k === Qt.Key_Escape) mw.visible = false
                     else if (k === Qt.Key_Down) mw.scroll(win.arrowStep)
                     else if (k === Qt.Key_Up) mw.scroll(-win.arrowStep)

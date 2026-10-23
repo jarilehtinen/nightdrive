@@ -1,0 +1,1 @@
+../../../config/quickshell/KeyCap.qml
