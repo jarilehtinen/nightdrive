@@ -38,6 +38,14 @@ check` (exit 1 with the findings) and `nightdrive sandbox shot NAME`, `ipc …` 
 - Release notes are for users, in plain words: what they can now do, what works better, what they need to do. Never
   the commit messages as such. Write them from the commits (`--dry-run` lists them), let the user read them, then
   `nightdrive release … --notes FILE --yes`.
+- A big piece of work that shouldn't hold up or swell the next release (a new app: Calendar, Contacts) gets a branch of
+  its own off `dev`, in a worktree beside the live one: `git worktree add ~/dotfiles-<name> -b <name> dev`. `~/dotfiles`
+  stays on `dev`, so the desktop doesn't change; an app runs from the worktree (`qs -p ~/dotfiles-<name>/plugins/<name>/app`)
+  or in the sandbox (the worktree's own `bin/nightdrive sandbox` mounts it: `sandbox down` first if one runs). A request about what users already have (Mail, Deck, the desktop) goes to `~/dotfiles`, the new
+  thing's to its worktree. The apps' kit (`config/quickshell/kit`) changes only in `dev`, merged into the branch from
+  there (`git merge dev`, often). The branch is merged into `dev` once it is usable, and reaches users in the release after.
+- A part of an app that works without Nightdrive (Deck's player and CLI) has a repo of its own in `~/Projects`; the
+  Nightdrive window over it stays here, with the kit.
 - When it suits what was released, the notes get a picture of it (a collage of a few redesigned menus, a new window):
   `docs/releases/<version>-<name>.jpg`, on a line of its own `![What it shows](docs/releases/…)`. The website's
   Changelog shows it, the GitHub release too (the script points it at the tag), `nightdrive update` leaves it out.
