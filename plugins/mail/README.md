@@ -111,7 +111,7 @@ mbsync -a
 notmuch new
 ```
 
-6. Tell Mail how to send: `~/.config/nightmail/account.conf`. `sent` and `drafts` are the folders under `~/Mail` that mbsync made (a copy of each sent message goes there, and the next sync uploads it). `signature` is optional: its further lines are indented, and it goes under what you write. `suggest-model` is optional too: the Claude model that writes replies (sonnet by default).
+6. Tell Mail how to send: `~/.config/nightmail/account.conf`. `sent` and `drafts` are the folders under `~/Mail` that mbsync made (a copy of each sent message goes there, and the next sync uploads it). `signature` is optional: its further lines are indented, and it goes under what you write. `suggest-model` is optional too: the Claude model that writes replies (sonnet by default). Mail checks the server's certificate when it sends, as mbsync does when it syncs, so nothing goes out to a server whose certificate isn't valid. A server with a self-signed certificate can't be used for sending: mbsync and the inbox watch trust the one in the account's `CertificateFile` in `isyncrc`, sending doesn't.
 
 ```
 [account example]
