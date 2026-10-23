@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 # Crash reports to Claude (launcher › Settings › Notifications, off by default): when one of your programs crashes
 # (systemd-coredump keeps its core), a notification with Ask Claude, which opens Claude Code to find out why
-# (coredumpctl, a backtrace with gdb), and Mute, which leaves that program's crashes out from then on.
+# (coredumpctl, a backtrace with gdb), Mute (15 min), which leaves that program's crashes out for a while (a crash loop
+# while you test it), and Mute, which leaves them out from then on.
 #   crash-report status      on | off
 #   crash-report on|off      starts or stops the watcher (nightdrive-crash-reports.service) and keeps it so
 #   crash-report watch       the watcher itself: follows the journal's coredump messages
 #   crash-report ask PID     opens Claude Code about that crash (also: the notification's Ask Claude)
-#   crash-report mute NAME   no more notifications for NAME (the process name, as in coredumpctl list); unmute NAME
+#   crash-report mute NAME [MINUTES]   no more notifications for NAME (the process name, as in coredumpctl list),
+#                            or none for MINUTES; unmute NAME ends both
 import json
 import os
 import subprocess
@@ -17,6 +19,8 @@ import time
 UNIT = "nightdrive-crash-reports.service"
 COREDUMP_MESSAGE = "fc2e22bc6ee647b6b90729ab34a250b1"   # systemd-coredump's "Process … dumped core"
 MUTED_FILE = os.path.expanduser("~/.local/state/nightdrive/crash-reports-muted")
+MUTED_UNTIL_FILE = os.path.expanduser("~/.local/state/nightdrive/crash-reports-muted-until")   # NAME EPOCH per line
+SHORT_MUTE_MINUTES = 15
 # Muted from the start: UxPlay's waylandsink crashes at every screen change and comes back by itself (docs/known-issues.md)
 DEFAULT_MUTED = {"uxplay"}
 QUIET_SECONDS = 60   # one notification per program in this time: a crash loop doesn't fill the screen
@@ -40,7 +44,36 @@ def muted():
                     names.add(line)
     except FileNotFoundError:
         pass
+    now = time.time()
+    names.update(n for n, until in muted_until().items() if until > now)
     return names
+
+
+def muted_until():
+    """The programs muted for a while: {name: until (epoch seconds)}, past ones included."""
+    until = {}
+    try:
+        with open(MUTED_UNTIL_FILE) as f:
+            for line in f:
+                name, _, t = line.strip().rpartition(" ")
+                try:
+                    until[name] = float(t)
+                except ValueError:
+                    pass
+    except FileNotFoundError:
+        pass
+    return until
+
+
+def set_muted_until(name, minutes):
+    """Mutes NAME for MINUTES (None: ends it). Past entries are dropped on the way."""
+    now = time.time()
+    until = {n: t for n, t in muted_until().items() if t > now and n != name}
+    if minutes:
+        until[name] = now + minutes * 60
+    os.makedirs(os.path.dirname(MUTED_UNTIL_FILE), exist_ok=True)
+    with open(MUTED_UNTIL_FILE, "w") as f:
+        f.write("".join(f"{n} {int(t)}\n" for n, t in until.items()))
 
 
 def set_muted(name, on):
@@ -92,11 +125,13 @@ def notify(c):
     sig = c.get("COREDUMP_SIGNAL_NAME", "")
     exe = c.get("COREDUMP_EXE", "")
     p = subprocess.run(["notify-send", "-a", "Crash reports", "-i", "dialog-warning", "--wait",
-                        "-A", "ask=Ask Claude", "-A", "mute=Mute " + name,
+                        "-A", "ask=Ask Claude", "-A", f"snooze=Mute ({SHORT_MUTE_MINUTES} min)", "-A", "mute=Mute " + name,
                         f"{name} crashed", f"{exe} ({sig})"], capture_output=True, text=True)
     action = p.stdout.strip()
     if action == "ask":
         ask(pid)
+    elif action == "snooze":
+        set_muted_until(name, SHORT_MUTE_MINUTES)
     elif action == "mute":
         set_muted(name, True)
 
@@ -134,11 +169,14 @@ def main():
         watch()
     elif cmd == "ask" and arg:
         ask(arg)
+    elif cmd == "mute" and arg and len(sys.argv) > 3:
+        set_muted_until(arg, float(sys.argv[3]))
     elif cmd in ("mute", "unmute") and arg:
         set_muted(arg, cmd == "mute")
+        set_muted_until(arg, None)
     else:
         with open(__file__) as f:
-            print("".join(l[2:] for l in f.readlines()[4:10]), end="")
+            print("".join(l[2:] for l in f.readlines()[5:11]), end="")
         sys.exit(1)
 
 
