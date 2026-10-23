@@ -66,10 +66,21 @@ do
 end
 local bind = hl.bind
 local ownKey = false
+-- ⌥ is Alt (Mod1) or, when it types characters like the right ⌥ on a Mac keyboard (or both, with a layout that makes the
+-- left one level 3 too), Mod5. An ⌥ binding works with either, unless it is ⌥ (+ ⇧) + a character key: AltGr types those.
+local function option_copy(keys)
+    if not keys:match("%f[%w]ALT%f[^%w]") then return nil end
+    local key = keys:match("([^%s+]+)%s*$")
+    local others = keys:gsub("%f[%w]ALT%f[^%w]", ""):gsub("%f[%w]SHIFT%f[^%w]", ""):gsub("[%s+]", "")
+    if others == key and (#key == 1 or key:match("^code:")) then return nil end
+    return (keys:gsub("%f[%w]ALT%f[^%w]", "MOD5"))
+end
 hl.bind = function (keys, action, opts)
     local hyper = keys:match("^%s*MOD3%s*%+%s*(%w)%s*$")
     if hyper and appKeys[hyper:upper()] and not ownKey then return end
     if not NIGHTDRIVE_IN_SUBMAP then table.insert(NIGHTDRIVE_BINDS, { keys, action, opts }) end
+    local copy = option_copy(keys)
+    if copy then bind(copy, action, opts) end
     return bind(keys, action, opts)
 end
 
