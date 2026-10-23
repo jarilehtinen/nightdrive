@@ -491,6 +491,9 @@ PanelWindow {
         const fuzzyOk = prefs.fuzzy && !short   // letters in order would hit too many of them
         all.forEach((x, i) => {
             let s = score(x.text, fq)
+            // An app's own settings ("Firefox settings") right after the app while its name is being typed: "fire" hits
+            // both as a start, and the settings come earlier in the list
+            if (s >= 0 && s < 1 && x.item.appName && score(x.item.appName, fq) >= 0) s += 0.25
             const extra = x.extra ? fold(x.extra) : ""
             if (s < 0 && extra.includes(fq)) s = 3
             if (s < 0 && words.length > 1) {
