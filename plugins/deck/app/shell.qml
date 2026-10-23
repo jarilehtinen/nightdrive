@@ -766,6 +766,10 @@ ShellRoot {
                         bottomMargin: 12
                         TouchScroll { view: list }
                         readonly property var row: win.rows[currentIndex]
+                        // The track numbers' column: as wide as the longest number here (12 tracks: two digits), or the
+                        // playing track's note
+                        TextMetrics { id: numberMetrics; font.family: c.font; font.pixelSize: 11; text: String(list.count) }
+                        readonly property real leadWidth: Math.max(Math.ceil(numberMetrics.advanceWidth), 14)
                         Keys.onPressed: e => {
                             const k = e.key
                             if (e.modifiers & (Qt.ControlModifier | Qt.MetaModifier | Qt.AltModifier)) return
@@ -827,7 +831,7 @@ ShellRoot {
                             }
                             Text {
                                 id: lead
-                                x: 14; width: 22
+                                x: 14; width: list.leadWidth
                                 anchors.verticalCenter: parent.verticalCenter
                                 horizontalAlignment: Text.AlignRight
                                 visible: (r.modelData.number !== undefined || r.now) && r.modelData.cover === undefined
