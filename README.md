@@ -137,7 +137,7 @@ a to-do list or a chat you want one keystroke away without giving them a workspa
 | Window manager | [Hyprland](https://hypr.land) | Lua config, Mac-style keybindings |
 | Bar, menus, launcher | [Quickshell](https://quickshell.org) | one themed shell for the top bar, its menus, launcher, OSD and shelf; an orange microphone and camera in the bar while an app uses them (MacBooks have no microphone light), the microphone filling up with the input level, their menus name the apps |
 | Terminal | [kitty](https://sw.kovidgoyal.net/kitty/) | ⌘Enter, opens in `~/Projects`; Mac copy and paste. Another terminal (Ghostty, foot, Alacritty, WezTerm) in Settings › Apps › Default apps: it opens everywhere kitty did, with its own settings and colours |
-| Browser | Firefox | tabs below the address bar, no tab bar while a window has one tab, links from other apps in a new window (both in launcher › Settings › Apps › Firefox), themed UI |
+| Browser | Firefox | tabs below the address bar, no tab bar while a window has one tab, links from other apps in a new window, starts with an empty window rather than the last session's tabs (all three in launcher › Settings › Apps › Firefox), themed UI |
 | Mail (optional) | Thunderbird | themed, with a minimal toolbar ([details](docs/thunderbird.md)) |
 | Music (optional) | [Deck](plugins/deck/README.md) (Spotify in the terminal, needs Spotify Premium) | bar icon, music menu, player row in the launcher, media keys |
 | Passwords (optional) | [1Password](plugins/1password/README.md) + `op` CLI | Passwords level in the launcher, SSH agent |

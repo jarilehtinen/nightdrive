@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell
 
-// The launcher's Settings › Mouse (the wheel's scroll speed), Launcher (fuzzy search, shortcut hints), Firefox (its links and tab bar), Computer name, Remote login (sshd), Notifications (how long a popup stays,
+// The launcher's Settings › Mouse (the wheel's scroll speed), Launcher (fuzzy search, shortcut hints), Firefox (its links, tab bar and start), Computer name, Remote login (sshd), Notifications (how long a popup stays,
 // the two sounds, FUMonitor's alerts), Crash reports and Update channel. Startup stays in Launcher.qml: its rows are the app rows.
 // Launcher.qml asks it like DefaultAppsLevels (levels, titles, parents, items, activate, footer, entered), shows compName
 // channel and the mouse's speed on Settings' own rows, and calls entered("settings") to read them.
@@ -70,7 +70,7 @@ Item {
         }
     }
     // Settings › Apps › Firefox (hypr/scripts/firefox-prefs): "" until read, "none" without a Firefox profile, else
-    // { links: window|tab, tabbar: auto|always }. Its row in Settings shows only with a profile.
+    // { links: window|tab, tabbar: auto|always, startup: empty|restore }. Its row in Settings shows only with a profile.
     property var firefox: ""
     readonly property var browserItems: firefox !== "" && firefox !== "none"
         ? [{ kind: "nav", name: "Firefox", glyph: "globe", target: "browser" }] : []
@@ -216,6 +216,8 @@ Item {
                       sub: "Off: as a tab in the last Firefox window", switchOn: firefox.links === "window" },
                     { kind: "firefox", key: "tabbar", on: "auto", off: "always", name: "Tab bar only with several tabs", glyph: "panel-top",
                       sub: "Off: the tab bar shows also with one tab", switchOn: firefox.tabbar === "auto" },
+                    { kind: "firefox", key: "startup", on: "empty", off: "restore", name: "Start with an empty window", glyph: "history",
+                      sub: "Off: the last session's windows and tabs open again", switchOn: firefox.startup !== "restore" },
                     { kind: "note", name: "Changes apply when Firefox restarts" }]
         }
         if (level === "compname") {
