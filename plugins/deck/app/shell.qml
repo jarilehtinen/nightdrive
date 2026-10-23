@@ -1039,6 +1039,8 @@ ShellRoot {
                     }
                     Column {
                         Layout.preferredWidth: 260
+                        // Room before the playhead's time, so a long album name doesn't run up to it
+                        Layout.rightMargin: 16
                         spacing: 3
                         Text {
                             width: parent.width; elide: Text.ElideRight
