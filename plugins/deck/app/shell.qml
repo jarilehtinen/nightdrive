@@ -1114,7 +1114,7 @@ ShellRoot {
         readonly property var keyHelp: [
             { title: "Browse", keys: [["↑ ↓  j k", "Move"], ["⏎", "Open, or play a song"], ["Esc  ⌫", "Back"], ["⌘1 … ⌘5", "Shelf, Curated, Radio, Search, Queue"], ["Ctrl ↑ ↓", "Previous, next section"], ["⌘F  /", "Search Spotify"], ["n", "What plays: its album or radio"],
                                       ["f", "A favourite genre, or not"], ["d", "Out of the queue, or of Curated"]] },
-            { title: "Play", keys: [["Space", "Play, pause"], ["← →", "Previous, next track"], [",  .", "Back, ahead 10 seconds"], ["p", "Play the album, song or radio"], ["e", "Queue the album or song"], ["a", "On the shelf, or off it"],
+            { title: "Play", keys: [["Space", "Play, pause"], ["← →", "Previous, next track"], [", .", "Back, ahead 10 seconds"], ["p", "Play the album, song or radio"], ["e", "Queue the album or song"], ["a", "On the shelf, or off it"],
                                     ["l", "Like the playing track"], ["o", "Where the sound plays"], ["?  Ctrl ?", "These keys"]] }
         ]
         KeySheet { id: sheet; c: win.look; groups: win.keyHelp }

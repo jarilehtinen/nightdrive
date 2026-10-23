@@ -1204,14 +1204,14 @@ ShellRoot {
         property alias cheats: sheet.shown
 
         readonly property var keyHelp: [
-            { title: "Read", keys: [["⌥↑ ⌥↓  j k", "Previous, next"], ["⏎", "Open in a window"], ["↑ ↓", "Scroll the message"], ["Space  ⇧Space", "Page down, up"], ["h", "HTML or text"],
+            { title: "Read", keys: [["⌥↑ ⌥↓  j k", "Previous, next"], ["⏎", "Open in a window"], ["↑ ↓", "Scroll the message"], ["Space ⇧Space", "Page down, up"], ["h", "HTML or text"],
                                     ["⌘F  /", "Search"], ["Esc", "Clear the search"]] },
             { title: "Act", keys: [["a", "Archive"], ["d  ⌫", "Move to Trash (in Trash: delete)"], ["!", "Spam (in Spam: not spam)"], ["⌘Z", "Undo"], ["u", "Unread (again: read)"], ["⇧U", "Mark all read"], ["⌘R", "Refresh"],
                                    ["⇧↑ ⇧↓  ⇧-click", "Select several"], ["Ctrl-click", "Select or leave out"], ["⌘A", "Select all"]] },
             { title: "Write", keys: [["⌘N  c", "New message"], ["r", "Reply to all"], ["⇧R", "Reply to the sender only"], ["f", "Forward"],
                                      ["⏎", "Continue a draft (in Drafts)"], ["⌘⇧C", "Claude writes the reply"], ["⌘⇧C", "…from the selected text"],
                                      ["⌘⇧A", "Attach files"], ["Ctrl ⏎", "Send"], ["⌘S", "Save in Drafts"], ["Esc", "Close (Esc Esc: throw away)"]] },
-            { title: "Folders", keys: [["Ctrl ↑ ↓", "Previous, next"], ["1 – 6", "Go to a folder"], ["Tab  ⇧Tab", "Next, previous account"], ["⌘⇧⌫", "Empty Trash"], ["⌘B", "Hide or show"], ["⌘,", "Settings"]] }
+            { title: "Folders", keys: [["Ctrl ↑ ↓", "Previous, next"], ["1 – 6", "Go to a folder"], ["Tab ⇧Tab", "Next, previous account"], ["⌘⇧⌫", "Empty Trash"], ["⌘B", "Hide or show"], ["⌘,", "Settings"]] }
         ]
 
         KeySheet { id: sheet; c: win.look; groups: win.keyHelp }
@@ -1303,7 +1303,7 @@ ShellRoot {
                 id: keys
                 c: win.look
                 groups: [
-                    { title: "Read", keys: [["↑ ↓", "Scroll"], ["Space  ⇧Space", "Page down, up"], ["h", "HTML or text"], ["Esc  ⌘W", "Close the window"]] },
+                    { title: "Read", keys: [["↑ ↓", "Scroll"], ["Space ⇧Space", "Page down, up"], ["h", "HTML or text"], ["Esc  ⌘W", "Close the window"]] },
                     { title: "Write", keys: [["r", "Reply to all"], ["⇧R", "Reply to the sender only"], ["f", "Forward"], ["⌘⇧C", "Claude writes the reply"]] }
                 ]
             }

@@ -77,7 +77,7 @@ Rectangle {
                             Item {
                                 width: group.keyWidth; height: 22
                                 KeyCap {
-                                    anchors.verticalCenter: parent.verticalCenter; c: root.c; keys: modelData[0]; tint: root.c.accent
+                                    anchors.verticalCenter: parent.verticalCenter; c: root.c; keys: modelData[0]; tint: root.c.accent; or: true
                                     onImplicitWidthChanged: group.keyWidth = Math.max(group.keyWidth, implicitWidth)
                                 }
                             }
